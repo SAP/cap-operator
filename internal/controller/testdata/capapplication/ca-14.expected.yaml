@@ -1,0 +1,41 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPApplication
+metadata:
+  deletionTimestamp: "2022-03-22T13:24:38Z"
+  generation: 2
+  name: test-cap-01
+  namespace: default
+  resourceVersion: "11373799"
+  uid: 3c7ba7cb-dc04-4fd1-be86-3eb3a5c64a98
+  annotations:
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+  labels:
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+spec:
+  btp:
+    services:
+      - class: xsuaa
+        name: cap-uaa
+        secret: cap-cap-01-uaa-bind-cf
+      - class: saas-registry
+        name: cap-saas-registry
+        secret: cap-cap-01-saas-bind-cf
+      - class: service-manager
+        name: cap-service-manager
+        secret: cap-cap-01-svc-man-bind-cf
+  btpAppName: test-cap-01
+  domains:
+    istioIngressGatewayLabels:
+      - name: app
+        value: istio-ingressgateway
+      - name: istio
+        value: ingressgateway
+    primary: app-domain.test.local
+    secondary:
+      - foo.bar.local
+  globalAccountId: btp-glo-acc-id
+  provider:
+    subDomain: my-provider
+    tenantId: tenant-id-for-provider
+status:
+  state: Processing

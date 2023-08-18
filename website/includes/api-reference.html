@@ -1,0 +1,2234 @@
+<p>Packages:</p>
+<ul>
+<li>
+<a href="#sme.sap.com%2fv1alpha1">sme.sap.com/v1alpha1</a>
+</li>
+</ul>
+<h2 id="sme.sap.com/v1alpha1">sme.sap.com/v1alpha1</h2>
+Resource Types:
+<ul><li>
+<a href="#sme.sap.com/v1alpha1.CAPApplication">CAPApplication</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha1.CAPApplicationVersion">CAPApplicationVersion</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha1.CAPTenant">CAPTenant</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation</a>
+</li></ul>
+<h3 id="sme.sap.com/v1alpha1.CAPApplication">CAPApplication
+</h3>
+<div>
+<p>CAPApplication is the schema for capapplications API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>CAPApplication</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPApplicationSpec">
+CAPApplicationSpec
+</a>
+</em>
+</td>
+<td>
+<p>CAPApplication spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>domains</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.ApplicationDomains">
+ApplicationDomains
+</a>
+</em>
+</td>
+<td>
+<p>Domains used by the application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>globalAccountId</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SAP BTP Global Account Identifier where services are entitles for the current application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>btpAppName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Short name for the application (similar to BTP XSAPPNAME)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>provider</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+BTPTenantIdentification
+</a>
+</em>
+</td>
+<td>
+<p>Provider subaccount where application services are created</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>btp</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTP">
+BTP
+</a>
+</em>
+</td>
+<td>
+<p>SAP BTP Services consumed by the application</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPApplicationStatus">
+CAPApplicationStatus
+</a>
+</em>
+</td>
+<td>
+<p>CAPApplication status</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationVersion">CAPApplicationVersion
+</h3>
+<div>
+<p>CAPApplicationVersion defines the schema for capapplicationversions API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>CAPApplicationVersion</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPApplicationVersionSpec">
+CAPApplicationVersionSpec
+</a>
+</em>
+</td>
+<td>
+<p>CAPApplicationVersion spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>capApplicationInstance</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Denotes to which CAPApplication the current version belongs</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>version</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Semantic version</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>registrySecrets</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Registry secrets used to pull images of the application components</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workloads</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.WorkloadDetails">
+[]WorkloadDetails
+</a>
+</em>
+</td>
+<td>
+<p>Information about the Workloads</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tenantOperations</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TenantOperations">
+TenantOperations
+</a>
+</em>
+</td>
+<td>
+<p>Tenant Operations may be used to specify how jobs are sequenced for the different tenant operations</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPApplicationVersionStatus">
+CAPApplicationVersionStatus
+</a>
+</em>
+</td>
+<td>
+<p>CAPApplicationVersion status</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenant">CAPTenant
+</h3>
+<div>
+<p>CAPTenant defines the schema for captenants API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>CAPTenant</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantSpec">
+CAPTenantSpec
+</a>
+</em>
+</td>
+<td>
+<p>CAPTenant spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>capApplicationInstance</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Denotes to which CAPApplication the current tenant belongs</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>BTPTenantIdentification</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+BTPTenantIdentification
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>BTPTenantIdentification</code> are embedded into this type.)
+</p>
+<p>Details of consumer sub-account subscribing to the application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>version</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Semver that is used to determine the relevant CAPApplicationVersion that a CAPTenant can be upgraded to (i.e. if it is not already on that version)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>versionUpgradeStrategy</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.VersionUpgradeStrategyType">
+VersionUpgradeStrategyType
+</a>
+</em>
+</td>
+<td>
+<p>Denotes whether a CAPTenant can be upgraded. One of (&lsquo;always&rsquo;, &lsquo;never&rsquo;)</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantStatus">
+CAPTenantStatus
+</a>
+</em>
+</td>
+<td>
+<p>CAPTenant status</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation
+</h3>
+<div>
+<p>CAPTenantOperation defines the schema for captenantoperations API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>CAPTenantOperation</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperationSpec">
+CAPTenantOperationSpec
+</a>
+</em>
+</td>
+<td>
+<p>CAPTenantOperation spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>operation</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperationType">
+CAPTenantOperationType
+</a>
+</em>
+</td>
+<td>
+<p>Scope of the tenant lifecycle operation. One of &lsquo;provisioning&rsquo;, &lsquo;deprovisioning&rsquo; or &lsquo;upgrade&rsquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>BTPTenantIdentification</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+BTPTenantIdentification
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>BTPTenantIdentification</code> are embedded into this type.)
+</p>
+<p>BTP sub-account (tenant) for which request is created</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>capApplicationVersionInstance</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Reference to CAPApplicationVersion for executing the operation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>steps</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperationStep">
+[]CAPTenantOperationStep
+</a>
+</em>
+</td>
+<td>
+<p>Steps (jobs) to be executed for the operation to complete</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperationStatus">
+CAPTenantOperationStatus
+</a>
+</em>
+</td>
+<td>
+<p>CAPTenantOperation status</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.ApplicationDomains">ApplicationDomains
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationSpec">CAPApplicationSpec</a>)
+</p>
+<div>
+<p>Application domains</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>primary</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Primary application domain will be used to generate a wildcard TLS certificate. In SAP Gardener managed clusters this is (usually) a subdomain of the cluster domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>secondary</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Customer specific domains to serve application endpoints (optional)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsTarget</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Public ingress URL for the cluster Load Balancer</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>istioIngressGatewayLabels</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.NameValue">
+[]NameValue
+</a>
+</em>
+</td>
+<td>
+<p>Labels used to identify the istio ingress-gateway component and its corresponding namespace. Usually {&ldquo;app&rdquo;:&ldquo;istio-ingressgateway&rdquo;,&ldquo;istio&rdquo;:&ldquo;ingressgateway&rdquo;}</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.BTP">BTP
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationSpec">CAPApplicationSpec</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>services</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.ServiceInfo">
+[]ServiceInfo
+</a>
+</em>
+</td>
+<td>
+<p>Details of BTP Services</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.BTPTenantIdentification">BTPTenantIdentification
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationSpec">CAPApplicationSpec</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantOperationSpec">CAPTenantOperationSpec</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantSpec">CAPTenantSpec</a>)
+</p>
+<div>
+<p>Identifies an SAP BTP subaccount (tenant)</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>subDomain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>BTP subaccount subdomain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tenantId</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>BTP subaccount Tenant ID</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationSpec">CAPApplicationSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplication">CAPApplication</a>)
+</p>
+<div>
+<p>CAPApplicationSpec defines the desired state of CAPApplication</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>domains</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.ApplicationDomains">
+ApplicationDomains
+</a>
+</em>
+</td>
+<td>
+<p>Domains used by the application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>globalAccountId</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SAP BTP Global Account Identifier where services are entitles for the current application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>btpAppName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Short name for the application (similar to BTP XSAPPNAME)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>provider</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+BTPTenantIdentification
+</a>
+</em>
+</td>
+<td>
+<p>Provider subaccount where application services are created</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>btp</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTP">
+BTP
+</a>
+</em>
+</td>
+<td>
+<p>SAP BTP Services consumed by the application</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationState">CAPApplicationState
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationStatus">CAPApplicationStatus</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Consistent&#34;</p></td>
+<td><p>CAPApplication has been reconciled and is now consistent</p>
+</td>
+</tr><tr><td><p>&#34;Deleting&#34;</p></td>
+<td><p>Deletion has been triggered</p>
+</td>
+</tr><tr><td><p>&#34;Error&#34;</p></td>
+<td><p>An error occurred during reconciliation</p>
+</td>
+</tr><tr><td><p>&#34;Processing&#34;</p></td>
+<td><p>CAPApplication is being reconciled</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationStatus">CAPApplicationStatus
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplication">CAPApplication</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericStatus</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.GenericStatus">
+GenericStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPApplicationState">
+CAPApplicationState
+</a>
+</em>
+</td>
+<td>
+<p>State of CAPApplication</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>domainSpecHash</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Hash representing last known application domains</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastFullReconciliationTime</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>The last time a full reconciliation was completed</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationStatusConditionType">CAPApplicationStatusConditionType
+(<code>string</code> alias)</h3>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;AllTenantsReady&#34;</p></td>
+<td></td>
+</tr><tr><td><p>&#34;LatestVersionReady&#34;</p></td>
+<td></td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationVersionSpec">CAPApplicationVersionSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersion">CAPApplicationVersion</a>)
+</p>
+<div>
+<p>CAPApplicationVersionSpec specifies the desired state of CAPApplicationVersion</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>capApplicationInstance</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Denotes to which CAPApplication the current version belongs</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>version</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Semantic version</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>registrySecrets</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Registry secrets used to pull images of the application components</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workloads</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.WorkloadDetails">
+[]WorkloadDetails
+</a>
+</em>
+</td>
+<td>
+<p>Information about the Workloads</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tenantOperations</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TenantOperations">
+TenantOperations
+</a>
+</em>
+</td>
+<td>
+<p>Tenant Operations may be used to specify how jobs are sequenced for the different tenant operations</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationVersionState">CAPApplicationVersionState
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersionStatus">CAPApplicationVersionStatus</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Deleting&#34;</p></td>
+<td><p>Deletion has been triggered</p>
+</td>
+</tr><tr><td><p>&#34;Error&#34;</p></td>
+<td><p>An error occurred during reconciliation</p>
+</td>
+</tr><tr><td><p>&#34;Processing&#34;</p></td>
+<td><p>CAPApplicationVersion is being processed</p>
+</td>
+</tr><tr><td><p>&#34;Ready&#34;</p></td>
+<td><p>CAPApplicationVersion is now ready for use (dependent resources have been created)</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationVersionStatus">CAPApplicationVersionStatus
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersion">CAPApplicationVersion</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericStatus</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.GenericStatus">
+GenericStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPApplicationVersionState">
+CAPApplicationVersionState
+</a>
+</em>
+</td>
+<td>
+<p>State of CAPApplicationVersion</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>finishedJobs</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>List of finished Content Jobs</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOperationSpec">CAPTenantOperationSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>operation</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperationType">
+CAPTenantOperationType
+</a>
+</em>
+</td>
+<td>
+<p>Scope of the tenant lifecycle operation. One of &lsquo;provisioning&rsquo;, &lsquo;deprovisioning&rsquo; or &lsquo;upgrade&rsquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>BTPTenantIdentification</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+BTPTenantIdentification
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>BTPTenantIdentification</code> are embedded into this type.)
+</p>
+<p>BTP sub-account (tenant) for which request is created</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>capApplicationVersionInstance</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Reference to CAPApplicationVersion for executing the operation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>steps</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperationStep">
+[]CAPTenantOperationStep
+</a>
+</em>
+</td>
+<td>
+<p>Steps (jobs) to be executed for the operation to complete</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOperationState">CAPTenantOperationState
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperationStatus">CAPTenantOperationStatus</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Completed&#34;</p></td>
+<td><p>CAPTenantOperation steps completed</p>
+</td>
+</tr><tr><td><p>&#34;Deleting&#34;</p></td>
+<td><p>CAPTenantOperation deletion has been triggered</p>
+</td>
+</tr><tr><td><p>&#34;Failed&#34;</p></td>
+<td><p>CAPTenantOperation steps have failed</p>
+</td>
+</tr><tr><td><p>&#34;Processing&#34;</p></td>
+<td><p>CAPTenantOperation is being processed</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOperationStatus">CAPTenantOperationStatus
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericStatus</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.GenericStatus">
+GenericStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperationState">
+CAPTenantOperationState
+</a>
+</em>
+</td>
+<td>
+<p>State of CAPTenantOperation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentStep</code><br/>
+<em>
+uint32
+</em>
+</td>
+<td>
+<p>Current step being processed from the sequence of specified steps</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>activeJob</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the job being executed for the current step</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOperationStep">CAPTenantOperationStep
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperationSpec">CAPTenantOperationSpec</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the workload from the referenced CAPApplicationVersion</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.JobType">
+JobType
+</a>
+</em>
+</td>
+<td>
+<p>Type of job. One of &lsquo;TenantOperation&rsquo; or &lsquo;CustomTenantOperation&rsquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>continueOnFailure</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Indicates whether the operation can continue in case of step failure. Relevant only for type &lsquo;CustomTenantOperation&rsquo;</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOperationType">CAPTenantOperationType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperationSpec">CAPTenantOperationSpec</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;deprovisioning&#34;</p></td>
+<td><p>Deprovision tenant</p>
+</td>
+</tr><tr><td><p>&#34;provisioning&#34;</p></td>
+<td><p>Provision tenant</p>
+</td>
+</tr><tr><td><p>&#34;upgrade&#34;</p></td>
+<td><p>Upgrade tenant</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantSpec">CAPTenantSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenant">CAPTenant</a>)
+</p>
+<div>
+<p>CAPTenantSpec defines the desired state of the CAPTenant</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>capApplicationInstance</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Denotes to which CAPApplication the current tenant belongs</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>BTPTenantIdentification</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+BTPTenantIdentification
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>BTPTenantIdentification</code> are embedded into this type.)
+</p>
+<p>Details of consumer sub-account subscribing to the application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>version</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Semver that is used to determine the relevant CAPApplicationVersion that a CAPTenant can be upgraded to (i.e. if it is not already on that version)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>versionUpgradeStrategy</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.VersionUpgradeStrategyType">
+VersionUpgradeStrategyType
+</a>
+</em>
+</td>
+<td>
+<p>Denotes whether a CAPTenant can be upgraded. One of (&lsquo;always&rsquo;, &lsquo;never&rsquo;)</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantState">CAPTenantState
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantStatus">CAPTenantStatus</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Deleting&#34;</p></td>
+<td><p>Deletion has been triggered</p>
+</td>
+</tr><tr><td><p>&#34;Provisioning&#34;</p></td>
+<td><p>Tenant is being provisioned</p>
+</td>
+</tr><tr><td><p>&#34;ProvisioningError&#34;</p></td>
+<td><p>Tenant provisioning ended in error</p>
+</td>
+</tr><tr><td><p>&#34;Ready&#34;</p></td>
+<td><p>Tenant has been provisioned/upgraded and is now ready for use</p>
+</td>
+</tr><tr><td><p>&#34;UpgradeError&#34;</p></td>
+<td><p>Tenant upgrade failed</p>
+</td>
+</tr><tr><td><p>&#34;Upgrading&#34;</p></td>
+<td><p>Tenant is being upgraded</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantStatus">CAPTenantStatus
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenant">CAPTenant</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericStatus</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.GenericStatus">
+GenericStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantState">
+CAPTenantState
+</a>
+</em>
+</td>
+<td>
+<p>State of CAPTenant</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentCAPApplicationVersionInstance</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specifies the current version of the tenant after provisioning or upgrade</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>previousCAPApplicationVersions</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Previous versions of the tenant (first to last)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastFullReconciliationTime</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>The last time a full reconciliation was completed</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.ContainerDetails">ContainerDetails
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>, <a href="#sme.sap.com/v1alpha1.JobDetails">JobDetails</a>)
+</p>
+<div>
+<p>ContainerDetails specifies the details of the Container</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>image</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Image info for the container</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullPolicy</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#PullPolicy">
+Kubernetes core/v1.PullPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Pull policy for the container image</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>command</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Entrypoint array for the container</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>env</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#EnvVar">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<p>Environment Config for the Container</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resources</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#ResourceRequirements">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>Resources</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>securityContext</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#SecurityContext">
+Kubernetes core/v1.SecurityContext
+</a>
+</em>
+</td>
+<td>
+<p>SecurityContext for the Container</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#PodSecurityContext">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<p>SecurityContext for the Pod</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.WorkloadDetails">WorkloadDetails</a>)
+</p>
+<div>
+<p>DeploymentDetails specifies the details of the Deployment</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ContainerDetails</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.ContainerDetails">
+ContainerDetails
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ContainerDetails</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DeploymentType">
+DeploymentType
+</a>
+</em>
+</td>
+<td>
+<p>Type of the Deployment</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Number of replicas</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ports</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.Ports">
+[]Ports
+</a>
+</em>
+</td>
+<td>
+<p>Port configuration</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>livenessProbe</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Probe">
+Kubernetes core/v1.Probe
+</a>
+</em>
+</td>
+<td>
+<p>Liveness probe</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>readinessProbe</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Probe">
+Kubernetes core/v1.Probe
+</a>
+</em>
+</td>
+<td>
+<p>Readiness probe</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DeploymentType">DeploymentType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>)
+</p>
+<div>
+<p>Type of deployment</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Additional&#34;</p></td>
+<td><p>Additional deployment type</p>
+</td>
+</tr><tr><td><p>&#34;CAP&#34;</p></td>
+<td><p>CAP backend server deployment type</p>
+</td>
+</tr><tr><td><p>&#34;Router&#34;</p></td>
+<td><p>Application router deployment type</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.GenericStatus">GenericStatus
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationStatus">CAPApplicationStatus</a>, <a href="#sme.sap.com/v1alpha1.CAPApplicationVersionStatus">CAPApplicationVersionStatus</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantOperationStatus">CAPTenantOperationStatus</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantStatus">CAPTenantStatus</a>)
+</p>
+<div>
+<p>Custom resource status</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>observedGeneration</code><br/>
+<em>
+int64
+</em>
+</td>
+<td>
+<p>Observed generation of the resource where this status was identified</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Condition">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<p>State expressed as conditions</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.JobDetails">JobDetails
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.WorkloadDetails">WorkloadDetails</a>)
+</p>
+<div>
+<p>JobDetails specifies the details of the Job</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ContainerDetails</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.ContainerDetails">
+ContainerDetails
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>ContainerDetails</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.JobType">
+JobType
+</a>
+</em>
+</td>
+<td>
+<p>Type of Job</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backoffLimit</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Specifies the number of retries before marking this job failed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ttlSecondsAfterFinished</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Specifies the time after which the job may be cleaned up.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.JobType">JobType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperationStep">CAPTenantOperationStep</a>, <a href="#sme.sap.com/v1alpha1.JobDetails">JobDetails</a>)
+</p>
+<div>
+<p>Type of Job</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Content&#34;</p></td>
+<td><p>job for deploying content or configuration to (BTP) services</p>
+</td>
+</tr><tr><td><p>&#34;CustomTenantOperation&#34;</p></td>
+<td><p>job for custom tenant operation e.g. pre/post hooks for a tenant operation</p>
+</td>
+</tr><tr><td><p>&#34;TenantOperation&#34;</p></td>
+<td><p>job for tenant operation e.g. deploying relevant data to a tenant</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.NameValue">NameValue
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ApplicationDomains">ApplicationDomains</a>)
+</p>
+<div>
+<p>Generic Name/Value configuration</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>value</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.PortNetworkPolicyType">PortNetworkPolicyType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.Ports">Ports</a>)
+</p>
+<div>
+<p>Type of NetworkPolicy for the port</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Application&#34;</p></td>
+<td><p>Expose the port for the current application versions pod(s) scope</p>
+</td>
+</tr><tr><td><p>&#34;Cluster&#34;</p></td>
+<td><p>Expose the port for any pod(s) in the overall cluster scope</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.Ports">Ports
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>)
+</p>
+<div>
+<p>Configuration of Service Ports for the deployment</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>appProtocol</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>App protocol used by the service port</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the service port</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>networkPolicy</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.PortNetworkPolicyType">
+PortNetworkPolicyType
+</a>
+</em>
+</td>
+<td>
+<p>Network Policy of the service port</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>port</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>The port number used for container and the corresponding service (if any)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>routerDestinationName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Destination name which may be used by the Router deployment to reach this backend service</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.ServiceInfo">ServiceInfo
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.BTP">BTP</a>)
+</p>
+<div>
+<p>Service information</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of service instance</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>secret</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Secret containing service access credentials</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>class</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Type of service</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.StatusConditionType">StatusConditionType
+(<code>string</code> alias)</h3>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Ready&#34;</p></td>
+<td></td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.TenantOperationWorkloadReference">TenantOperationWorkloadReference
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.TenantOperations">TenantOperations</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>workloadName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Reference to a specified workload of type &lsquo;TenantOperation&rsquo; or &lsquo;CustomTenantOperation&rsquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>continueOnFailure</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Indicates whether to proceed with remaining operation steps in case of failure. Relevant only for &lsquo;CustomTenantOperation&rsquo;</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.TenantOperations">TenantOperations
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersionSpec">CAPApplicationVersionSpec</a>)
+</p>
+<div>
+<p>Configuration used to sequence tenant related jobs for a given tenant operation</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>provisioning</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TenantOperationWorkloadReference">
+[]TenantOperationWorkloadReference
+</a>
+</em>
+</td>
+<td>
+<p>Tenant provisioning steps</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>upgrade</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TenantOperationWorkloadReference">
+[]TenantOperationWorkloadReference
+</a>
+</em>
+</td>
+<td>
+<p>Tenant upgrade steps</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>deprovisioning</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TenantOperationWorkloadReference">
+[]TenantOperationWorkloadReference
+</a>
+</em>
+</td>
+<td>
+<p>Tenant deprovisioning steps</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.VersionUpgradeStrategyType">VersionUpgradeStrategyType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantSpec">CAPTenantSpec</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;always&#34;</p></td>
+<td><p>Always (default)</p>
+</td>
+</tr><tr><td><p>&#34;never&#34;</p></td>
+<td><p>Never</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.WorkloadDetails">WorkloadDetails
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersionSpec">CAPApplicationVersionSpec</a>)
+</p>
+<div>
+<p>WorkloadDetails specifies the details of the Workload</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the workload</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>consumedBTPServices</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>List of BTP services consumed by the current application component workload. These services must be defined in the corresponding CAPApplication.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>labels</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>Custom labels for the current workload</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>annotations</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>Annotations for the current workload, in case of <code>Deployments</code> this also get copied over to any <code>Service</code> that may be created</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>deploymentDefinition</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DeploymentDetails">
+DeploymentDetails
+</a>
+</em>
+</td>
+<td>
+<p>Definition of a deployment</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>jobDefinition</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.JobDetails">
+JobDetails
+</a>
+</em>
+</td>
+<td>
+<p>Definition of a job</p>
+</td>
+</tr>
+</tbody>
+</table>
+<hr/>
+<p><em>
+Generated with <code>gen-crd-api-reference-docs</code>
+on git commit <code>867824a</code>.
+</em></p>

@@ -1,0 +1,11 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPTenant
+metadata:
+  name: test-cap-01-consumer
+  namespace: default
+spec:
+  capApplicationInstance: test-cap-01
+  subDomain: my-consumer
+  tenantId: tenant-id-for-consumer
+  version: 5.6.7
+  versionUpgradeStrategy: always

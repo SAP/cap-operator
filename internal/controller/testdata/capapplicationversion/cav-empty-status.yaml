@@ -1,0 +1,48 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPApplicationVersion
+metadata:
+  creationTimestamp: "2022-07-18T06:13:52Z"
+  generation: 1
+  labels:
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/owner-generation: "2"
+    sme.sap.com/owner-identifier: default.test-cap-01
+  name: test-cap-01-cav-v1
+  namespace: default
+  resourceVersion: "11371108"
+  uid: 5e64489b-7346-4984-8617-e8c37338b3d8
+spec:
+  capApplicationInstance: test-cap-01
+  registrySecrets:
+    - regcred
+  version: 1.2.3
+  workloads:
+    - name: cap-backend-srv
+      consumedBTPServices:
+        - cap-uaa
+        - cap-service-manager
+        - cap-saas-registry
+      deploymentDefinition:
+        image: docker.image.repo/srv/server:latest
+        type: CAP
+    - name: app-router
+      consumedBTPServices:
+        - cap-uaa
+        - cap-saas-registry
+      deploymentDefinition:
+        image: docker.image.repo/approuter/approuter:latest
+        type: Router
+    - name: content-job
+      consumedBTPServices:
+        - cap-uaa
+      jobDefinition:
+        image: docker.image.repo/content/cap-content:latest
+        type: Content
+    - name: mtx-job
+      consumedBTPServices:
+        - cap-uaa
+        - cap-service-manager
+        - cap-saas-registry
+      jobDefinition:
+        image: docker.image.repo/srv/server:latest
+        type: TenantOperation

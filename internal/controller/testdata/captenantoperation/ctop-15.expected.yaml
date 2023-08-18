@@ -1,0 +1,16 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPTenantOperation
+metadata:
+  name: test-cap-01-invalid-tenant-op
+  namespace: default
+  generation: 1
+spec:
+  tenantId: tenant-id-invalid
+  operation: deprovisioning
+  capApplicationVersionInstance: test-cap-01-cav-v1
+  steps:
+    - name: mtx
+      type: TenantOperation
+status:
+  state: Processing
+  conditions: []

@@ -1,0 +1,89 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPTenant
+metadata:
+  finalizers:
+    - sme.sap.com/captenant
+  labels:
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/btp-tenant-id: tenant-id-for-consumer
+    sme.sap.com/owner-generation: "2"
+    sme.sap.com/owner-identifier-hash: 1f74ae2fbff71a708786a4df4bb2ca87ec603581
+    sme.sap.com/tenant-type: consumer
+  annotations:
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+    sme.sap.com/owner-identifier: default.test-cap-01
+  name: test-cap-01-consumer
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplication
+      name: test-cap-01
+      uid: 3c7ba7cb-dc04-4fd1-be86-3eb3a5c64a98
+spec:
+  capApplicationInstance: test-cap-01
+  subDomain: my-consumer
+  tenantId: tenant-id-for-consumer
+  version: 5.6.7
+  versionUpgradeStrategy: always
+status:
+  observedGeneration: 0
+  state: Provisioning
+  conditions:
+    - type: Ready
+      status: "False"
+      observedGeneration: 0
+      reason: ProvisioningOperationCreated
+      message: "waiting for CAPTenantOperation default.test-cap-01-consumer-gen of type provisioning to complete"
+---
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPTenantOperation
+metadata:
+  generateName: test-cap-01-consumer-
+  name: test-cap-01-consumer-gen
+  namespace: default
+  finalizers:
+    - sme.sap.com/captenantoperation
+  annotations:
+    sme.sap.com/owner-identifier: default.test-cap-01-consumer
+  labels:
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: a9df2080f99fd77b1b2c7e4cee1e1bff69498511
+    sme.sap.com/tenant-operation-type: provisioning
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPTenant
+      name: test-cap-01-consumer
+spec:
+  capApplicationVersionInstance: test-cap-01-cav-v1
+  subDomain: my-consumer
+  tenantId: tenant-id-for-consumer
+  operation: provisioning
+  steps:
+    - name: mtx
+      type: TenantOperation
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+    dns.gardener.cloud/class: garden
+    sme.sap.com/resource-hash: c38b79c0bac0cf1b5b8e6757b31d892898fe18472338996f7103adbf0249c79e
+    sme.sap.com/owner-identifier: CAPTenant.default.test-cap-01-consumer
+  labels:
+    sme.sap.com/owner-identifier-hash: f57a7105fbe1d899a7757ddd04747b6b33dde594
+  name: test-cap-01-consumer0
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPTenant
+      name: test-cap-01-consumer
+spec:
+  dnsName: my-consumer.foo.bar.local
+  targets:
+    - public-ingress.operator.testing.local

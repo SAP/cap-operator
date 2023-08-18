@@ -1,0 +1,26 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+    dns.gardener.cloud/class: garden
+    sme.sap.com/resource-hash: be44dd98e914aa033f04f18a03338da45b40090b55e0e1c935353f088bd7c583
+    sme.sap.com/owner-identifier: CAPTenant.default.test-cap-01-provider
+  labels:
+    sme.sap.com/owner-identifier-hash: ec24f9b09337c244cf5ac64b539f8c04f507cd99
+  name: test-cap-01-primary-dns
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplication
+      name: test-cap-01
+spec:
+  dnsName: "*.app-domain.test.local"
+  targets:
+    - public-ingress.operator.testing.local
+status:
+  state: Ready
+  targets:
+    - public-ingress.operator.testing.local
+    

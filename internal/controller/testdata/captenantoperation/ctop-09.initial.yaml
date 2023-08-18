@@ -1,0 +1,42 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPTenantOperation
+metadata:
+  name: test-cap-01-provider-abcd
+  namespace: default
+  generation: 1
+  finalizers:
+    - sme.sap.com/captenantoperation
+  annotations:
+    sme.sap.com/owner-identifier: default.test-cap-01-provider
+  labels:
+    sme.sap.com/tenant-operation-type: upgrade
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: db1f1fd7eaeb0e6407c741b7e4b2540044bcc4ec
+    sme.sap.com/cav-version: 8.9.10
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPTenant
+      name: test-cap-01-provider
+spec:
+  tenantId: tenant-id-for-provider
+  subDomain: my-provider
+  operation: upgrade
+  capApplicationVersionInstance: test-cap-01-cav-v2
+  steps:
+    - name: custom-say
+      type: CustomTenantOperation
+    - name: ten-op
+      type: TenantOperation
+    - name: custom-say
+      type: CustomTenantOperation
+status:
+  state: Processing
+  observedGeneration: 1
+  conditions:
+    - type: Ready
+      status: "False"
+      reason: StepCompleted
+      message: "step 1/3 : job default.test-cap-01-provider-abcd-xyz completed"
+  currentStep: 2

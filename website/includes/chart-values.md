@@ -1,0 +1,67 @@
+## Values
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| image.tag | string | `"latest"` | Default image tag (can be overwritten on component level) |
+| image.pullPolicy | string | `"IfNotPresent"` | Default image pull policy (can be overwritten on component level) |
+| imagePullSecrets | list | `[{"name":"regcred"}]` | Default image pull secrets (can be overwritten on component level) |
+| podSecurityContext | object | `{}` | Default pod security content (can be overwritten on component level) |
+| nodeSelector | object | `{}` | Default node selector (can be overwritten on component level) |
+| affinity | object | `{}` | Default affinity settings (can be overwritten on component level) |
+| tolerations | list | `[]` | Default tolerations (can be overwritten on component level) |
+| priorityClassName | string | `""` | Default priority class (can be overwritten on component level) |
+| controller.replicas | int | `1` | Replicas |
+| controller.image.repository | string | `"ghcr.io/sap/cap-operator/main/cap-controller"` | Image repository |
+| controller.image.tag | string | `""` | Image tag |
+| controller.image.pullPolicy | string | `""` | Image pull policy |
+| controller.imagePullSecrets | list | `[]` | Image pull secrets |
+| controller.podSecurityContext | object | `{}` | Pod security content |
+| controller.nodeSelector | object | `{}` | Node selector |
+| controller.affinity | object | `{}` | Affinity settings |
+| controller.tolerations | list | `[]` | Tolerations |
+| controller.priorityClassName | string | `""` | Priority class |
+| controller.securityContext | object | `{}` | Security context |
+| controller.resources.limits.memory | string | `"500Mi"` | Memory limit |
+| controller.resources.limits.cpu | float | `0.2` | CPU limit |
+| controller.resources.requests.memory | string | `"50Mi"` | Memory request |
+| controller.resources.requests.cpu | float | `0.02` | CPU request |
+| subscriptionServer.replicas | int | `1` | Replicas |
+| subscriptionServer.image.repository | string | `"ghcr.io/sap/cap-operator/main/server"` | Image repository |
+| subscriptionServer.image.tag | string | `""` | Image tag |
+| subscriptionServer.image.pullPolicy | string | `""` | Image pull policy |
+| subscriptionServer.imagePullSecrets | list | `[]` | Image pull secrets |
+| subscriptionServer.podSecurityContext | object | `{}` | Pod security content |
+| subscriptionServer.nodeSelector | object | `{}` | Node selector |
+| subscriptionServer.affinity | object | `{}` | Affinity settings |
+| subscriptionServer.tolerations | list | `[]` | Tolerations |
+| subscriptionServer.priorityClassName | string | `""` | Priority class |
+| subscriptionServer.securityContext | object | `{}` | Security context |
+| subscriptionServer.resources.limits.memory | string | `"200Mi"` | Memory limit |
+| subscriptionServer.resources.limits.cpu | float | `0.1` | CPU limit |
+| subscriptionServer.resources.requests.memory | string | `"20Mi"` | Memory request |
+| subscriptionServer.resources.requests.cpu | float | `0.01` | CPU request |
+| subscriptionServer.port | int | `4000` | Service port |
+| subscriptionServer.istioSystemNamespace | string | `"istio-system"` | The namespace in the cluster where istio system components are installed |
+| subscriptionServer.ingressGatewayLabels | object | `{"app":"istio-ingressgateway","istio":"ingressgateway"}` | Labels used to identify the istio ingress-gateway component |
+| subscriptionServer.dnsTarget | string | `"public-ingress.clusters.cs.services.sap"` | The dns target mentioned on the public ingress gateway service used in the cluster |
+| subscriptionServer.domain | string | `"cap-operator.clusters.cs.services.sap"` | The domain under which the cap operator subscription server would be available |
+| webhook.sidecar | bool | `false` | Side car to mount admission review |
+| webhook.replicas | int | `1` | Replicas |
+| webhook.image.repository | string | `"ghcr.io/sap/cap-operator/main/web-hooks"` | Image repository |
+| webhook.image.tag | string | `""` | Image tag |
+| webhook.image.pullPolicy | string | `""` | Image pull policy |
+| webhook.imagePullSecrets | list | `[]` | Image pull secrets |
+| webhook.podSecurityContext | object | `{}` | Pod security content |
+| webhook.nodeSelector | object | `{}` | Node selector |
+| webhook.affinity | object | `{}` | Affinity settings |
+| webhook.tolerations | list | `[]` | Tolerations |
+| webhook.priorityClassName | string | `""` | Priority class |
+| webhook.securityContext | object | `{}` | Security context |
+| webhook.resources.limits.memory | string | `"200Mi"` | Memory limit |
+| webhook.resources.limits.cpu | float | `0.1` | CPU limit |
+| webhook.resources.requests.memory | string | `"20Mi"` | Memory request |
+| webhook.resources.requests.cpu | float | `0.01` | CPU request |
+| webhook.service | object | `{"port":443,"targetPort":1443,"type":"ClusterIP"}` | Service port |
+| webhook.service.type | string | `"ClusterIP"` | Service type |
+| webhook.service.port | int | `443` | Service port |
+| webhook.service.targetPort | int | `1443` | Target port |
