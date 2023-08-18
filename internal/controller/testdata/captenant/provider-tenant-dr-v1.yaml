@@ -1,0 +1,27 @@
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  annotations:
+    sme.sap.com/resource-hash: 5d065e2112f26ad9b5ace902461365ba9cbf539123dea326f060534bc30e22d1
+    sme.sap.com/owner-identifier: default.test-cap-01-provider
+  generation: 1
+  labels:
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: db1f1fd7eaeb0e6407c741b7e4b2540044bcc4ec
+  name: test-cap-01-provider
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPTenant
+      name: test-cap-01-provider
+spec:
+  host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
+  trafficPolicy:
+    loadBalancer:
+      consistentHash:
+        httpCookie:
+          name: JSESSIONID
+          path: /
+          ttl: 0s

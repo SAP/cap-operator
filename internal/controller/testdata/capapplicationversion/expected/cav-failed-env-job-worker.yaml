@@ -1,0 +1,89 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPApplicationVersion
+metadata:
+  creationTimestamp: "2022-07-18T06:13:52Z"
+  generation: 1
+  annotations:
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+    sme.sap.com/owner-identifier: default.test-cap-01
+  labels:
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/owner-generation: "2"
+    sme.sap.com/owner-identifier-hash: 1f74ae2fbff71a708786a4df4bb2ca87ec603581
+  name: test-cap-01-cav-v1
+  namespace: default
+  finalizers:
+    - "sme.sap.com/capapplicationversion"
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplication
+      name: test-cap-01
+      uid: 3c7ba7cb-dc04-4fd1-be86-3eb3a5c64a98
+  resourceVersion: "11371108"
+  uid: 5e64489b-7346-4984-8617-e8c37338b3d8
+spec:
+  capApplicationInstance: test-cap-01
+  registrySecrets:
+    - regcred
+  version: 1.2.3
+  workloads:
+    - name: cap-backend-srv
+      consumedBTPServices:
+        - cap-uaa
+        - cap-service-manager
+        - cap-saas-registry
+      deploymentDefinition:
+        image: docker.image.repo/srv/server:latest
+        type: CAP
+        env:
+          - name: MISC_ENV
+        value: "{'foo':'bar'}"
+    - name: app-router
+      consumedBTPServices:
+        - cap-uaa
+        - cap-saas-registry
+      deploymentDefinition:
+        image: docker.image.repo/approuter/approuter:latest
+        type: Router
+        env:
+          - name: debug
+            value: "true"
+    - name: content-job
+      consumedBTPServices:
+        - cap-uaa
+      jobDefinition:
+        image: docker.image.repo/content/cap-content:latest
+        type: Content
+        env:
+          - name: SOME_VERSION
+            value: 0.0.1
+    - name: mtx-job
+      consumedBTPServices:
+        - cap-uaa
+        - cap-service-manager
+        - cap-saas-registry
+      jobDefinition:
+        image: docker.image.repo/srv/server:latest
+        type: TenantOperation
+    - name: job-worker
+      consumedBTPServices:
+        - cap-uaa
+        - cap-service-manager
+        - cap-saas-registry
+      deploymentDefinition:
+        image: docker.image.repo/srv/server:latest
+        type: Additional
+        env:
+          - name: CAPOP_APP_VERSION
+            value: "1.2.3"
+status:
+  conditions:
+    - reason: ErrorInJobWorkerDeployment
+      message: "invalid env configuration for workload: job-worker, remove entry: CAPOP_APP_VERSION from configuration"
+      observedGeneration: 1
+      status: "False"
+      type: Ready
+  observedGeneration: 1
+  state: Error
