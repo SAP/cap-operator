@@ -491,9 +491,10 @@ func TestGetMTXJobImage(t *testing.T) {
 	)
 
 	const (
-		imageAllowed     = "ghcr.io/sap/some-repo/another-mtx-job"
+		imageAllowed     = "ghcr.io/sap/cap-operator/another-mtx-job"
 		imageNotAllowed1 = "unwanted.external.repositories.cloud/cap-operator/mtx-job"
 		imageNotAllowed2 = "ghcr.io/sapfake/cap-operator/mtx-job"
+		imageNotAllowed3 = "ghcrXio/sap/cap-operator/mtx-job"
 	)
 
 	tests := []struct {
@@ -514,6 +515,11 @@ func TestGetMTXJobImage(t *testing.T) {
 		{
 			id:             "not matching image pattern leads to default image, ensures .sap/",
 			setEnvironment: imageNotAllowed2,
+			expectedImage:  MTXJobImageDefault,
+		},
+		{
+			id:             "not matching image pattern leads to default image, ensures ghcr.io",
+			setEnvironment: imageNotAllowed3,
 			expectedImage:  MTXJobImageDefault,
 		},
 		{

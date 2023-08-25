@@ -54,7 +54,7 @@ const (
 
 const (
 	EnvMTXJobImage            = "MTX_JOB_IMAGE"
-	MTXJobImageAllowedPattern = "^ghcr.io/sap/"
+	MTXJobImageAllowedPattern = "^ghcr\\.io/sap/cap-operator"
 	MTXJobImageDefault        = "ghcr.io/sap/cap-operator/mtx-job"
 	EnvIsMTXSEnabled          = "IS_MTXS_ENABLED"
 )
