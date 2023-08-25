@@ -5,8 +5,8 @@ CAP Operator manages the lifecycle operations involved in running multi-tenant C
 #### Documentation
 Visit the [Documentation](https://sap.github.io/cap-operator/docs) to find out how to install and use the CAP Operator
 
-#### Helm Chart
-The local version of the [helm chart](https://github.com/sap/cap-operator-lifecycle/tree/release/chart) is now part of [CAP Operator Lifecycle](https://github.com/sap/cap-operator-lifecycle) repo.
+#### Setup
+The operator can be deployed using the [helm chart](https://github.com/sap/cap-operator-lifecycle/tree/release/chart) which is part of [CAP Operator Lifecycle](https://github.com/sap/cap-operator-lifecycle) repo.
 
 #### CRDs
 CRDs for the CAP Operator can be applied from the [./crds](./crds) folder, these are also copied over to the [helm chart](https://github.com/sap/cap-operator-lifecycle/tree/main/chart) when updated.
