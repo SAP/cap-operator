@@ -9,7 +9,7 @@ import (
 	"path"
 	"strings"
 
-	// Import all Kubernetes client auth plugins
+	// Import all Kubernetes client auth plugins (OIDC)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/client-go/rest"
