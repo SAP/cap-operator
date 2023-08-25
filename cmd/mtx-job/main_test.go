@@ -11,7 +11,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -38,9 +38,9 @@ func readCertificateData() *struct {
 	cert   []byte
 	key    []byte
 } {
-	cacert, _ := ioutil.ReadFile("../server/internal/testdata/rootCA.pem")
-	cert, _ := ioutil.ReadFile("../server/internal/testdata/auth.service.local.crt")
-	key, _ := ioutil.ReadFile("../server/internal/testdata/auth.service.local.key")
+	cacert, _ := os.ReadFile("../server/internal/testdata/rootCA.pem")
+	cert, _ := os.ReadFile("../server/internal/testdata/auth.service.local.crt")
+	key, _ := os.ReadFile("../server/internal/testdata/auth.service.local.key")
 	return &struct {
 		cacert []byte
 		cert   []byte
@@ -298,7 +298,7 @@ func TestSubscription(t *testing.T) {
 		if r.Header.Get(Authorization) != "Bearer sample-token" {
 			t.Error("expected oauth token for authorization")
 		}
-		content, err := ioutil.ReadAll(r.Body)
+		content, err := io.ReadAll(r.Body)
 		if err != nil {
 			t.Errorf("could not read payload: %s", err.Error())
 		}
@@ -365,7 +365,7 @@ func TestUpgrade(t *testing.T) {
 			if r.Header.Get(ContentType) != ContentAppJson {
 				t.Errorf("expected %s %s", ContentType, ContentAppJson)
 			}
-			content, err := ioutil.ReadAll(r.Body)
+			content, err := io.ReadAll(r.Body)
 			if err != nil {
 				t.Errorf("could not read payload: %s", err.Error())
 			}

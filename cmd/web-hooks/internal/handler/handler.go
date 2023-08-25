@@ -8,7 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -512,7 +512,7 @@ func unmarshalRawObj(w http.ResponseWriter, rawBytes []byte, response responseIn
 
 func (wh *WebhookHandler) Validate(w http.ResponseWriter, r *http.Request) {
 	// read incoming request to bytes
-	body, err := ioutil.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		httpError(w, http.StatusInternalServerError, fmt.Errorf("%s %w", AdmissionError, err))
 		return
@@ -565,7 +565,7 @@ func enableSidecar(w http.ResponseWriter, body []byte) bool {
 			httpError(w, http.StatusInternalServerError, fmt.Errorf("sidecar env read error: %w", err))
 			return false
 		} else if sidecarEnabled {
-			if err = ioutil.WriteFile(os.TempDir()+RequestPath, body, 0644); err != nil {
+			if err = os.WriteFile(os.TempDir()+RequestPath, body, 0644); err != nil {
 				httpError(w, http.StatusInternalServerError, fmt.Errorf("request object write error: %w", err))
 				return false
 			}

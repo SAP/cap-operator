@@ -13,7 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -307,7 +307,7 @@ func getTenants(mtxURL *url.URL, client http.Client, token *OAuthResponse) error
 	}
 
 	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return err
 		}
@@ -342,7 +342,7 @@ func fetchOAuthToken(client http.Client) (*OAuthResponse, error) {
 		return nil, fmt.Errorf("error during http call: status %w", err)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
