@@ -122,7 +122,7 @@ workloads:
 
 Workloads with a `jobDefinition` represent a job execution at a particular point in the lifecycle of the application or tenant. The following values are allowed for `type` in such workloads:
 
-- `Content`: A content deployer job which can be used to deploy (BTP) service specific content from the application version. This job is executed as soon as a new `CAPApplicationVersion` resource is created in the cluster. A workload of this type is required in a `CAPApplicationVersion`.
+- `Content`: A content deployer job which can be used to deploy (BTP) service specific content from the application version. This job is executed as soon as a new `CAPApplicationVersion` resource is created in the cluster. Multile workloads of this type can be defined in the `CAPApplicationVersion` and the order in which they are executed can be specified via `ContentJobs`.
 - `TenantOperation`: A job executed during provisioning, upgrade or deprovisioning of a tenant (`CAPTenant`). These jobs are controlled by the operator and uses the `cds/mtxs` APIs to perform HDI content deployment by default. In order to use `cds/mtx` APIs for HDI content deployment, set environment variable `IS_MTXS_ENABLED` to `"false"` on the `TenantOperation` job. In case a workload of type `TenantOperation` is not provided as part of the `CAPApplicationVersion`, the workload with `deploymentDefinition` of type `CAP` will be used to determine the `jobDefinition` (`image`, `env`, etc. will be used and in such cases to trigger deployment via `cds/mtx` APIs, the environment variable `IS_MTXS_ENABLED` should be set in the `CAP` workload). Also if `cds/mtxs` APIs are used, `command` can be used by applications to trigger tenant operations with custom command.
 - `CustomTenantOperation`: An optional job which runs before or after the `TenantOperation` where the application can perform tenant specific tasks (for example, create test data).
 
@@ -162,6 +162,19 @@ In the above example, for each tenant operation, not only are the valid jobs (st
 >
 > - Specifying `tenantOperations` is required only in case `CustomTenantOperations` are to be used. If not specified, each operation will comprise of only the `TenantOperation` step (the first one available from `workloads`).
 > - The `tenantOperations`, and specified sequencing are valid only for tenants provisioned (or deprovisioned) on the corresponding `CAPApplicationVersion` and for tenants being upgraded to this `CAPApplicationVersion`.
+
+### Sequencing content jobs
+
+When you create a `CAPApplicationVersion` workload, you can define multiple content jobs. The order in which these jobs are executed is important, as some jobs may depend on the output of others. The `ContentJobs` property allows you to specify the order in which content jobs are executed.
+
+```yaml
+spec:
+  workloads: # ...
+  tenantOperations: # ...
+  contentJobs:
+    - content-deployer-service
+    - content-deployer-ui
+```
 
 ### Full Example
 
@@ -275,6 +288,17 @@ spec:
         securityContext:
           runAsUser: 1000
           runAsGroup: 2000
+    - name: "ui-content"
+      consumedServices:
+        - cap-uaa
+        - cap-portal
+        - cap-html5-repo-host
+      jobDefinition:
+        type: Content
+        image: some.repo.example.com/cap-app/ui-content:1.0.1
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 2000
     - name: "mtx-runner"
       consumedServices: # ...
       jobDefinition:
@@ -310,6 +334,9 @@ spec:
         continueOnFailure: true
       - workloadName: "mtx-runner"
       - workloadName: "create-test-data"
+  contentJobs:
+    - service-content
+    - ui-content
 ```
 > NOTE:
 > The CAP Operator [workloads](../../../reference/#sme.sap.com/v1alpha1.WorkloadDetails) supports several configurations (present in the [kubernetes API](https://kubernetes.io/docs/reference/using-api/)) which can be configured by looking into our API reference:
