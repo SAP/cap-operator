@@ -199,6 +199,8 @@ type CAPApplicationVersionSpec struct {
 	Workloads []WorkloadDetails `json:"workloads"`
 	// Tenant Operations may be used to specify how jobs are sequenced for the different tenant operations
 	TenantOperations *TenantOperations `json:"tenantOperations,omitempty"`
+	// Content Jobs may be used to specify the sequence of content jobs when several jobs exist
+	ContentJobs []string `json:"contentJobs,omitempty"`
 }
 
 // WorkloadDetails specifies the details of the Workload

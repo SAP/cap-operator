@@ -204,10 +204,51 @@ func checkWorkloadTypeCount(cavObjNew *ResponseCav) validateResource {
 		}
 	}
 
-	if workloadTypeCount[string(v1alpha1.JobContent)] != 1 {
+	return validAdmissionReviewObj()
+}
+
+func getContentWorkloadNames(cavObjNew *ResponseCav) []string {
+	contentJobWorkloads := []string{}
+	for _, workload := range cavObjNew.Spec.Workloads {
+		if workload.JobDefinition != nil && workload.JobDefinition.Type == v1alpha1.JobContent {
+			contentJobWorkloads = append(contentJobWorkloads, workload.Name)
+		}
+	}
+	return contentJobWorkloads
+}
+
+func checkWorkloadContentJob(cavObjNew *ResponseCav) validateResource {
+
+	contentJobWorkloads := getContentWorkloadNames(cavObjNew)
+
+	if len(contentJobWorkloads) > 1 && cavObjNew.Spec.ContentJobs == nil {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf(JobWorkloadCountErr, InvalidationMessage, cavObjNew.Kind, v1alpha1.JobContent, workloadTypeCount[string(v1alpha1.JobContent)], v1alpha1.JobContent),
+			message: fmt.Sprintf("%s %s if there are more than one content job, contentJobs should be defined", InvalidationMessage, cavObjNew.Kind),
+		}
+	}
+
+	// If there are more than 1 content jobs, then all of them must be part of ContentJobs
+	if len(contentJobWorkloads) > 1 {
+		for _, name := range contentJobWorkloads {
+			if !slices.ContainsFunc(cavObjNew.Spec.ContentJobs, func(job string) bool { return job == name }) {
+				return validateResource{
+					allowed: false,
+					message: fmt.Sprintf("%s %s content job %s is not specified as part of ContentJobs", InvalidationMessage, cavObjNew.Kind, name),
+				}
+			}
+		}
+	}
+
+	// All the jobs specified in contentJobWorkloads should be a valid content job
+	if cavObjNew.Spec.ContentJobs != nil {
+		for _, job := range cavObjNew.Spec.ContentJobs {
+			if !slices.ContainsFunc(contentJobWorkloads, func(name string) bool { return name == job }) {
+				return validateResource{
+					allowed: false,
+					message: fmt.Sprintf("%s %s job %s specified as part of ContentJobs is not a valid content job", InvalidationMessage, cavObjNew.Kind, job),
+				}
+			}
 		}
 	}
 
@@ -243,6 +284,10 @@ func validateWorkloads(cavObjNew *ResponseCav) validateResource {
 
 	if workloadTypeCntValidate := checkWorkloadTypeCount(cavObjNew); !workloadTypeCntValidate.allowed {
 		return workloadTypeCntValidate
+	}
+
+	if workloadContentJobValidate := checkWorkloadContentJob(cavObjNew); !workloadContentJobValidate.allowed {
+		return workloadContentJobValidate
 	}
 
 	return validAdmissionReviewObj()

@@ -130,80 +130,114 @@ func (c *Controller) handleCAPApplicationVersion(ctx context.Context, cav *v1alp
 		return nil, statusErr
 	}
 
-	return nil, c.processDeployments(ctx, ca, cav)
+	return c.processDeployments(ctx, ca, cav)
 }
 
-func (c *Controller) processDeployments(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) error {
+func (c *Controller) processDeployments(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (*ReconcileResult, error) {
 	// TODO: handle create/update of individual deployments/jobs (so far these are just created and never updated, as we expect secrets don't change!)
 
 	// Handle Content job
 	err := c.handleContentDeployJob(ca, cav)
 	if err != nil {
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInContentDeploymentJob", Message: err.Error()})
-		return err
+		return nil, err
 	}
 
 	// Create AppRouter Deployment
 	err = c.updateApprouterDeployment(ca, cav)
 	if err != nil {
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInAppRouterDeployment", Message: err.Error()})
-		return err
+		return nil, err
 	}
 
 	// Create Server Deployment
 	err = c.updateServerDeployment(ca, cav)
 	if err != nil {
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInServerDeployment", Message: err.Error()})
-		return err
+		return nil, err
 	}
 
 	// Create All Services
 	err = c.updateServices(ca, cav)
 	if err != nil {
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInServerService", Message: err.Error()})
-		return err
+		return nil, err
 	}
 
 	// Create Additional Deployments
 	err = c.updateAdditionalDeployment(ca, cav)
 	if err != nil {
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInJobWorkerDeployment", Message: err.Error()})
-		return err
+		return nil, err
 	}
 
 	// Create NetworkPolicy
 	err = c.updateNetworkPolicies(ca, cav)
 	if err != nil {
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInNetworkPolicy", Message: err.Error()})
-		return err
+		return nil, err
 	}
 
-	// Check for status of the Workloads
-	processing, err := c.checkWorkloadStatus(ctx, cav)
-	if err != nil {
+	// TODO: Checks for issues with Deployment(s)!
+	// Check for status of contentWorkloads
+	processing, err := c.checkContentWorkloadStatus(ctx, cav)
+	if processing {
+		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 0), nil
+	} else if err != nil {
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInWorkloadStatus", Message: err.Error()})
-		return err
-	} else if processing {
-		return nil
+		return nil, err
 	}
 
 	// TODO: wait until the deployments are actually "Ready"!
-	return c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateReady, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "True", Reason: "CreatedDeployments"})
+	return nil, c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateReady, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "True", Reason: "CreatedDeployments"})
+}
+
+func getContentJobName(contentJobWorkloadName string, cav *v1alpha1.CAPApplicationVersion) string {
+	if cav.Spec.ContentJobs == nil { // for backward compactibility as there could be existing jobs in the clusters with old names
+		return cav.Name + "-" + strings.ToLower(string(v1alpha1.JobContent))
+	}
+	return cav.Name + "-" + contentJobWorkloadName + "-" + strings.ToLower(string(v1alpha1.JobContent))
+}
+
+func getNextContentJob(cav *v1alpha1.CAPApplicationVersion) *v1alpha1.WorkloadDetails {
+
+	// If the previous job failed, we should not trigger the next job
+	if len(cav.Status.Conditions) > 0 && cav.Status.Conditions[0].Reason == "ErrorInWorkloadStatus" {
+		return nil
+	}
+
+	if cav.Spec.ContentJobs == nil {
+		contentJobWorkload := getRelevantJob(v1alpha1.JobContent, cav)
+		if contentJobWorkload != nil && !cav.CheckFinishedJobs(getContentJobName(contentJobWorkload.Name, cav)) {
+			return contentJobWorkload
+		}
+		return nil
+	}
+
+	for _, name := range cav.Spec.ContentJobs {
+		if !cav.CheckFinishedJobs(getContentJobName(name, cav)) {
+			return getWorkloadByName(name, cav)
+		}
+	}
+	return nil
 }
 
 // #region Content Deploy Job
 func (c *Controller) handleContentDeployJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) error {
-	workload := getRelevantJob(v1alpha1.JobContent, cav)
+
+	workload := getNextContentJob(cav)
+	// All jobs executed --> exit
+	if workload == nil {
+		return nil
+	}
+
 	if res := validateEnv(workload.JobDefinition.Env, restrictedEnvNames); res != "" {
 		return errorEnv(workload.Name, res)
 	}
 
 	var vcapSecretName string
-	jobName := cav.Name + "-" + strings.ToLower(string(workload.JobDefinition.Type))
-	// If Job has already executed --> exit
-	if cav.CheckFinishedJobs(jobName) {
-		return nil
-	}
+	jobName := getContentJobName(workload.Name, cav)
+
 	// Get the contentDeploy job with the name expected for this CAV instance
 	contentDeployJob, err := c.kubeInformerFactory.Batch().V1().Jobs().Lister().Jobs(cav.Namespace).Get(jobName)
 	// If the resource doesn't exist, we'll create it
@@ -237,7 +271,7 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        cav.Name + "-" + strings.ToLower(string(workload.JobDefinition.Type)),
+			Name:        getContentJobName(workload.Name, cav),
 			Namespace:   cav.Namespace,
 			Annotations: workload.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
@@ -761,31 +795,71 @@ func doChecks(err error, obj metav1.Object, cav *v1alpha1.CAPApplicationVersion,
 	return nil
 }
 
-// checkWorkloadStatus --> This just checks the contentDeployJob status for now
-// TODO: Checks for issues with Deployment(s)!
-func (c *Controller) checkWorkloadStatus(ctx context.Context, cav *v1alpha1.CAPApplicationVersion) (bool, error) {
-	workload := getRelevantJob(v1alpha1.JobContent, cav)
-	job := cav.Name + "-" + strings.ToLower(string(workload.JobDefinition.Type))
-
-	// Get the contentDeploy job with the name expected for this CAV instance
-	contentDeployJob, err := c.kubeInformerFactory.Batch().V1().Jobs().Lister().Jobs(cav.Namespace).Get(job)
-	if err != nil {
-		return false, err
+func getContentJobInOrder(cav *v1alpha1.CAPApplicationVersion) []string {
+	if cav.Spec.ContentJobs == nil {
+		contentJob := getRelevantJob(v1alpha1.JobContent, cav)
+		if contentJob == nil {
+			return nil
+		}
+		return []string{contentJob.Name}
 	}
+	return cav.Spec.ContentJobs
+}
 
-	// check for completion or failure and accordingly set the cav state by returning error msg
+func checkAndUpdateJobStatusFinishedJobs(contentDeployJob *batchv1.Job, cav *v1alpha1.CAPApplicationVersion) error {
+	if contentDeployJob == nil {
+		return nil
+	}
 	for _, condition := range contentDeployJob.Status.Conditions {
 		if condition.Type == batchv1.JobComplete && condition.Status == corev1.ConditionTrue {
-			cav.SetStatusFinishedJobs(job)
-			return false, nil
+			cav.SetStatusFinishedJobs(contentDeployJob.Name)
 		} else if condition.Type == batchv1.JobFailed && condition.Status == corev1.ConditionTrue {
-			cav.SetStatusFinishedJobs(job)
-			return false, fmt.Errorf("%s", condition.Message)
+			cav.SetStatusFinishedJobs(contentDeployJob.Name)
+			return fmt.Errorf("%s", condition.Message)
+		}
+	}
+	return nil
+}
+
+func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alpha1.CAPApplicationVersion) (bool, error) {
+
+	// Once the cav goes into Error state, we should not check the jobs again in the next reconcilation loop
+	// because it could happen that the job can get deleted meanwhile and we won't be able
+	// to determine the state of the job correctly.
+	if len(cav.Status.Conditions) > 0 && cav.Status.Conditions[0].Reason == "ErrorInWorkloadStatus" {
+		return false, fmt.Errorf("%s", cav.Status.Conditions[0].Message)
+	}
+
+	for _, contentJobName := range getContentJobInOrder(cav) {
+
+		job := getContentJobName(contentJobName, cav)
+
+		// Get the contentDeploy job with the name expected for this CAV instance
+		// The job could get deleted after sometime. So we should also check the finished job list on the CAV status.
+		contentDeployJob, err := c.kubeInformerFactory.Batch().V1().Jobs().Lister().Jobs(cav.Namespace).Get(job)
+		if err != nil && !cav.CheckFinishedJobs(job) {
+			return true, nil
+		}
+
+		numOfFinishedJobsBeforeUpd := len(cav.Status.FinishedJobs)
+		if err := checkAndUpdateJobStatusFinishedJobs(contentDeployJob, cav); err != nil {
+			return false, err
+		}
+
+		if numOfFinishedJobsBeforeUpd != len(cav.Status.FinishedJobs) {
+			if err := c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ReadyForProcessing"}); err != nil {
+				return false, err
+			}
+		}
+
+		// If the job is still running, set processing to true
+		if !cav.CheckFinishedJobs(job) {
+			return true, nil
 		}
 	}
 
-	// Assume Job is being processed!
-	return true, nil
+	// All Jobs are executed
+	return false, nil
 }
 
 func (c *Controller) getRelevantTenantsForCAV(cav *v1alpha1.CAPApplicationVersion) []*v1alpha1.CAPTenant {

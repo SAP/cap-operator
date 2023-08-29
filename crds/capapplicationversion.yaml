@@ -712,6 +712,10 @@ spec:
                             pattern: "[a-z0-9-]*"
                           continueOnFailure:
                             type: boolean
+                contentJobs:
+                  type: array
+                  items:
+                    type: string
             status:
               type: object
               required: ["state"]

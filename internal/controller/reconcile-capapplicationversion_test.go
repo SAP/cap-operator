@@ -66,6 +66,7 @@ func TestCAV_EmptyStatusProcessing(t *testing.T) {
 				"testdata/capapplicationversion/content-job-pending.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-processing.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 		},
 	)
 }
@@ -83,6 +84,7 @@ func TestCAV_ErrorStatusProcessing(t *testing.T) {
 				"testdata/capapplicationversion/content-job-pending.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-error-processing.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 		},
 	)
 }
@@ -100,6 +102,7 @@ func TestCAV_ErrorWithConditionStatusProcessing(t *testing.T) {
 				"testdata/capapplicationversion/content-job-pending.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-error-condition-processing.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 		},
 	)
 }
@@ -115,8 +118,8 @@ func TestCAV_ContentJobMissing(t *testing.T) {
 				"testdata/common/credential-secrets.yaml",
 				"testdata/capapplicationversion/cav-processing.yaml",
 			},
-			expectedResources: "testdata/capapplicationversion/expected/cav-missing-content-job.yaml",
-			expectError:       true, // job.batch "test-cap-01-cav-v1-content-job" not found
+			expectedResources: "testdata/capapplicationversion/expected/cav-processing.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 		},
 	)
 }
@@ -134,6 +137,7 @@ func TestCAV_ContentJobPending(t *testing.T) {
 				"testdata/capapplicationversion/content-job-pending.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-processing.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 		},
 	)
 }
@@ -187,6 +191,87 @@ func TestCAV_ContentJobCompletedFromProcessing(t *testing.T) {
 				"testdata/capapplicationversion/content-job-completed.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-content-job.yaml",
+		},
+	)
+}
+
+func TestCAV_OneOfMultipleContentJobsCompleted(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with one of the multiple content jobs completed",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/cav-processing-with-multiple-content-jobs.yaml",
+				"testdata/capapplicationversion/one-of-mulitple-content-job-completed.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-processing-with-multiple-content-jobs.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
+			backlogItems: []string{
+				"ERP4SMEPREPWORKAPPPLAT-4351",
+			},
+		},
+	)
+}
+
+func TestCAV_AllMultipleContentJobsCompleted(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with all multiple content jobs completed",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/cav-processing-with-multiple-content-jobs.yaml",
+				"testdata/capapplicationversion/all-mulitple-content-job-completed.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-with-multiple-content-jobs.yaml",
+			backlogItems: []string{
+				"ERP4SMEPREPWORKAPPPLAT-4351",
+			},
+		},
+	)
+}
+
+func TestCAV_OneOfMultipleContentJobsfailed(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with one of the multiple content jobs failed",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/cav-processing-with-multiple-content-jobs.yaml",
+				"testdata/capapplicationversion/one-of-mulitple-content-job-failed.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-failed-with-multiple-content-jobs.yaml",
+			expectError:       true,
+			backlogItems: []string{
+				"ERP4SMEPREPWORKAPPPLAT-4351",
+			},
+		},
+	)
+}
+
+func TestCAV_WithNoContentJob(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with no content job",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/cav-processing-with-no-content-job.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-with-no-content-job.yaml",
+			backlogItems: []string{
+				"ERP4SMEPREPWORKAPPPLAT-4351",
+			},
 		},
 	)
 }

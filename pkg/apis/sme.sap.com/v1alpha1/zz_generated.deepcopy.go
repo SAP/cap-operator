@@ -257,6 +257,11 @@ func (in *CAPApplicationVersionSpec) DeepCopyInto(out *CAPApplicationVersionSpec
 		*out = new(TenantOperations)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ContentJobs != nil {
+		in, out := &in.ContentJobs, &out.ContentJobs
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

@@ -768,7 +768,6 @@ func TestCavInvalidity(t *testing.T) {
 		invalidJobType                     bool
 		onlyOneCAPTypeAllowed              bool
 		onlyOneRouterTypeAllowed           bool
-		onlyOneContentTypeAllowed          bool
 		duplicatePortName                  bool
 		duplicatePortNumber                bool
 		routerDestNameCAPChk               bool
@@ -779,6 +778,9 @@ func TestCavInvalidity(t *testing.T) {
 		missingTenantOpInSeqProvisioning   bool
 		missingTenantOpInSeqUpgrade        bool
 		missingTenantOpInSeqDeprovisioning bool
+		multipleContentJobsWithNoOrder     bool
+		missingContentJobinContentJobs     bool
+		invalidJobinContentJobs            bool
 		backlogItems                       []string
 	}{
 		{
@@ -805,11 +807,6 @@ func TestCavInvalidity(t *testing.T) {
 			operation:                admissionv1.Create,
 			onlyOneRouterTypeAllowed: true,
 			backlogItems:             []string{"ERP4SMEPREPWORKAPPPLAT-2338"},
-		},
-		{
-			operation:                 admissionv1.Create,
-			onlyOneContentTypeAllowed: true,
-			backlogItems:              []string{"ERP4SMEPREPWORKAPPPLAT-2338"},
 		},
 		{
 			operation:         admissionv1.Create,
@@ -860,6 +857,21 @@ func TestCavInvalidity(t *testing.T) {
 			operation:                          admissionv1.Create,
 			missingTenantOpInSeqDeprovisioning: true,
 			backlogItems:                       []string{"ERP4SMEPREPWORKAPPPLAT-3537"},
+		},
+		{
+			operation:                      admissionv1.Create,
+			multipleContentJobsWithNoOrder: true,
+			backlogItems:                   []string{"ERP4SMEPREPWORKAPPPLAT-4351"},
+		},
+		{
+			operation:                      admissionv1.Create,
+			missingContentJobinContentJobs: true,
+			backlogItems:                   []string{"ERP4SMEPREPWORKAPPPLAT-4351"},
+		},
+		{
+			operation:               admissionv1.Create,
+			invalidJobinContentJobs: true,
+			backlogItems:            []string{"ERP4SMEPREPWORKAPPPLAT-4351"},
 		},
 	}
 	for _, test := range tests {
@@ -953,9 +965,6 @@ func TestCavInvalidity(t *testing.T) {
 						},
 					},
 				})
-			} else if test.onlyOneContentTypeAllowed == true {
-				// change existing Content to tenant Operation
-				crd.Spec.Workloads[2].JobDefinition.Type = v1alpha1.JobTenantOperation
 			} else if test.duplicatePortName == true {
 				crd.Spec.Workloads[0].DeploymentDefinition.Ports = []v1alpha1.Ports{
 					{Name: "port-1", RouterDestinationName: "port-1-dest", Port: 4000}, {Name: "port-1", Port: 4004},
@@ -1100,7 +1109,41 @@ func TestCavInvalidity(t *testing.T) {
 						},
 					}
 				}
-
+			} else if test.multipleContentJobsWithNoOrder == true {
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "content-2",
+					ConsumedBTPServices: []string{},
+					JobDefinition: &v1alpha1.JobDetails{
+						Type: v1alpha1.JobContent,
+						ContainerDetails: v1alpha1.ContainerDetails{
+							Image: "foo",
+						},
+					},
+				})
+			} else if test.missingContentJobinContentJobs == true {
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "content-2",
+					ConsumedBTPServices: []string{},
+					JobDefinition: &v1alpha1.JobDetails{
+						Type: v1alpha1.JobContent,
+						ContainerDetails: v1alpha1.ContainerDetails{
+							Image: "foo",
+						},
+					},
+				})
+				crd.Spec.ContentJobs = append(crd.Spec.ContentJobs, "content")
+			} else if test.invalidJobinContentJobs == true {
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "content-2",
+					ConsumedBTPServices: []string{},
+					JobDefinition: &v1alpha1.JobDetails{
+						Type: v1alpha1.JobContent,
+						ContainerDetails: v1alpha1.ContainerDetails{
+							Image: "foo",
+						},
+					},
+				})
+				crd.Spec.ContentJobs = append(crd.Spec.ContentJobs, "content", "content-2", "dummy")
 			}
 
 			rawBytes, _ := json.Marshal(crd)
@@ -1132,8 +1175,6 @@ func TestCavInvalidity(t *testing.T) {
 				errorMessage = fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.DeploymentCAP, 2, v1alpha1.DeploymentCAP)
 			} else if test.onlyOneRouterTypeAllowed == true {
 				errorMessage = fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.DeploymentRouter, 2, v1alpha1.DeploymentRouter)
-			} else if test.onlyOneContentTypeAllowed == true {
-				errorMessage = fmt.Sprintf(JobWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.JobContent, 0, v1alpha1.JobContent)
 			} else if test.duplicatePortName == true {
 				errorMessage = fmt.Sprintf("%s %s duplicate port name: port-1 in workload - cap-backend", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.duplicatePortNumber == true {
@@ -1154,6 +1195,12 @@ func TestCavInvalidity(t *testing.T) {
 				errorMessage = fmt.Sprintf("%s %s - No tenant operation specified in spec.tenantOperation.upgrade", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.missingTenantOpInSeqDeprovisioning == true {
 				errorMessage = fmt.Sprintf("%s %s - No tenant operation specified in spec.tenantOperation.deprovisioning", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.multipleContentJobsWithNoOrder == true {
+				errorMessage = fmt.Sprintf("%s %s if there are more than one content job, contentJobs should be defined", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.missingContentJobinContentJobs == true {
+				errorMessage = fmt.Sprintf("%s %s content job content-2 is not specified as part of ContentJobs", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.invalidJobinContentJobs == true {
+				errorMessage = fmt.Sprintf("%s %s job dummy specified as part of ContentJobs is not a valid content job", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			}
 
 			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {

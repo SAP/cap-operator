@@ -1,0 +1,72 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  creationTimestamp: "2022-07-18T12:16:21Z"
+  labels:
+    job-name: test-cap-01-cav-v1-content-job-1-content
+  name: test-cap-01-cav-v1-content-job-1-content
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplicationVersion
+      name: test-cap-01-cav-v1-content-job-1-content
+      uid: 5e64489b-7346-4984-8617-e8c37338b3d8
+  resourceVersion: "150625273"
+  uid: afb8bcad-72ce-4567-8337-12fc67ef55acb
+spec:
+  backoffLimit: 2
+  completions: 1
+  parallelism: 1
+  selector:
+    matchLabels:
+      controller-uid: afb8bcad-72ce-4567-8337-12fc67ef55acb
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+      creationTimestamp: null
+      labels:
+        controller-uid: afb8bcad-72ce-4567-8337-12fc67ef55acb
+        job-name: test-cap-01-cav-v1-content-job-1-content
+        x4.sap.com/disable-karydia: "true"
+    spec:
+      containers:
+        - env:
+            - name: CAPOP_APP_VERSION
+              value: "14"
+            - name: TEST
+              value: Dummy
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+          envFrom:
+            - secretRef:
+                name: test-cap-01-cav-v1-content-job-1-content-gen
+                optional: true
+          image: bem.common.repositories.cloud.sap/content/bem-content
+          imagePullPolicy: Always
+          name: content-deploy
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+        - name: regcred
+      restartPolicy: OnFailure
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  completionTime: "2022-07-18T12:16:41Z"
+  conditions:
+    - lastProbeTime: "2022-07-18T12:16:41Z"
+      lastTransitionTime: "2022-07-18T12:16:41Z"
+      status: "True"
+      type: Failed
+      message: "content deployer error in job 'test-cap-01-cav-v1-content'"
+  startTime: "2022-07-14T12:16:21Z"
+  succeeded: 0

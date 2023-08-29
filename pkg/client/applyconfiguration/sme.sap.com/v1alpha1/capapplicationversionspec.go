@@ -14,6 +14,7 @@ type CAPApplicationVersionSpecApplyConfiguration struct {
 	RegistrySecrets        []string                            `json:"registrySecrets,omitempty"`
 	Workloads              []WorkloadDetailsApplyConfiguration `json:"workloads,omitempty"`
 	TenantOperations       *TenantOperationsApplyConfiguration `json:"tenantOperations,omitempty"`
+	ContentJobs            []string                            `json:"contentJobs,omitempty"`
 }
 
 // CAPApplicationVersionSpecApplyConfiguration constructs an declarative configuration of the CAPApplicationVersionSpec type for use with
@@ -66,5 +67,15 @@ func (b *CAPApplicationVersionSpecApplyConfiguration) WithWorkloads(values ...*W
 // If called multiple times, the TenantOperations field is set to the value of the last call.
 func (b *CAPApplicationVersionSpecApplyConfiguration) WithTenantOperations(value *TenantOperationsApplyConfiguration) *CAPApplicationVersionSpecApplyConfiguration {
 	b.TenantOperations = value
+	return b
+}
+
+// WithContentJobs adds the given value to the ContentJobs field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the ContentJobs field.
+func (b *CAPApplicationVersionSpecApplyConfiguration) WithContentJobs(values ...string) *CAPApplicationVersionSpecApplyConfiguration {
+	for i := range values {
+		b.ContentJobs = append(b.ContentJobs, values[i])
+	}
 	return b
 }
