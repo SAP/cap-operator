@@ -1,11 +1,21 @@
 # Build stage for go modules
 FROM golang:1.21-alpine as build
+ARG TARGETOS
+ARG TARGETARCH
+ENV CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH}
 
 WORKDIR /build
 
-COPY . .
+COPY go.mod go.mod
+COPY go.sum go.sum
 
-RUN CGO_ENABLED=0 go build -o ./bin/webhook ./cmd/web-hooks/main.go
+RUN go mod download
+
+COPY cmd/web-hooks/ cmd/web-hooks/
+COPY pkg/ pkg/
+COPY internal/util/ internal/util/
+
+RUN go build -o ./bin/webhook ./cmd/web-hooks/main.go
 
 # Run Stage
 FROM gcr.io/distroless/static AS final
