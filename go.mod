@@ -4,8 +4,8 @@ go 1.21
 
 require (
 	github.com/MicahParks/keyfunc/v2 v2.1.0
-	github.com/cert-manager/cert-manager v1.12.3
-	github.com/gardener/cert-management v0.11.0
+	github.com/cert-manager/cert-manager v1.12.4
+	github.com/gardener/cert-management v0.11.1
 	github.com/gardener/external-dns-management v0.15.8
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/google/go-cmp v0.5.9
@@ -13,7 +13,7 @@ require (
 	github.com/lestrrat-go/jwx/v2 v2.0.12
 	golang.org/x/mod v0.12.0
 	google.golang.org/protobuf v1.31.0
-	istio.io/api v1.19.0-beta.1
+	istio.io/api v1.19.0-rc.0
 	istio.io/client-go v1.18.1
 	k8s.io/api v0.28.1
 	k8s.io/apimachinery v0.28.1
@@ -57,9 +57,9 @@ require (
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63
 	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/oauth2 v0.11.0 // indirect
-	golang.org/x/sys v0.11.0 // indirect
-	golang.org/x/term v0.11.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
+	golang.org/x/sys v0.12.0 // indirect
+	golang.org/x/term v0.12.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.12.1-0.20230815132531-74c255bcf846 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
@@ -69,10 +69,10 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.28.1 // indirect
-	k8s.io/gengo v0.0.0-20220902162205-c0856e24416d // indirect
-	k8s.io/kube-openapi v0.0.0-20230816210353-14e408962443 // indirect
+	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
+	k8s.io/kube-openapi v0.0.0-20230901164831-6c774f458599 // indirect
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
-	sigs.k8s.io/gateway-api v0.7.1 // indirect
+	sigs.k8s.io/gateway-api v0.8.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.3.0
 	sigs.k8s.io/yaml v1.3.0 // indirect
