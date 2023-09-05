@@ -20,6 +20,6 @@ Main features of the CAP Operator:
 
 The following picture provides an overview of the major automation steps handled by the Operator during application deployment.
 
-![workflow](/img/workflow.png)
+![workflow](/cap-operator/img/workflow.png)
 
 Explore the following chapters to learn more.
