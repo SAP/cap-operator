@@ -20,4 +20,4 @@ The following _namespaced_ Custom Resources have been defined to be reconciled b
 
 > Parent-child relationships between custom resources are established by defining owner references for the children.
 
-![controller](/img/block-controller.png)
+![controller](/cap-operator/img/block-controller.png)

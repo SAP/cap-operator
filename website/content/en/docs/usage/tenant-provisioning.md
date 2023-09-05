@@ -56,7 +56,7 @@ The `CAPTenant` reaches a Ready state, only after
 - Successful completion of all `CAPTenantOperation` steps
 - Creation of Istio `VirtualService` which allows HTTP requests on the tenant subdomain to reach the application
 
-![tenant-provisioning](/img/activity-tenantprovisioning.png)
+![tenant-provisioning](/cap-operator/img/activity-tenantprovisioning.png)
 
 ## Tenant Deprovisioning
 
