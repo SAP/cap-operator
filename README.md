@@ -1,5 +1,7 @@
 # [CAP Operator](https://sap.github.io/cap-operator/)
 
+[![REUSE status](https://api.reuse.software/badge/github.com/SAP/cap-operator)](https://api.reuse.software/info/github.com/SAP/cap-operator)
+
 CAP Operator manages the lifecycle operations involved in running multi-tenant CAP applications on Kubernetes clusters, primarily SAP Gardener managed clusters.
 
 #### Documentation
