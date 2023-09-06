@@ -1,5 +1,7 @@
 # [CAP Operator](https://sap.github.io/cap-operator/)
 
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/7803/badge)](https://www.bestpractices.dev/projects/7803)
+[![Sonar Coverage](https://sonarcloud.io/api/project_badges/measure?project=cap-operator&metric=coverage)](https://sonarcloud.io/summary/new_code?id=cap-operator)
 [![REUSE status](https://api.reuse.software/badge/github.com/SAP/cap-operator)](https://api.reuse.software/info/github.com/SAP/cap-operator)
 
 CAP Operator manages the lifecycle operations involved in running multi-tenant CAP applications on Kubernetes clusters, primarily SAP Gardener managed clusters.
