@@ -8,7 +8,7 @@ menu:
     pre: "<i class='fas fa-book pr-2'></i>"
 ---
 
-The [**CAP Operator**](https://github.com/sap/cap-operator) deploys and manages the lifecycle of multi-tenant BTP Golden Path based [CAP](https://cap.cloud.sap/docs) applications and related components, within a Kubernetes cluster.
+The [**CAP Operator**](https://github.com/sap/cap-operator) deploys and manages the lifecycle of multi-tenant [SAP Cloud Application Programming Model (CAP)](https://cap.cloud.sap/docs) based applications and related components, within a Kubernetes cluster.
 
 Main features of the CAP Operator:
 
