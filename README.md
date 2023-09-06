@@ -2,6 +2,7 @@
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/SAP/cap-operator)
 [![Go Report Card](https://goreportcard.com/badge/github.com/sap/cap-operator)](https://goreportcard.com/report/github.com/sap/cap-operator)
 [![Sonar Coverage](https://sonarcloud.io/api/project_badges/measure?project=cap-operator&metric=coverage)](https://sonarcloud.io/summary/new_code?id=cap-operator)
+[![CodeQL](https://github.com/SAP/cap-operator/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/SAP/cap-operator/actions/workflows/github-code-scanning/codeql)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/7803/badge)](https://www.bestpractices.dev/projects/7803)
 [![REUSE status](https://api.reuse.software/badge/github.com/SAP/cap-operator)](https://api.reuse.software/info/github.com/SAP/cap-operator)
 
