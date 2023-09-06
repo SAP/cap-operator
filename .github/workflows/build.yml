@@ -46,6 +46,7 @@ jobs:
   
   analysis:
     name: Analyze with Sonar Cloud
+    needs: build
     runs-on: ubuntu-22.04
     steps:
     
