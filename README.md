@@ -1,4 +1,5 @@
 # [CAP Operator](https://sap.github.io/cap-operator/)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/SAP/cap-operator)
 [![Go Report Card](https://goreportcard.com/badge/github.com/sap/cap-operator)](https://goreportcard.com/report/github.com/sap/cap-operator)
 [![Sonar Coverage](https://sonarcloud.io/api/project_badges/measure?project=cap-operator&metric=coverage)](https://sonarcloud.io/summary/new_code?id=cap-operator)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/7803/badge)](https://www.bestpractices.dev/projects/7803)
