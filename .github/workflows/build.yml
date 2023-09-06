@@ -1,0 +1,66 @@
+name: Go (Build & Unit test)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  CGO_ENABLED: 0
+
+permissions:
+  contents: read
+  pull-requests: read # allows SonarCloud to decorate PRs with analysis results
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-22.04
+    steps:
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v4
+      with:
+        go-version-file: 'go.mod'
+        cache: true
+
+    - name: Download module and all dependencies
+      run: go mod download
+
+    - name: Build all relevant packages
+      run:  go build -v ./cmd/...
+  
+    - name: Test relevant packages
+      run:  go test -v -cover -coverprofile=coverage.out ./...
+
+    - name: Upload Test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-coverage
+        path: coverage.out
+  
+  analysis:
+    name: Analyze with Sonar Cloud
+    runs-on: ubuntu-22.04
+    steps:
+    
+    - name: Check out code for Sonar Analysis
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Download Test results
+      uses: actions/download-artifact@v3
+      with:
+        name: test-coverage
+    
+    - name: SonarCloud Scan
+      uses: SonarSource/sonarcloud-github-action@master
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
