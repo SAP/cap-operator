@@ -778,7 +778,7 @@ func addCAPApplicationVersionLabels(cav *v1alpha1.CAPApplicationVersion, ca *v1a
 	return updated
 }
 
-// Check if an error occured or if owner references are correct
+// Check if an error occurred or if owner references are correct
 func doChecks(err error, obj metav1.Object, cav *v1alpha1.CAPApplicationVersion, res string) error {
 	// If an error occurs during Get/Create, we'll requeue the item so we can
 	// attempt processing again later. This could have been caused by a

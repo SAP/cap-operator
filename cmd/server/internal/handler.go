@@ -44,7 +44,7 @@ const (
 	ResourceNotFound = "resource not found"
 )
 
-const ErrorOccured = "Error occured "
+const ErrorOccurred = "Error occurred "
 const InvalidRequestMethod = "invalid request method"
 const AuthorizationCheckFailed = "authorization check failed"
 const BearerPrefix = "Bearer "
@@ -143,14 +143,14 @@ func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
 	var reqType ProvisioningRequest
 	err := decoder.Decode(&reqType)
 	if err != nil {
-		klog.Error(ErrorOccured, err.Error())
+		klog.Error(ErrorOccurred, err.Error())
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
 	// Check if CAPApplication instance for the given btpApp exists
 	ca, err := s.checkCAPApp(reqType.GlobalAccountGUID, reqType.SubscriptionAppName)
 	if err != nil {
-		klog.Error(ErrorOccured, err.Error())
+		klog.Error(ErrorOccurred, err.Error())
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
@@ -221,7 +221,7 @@ func (s *SubscriptionHandler) getTenant(globalAccountGUID string, btpAppName str
 
 	ctList, err := s.Clientset.SmeV1alpha1().CAPTenants(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
 	if err != nil {
-		klog.Error("Error occured in getTenant", err.Error())
+		klog.Error("Error occurred in getTenant", err.Error())
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 	if len(ctList.Items) == 0 {
@@ -240,14 +240,14 @@ func (s *SubscriptionHandler) DeleteTenant(req *http.Request) *Result {
 	var reqType DeprovisioningRequest
 	err := decoder.Decode(&reqType)
 	if err != nil {
-		klog.Error(ErrorOccured, err.Error())
+		klog.Error(ErrorOccurred, err.Error())
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
 	// Check if CAPApplication instance for the given btpApp exists
 	ca, err := s.checkCAPApp(reqType.GlobalAccountGUID, reqType.SubscriptionAppName)
 	if err != nil {
-		klog.Error(ErrorOccured, err.Error())
+		klog.Error(ErrorOccurred, err.Error())
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
