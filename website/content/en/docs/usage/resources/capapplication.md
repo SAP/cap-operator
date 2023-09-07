@@ -63,5 +63,6 @@ The overall list of BTP service instances and respective secrets (credentials) r
 The `provider` section specifies details of the provider sub-account linked to this application, while `globalAccountId` denotes the global account in which the provider sub-account is created. Within a global account the `btpAppName` has to be unique as this is equivalent to `XSAPPNAME` which is used in various BTP service and application constructs.
 
 The `domains` section provides details of where the application routes are exposed. Within a SAP Gardener cluster the primary application domain is a subdomain of the cluster domain, and Gardener [cert-management](https://github.com/gardener/cert-management) will be used to request a wildcard TLS certificate for the primary domain. Additional secondary domains may also be specified (e.g. for customer specific domains) for the application.
+> NOTE: While the same secondary domain can technically be used across applications; the consumers would need to ensure that the tenant sub-domains are unique across such applications that share the same domain!
 
 `istioIngressGatewayLabels` are key-value pairs (string) used to identify the ingress controller component of Istio and the related Load Balancer service. These values are configured during installation of Istio service mesh in the cluster.

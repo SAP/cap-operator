@@ -343,3 +343,5 @@ spec:
 > - [Container API reference](../../../reference/#sme.sap.com/v1alpha1.ContainerDetails) for generic container specific configuration
 > - [Deployment API reference](../../../reference/#sme.sap.com/v1alpha1.DeploymentDetails) for deployment specific configuration
 > - [Job API reference](../../../reference/#sme.sap.com/v1alpha1.JobDetails) for job specific configuration
+>
+> The supported configurations is kept minimal intentionally to keep the overall API simple by considering commonly used configurations.
