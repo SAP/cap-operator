@@ -144,7 +144,8 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 				if tt.createCA2 {
 					ca2 = ca.DeepCopy()
 					ca2.Name += "2"
-					ca2.Spec.Domains.Secondary = []string{"2" + secondaryDomain, "3" + secondaryDomain}
+					// Test with duplicate domain
+					ca2.Spec.Domains.Secondary = []string{secondaryDomain, "2" + secondaryDomain}
 				}
 			}
 

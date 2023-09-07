@@ -823,8 +823,7 @@ func checkAndUpdateJobStatusFinishedJobs(contentDeployJob *batchv1.Job, cav *v1a
 }
 
 func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alpha1.CAPApplicationVersion) (bool, error) {
-
-	// Once the cav goes into Error state, we should not check the jobs again in the next reconcilation loop
+	// Once the cav goes into Error state, we should not check the jobs again in the next reconciliation loop
 	// because it could happen that the job can get deleted meanwhile and we won't be able
 	// to determine the state of the job correctly.
 	if len(cav.Status.Conditions) > 0 && cav.Status.Conditions[0].Reason == "ErrorInWorkloadStatus" {
