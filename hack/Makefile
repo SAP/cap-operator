@@ -2,6 +2,7 @@
 SHELL = /usr/bin/env bash
 .SHELLFLAGS = -o pipefail -ec
 SRC = ./..
+PKG = pkg/apis
 
 .PHONY: all
 all: build
@@ -16,7 +17,7 @@ help: ## Display this help.
 
 .PHONY: manifests
 manifests: controller-gen ## Generate CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) crd:maxDescLen=0 paths="$(SRC)/..." output:crd:artifacts:config="$(SRC)/crds"
+	$(CONTROLLER_GEN) crd:maxDescLen=0 paths="$(SRC)/$(PKG)/..." output:crd:artifacts:config="$(SRC)/crds"
 ##@ Build Dependencies
 
 ## Location to install dependencies to
