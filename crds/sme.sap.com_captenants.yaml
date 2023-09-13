@@ -23,6 +23,9 @@ spec:
     - jsonPath: .status.state
       name: State
       type: string
+    - jsonPath: .status.currentCAPApplicationVersionInstance
+      name: Current Version
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
