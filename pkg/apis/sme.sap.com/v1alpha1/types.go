@@ -23,14 +23,12 @@ const (
 	CAPTenantOperationResource    = "captenantoperations"
 )
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // +kubebuilder:resource:shortName=ca
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
-
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // CAPApplication is the schema for capapplications API
 type CAPApplication struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -93,8 +91,9 @@ type ApplicationDomains struct {
 	// +kubebuilder:validation:MaxLength=62
 	// Primary application domain will be used to generate a wildcard TLS certificate. In SAP Gardener managed clusters this is (usually) a subdomain of the cluster domain
 	Primary string `json:"primary"`
+	// This does not work yet! and aliasing would need changes in our code +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
 	// Customer specific domains to serve application endpoints (optional)
-	Secondary []PatternString `json:"secondary,omitempty"`
+	Secondary []string `json:"secondary,omitempty"`
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]*$
 	// Public ingress URL for the cluster Load Balancer
 	DnsTarget string `json:"dnsTarget,omitempty"`
@@ -102,9 +101,6 @@ type ApplicationDomains struct {
 	// Labels used to identify the istio ingress-gateway component and its corresponding namespace. Usually {"app":"istio-ingressgateway","istio":"ingressgateway"}
 	IstioIngressGatewayLabels []NameValue `json:"istioIngressGatewayLabels"`
 }
-
-// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
-type PatternString string
 
 // Generic Name/Value configuration
 type NameValue struct {
@@ -157,14 +153,12 @@ const (
 	ConditionTypeReady StatusConditionType = "Ready"
 )
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // +kubebuilder:resource:shortName=cav
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
-
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // CAPApplicationVersion defines the schema for capapplicationversions API
 type CAPApplicationVersion struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -346,15 +340,13 @@ type TenantOperationWorkloadReference struct {
 	ContinueOnFailure bool `json:"continueOnFailure,omitempty"`
 }
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // +kubebuilder:resource:shortName=cat
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +kubebuilder:printcolumn:name="Current Version",type="string",JSONPath=".status.currentCAPApplicationVersionInstance"
-
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // CAPTenant defines the schema for captenants API
 type CAPTenant struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -424,15 +416,13 @@ const (
 	VersionUpgradeStrategyTypeNever VersionUpgradeStrategyType = "never"
 )
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // +kubebuilder:resource:shortName=ctop
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Operation",type="string",JSONPath=".spec.operation"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
-
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // CAPTenantOperation defines the schema for captenantoperations API
 type CAPTenantOperation struct {
 	metav1.TypeMeta   `json:",inline"`
