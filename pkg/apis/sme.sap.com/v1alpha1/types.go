@@ -42,6 +42,7 @@ type CAPApplication struct {
 
 type CAPApplicationStatus struct {
 	GenericStatus `json:",inline"`
+	// +kubebuilder:validation:Enum="";Consistent;Processing;Error;Deleting
 	// State of CAPApplication
 	State CAPApplicationState `json:"state"`
 	// Hash representing last known application domains
@@ -175,6 +176,7 @@ type CAPApplicationVersion struct {
 
 type CAPApplicationVersionStatus struct {
 	GenericStatus `json:",inline"`
+	// +kubebuilder:validation:Enum="";Ready;Error;Processing;Deleting
 	// State of CAPApplicationVersion
 	State CAPApplicationVersionState `json:"state"`
 	// List of finished Content Jobs
@@ -373,6 +375,7 @@ type CAPTenantList struct {
 
 type CAPTenantStatus struct {
 	GenericStatus `json:",inline"`
+	// +kubebuilder:validation:Enum="";Ready;Provisioning;Upgrading;Deleting;ProvisioningError;UpgradeError
 	// State of CAPTenant
 	State CAPTenantState `json:"state"`
 	// Specifies the current version of the tenant after provisioning or upgrade
@@ -470,6 +473,7 @@ type CAPTenantOperationStep struct {
 
 type CAPTenantOperationStatus struct {
 	GenericStatus `json:",inline"`
+	// +kubebuilder:validation:Enum="";Processing;Completed;Failed;Deleting
 	// State of CAPTenantOperation
 	State CAPTenantOperationState `json:"state"`
 	// Current step being processed from the sequence of specified steps

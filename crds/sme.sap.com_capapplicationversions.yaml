@@ -812,6 +812,12 @@ spec:
                 format: int64
                 type: integer
               state:
+                enum:
+                - ""
+                - Ready
+                - Error
+                - Processing
+                - Deleting
                 type: string
             required:
             - state

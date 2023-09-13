@@ -153,6 +153,12 @@ spec:
                 format: int64
                 type: integer
               state:
+                enum:
+                - ""
+                - Consistent
+                - Processing
+                - Error
+                - Deleting
                 type: string
             required:
             - state

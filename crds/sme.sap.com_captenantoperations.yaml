@@ -114,6 +114,12 @@ spec:
                 format: int64
                 type: integer
               state:
+                enum:
+                - ""
+                - Processing
+                - Completed
+                - Failed
+                - Deleting
                 type: string
             required:
             - state
