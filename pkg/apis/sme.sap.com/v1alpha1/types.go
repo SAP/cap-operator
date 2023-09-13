@@ -89,15 +89,22 @@ type CAPApplicationSpec struct {
 
 // Application domains
 type ApplicationDomains struct {
+	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
+	// +kubebuilder:validation:MaxLength=62
 	// Primary application domain will be used to generate a wildcard TLS certificate. In SAP Gardener managed clusters this is (usually) a subdomain of the cluster domain
 	Primary string `json:"primary"`
 	// Customer specific domains to serve application endpoints (optional)
-	Secondary []string `json:"secondary,omitempty"`
+	Secondary []PatternString `json:"secondary,omitempty"`
+	// +kubebuilder:validation:Pattern=^[a-z0-9-.]*$
 	// Public ingress URL for the cluster Load Balancer
 	DnsTarget string `json:"dnsTarget,omitempty"`
+	// +kubebuilder:validation:MinItems=1
 	// Labels used to identify the istio ingress-gateway component and its corresponding namespace. Usually {"app":"istio-ingressgateway","istio":"ingressgateway"}
 	IstioIngressGatewayLabels []NameValue `json:"istioIngressGatewayLabels"`
 }
+
+// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
+type PatternString string
 
 // Generic Name/Value configuration
 type NameValue struct {
@@ -205,7 +212,7 @@ type CAPApplicationVersionSpec struct {
 	// Semantic version
 	Version string `json:"version"`
 	// Registry secrets used to pull images of the application components
-	RegistrySecrets []string `json:"registrySecrets"`
+	RegistrySecrets []string `json:"registrySecrets,omitempty"`
 	// Information about the Workloads
 	Workloads []WorkloadDetails `json:"workloads"`
 	// Tenant Operations may be used to specify how jobs are sequenced for the different tenant operations
@@ -221,9 +228,9 @@ type WorkloadDetails struct {
 	// List of BTP services consumed by the current application component workload. These services must be defined in the corresponding CAPApplication.
 	ConsumedBTPServices []string `json:"consumedBTPServices"`
 	// Custom labels for the current workload
-	Labels map[string]string `json:"labels"`
+	Labels map[string]string `json:"labels,omitempty"`
 	// Annotations for the current workload, in case of `Deployments` this also get copied over to any `Service` that may be created
-	Annotations map[string]string `json:"annotations"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 	// Definition of a deployment
 	DeploymentDefinition *DeploymentDetails `json:"deploymentDefinition,omitempty"`
 	// Definition of a job
@@ -422,6 +429,7 @@ const (
 
 // +kubebuilder:resource:shortName=ctop
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Operation",type="string",JSONPath=".spec.operation"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 

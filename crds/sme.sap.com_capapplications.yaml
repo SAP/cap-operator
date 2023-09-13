@@ -60,6 +60,7 @@ spec:
               domains:
                 properties:
                   dnsTarget:
+                    pattern: ^[a-z0-9-.]*$
                     type: string
                   istioIngressGatewayLabels:
                     items:
@@ -72,11 +73,15 @@ spec:
                       - name
                       - value
                       type: object
+                    minItems: 1
                     type: array
                   primary:
+                    maxLength: 62
+                    pattern: ^[a-z0-9-.]+$
                     type: string
                   secondary:
                     items:
+                      pattern: ^[a-z0-9-.]+$
                       type: string
                     type: array
                 required:

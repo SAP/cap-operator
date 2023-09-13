@@ -17,6 +17,9 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .spec.operation
+      name: Operation
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date

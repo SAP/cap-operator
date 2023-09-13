@@ -757,15 +757,12 @@ spec:
                     name:
                       type: string
                   required:
-                  - annotations
                   - consumedBTPServices
-                  - labels
                   - name
                   type: object
                 type: array
             required:
             - capApplicationInstance
-            - registrySecrets
             - version
             - workloads
             type: object
