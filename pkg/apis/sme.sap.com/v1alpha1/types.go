@@ -35,8 +35,9 @@ type CAPApplication struct {
 	metav1.ObjectMeta `json:"metadata"`
 	// CAPApplication spec
 	Spec CAPApplicationSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
 	// CAPApplication status
-	Status CAPApplicationStatus `json:"status"`
+	Status CAPApplicationStatus `json:"status,omitempty"`
 }
 
 type CAPApplicationStatus struct {
@@ -91,7 +92,6 @@ type ApplicationDomains struct {
 	// +kubebuilder:validation:MaxLength=62
 	// Primary application domain will be used to generate a wildcard TLS certificate. In SAP Gardener managed clusters this is (usually) a subdomain of the cluster domain
 	Primary string `json:"primary"`
-	// This does not work yet! and aliasing would need changes in our code +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
 	// Customer specific domains to serve application endpoints (optional)
 	Secondary []string `json:"secondary,omitempty"`
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]*$
@@ -101,6 +101,9 @@ type ApplicationDomains struct {
 	// Labels used to identify the istio ingress-gateway component and its corresponding namespace. Usually {"app":"istio-ingressgateway","istio":"ingressgateway"}
 	IstioIngressGatewayLabels []NameValue `json:"istioIngressGatewayLabels"`
 }
+
+//Workaround for pattern for string items +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
+//type PatternString string
 
 // Generic Name/Value configuration
 type NameValue struct {
@@ -165,6 +168,7 @@ type CAPApplicationVersion struct {
 	metav1.ObjectMeta `json:"metadata"`
 	// CAPApplicationVersion spec
 	Spec CAPApplicationVersionSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
 	// CAPApplicationVersion status
 	Status CAPApplicationVersionStatus `json:"status"`
 }
@@ -353,6 +357,7 @@ type CAPTenant struct {
 	metav1.ObjectMeta `json:"metadata"`
 	// CAPTenant spec
 	Spec CAPTenantSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
 	// CAPTenant status
 	Status CAPTenantStatus `json:"status"`
 }
@@ -429,6 +434,7 @@ type CAPTenantOperation struct {
 	metav1.ObjectMeta `json:"metadata"`
 	// CAPTenantOperation spec
 	Spec CAPTenantOperationSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
 	// CAPTenantOperation status
 	Status CAPTenantOperationStatus `json:"status"`
 }
