@@ -37,7 +37,7 @@ type CAPApplication struct {
 	Spec CAPApplicationSpec `json:"spec"`
 	// +kubebuilder:validation:Optional
 	// CAPApplication status
-	Status CAPApplicationStatus `json:"status,omitempty"`
+	Status CAPApplicationStatus `json:"status"`
 }
 
 type CAPApplicationStatus struct {
