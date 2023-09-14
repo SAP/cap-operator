@@ -318,6 +318,9 @@ spec:
                               name:
                                 type: string
                               networkPolicy:
+                                enum:
+                                - Application
+                                - Cluster
                                 type: string
                               port:
                                 format: int32

@@ -81,7 +81,6 @@ spec:
                     type: string
                   secondary:
                     items:
-                      pattern: ^[a-z0-9-.]+$
                       type: string
                     type: array
                 required:

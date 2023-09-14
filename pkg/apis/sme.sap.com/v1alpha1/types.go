@@ -311,6 +311,7 @@ type Ports struct {
 	AppProtocol *string `json:"appProtocol,omitempty"`
 	// Name of the service port
 	Name string `json:"name"`
+	// +kubebuilder:validation:Enum=Application;Cluster
 	// Network Policy of the service port
 	NetworkPolicy PortNetworkPolicyType `json:"networkPolicy,omitempty"`
 	// The port number used for container and the corresponding service (if any)
@@ -411,6 +412,7 @@ type CAPTenantSpec struct {
 	BTPTenantIdentification `json:",inline"`
 	// Semver that is used to determine the relevant CAPApplicationVersion that a CAPTenant can be upgraded to (i.e. if it is not already on that version)
 	Version string `json:"version,omitempty"`
+	// +kubebuilder:validation:Enum=always;never
 	// Denotes whether a CAPTenant can be upgraded. One of ('always', 'never')
 	VersionUpgradeStrategy VersionUpgradeStrategyType `json:"versionUpgradeStrategy,omitempty"`
 }
@@ -452,6 +454,7 @@ type CAPTenantOperationList struct {
 }
 
 type CAPTenantOperationSpec struct {
+	// +kubebuilder:validation:Enum=provisioning;deprovisioning;upgrade
 	// Scope of the tenant lifecycle operation. One of 'provisioning', 'deprovisioning' or 'upgrade'
 	Operation CAPTenantOperationType `json:"operation"`
 	// BTP sub-account (tenant) for which request is created
@@ -465,6 +468,7 @@ type CAPTenantOperationSpec struct {
 type CAPTenantOperationStep struct {
 	// Name of the workload from the referenced CAPApplicationVersion
 	Name string `json:"name"`
+	// +kubebuilder:validation:Enum=CustomTenantOperation;TenantOperation
 	// Type of job. One of 'TenantOperation' or 'CustomTenantOperation'
 	Type JobType `json:"type"`
 	// Indicates whether the operation can continue in case of step failure. Relevant only for type 'CustomTenantOperation'

@@ -47,6 +47,9 @@ spec:
               version:
                 type: string
               versionUpgradeStrategy:
+                enum:
+                - always
+                - never
                 type: string
             required:
             - capApplicationInstance

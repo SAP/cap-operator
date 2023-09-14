@@ -41,6 +41,10 @@ spec:
               capApplicationVersionInstance:
                 type: string
               operation:
+                enum:
+                - provisioning
+                - deprovisioning
+                - upgrade
                 type: string
               steps:
                 items:
@@ -50,6 +54,9 @@ spec:
                     name:
                       type: string
                     type:
+                      enum:
+                      - CustomTenantOperation
+                      - TenantOperation
                       type: string
                   required:
                   - name
