@@ -85,6 +85,11 @@ spec:
                 type: string
               workloads:
                 items:
+                  oneOf:
+                    - required:
+                        - deploymentDefinition
+                    - required:
+                        - jobDefinition
                   properties:
                     annotations:
                       additionalProperties:
