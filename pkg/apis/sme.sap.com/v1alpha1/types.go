@@ -23,21 +23,26 @@ const (
 	CAPTenantOperationResource    = "captenantoperations"
 )
 
+// +kubebuilder:resource:shortName=ca
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // CAPApplication is the schema for capapplications API
 type CAPApplication struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	// CAPApplication spec
 	Spec CAPApplicationSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
 	// CAPApplication status
 	Status CAPApplicationStatus `json:"status"`
 }
 
 type CAPApplicationStatus struct {
 	GenericStatus `json:",inline"`
+	// +kubebuilder:validation:Enum="";Consistent;Processing;Error;Deleting
 	// State of CAPApplication
 	State CAPApplicationState `json:"state"`
 	// Hash representing last known application domains
@@ -84,15 +89,22 @@ type CAPApplicationSpec struct {
 
 // Application domains
 type ApplicationDomains struct {
+	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
+	// +kubebuilder:validation:MaxLength=62
 	// Primary application domain will be used to generate a wildcard TLS certificate. In SAP Gardener managed clusters this is (usually) a subdomain of the cluster domain
 	Primary string `json:"primary"`
 	// Customer specific domains to serve application endpoints (optional)
 	Secondary []string `json:"secondary,omitempty"`
+	// +kubebuilder:validation:Pattern=^[a-z0-9-.]*$
 	// Public ingress URL for the cluster Load Balancer
 	DnsTarget string `json:"dnsTarget,omitempty"`
+	// +kubebuilder:validation:MinItems=1
 	// Labels used to identify the istio ingress-gateway component and its corresponding namespace. Usually {"app":"istio-ingressgateway","istio":"ingressgateway"}
 	IstioIngressGatewayLabels []NameValue `json:"istioIngressGatewayLabels"`
 }
+
+//Workaround for pattern for string items +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
+//type PatternString string
 
 // Generic Name/Value configuration
 type NameValue struct {
@@ -145,21 +157,26 @@ const (
 	ConditionTypeReady StatusConditionType = "Ready"
 )
 
+// +kubebuilder:resource:shortName=cav
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // CAPApplicationVersion defines the schema for capapplicationversions API
 type CAPApplicationVersion struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	// CAPApplicationVersion spec
 	Spec CAPApplicationVersionSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
 	// CAPApplicationVersion status
 	Status CAPApplicationVersionStatus `json:"status"`
 }
 
 type CAPApplicationVersionStatus struct {
 	GenericStatus `json:",inline"`
+	// +kubebuilder:validation:Enum="";Ready;Error;Processing;Deleting
 	// State of CAPApplicationVersion
 	State CAPApplicationVersionState `json:"state"`
 	// List of finished Content Jobs
@@ -195,7 +212,7 @@ type CAPApplicationVersionSpec struct {
 	// Semantic version
 	Version string `json:"version"`
 	// Registry secrets used to pull images of the application components
-	RegistrySecrets []string `json:"registrySecrets"`
+	RegistrySecrets []string `json:"registrySecrets,omitempty"`
 	// Information about the Workloads
 	Workloads []WorkloadDetails `json:"workloads"`
 	// Tenant Operations may be used to specify how jobs are sequenced for the different tenant operations
@@ -211,9 +228,9 @@ type WorkloadDetails struct {
 	// List of BTP services consumed by the current application component workload. These services must be defined in the corresponding CAPApplication.
 	ConsumedBTPServices []string `json:"consumedBTPServices"`
 	// Custom labels for the current workload
-	Labels map[string]string `json:"labels"`
+	Labels map[string]string `json:"labels,omitempty"`
 	// Annotations for the current workload, in case of `Deployments` this also get copied over to any `Service` that may be created
-	Annotations map[string]string `json:"annotations"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 	// Definition of a deployment
 	DeploymentDefinition *DeploymentDetails `json:"deploymentDefinition,omitempty"`
 	// Definition of a job
@@ -294,6 +311,7 @@ type Ports struct {
 	AppProtocol *string `json:"appProtocol,omitempty"`
 	// Name of the service port
 	Name string `json:"name"`
+	// +kubebuilder:validation:Enum=Application;Cluster
 	// Network Policy of the service port
 	NetworkPolicy PortNetworkPolicyType `json:"networkPolicy,omitempty"`
 	// The port number used for container and the corresponding service (if any)
@@ -329,15 +347,20 @@ type TenantOperationWorkloadReference struct {
 	ContinueOnFailure bool `json:"continueOnFailure,omitempty"`
 }
 
+// +kubebuilder:resource:shortName=cat
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
+// +kubebuilder:printcolumn:name="Current Version",type="string",JSONPath=".status.currentCAPApplicationVersionInstance"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // CAPTenant defines the schema for captenants API
 type CAPTenant struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	// CAPTenant spec
 	Spec CAPTenantSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
 	// CAPTenant status
 	Status CAPTenantStatus `json:"status"`
 }
@@ -353,6 +376,7 @@ type CAPTenantList struct {
 
 type CAPTenantStatus struct {
 	GenericStatus `json:",inline"`
+	// +kubebuilder:validation:Enum="";Ready;Provisioning;Upgrading;Deleting;ProvisioningError;UpgradeError
 	// State of CAPTenant
 	State CAPTenantState `json:"state"`
 	// Specifies the current version of the tenant after provisioning or upgrade
@@ -388,6 +412,7 @@ type CAPTenantSpec struct {
 	BTPTenantIdentification `json:",inline"`
 	// Semver that is used to determine the relevant CAPApplicationVersion that a CAPTenant can be upgraded to (i.e. if it is not already on that version)
 	Version string `json:"version,omitempty"`
+	// +kubebuilder:validation:Enum=always;never
 	// Denotes whether a CAPTenant can be upgraded. One of ('always', 'never')
 	VersionUpgradeStrategy VersionUpgradeStrategyType `json:"versionUpgradeStrategy,omitempty"`
 }
@@ -401,15 +426,20 @@ const (
 	VersionUpgradeStrategyTypeNever VersionUpgradeStrategyType = "never"
 )
 
+// +kubebuilder:resource:shortName=ctop
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Operation",type="string",JSONPath=".spec.operation"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // CAPTenantOperation defines the schema for captenantoperations API
 type CAPTenantOperation struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	// CAPTenantOperation spec
 	Spec CAPTenantOperationSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
 	// CAPTenantOperation status
 	Status CAPTenantOperationStatus `json:"status"`
 }
@@ -424,6 +454,7 @@ type CAPTenantOperationList struct {
 }
 
 type CAPTenantOperationSpec struct {
+	// +kubebuilder:validation:Enum=provisioning;deprovisioning;upgrade
 	// Scope of the tenant lifecycle operation. One of 'provisioning', 'deprovisioning' or 'upgrade'
 	Operation CAPTenantOperationType `json:"operation"`
 	// BTP sub-account (tenant) for which request is created
@@ -437,6 +468,7 @@ type CAPTenantOperationSpec struct {
 type CAPTenantOperationStep struct {
 	// Name of the workload from the referenced CAPApplicationVersion
 	Name string `json:"name"`
+	// +kubebuilder:validation:Enum=CustomTenantOperation;TenantOperation
 	// Type of job. One of 'TenantOperation' or 'CustomTenantOperation'
 	Type JobType `json:"type"`
 	// Indicates whether the operation can continue in case of step failure. Relevant only for type 'CustomTenantOperation'
@@ -445,6 +477,7 @@ type CAPTenantOperationStep struct {
 
 type CAPTenantOperationStatus struct {
 	GenericStatus `json:",inline"`
+	// +kubebuilder:validation:Enum="";Processing;Completed;Failed;Deleting
 	// State of CAPTenantOperation
 	State CAPTenantOperationState `json:"state"`
 	// Current step being processed from the sequence of specified steps
