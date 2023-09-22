@@ -60,12 +60,12 @@ jobs:
         platforms: linux/amd64,linux/arm64
         context: .
         cache-from: |
-          type=gha,scope=sha-${{ github.sha }}
+          type=gha,scope=${{ matrix.workload }}-sha-${{ github.sha }}
           type=gha,scope=${{ github.ref_name }}-${{ matrix.workload }}
           type=gha,scope=${{ github.base_ref || 'main' }}
           type=gha,scope=main
         cache-to: |
-          type=gha,scope=sha-${{ github.sha }},mode=max
+          type=gha,scope=${{ matrix.workload }}-sha-${{ github.sha }},mode=max
           type=gha,scope=${{ github.ref_name }}-${{ matrix.workload }},mode=max
         push: true
         tags: ${{ steps.extract-metadata.outputs.tags }}
