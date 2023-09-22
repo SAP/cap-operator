@@ -18,7 +18,7 @@ description: A Kubernetes Operator for managing the lifecycle of multi-tenant CA
 		<a href="https://goreportcard.com/report/github.com/sap/cap-operator">
 			<img src="https://goreportcard.com/badge/github.com/sap/cap-operator" alt="Go Report Card">
 		</a>
-		<a href="https://sonarcloud.io/summary/new_code?id=SAP_cap-operator">
+		<a href="https://sonarcloud.io/summary/overall?id=SAP_cap-operator">
 			<img src="https://sonarcloud.io/api/project_badges/measure?project=SAP_cap-operator&metric=coverage" alt="Sonar Coverage">
 		</a>
   		<a href="https://github.com/SAP/cap-operator/actions/workflows/github-code-scanning/codeql">
