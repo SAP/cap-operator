@@ -2,16 +2,16 @@
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| image.tag | string | `"latest"` | Default image tag (can be overwritten on component level) |
-| image.pullPolicy | string | `"IfNotPresent"` | Default image pull policy (can be overwritten on component level) |
-| imagePullSecrets | list | `[{"name":"regcred"}]` | Default image pull secrets (can be overwritten on component level) |
+| image.tag | string | `""` | Default image tag (can be overwritten on component level) |
+| image.pullPolicy | string | `""` | Default image pull policy (can be overwritten on component level) |
+| imagePullSecrets | list | `[]` | Default image pull secrets (can be overwritten on component level) |
 | podSecurityContext | object | `{}` | Default pod security content (can be overwritten on component level) |
 | nodeSelector | object | `{}` | Default node selector (can be overwritten on component level) |
 | affinity | object | `{}` | Default affinity settings (can be overwritten on component level) |
 | tolerations | list | `[]` | Default tolerations (can be overwritten on component level) |
 | priorityClassName | string | `""` | Default priority class (can be overwritten on component level) |
 | controller.replicas | int | `1` | Replicas |
-| controller.image.repository | string | `"ghcr.io/sap/cap-operator/main/cap-controller"` | Image repository |
+| controller.image.repository | string | `"ghcr.io/sap/cap-operator/controller"` | Image repository |
 | controller.image.tag | string | `""` | Image tag |
 | controller.image.pullPolicy | string | `""` | Image pull policy |
 | controller.imagePullSecrets | list | `[]` | Image pull secrets |
@@ -26,7 +26,7 @@
 | controller.resources.requests.memory | string | `"50Mi"` | Memory request |
 | controller.resources.requests.cpu | float | `0.02` | CPU request |
 | subscriptionServer.replicas | int | `1` | Replicas |
-| subscriptionServer.image.repository | string | `"ghcr.io/sap/cap-operator/main/server"` | Image repository |
+| subscriptionServer.image.repository | string | `"ghcr.io/sap/cap-operator/server"` | Image repository |
 | subscriptionServer.image.tag | string | `""` | Image tag |
 | subscriptionServer.image.pullPolicy | string | `""` | Image pull policy |
 | subscriptionServer.imagePullSecrets | list | `[]` | Image pull secrets |
@@ -47,7 +47,7 @@
 | subscriptionServer.domain | string | `"cap-operator.clusters.cs.services.sap"` | The domain under which the cap operator subscription server would be available |
 | webhook.sidecar | bool | `false` | Side car to mount admission review |
 | webhook.replicas | int | `1` | Replicas |
-| webhook.image.repository | string | `"ghcr.io/sap/cap-operator/main/web-hooks"` | Image repository |
+| webhook.image.repository | string | `"ghcr.io/sap/cap-operator/web-hooks"` | Image repository |
 | webhook.image.tag | string | `""` | Image tag |
 | webhook.image.pullPolicy | string | `""` | Image pull policy |
 | webhook.imagePullSecrets | list | `[]` | Image pull secrets |
