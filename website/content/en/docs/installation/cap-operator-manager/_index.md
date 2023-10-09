@@ -5,5 +5,5 @@ weight: 30
 type: "docs"
 tags: ["setup"]
 description: >
-  How to install CAP Operator using CAP Operator Manager
+  How to install CAP Operator using CAP Operator Manager in a Kyma/local cluster
 ---
