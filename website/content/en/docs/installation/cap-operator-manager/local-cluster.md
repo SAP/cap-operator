@@ -1,7 +1,7 @@
 ---
 title: "Local Cluster"
 linkTitle: "Local Cluster"
-weight: 20
+weight: 10
 type: "docs"
 tags: ["setup"]
 description: >
