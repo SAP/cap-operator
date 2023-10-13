@@ -856,7 +856,7 @@ func (c *Controller) checkDeploymentWorkloadStatus(ctx context.Context, cav *v1a
 		}
 
 		if workloadDeployment.Status.Replicas == workloadDeployment.Status.UnavailableReplicas {
-			return false, fmt.Errorf("%s", "Deployment in error state")
+			return false, fmt.Errorf("deployment %s in error state", deploymentName)
 		}
 
 		if workloadDeployment.Status.Replicas != workloadDeployment.Status.ReadyReplicas {
