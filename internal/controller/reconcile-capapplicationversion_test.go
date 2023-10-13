@@ -294,6 +294,23 @@ func TestCAV_ContentJobCompletedExisting(t *testing.T) {
 	)
 }
 
+func TestCAV_DeploymentStatusCheck(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "Check deployment status in capapplication version",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/cav-processing-only-deployments.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-processing-only-deployments-error.yaml",
+			expectError:       true,
+		},
+	)
+}
+
 func TestCAV_InvalidEnvConfigContent(t *testing.T) {
 	reconcileTestItem(
 		context.TODO(), t,

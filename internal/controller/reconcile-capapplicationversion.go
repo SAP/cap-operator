@@ -851,7 +851,7 @@ func (c *Controller) checkDeploymentWorkloadStatus(ctx context.Context, cav *v1a
 			return false, err
 		}
 
-		if workloadDeployment.Status.Replicas == 0 {
+		if workloadDeployment.Spec.Replicas == nil || *workloadDeployment.Spec.Replicas == 0 {
 			return false, nil
 		}
 
