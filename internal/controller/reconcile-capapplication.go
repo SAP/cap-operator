@@ -162,7 +162,9 @@ func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1al
 		cat := tenant.DeepCopy()
 
 		// Check version of tenant
-		if cat.Spec.Version != cav.Spec.Version {
+		// Trigger upgrade only if the new version is greater than the cat version. Needs this check to prevent
+		// downgrades in cases where a Ready CAV goes to Error state later on.
+		if cat.Spec.Version < cav.Spec.Version {
 			// update CAPTenant Spec to point to the latest version
 			cat.Spec.Version = cav.Spec.Version
 			// Trigger update on CAPTenant (modifies Generation) --> which would reconcile the tenant
