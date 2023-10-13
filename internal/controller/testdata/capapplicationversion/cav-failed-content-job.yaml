@@ -60,7 +60,7 @@ spec:
         type: TenantOperation
 status:
   conditions:
-    - reason: ErrorInWorkloadStatus
+    - reason: ErrorInContentJobStatus
       status: "False"
       type: Ready
       message: "content deployer error in job 'test-cap-01-cav-v1-content'"

@@ -60,7 +60,7 @@ spec:
         type: TenantOperation
 status:
   conditions:
-    - reason: ErrorInWorkloadStatus
+    - reason: ErrorInContentJobStatus
       message: 'job.batch "test-cap-01-cav-v1-content" not found'
       observedGeneration: 1
       status: "False"
