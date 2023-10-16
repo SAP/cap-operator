@@ -832,12 +832,12 @@ func checkAndUpdateJobStatusFinishedJobs(contentDeployJob *batchv1.Job, cav *v1a
 
 func (c *Controller) checkDeploymentWorkloadStatus(ctx context.Context, cav *v1alpha1.CAPApplicationVersion) (bool, error) {
 
-	// // We should check the deployment status only during the first deployment. Once the CAV is ready, we should not
-	// // check the deployment status again because if it goes to Error state, the tenant will get downgraded to the
-	// // previous version
-	// if cav.Status.State == v1alpha1.CAPApplicationVersionStateReady {
-	// 	return false, nil
-	// }
+	// We should check the deployment status only during the first deployment. Once the CAV is ready, we should not
+	// check the deployment status again because if it goes to Error state, the tenant will get downgraded to the
+	// previous version
+	if cav.Status.State == v1alpha1.CAPApplicationVersionStateReady {
+		return false, nil
+	}
 
 	for _, workload := range cav.Spec.Workloads {
 		if workload.DeploymentDefinition == nil {
