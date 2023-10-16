@@ -211,9 +211,7 @@ func getContentJobName(contentJobWorkloadName string, cav *v1alpha1.CAPApplicati
 func getNextContentJob(cav *v1alpha1.CAPApplicationVersion) *v1alpha1.WorkloadDetails {
 
 	// If the previous job failed, we should not trigger the next job
-
-	// Keeping "ErrorInWorkloadStatus" for backward compactibility
-	if len(cav.Status.Conditions) > 0 && (cav.Status.Conditions[0].Reason == "ErrorInWorkloadStatus" || cav.Status.Conditions[0].Reason == "ErrorInContentJobStatus") {
+	if err := checkContentWorkloadConditions(cav); err != nil {
 		return nil
 	}
 
@@ -869,14 +867,22 @@ func (c *Controller) checkDeploymentWorkloadStatus(ctx context.Context, cav *v1a
 	return false, nil
 }
 
+func checkContentWorkloadConditions(cav *v1alpha1.CAPApplicationVersion) error {
+	// Keeping "ErrorInWorkloadStatus" for backend compactibility
+	if len(cav.Status.Conditions) > 0 && (cav.Status.Conditions[0].Reason == "ErrorInWorkloadStatus" || cav.Status.Conditions[0].Reason == "ErrorInContentJobStatus") {
+		return fmt.Errorf("%s", cav.Status.Conditions[0].Message)
+	}
+
+	return nil
+}
+
 func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alpha1.CAPApplicationVersion) (bool, error) {
 	// Once the cav goes into Error state, we should not check the jobs again in the next reconciliation loop
 	// because it could happen that the job can get deleted meanwhile and we won't be able
 	// to determine the state of the job correctly.
 
-	// Keeping "ErrorInWorkloadStatus" for backend compactibility
-	if len(cav.Status.Conditions) > 0 && (cav.Status.Conditions[0].Reason == "ErrorInWorkloadStatus" || cav.Status.Conditions[0].Reason == "ErrorInContentJobStatus") {
-		return false, fmt.Errorf("%s", cav.Status.Conditions[0].Message)
+	if err := checkContentWorkloadConditions(cav); err != nil {
+		return false, err
 	}
 
 	for _, contentJobName := range getContentJobInOrder(cav) {
