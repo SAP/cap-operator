@@ -29,6 +29,7 @@ const (
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // CAPApplication is the schema for capapplications API
 type CAPApplication struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -163,6 +164,7 @@ const (
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // CAPApplicationVersion defines the schema for capapplicationversions API
 type CAPApplicationVersion struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -354,6 +356,7 @@ type TenantOperationWorkloadReference struct {
 // +kubebuilder:printcolumn:name="Current Version",type="string",JSONPath=".status.currentCAPApplicationVersionInstance"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // CAPTenant defines the schema for captenants API
 type CAPTenant struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -433,6 +436,7 @@ const (
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 // CAPTenantOperation defines the schema for captenantoperations API
 type CAPTenantOperation struct {
 	metav1.TypeMeta   `json:",inline"`
