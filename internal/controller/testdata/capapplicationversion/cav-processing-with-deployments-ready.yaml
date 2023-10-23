@@ -1,0 +1,228 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPApplicationVersion
+metadata:
+  generation: 1
+  annotations:
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+    sme.sap.com/owner-identifier: default.test-cap-01
+  labels:
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/owner-generation: "2"
+    sme.sap.com/owner-identifier-hash: 1f74ae2fbff71a708786a4df4bb2ca87ec603581
+  name: test-cap-01-cav-v1
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplication
+      name: test-cap-01
+      uid: 3c7ba7cb-dc04-4fd1-be86-3eb3a5c64a98
+  resourceVersion: "11371108"
+  uid: 5e64489b-7346-4984-8617-e8c37338b3d8
+spec:
+  capApplicationInstance: test-cap-01
+  registrySecrets:
+    - regcred
+  version: 1.2.3
+  workloads:
+    - name: additional
+      consumedBTPServices:
+        - cap-uaa
+        - cap-service-manager
+        - cap-saas-registry
+      deploymentDefinition:
+        image: nginxdemos/nginx-hello
+        type: Additional
+        replicas: 1
+    - name: cap-backend-srv
+      consumedBTPServices:
+        - cap-uaa
+        - cap-service-manager
+        - cap-saas-registry
+      deploymentDefinition:
+        image: docker.image.repo/srv/server:latest
+        type: CAP
+        replicas: 1
+    - name: app-router
+      consumedBTPServices:
+        - cap-uaa
+        - cap-saas-registry
+      deploymentDefinition:
+        image: docker.image.repo/approuter/approuter:latest
+        type: Router
+        replicas: 1
+status:
+  conditions:
+    - reason: ReadyForProcessing
+      status: "False"
+      observedGeneration: 1
+      type: Ready
+  observedGeneration: 1
+  state: Processing
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-cap-01-cav-v1-additional
+  namespace: default
+  ownerReferences:
+  - apiVersion: sme.sap.com/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: CAPApplicationVersion
+    name: test-cap-01-cav-v1
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: test-cap-01
+      sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+      sme.sap.com/category: Workload
+      sme.sap.com/cav-version: 1.2.3
+      sme.sap.com/owner-identifier-hash: e95e0682f33a657e75e1fc435972d19bd407ba3b
+      sme.sap.com/workload-name: test-cap-01-cav-v1-additional
+      sme.sap.com/workload-type: Additional
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    spec:
+      containers:
+      - env:
+        - name: CAPOP_APP_VERSION
+          value: "1.2.3"
+        image: nginxdemos/nginx-hello
+        imagePullPolicy: Always
+        name: test-cap-01-cav-v1-additional
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+      - name: regcred
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  availableReplicas: 1
+  observedGeneration: 1
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-cap-01-cav-v1-cap-backend-srv
+  namespace: default
+  ownerReferences:
+  - apiVersion: sme.sap.com/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: CAPApplicationVersion
+    name: test-cap-01-cav-v1
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: test-cap-01
+      sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+      sme.sap.com/category: Workload
+      sme.sap.com/cav-version: 1.2.3
+      sme.sap.com/owner-identifier-hash: e95e0682f33a657e75e1fc435972d19bd407ba3b
+      sme.sap.com/workload-name: test-cap-01-cav-v1-cap-backend-srv
+      sme.sap.com/workload-type: CAP
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    spec:
+      containers:
+      - env:
+        - name: CAPOP_APP_VERSION
+          value: "1.2.3"
+        image: docker.image.repo/srv/server:latest
+        imagePullPolicy: Always
+        name: test-cap-01-cav-v1-cap-backend-srv
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+      - name: regcred
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  availableReplicas: 1
+  observedGeneration: 1
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-cap-01-cav-v1-app-router
+  namespace: default
+  ownerReferences:
+  - apiVersion: sme.sap.com/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: CAPApplicationVersion
+    name: test-cap-01-cav-v1
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: test-cap-01
+      sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+      sme.sap.com/category: Workload
+      sme.sap.com/cav-version: 1.2.3
+      sme.sap.com/owner-identifier-hash: e95e0682f33a657e75e1fc435972d19bd407ba3b
+      sme.sap.com/workload-name: test-cap-01-cav-v1-app-router
+      sme.sap.com/workload-type: Router
+
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    spec:
+      containers:
+      - env:
+        - name: CAPOP_APP_VERSION
+          value: "1.2.3"
+        image: docker.image.repo/approuter/approuter:latest
+        imagePullPolicy: Always
+        name: test-cap-01-cav-v1-app-router
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+      - name: regcred
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  availableReplicas: 1
+  observedGeneration: 1
+  readyReplicas: 1
+  replicas: 1
+  updatedReplicas: 1

@@ -294,19 +294,52 @@ func TestCAV_ContentJobCompletedExisting(t *testing.T) {
 	)
 }
 
-func TestCAV_DeploymentStatusCheck(t *testing.T) {
+func TestCAV_DeploymentStatusCheckError(t *testing.T) {
 	reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
 		TestData{
-			description: "Check deployment status in capapplication version",
+			description: "Check deployment status in capapplication version - Error",
 			initialResources: []string{
 				"testdata/common/capapplication.yaml",
 				"testdata/common/credential-secrets.yaml",
-				"testdata/capapplicationversion/cav-processing-only-deployments.yaml",
+				"testdata/capapplicationversion/cav-processing-with-deployments-error.yaml",
 			},
-			expectedResources: "testdata/capapplicationversion/expected/cav-processing-only-deployments-error.yaml",
+			expectedResources: "testdata/capapplicationversion/expected/cav-processing-with-deployments-error.yaml",
 			expectError:       true,
+		},
+	)
+}
+
+func TestCAV_DeploymentStatusCheckProcessing(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "Check deployment status in capapplication version - Processing",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/cav-processing-with-deployments-processing.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-processing-with-deployments-processing.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
+		},
+	)
+}
+
+func TestCAV_DeploymentStatusCheckAllReady(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "Check deployment status in capapplication version - Ready",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/cav-processing-with-deployments-ready.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-processing-with-deployments-ready.yaml",
 		},
 	)
 }
