@@ -852,7 +852,7 @@ func (c *Controller) checkDeploymentWorkloadStatus(ctx context.Context, cav *v1a
 		}
 
 		if workloadDeployment.Spec.Replicas == nil || *workloadDeployment.Spec.Replicas == 0 {
-			return false, nil
+			continue
 		}
 
 		if workloadDeployment.Status.Replicas == workloadDeployment.Status.UnavailableReplicas {
