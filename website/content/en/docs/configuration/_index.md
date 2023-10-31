@@ -5,16 +5,16 @@ weight: 30
 type: "docs"
 tags: ["setup"]
 description: >
-  Configuration options
+  How to configure
 ---
 
-This page provides a list of environment variables used by the CAP Operator.
+Here's a list of environment variables used by CAP Operator.
 
 ### Controller
 
-- `CERT_MANAGER`: Specifies the certificate manager to be used for TLS certificates. Possible values are:
-  - `gardener`: [SAP Gardener Certificate Management](https://github.com/gardener/cert-management)
+- `CERT_MANAGER`: specifies the certificate manager to be used for TLS certificates. Possible values are:
+  - `gardener`: [Gardener certificate management](https://github.com/gardener/cert-management)
   - `cert-manager.io`: [cert-manager.io cert-manager](https://github.com/cert-manager/cert-manager)
-- `DNS_MANAGER`: Specifies the External DNS Manager to be used. Possible values are:
-  - `gardener`: [SAP Gardener External DNS Manager](https://github.com/gardener/external-dns-management)
-  - `kubernetes`: [External DNS Management from Kubernetes](https://github.com/kubernetes-sigs/external-dns)
+- `DNS_MANAGER`: specifies the external DNS manager to be used. Possible values are:
+  - `gardener`: [Gardener external DNS manager](https://github.com/gardener/external-dns-management)
+  - `kubernetes`: [external DNS management from Kubernetes](https://github.com/kubernetes-sigs/external-dns)

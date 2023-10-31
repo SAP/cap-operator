@@ -4,5 +4,5 @@ linkTitle: "Usage"
 weight: 40
 type: "docs"
 description: >
-  Managing application with the CAP Operator
+  How to manage the application with CAP Operator
 ---

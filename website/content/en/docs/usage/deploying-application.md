@@ -4,12 +4,12 @@ linkTitle: "Deploying a CAP Application"
 weight: 20
 type: "docs"
 description: >
-  How to deploy a new CAP based application
+  How to deploy a new CAP-based application
 ---
 
-Just by defining two resources provided by the CAP Operator, namely `capapplications.sme.sap.com` and `capapplicationversions.sme.sap.com`, it possible to deploy a multi-tenant CAP application and start using it. These resources are _namespaced_ and so the CAP Operator will create all related resources (deployments, gateways, jobs etc.) within the same namespace.
+Just by defining two resources provided by CAP Operator, namely `capapplications.sme.sap.com` and `capapplicationversions.sme.sap.com`, it's possible to deploy a multi-tenant CAP application and start using it. These resources are _namespaced_ and so the CAP Operator will create all related resources (deployments, gateways, jobs etc.) within the same namespace.
 
-The object, `CAPApplication`, describes the high level attributes of an application like the BTP account where it is hosted, consumed BTP services, domains where the application routes will be made available etc. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplication).
+The object, `CAPApplication`, describes the high-level attributes of an application such as the SAP BTP account where it is hosted, the consumed SAP BTP services, domains where the application routes will be made available etc. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplication).
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -18,10 +18,10 @@ metadata:
   name: cap-app-01
   namespace: cap-app-01
 spec:
-  btpAppName: cap-app-01 # <-- short name (similar to BTP XSAPPNAME)
+  btpAppName: cap-app-01 # <-- short name (similar to SAP BTP XSAPPNAME)
   btp:
     services:
-      - class: xsuaa # <-- BTP service technical name
+      - class: xsuaa # <-- SAP BTP service technical name
         name: app-uaa # <-- name of the service instance
         secret: cap-app-01-uaa-bind-cf # <-- secret containing the credentials to access the service existing in the same namespace
       - class: saas-registry
@@ -43,7 +43,7 @@ spec:
         name: app-portal
         secret: cap-app-01-portal-bind-cf
   domains:
-    istioIngressGatewayLabels: # <-- labels used to identify the istio ingress gateway (the values provided here are the default values)
+    istioIngressGatewayLabels: # <-- labels used to identify the Istio ingress gateway (the values provided here are the default values)
       - name: app
         value: istio-ingressgateway
       - name: istio
@@ -112,16 +112,16 @@ spec:
         backoffLimit: 1
 ```
 
-> NOTE: The above example is a minimal `CAPApplicationVersion` that may be deployed. For more supported configuration and their explanations, see [here](../resources/capapplicationversion).
+> NOTE: The example above is a minimal `CAPApplicationVersion` that can be deployed. For a more supported configuration and their explanations, see [here](../resources/capapplicationversion).
 
-The controller component of the CAP Operator reacts to these objects and creates further resources which constitute a running application:
+The controller component of CAP Operator reacts to these objects and creates further resources, which constitute a running application:
 
-- Deployment (and service) for the application server with credentials (from secrets) to access BTP services injected as `VCAP_SERVICES` environment variable
-- Deployment (and service) for the AppRouter with destination mapping to the application server and subscription server (for the tenant provisioning route)
+- Deployment (and service) for the application server with credentials (from secrets) to access SAP BTP services injected as `VCAP_SERVICES` environment variable
+- Deployment (and service) for the approuter with destination mapping to the application server and subscription server (for the tenant provisioning route)
 - Job for the version content deployer
-- TLS Certificates for provided domains using either [SAP Gardener cert-management](https://github.com/gardener/cert-management) or [cert-manager.io cert-manager](https://github.com/cert-manager/cert-manager)
-- Istio Gateway resource for the application domains
+- TLS certificates for the domains provided using either [Gardener cert-management](https://github.com/gardener/cert-management) or [cert-manager.io cert-manager](https://github.com/cert-manager/cert-manager)
+- Istio gateway resource for the application domains
 
-> The content deployer is used to deploy content or configuration to BTP services, before using them.
+> The content deployer is used to deploy content or configuration to SAP BTP services, before using them.
 
-Once these resources are available, the `CAPApplicationVersion` status changes to `Ready`. **The controller then proceeds to automatically create an object of type `CAPTenant` which corresponds to the tenant of the provider sub-account.** Please see the page on [tenant subscription]({{< ref "/tenant-provisioning.md" >}}) for details on how the `CAPTenant` resource is reconciled.
+Once these resources are available, the `CAPApplicationVersion` status changes to `Ready`. **The controller proceeds to automatically create an object of type `CAPTenant`, which corresponds to the tenant of the provider subaccount.** Please see [tenant subscription]({{< ref "/tenant-provisioning.md" >}}) for details on how the `CAPTenant` resource is reconciled.

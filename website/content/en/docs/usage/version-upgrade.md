@@ -7,9 +7,9 @@ description: >
   How to upgrade to a new Application Version
 ---
 
-An important lifecycle aspect of operating multi-tenant CAP Applications is the tenant upgrade process. With CAP Operator these tenant upgrades can be fully automated by providing a new instance of `capapplicationversions.sme.sap.com` custom resource.
-As you've already seen during [initial deployment]({{< ref "/deploying-application.md" >}}), the `CAPApplicationVersion` resource describes the different components (workloads) of an application version that includes the container image to be used and the services consumed by each component.
-To upgrade the application, one needs to provide a new `CAPApplicationVersion` with the relevant `image` for each component and use a newer (higher) semantic version in the `version` field. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
+An important lifecycle aspect of operating multi-tenant CAP applications is the tenant upgrade process. With CAP Operator, these tenant upgrades can be fully automated by providing a new instance of the `capapplicationversions.sme.sap.com` custom resource.
+As you've already seen during the [initial deployment]({{< ref "/deploying-application.md" >}}), the `CAPApplicationVersion` resource describes the different components (workloads) of an application version that includes the container image to be used and the services consumed by each component.
+To upgrade the application, provide a new `CAPApplicationVersion` with the relevant `image` for each component and use a newer (higher) semantic version in the `version` field. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -90,9 +90,9 @@ spec:
         continueOnFailure: true
 ```
 
-Note that in this version (compared to version "1" used for [initial deployment]({{< ref "/deploying-application.md" >}})), new workloads of type `TenantOperation` and `CustomTenantOperation` have been added.
+Note that in this version (compared to version "1" used for the [initial deployment]({{< ref "/deploying-application.md" >}})), new workloads of type `TenantOperation` and `CustomTenantOperation` have been added.
 
-The controller component of the CAP Operator reacts to the new `CAPApplicationVersion` resource and triggers another deployment for application server, router and triggers the content deployment job. Once the new `CAPApplicationVersion` is `Ready`, **the controller then proceeds to automatically upgrade all relevant tenants** i.e. by updating the `version` attribute on the `CAPTenant` resources.
+The controller component of CAP Operator reacts to the new `CAPApplicationVersion` resource and triggers another deployment for the application server, router and triggers the content deployment job. Once the new `CAPApplicationVersion` is `Ready`, **the controller proceeds to automatically upgrade all relevant tenants** i.e. by updating the `version` attribute on the `CAPTenant` resources.
 
 The reconciliation of a `CAPTenant` changes its state to `Upgrading` and creates the `CAPTenantOperation` resource of type upgrade.
 
@@ -115,6 +115,6 @@ spec:
       continueOnFailure: true # <-- can be set for workloads of type CustomTenantOperation to indicate that the success of this job is optional for the completion of the overall operation
 ```
 
-The `CAPTenantOperation` creates jobs for each of the steps involved and executes them sequentially, till all the jobs are finished or one of them fails. The `CAPTenant` is notified about the result and updates its state accordingly.
+The `CAPTenantOperation` creates jobs for each of the steps involved and executes them sequentially until all the jobs are finished or one of them fails. The `CAPTenant` is notified about the result and updates its state accordingly.
 
-A successful completion of the `CAPTenantOperation` will cause the `VirtualService` managed by the `CAPTenant` to be modified to route HTTP traffic to the deployments of the newer `CAPApplicationVersion`. Once all tenants have been upgraded the older `CAPApplicationVersion` can be deleted.
+A successful completion of the `CAPTenantOperation` will cause the `VirtualService` managed by the `CAPTenant` to be modified to route HTTP traffic to the deployments of the newer `CAPApplicationVersion`. Once all tenants have been upgraded, the outdated `CAPApplicationVersion` can be deleted.
