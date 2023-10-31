@@ -55,7 +55,7 @@ func main() {
 	parameters.keyFile = os.Getenv("TLS_KEY")
 
 	if err != nil {
-		klog.Fatalf("Config build: ", err.Error())
+		klog.Fatal("Config build: ", err.Error())
 	}
 
 	config := util.GetConfig()
