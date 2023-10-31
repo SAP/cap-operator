@@ -5,12 +5,12 @@ weight: 20
 type: "docs"
 tags: ["setup"]
 description: >
-  How to deploy using Helm chart
+  How to deploy with Helm charts
 ---
 
-The recommended way to install the CAP operator components is using the [Helm chart](https://github.com/sap/cap-operator-lifecycle/tree/main/chart) which is published in as an OCI package here: oci://ghcr.io/sap/cap-operator-lifecycle/helm/cap-operator.
+To install CAP operator components, we recommend that you use the [Helm chart](https://github.com/sap/cap-operator-lifecycle/tree/main/chart) that is published as an OCI package here: oci://ghcr.io/sap/cap-operator-lifecycle/helm/cap-operator..
 
-To install create a namespace and helm install the chart into it. You need to supply your `domain` and the `dnsTarget` of your subscription server, either as command line parameter or with a values file:
+Create a namespace and helm install the chart to it. Supply your `domain` and the `dnsTarget` of your subscription server, either as command line parameter or with a values file:
 
 Command line parameters:
 
@@ -26,7 +26,7 @@ kubectl create namespace cap-operator-system
 helm upgrade -i -n cap-operator-system cap-operator oci://ghcr.io/sap/cap-operator-lifecycle/helm/cap-operator -f my-cap-operator-values.yaml
 ```
 
-with a values file `my-cap-operator-values.yaml` like
+with a values file `my-cap-operator-values.yaml` such as
 
 ```yaml
 subscriptionServer:

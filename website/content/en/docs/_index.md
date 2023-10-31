@@ -8,17 +8,17 @@ menu:
     pre: "<i class='fas fa-book pr-2'></i>"
 ---
 
-The [**CAP Operator**](https://github.com/sap/cap-operator) deploys and manages the lifecycle of multi-tenant [SAP Cloud Application Programming Model (CAP)](https://cap.cloud.sap/docs) based applications and related components, within a Kubernetes cluster.
+[**CAP Operator**](https://github.com/sap/cap-operator) deploys and manages the lifecycle of multi-tenant [SAP Cloud Application Programming Model](https://cap.cloud.sap/docs) based applications and related components, within a Kubernetes cluster.
 
-Main features of the CAP Operator:
+What are the main features of CAP Operator?
 
-- Quick and easy deployment of CAP application backends, router and related networking components.
-- Integrates with BTP SaaS Provisioning to handle asynchronous tenant subscription requests, executing provisioning / deprovisioning tasks as Kubernetes jobs.
-- Automatically upgrades known tenants when newer application versions are available.
-- Supports deployment of service specific content / configuration as a Kubernetes job with with every application version (e.g. HTML5 application content to HTML5 Repository Service).
-- Manages TLS certificates and DNS entries related to the deployed application, with support for customer specific domains.
+- Quick and easy deployment of CAP application back ends, router, and related networking components.
+- Integration with SAP Software-as-a-Service Provisioning service to handle asynchronous tenant subscription requests, executing provisioning / deprovisioning tasks as Kubernetes jobs.
+- Automated upgrades of known tenants as soon as new application versions are available.
+- Support of deployment of service-specific content / configuration as a Kubernetes job with every application version (for example, HTML5 application content to SAP HTML5 Application Repository service).
+- Management of TLS certificates and DNS entries related to the deployed application, with support of customer-specific domains.
 
-The following picture provides an overview of the major automation steps handled by the Operator during application deployment.
+Here's an overview of the major automation steps handled by CAP Operator during the deployment of the application:
 
 ![workflow](/cap-operator/img/workflow.png)
 

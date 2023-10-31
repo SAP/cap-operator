@@ -7,7 +7,7 @@ description: >
   How to configure the `CAPApplication` resource
 ---
 
-The below example shows a fully configured `CAPApplication`:
+Here's an example of a fully configured `CAPApplication`:
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -58,11 +58,11 @@ spec:
     tenantId: 7a49218f-c750-4e1f-a248-7f1cefa13010
 ```
 
-The overall list of BTP service instances and respective secrets (credentials) required by the application is specified as an array in `btp.services`. These service instances are assumed to exist in the provider sub-account. Operators like [cf-service-operator](https://sap.github.io/cf-service-operator/docs/) or [sap-btp-service-operator](https://github.com/SAP/sap-btp-service-operator) can be used to declaratively create these service instances and their credentials as Kubernetes resources.
+The overall list of SAP BTP service instances and respective Secrets (credentials) required by the application is specified as an array in `btp.services`. These service instances are assumed to exist in the provider subaccount. Operators such as [cf-service-operator](https://sap.github.io/cf-service-operator/docs/) or [sap-btp-service-operator](https://github.com/SAP/sap-btp-service-operator) can be used to declaratively create these service instances and their credentials as Kubernetes resources.
 
-The `provider` section specifies details of the provider sub-account linked to this application, while `globalAccountId` denotes the global account in which the provider sub-account is created. Within a global account the `btpAppName` has to be unique as this is equivalent to `XSAPPNAME` which is used in various BTP service and application constructs.
+The `provider` section specifies details of the provider subaccount linked to this application, while `globalAccountId` denotes the global account in which the provider subaccount is created. Within a global account, the `btpAppName` has to be unique as this is equivalent to `XSAPPNAME`, which is used in various SAP BTP service and application constructs.
 
-The `domains` section provides details of where the application routes are exposed. Within a SAP Gardener cluster the primary application domain is a subdomain of the cluster domain, and Gardener [cert-management](https://github.com/gardener/cert-management) will be used to request a wildcard TLS certificate for the primary domain. Additional secondary domains may also be specified (e.g. for customer specific domains) for the application.
-> NOTE: While the same secondary domain can technically be used across applications; the consumers would need to ensure that the tenant sub-domains are unique across such applications that share the same domain!
+The `domains` section provides details of where the application routes are exposed. Within a Gardener cluster, the primary application domain is a subdomain of the cluster domain, and Gardener [cert-management](https://github.com/gardener/cert-management) will be used to request a wildcard TLS certificate for the primary domain. Additional secondary domains may also be specified (for example, for customer-specific domains) for the application.
+> NOTE: While the same secondary domain can technically be used across applications; the consumers need to ensure that the tenant sub-domains are unique across such applications that share the same domain!
 
-`istioIngressGatewayLabels` are key-value pairs (string) used to identify the ingress controller component of Istio and the related Load Balancer service. These values are configured during installation of Istio service mesh in the cluster.
+`istioIngressGatewayLabels` are key-value pairs (string) used to identify the ingress controller component of Istio and the related load balancer service. These values are configured during the installation of Istio service mesh in the cluster.

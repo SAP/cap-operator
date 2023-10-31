@@ -7,7 +7,7 @@ description: >
   How tenant provisioning works
 ---
 
-From the perspective of the CAP Operator, a valid tenant for an application is represented by the resource `CAPTenant`. It refers to the `CAPApplication` it belongs to and specifies details of the BTP sub-account representing the tenant.
+From the perspective of CAP Operator, a valid tenant for an application is represented by the resource `CAPTenant`. It refers to the `CAPApplication` it belongs to and specifies the details of the SAP BTP subaccount representing the tenant.
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -25,13 +25,13 @@ spec:
 
 ## Tenant Provisioning
 
-The process of tenant provisioning starts when a consumer sub-account subscribes to the application, either via the BTP Cockpit or using the APIs provided by the SaaS Provisioning Service. This in turn initiates the asynchronous callback from the SaaS Provisioning Service instance into the cluster, and the request is handled by the [Subscription Server]({{< ref "docs/concepts/operator-components/subscription-server.md" >}}). The subscription server validates the request and creates an instance of `CAPTenant` for the identified `CAPApplication`.
+The process of tenant provisioning starts when a consumer subaccount subscribes to the application, either via the SAP BTP cockpit or using the APIs provided by the SaaS provisioning service. This, in turn, initiates the asynchronous callback from the SaaS provisioning service instance into the cluster, and the request is handled by the [subscription server]({{< ref "docs/concepts/operator-components/subscription-server.md" >}}). The subscription server validates the request and creates an instance of `CAPTenant` for the identified `CAPApplication`.
 
 {{< alert color="warning" title="Warning" >}}
-An instance of `CAPTenant` must not be created or deleted manually within the cluster. A new instance has to be created by the Subscription Server after receiving a provisioning call from BTP SaaS Provisioning Service.
+An instance of `CAPTenant` must not be created or deleted manually within the cluster. A new instance has to be created by the subscription server after receiving a provisioning call from SaaS provisioning service.
 {{< /alert >}}
 
-The controller, observing the new `CAPTenant` will initiate the provisioning process by creating the resource `CAPTenantOperation` which represents the provisioning operation.
+The controller, observing the new `CAPTenant`, will initiate the provisioning process by creating the resource `CAPTenantOperation`, which represents the provisioning operation.
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -49,17 +49,17 @@ spec:
       type: TenantOperation
 ```
 
-The `CAPTenantOperation` is further reconciled to create Kubernetes Jobs (steps) which are derived from the latest `CAPApplicationVersion` which is in `Ready` state. The steps comprise of a `TenantOperation` job and optional `CustomTenantOperation` steps. The `TenantOperation` step uses built in cli based tenant operations from `@sap/cds-mtxs` to execute tenant provisioning.
+The `CAPTenantOperation` is further reconciled to create Kubernetes jobs (steps), which are derived from the latest `CAPApplicationVersion`, which is in `Ready` state. The steps comprise of a `TenantOperation` job and optional `CustomTenantOperation` steps. The `TenantOperation` step uses built in CLI-based tenant operations from `@sap/cds-mtxs` to execute tenant provisioning.
 
-The `CAPTenant` reaches a Ready state, only after
+The `CAPTenant` reaches a `Ready` state, only after
 
-- Successful completion of all `CAPTenantOperation` steps
-- Creation of Istio `VirtualService` which allows HTTP requests on the tenant subdomain to reach the application
+- a successful completion of all `CAPTenantOperation` steps.
+- the creation of Istio `VirtualService`, which allows HTTP requests on the tenant subdomain to reach the application.
 
 ![tenant-provisioning](/cap-operator/img/activity-tenantprovisioning.png)
 
 ## Tenant Deprovisioning
 
-Similar to the tenant provisioning process, when a tenant unsubscribes from the application, the request is received by the Subscription Server. It validates the existence and status of the `CAPTenant` and submits a request for deletion to the Kubernetes API server.
+Similar to the tenant provisioning process, when a tenant unsubscribes from the application, the request is received by the subscription server. It validates the existence and status of the `CAPTenant` and submits a request for deletion to the Kubernetes API server.
 
-The controller identifies that the `CAPTenant` has to be deleted, but withholds deletion till it can create and watch for successful completion of a `CAPTenantOperation` of type deprovisioning. The `CAPTenantOperation` creates the corresponding jobs (steps) which executes the tenant deprovisioning.
+The controller identifies that the `CAPTenant` has to be deleted, but withholds deletion until it can create and watch for a successful completion of a `CAPTenantOperation` of type deprovisioning. The `CAPTenantOperation` creates the corresponding jobs (steps), which execute the tenant deprovisioning.

@@ -4,27 +4,28 @@ linkTitle: "CAP Application Components"
 weight: 20
 type: "docs"
 description: >
-  A typical multi-tenant CAP application
+  A typical multi-tenant SAP Cloud Application Programming Model application
 ---
 
-A full stack application built using the CAP programming model will have the following components
+A full-stack application built with the SAP Cloud Application Programming Model has the following components:
 
 ### SAP BTP Service Instances
 
-Multi-tenant CAP based applications need to consume services from SAP BTP like XSUAA, SaaS Provisioning etc. These service instances need to be created within a BTP Provider Account. Service keys (bindings) need to be created for these instances which generate the credentials used by the application for accessing these services.
+Multi-tenant CAP-based applications consume services from SAP BTP such as [SAP Authorization and Trust Management Service](https://help.sap.com/docs/authorization-and-trust-management-service?locale=en-US), SAP Software-as-a-Service Provisioning service, and so on. You need to create these service instances within an SAP BTP provider account as well as service keys (bindings) for these instances, which generate the credentials used by the application for accessing these services.
 
-### CAP application server
+### CAP Application Server
 
-The application provides data models which will be deployed to the connected database. An HTTP server exposes defined services and handles server side application logic. For more details check out [CAP documentation](https://cap.cloud.sap/docs). It is also possible that the application is split into multiple servers (services) which work together.
+The application provides data models that will be deployed to the connected database. An HTTP server exposes defined services and handles server-side application logic. For more details, check out [the documentation of SAP Cloud Application Programming Model](https://cap.cloud.sap/docs). It's also possible to split the application into multiple servers (services) that work together.
 
-### CAP components to support Multi-tenancy
+### CAP Components to Support Multitenancy
 
-CAP provides the module `@sap/cds-mtxs` which can be operated as a sidecar (component running independently from the application server). This component is then responsible for handling requests related to tenant management like onboarding which then creates the required schema in the connected database. This module also supports triggering tenant management tasks as CLI commands.
+CAP provides the module `@sap/cds-mtxs`, which can be operated as a sidecar (component running independently from the application server). This component is responsible for handling requests related to tenant management such as onboarding, which then creates the required schema in the connected database. This module also supports triggering tenant management tasks as CLI commands.
 
-### AppRouter
+### Approuter
 
-The [AppRouter](https://www.npmjs.com/package/@sap/approuter), or an extended version of it, takes care of authenticating requests (using the XSUAA service) and routes the requests to the application servers or related services (e.g. HTML5 Application Repository Service).
+The [Approuter](https://www.npmjs.com/package/@sap/approuter), or an extended version of it, takes care of authenticating requests (using the [SAP Authorization and Trust Management Service](https://help.sap.com/docs/authorization-and-trust-management-service?locale=en-US)) and routes the requests to the application servers or related services (for example, 
+SAP HTML5 Application Repository service for SAP BTP).
 
-### SAP Fiori applications
+### SAP Fiori Applications
 
-Multiple SAP Fiori frontend applications may connect to the CAP application backend. These UI5 applications are deployed to the HTML5 Application Repository Service and served from there. Similarly, the application may have content specific to other services which need to be deployed, like the Portal Service.
+Multiple SAP Fiori front-end applications can connect to the CAP application back end. These UI5 applications are deployed to the SAP HTML5 Application Repository service for SAP BTP and served from there. Similarly, the application can have content specific to other services that need to be deployed, such as the SAP Cloud Portal service.
