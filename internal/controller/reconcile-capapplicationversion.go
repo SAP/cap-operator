@@ -86,7 +86,7 @@ func (c *Controller) updateCAPApplicationVersionStatus(ctx context.Context, cav 
 		*cav = *cavUpdated
 	}
 	if statusErr != nil {
-		klog.Error("could not update status of %s %s.%s: ", v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name, statusErr.Error())
+		klog.Errorf("could not update status of %s %s.%s: %v", v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name, statusErr.Error())
 	}
 
 	return statusErr

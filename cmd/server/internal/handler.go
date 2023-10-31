@@ -205,7 +205,7 @@ func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
 			return ResourceFound
 		}
 	}
-	klog.V(2).Info("Done with create: ", message, tenant)
+	klog.V(2).Info("Done with create: ", message(created), tenant)
 	return &Result{Tenant: tenant, Message: message(created)}
 }
 
