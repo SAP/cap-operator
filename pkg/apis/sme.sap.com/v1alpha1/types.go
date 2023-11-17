@@ -128,13 +128,12 @@ type BTP struct {
 
 // Service information
 type ServiceInfo struct {
-	// Name of service instance
+	// A unique name of service based on usage in the app (this may be the name of the instance or binding)
 	Name string `json:"name"`
 	// Secret containing service access credentials
 	Secret string `json:"secret"`
 	// Type of service
 	Class string `json:"class"`
-	// TODO: enhance this with params and other options --> Needed if/when we want to create the services via BTP/CF Operator
 }
 
 // Custom resource status
