@@ -30,8 +30,8 @@ spec:
   versionUpgradeStrategy: always
 status:
   conditions:
-    - message: "CAPTenantOperation default.test-cap-01-provider-upg successfully completed"
-      reason: UpgradeCompleted
+    - message: "VirtualService (and DestinationRule) default.test-cap-01-provider was reconciled"
+      reason: TenantNetworkingModified
       observedGeneration: 2
       status: "True"
       type: Ready

@@ -615,6 +615,8 @@ func compareResourceFields(actual runtime.Object, expected runtime.Object, t *te
 			networkingv1beta1.StringMatch{},
 			networkingv1beta1.HTTPMatchRequest{},
 			networkingv1beta1.HTTPRoute{},
+			networkingv1beta1.Headers{},
+			networkingv1beta1.Headers_HeaderOperations{},
 			networkingv1beta1.VirtualService{},
 			networkingv1beta1.Server{},
 			networkingv1beta1.Port{},

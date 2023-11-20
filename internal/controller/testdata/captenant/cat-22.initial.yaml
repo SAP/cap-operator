@@ -96,11 +96,38 @@ spec:
     - my-provider.foo.bar.local
   http:
     - match:
-        - uri:
-            prefix: /
+      - headers:
+          Cookie:
+            regex: (^|.*; )COP_CAV=test-cap-01-cav-v1($|; .*)
+        uri:
+          regex: ^|.*(logout|logoff).*
       route:
-        - destination:
-            host: test-cap-01-cav-v1-router-svc.default.svc.cluster.local
-            port:
-              number: 4000
-          weight: 100
+      - destination:
+          host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
+          port:
+            number: 5000
+        headers:
+          response:
+            set:
+              Set-Cookie: COP_CAV=test-cap-01-cav-v1;Path=/;HttpOnly;Secure;Max-Age=0
+        weight: 100
+    - match:
+      - headers:
+          Cookie:
+            regex: (^|.*; )COP_CAV=test-cap-01-cav-v1($|; .*)
+      route:
+      - destination:
+          host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
+          port:
+            number: 5000
+        weight: 100
+    - route:
+      - destination:
+          host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
+          port:
+            number: 5000
+        headers:
+          response:
+            add:
+              Set-Cookie: COP_CAV=test-cap-01-cav-v1;Path=/;HttpOnly;Secure;Max-Age=Session
+        weight: 100

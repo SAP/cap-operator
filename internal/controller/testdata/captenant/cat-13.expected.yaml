@@ -30,8 +30,8 @@ spec:
   versionUpgradeStrategy: always
 status:
   conditions:
-    - message: "CAPTenantOperation default.test-cap-01-provider-upg successfully completed"
-      reason: UpgradeCompleted
+    - message: "VirtualService (and DestinationRule) default.test-cap-01-provider was reconciled"
+      reason: TenantNetworkingModified
       observedGeneration: 2
       status: "True"
       type: Ready
@@ -45,7 +45,7 @@ apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
   annotations:
-    sme.sap.com/resource-hash: "4973adfd25df6a6ef553c2d02ec88a8165e83bc25cc46d608904ffb7c6a77cbd"
+    sme.sap.com/resource-hash: "16ee2be76eba702230c26023607481284a431ffe549c115dcb3f5efe861019c7"
     sme.sap.com/owner-identifier: default.test-cap-01-provider
   labels:
     sme.sap.com/owner-generation: "2"
@@ -67,14 +67,95 @@ spec:
     - my-provider.foo.bar.local
   http:
     - match:
-        - uri:
-            prefix: /
+      - headers:
+          Cookie:
+            regex: (^|.*; )COP_CAV=test-cap-01-cav-v1($|; .*)
+        uri:
+          regex: ^|.*(logout|logoff).*
       route:
-        - destination:
-            host: test-cap-01-cav-v2-app-router-svc.default.svc.cluster.local
-            port:
-              number: 5000
-          weight: 100
+      - destination:
+          host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
+          port:
+            number: 5000
+        headers:
+          response:
+            set:
+              Set-Cookie: COP_CAV=test-cap-01-cav-v1;Path=/;HttpOnly;Secure;Max-Age=0
+        weight: 100
+    - match:
+      - headers:
+          Cookie:
+            regex: (^|.*; )COP_CAV=test-cap-01-cav-v2($|; .*)
+        uri:
+          regex: ^|.*(logout|logoff).*
+      route:
+      - destination:
+          host: test-cap-01-cav-v2-app-router-svc.default.svc.cluster.local
+          port:
+            number: 5000
+        headers:
+          response:
+            set:
+              Set-Cookie: COP_CAV=test-cap-01-cav-v2;Path=/;HttpOnly;Secure;Max-Age=0
+        weight: 100
+    - match:
+      - headers:
+          Cookie:
+            regex: (^|.*; )COP_CAV=test-cap-01-cav-v1($|; .*)
+      route:
+      - destination:
+          host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
+          port:
+            number: 5000
+        weight: 100
+    - match:
+      - headers:
+          Cookie:
+            regex: (^|.*; )COP_CAV=test-cap-01-cav-v2($|; .*)
+      route:
+      - destination:
+          host: test-cap-01-cav-v2-app-router-svc.default.svc.cluster.local
+          port:
+            number: 5000
+        weight: 100
+    - route:
+      - destination:
+          host: test-cap-01-cav-v2-app-router-svc.default.svc.cluster.local
+          port:
+            number: 5000
+        headers:
+          response:
+            add:
+              Set-Cookie: COP_CAV=test-cap-01-cav-v2;Path=/;HttpOnly;Secure;Max-Age=Session
+        weight: 100
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  annotations:
+    sme.sap.com/resource-hash: 5d065e2112f26ad9b5ace902461365ba9cbf539123dea326f060534bc30e22d1
+    sme.sap.com/owner-identifier: default.test-cap-01-provider
+  generation: 0
+  labels:
+    sme.sap.com/owner-generation: "2"
+    sme.sap.com/owner-identifier-hash: db1f1fd7eaeb0e6407c741b7e4b2540044bcc4ec
+  name: test-cap-01-provider-test-cap-01-cav-v1
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPTenant
+      name: test-cap-01-provider
+spec:
+  host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
+  trafficPolicy:
+    loadBalancer:
+      consistentHash:
+        httpCookie:
+          name: JSESSIONID
+          path: /
+          ttl: 0s
 ---
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
