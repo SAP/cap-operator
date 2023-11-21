@@ -304,6 +304,14 @@ type ContainerDetails struct {
 	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
 	// SecurityContext for the Pod
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+	// Node Selector
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	// Affinity
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// Tolerations
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+	// Topology spread constraints
+	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 }
 
 // Configuration of Service Ports for the deployment

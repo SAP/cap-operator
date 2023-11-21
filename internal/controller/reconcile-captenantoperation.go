@@ -38,15 +38,19 @@ type UpgradePayload struct {
 }
 
 type tentantOperationWorkload struct {
-	image                   string
-	imagePullPolicy         corev1.PullPolicy
-	command                 []string
-	env                     []corev1.EnvVar
-	resources               corev1.ResourceRequirements
-	securityContext         *corev1.SecurityContext
-	podSecurityContext      *corev1.PodSecurityContext
-	backoffLimit            *int32
-	ttlSecondsAfterFinished *int32
+	image                     string
+	imagePullPolicy           corev1.PullPolicy
+	command                   []string
+	env                       []corev1.EnvVar
+	resources                 corev1.ResourceRequirements
+	securityContext           *corev1.SecurityContext
+	podSecurityContext        *corev1.PodSecurityContext
+	affinity                  *corev1.Affinity
+	nodeSelector              map[string]string
+	topologySpreadConstraints []corev1.TopologySpreadConstraint
+	tolerations               []corev1.Toleration
+	backoffLimit              *int32
+	ttlSecondsAfterFinished   *int32
 }
 
 const (
@@ -484,10 +488,14 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 					Annotations: params.annotations,
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy:    corev1.RestartPolicyNever,
-					ImagePullSecrets: params.imagePullSecrets,
-					Containers:       getContainers(payload, ctop, derivedWorkload, workload, params),
-					SecurityContext:  derivedWorkload.podSecurityContext,
+					RestartPolicy:             corev1.RestartPolicyNever,
+					ImagePullSecrets:          params.imagePullSecrets,
+					Containers:                getContainers(payload, ctop, derivedWorkload, workload, params),
+					SecurityContext:           derivedWorkload.podSecurityContext,
+					NodeSelector:              derivedWorkload.nodeSelector,
+					Affinity:                  derivedWorkload.affinity,
+					TopologySpreadConstraints: derivedWorkload.topologySpreadConstraints,
+					Tolerations:               derivedWorkload.tolerations,
 				},
 			},
 		},
@@ -574,6 +582,10 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 		result.ttlSecondsAfterFinished = &tTLSecondsAfterFinishedValue
 		result.securityContext = workload.DeploymentDefinition.SecurityContext
 		result.podSecurityContext = workload.DeploymentDefinition.PodSecurityContext
+		result.affinity = workload.DeploymentDefinition.Affinity
+		result.nodeSelector = workload.DeploymentDefinition.NodeSelector
+		result.topologySpreadConstraints = workload.DeploymentDefinition.TopologySpreadConstraints
+		result.tolerations = workload.DeploymentDefinition.Tolerations
 	} else {
 		// use job definition
 		result.image = workload.JobDefinition.Image
@@ -589,6 +601,10 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 		if workload.JobDefinition.TTLSecondsAfterFinished != nil {
 			result.ttlSecondsAfterFinished = workload.JobDefinition.TTLSecondsAfterFinished
 		}
+		result.affinity = workload.JobDefinition.Affinity
+		result.nodeSelector = workload.JobDefinition.NodeSelector
+		result.topologySpreadConstraints = workload.JobDefinition.TopologySpreadConstraints
+		result.tolerations = workload.JobDefinition.Tolerations
 	}
 	return result
 }
@@ -612,9 +628,13 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 					Annotations: params.annotations,
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy:    corev1.RestartPolicyNever,
-					SecurityContext:  workload.JobDefinition.PodSecurityContext,
-					ImagePullSecrets: params.imagePullSecrets,
+					RestartPolicy:             corev1.RestartPolicyNever,
+					SecurityContext:           workload.JobDefinition.PodSecurityContext,
+					NodeSelector:              workload.JobDefinition.NodeSelector,
+					Affinity:                  workload.JobDefinition.Affinity,
+					TopologySpreadConstraints: workload.JobDefinition.TopologySpreadConstraints,
+					Tolerations:               workload.JobDefinition.Tolerations,
+					ImagePullSecrets:          params.imagePullSecrets,
 					Containers: []corev1.Container{
 						{
 							Name:            workload.Name,

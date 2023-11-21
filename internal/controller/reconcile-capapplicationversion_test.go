@@ -624,3 +624,83 @@ func TestCAV_Annotations(t *testing.T) {
 		},
 	)
 }
+
+func TestCAV_NodeSelector(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with node selector",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/content-job-completed.yaml",
+				"testdata/capapplicationversion/cav-node-selector.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-node-selector.yaml",
+			backlogItems: []string{
+				"ERP4SMEPREPWORKAPPPLAT-3294", // More workload configuration enhancements
+			},
+		},
+	)
+}
+
+func TestCAV_Affinity(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with affinity",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/content-job-completed.yaml",
+				"testdata/capapplicationversion/cav-affinity.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-affinity.yaml",
+			backlogItems: []string{
+				"ERP4SMEPREPWORKAPPPLAT-3294", // More workload configuration enhancements
+			},
+		},
+	)
+}
+
+func TestCAV_TopologySpreadConstraints(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with topology spread constraints",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/content-job-completed.yaml",
+				"testdata/capapplicationversion/cav-topology.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-topology.yaml",
+			backlogItems: []string{
+				"ERP4SMEPREPWORKAPPPLAT-3294", // More workload configuration enhancements
+			},
+		},
+	)
+}
+
+func TestCAV_Tolerations(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with tolerations",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/content-job-completed.yaml",
+				"testdata/capapplicationversion/cav-toleration.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-toleration.yaml",
+			backlogItems: []string{
+				"ERP4SMEPREPWORKAPPPLAT-3294", // More workload configuration enhancements
+			},
+		},
+	)
+}
