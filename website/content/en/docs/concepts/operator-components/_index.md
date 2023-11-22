@@ -18,6 +18,6 @@ CAP Operator is comprised of the following components:
 
 The following diagram depicts how the main components interact when deployed to a cluster:
 
-![cluster-components](/cap-operator/img/block-cluster.png)
+![cluster-components](/cap-operator/img/block-cluster.drawio.svg)
 
 Looking for more details about the CAP Operator components? Go to the next pages. 
