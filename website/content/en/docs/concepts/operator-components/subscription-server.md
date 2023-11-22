@@ -18,7 +18,7 @@ The subscription server returns an `Accepted` (202) response code and starts a r
 Once the tenant provisioning process has completed (or has failed), the tracking routine will return the appropriate status to the SaaS Registry via an asynchronous callback (by obtaining the necessary authorization token).
 
 
-![subscription](/cap-operator/img/block-subscription.png)
+![subscription](/cap-operator/img/block-subscription.drawio.svg)
 
 
 ([More details about asynchronous tenant subscription](https://controlcenter.ondemand.com/index.html#/knowledge_center/articles/2316430f7d804820934910db736cefbf).)
