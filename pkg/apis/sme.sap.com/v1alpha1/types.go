@@ -240,7 +240,7 @@ type WorkloadDetails struct {
 
 // DeploymentDetails specifies the details of the Deployment
 type DeploymentDetails struct {
-	ContainerDetails `json:",inline"`
+	CommonDetails `json:",inline"`
 	// Type of the Deployment
 	Type DeploymentType `json:"type"`
 	// Number of replicas
@@ -267,7 +267,7 @@ const (
 
 // JobDetails specifies the details of the Job
 type JobDetails struct {
-	ContainerDetails `json:",inline"`
+	CommonDetails `json:",inline"`
 	// Type of Job
 	Type JobType `json:"type"`
 	// Specifies the number of retries before marking this job failed.
@@ -288,8 +288,8 @@ const (
 	JobCustomTenantOperation JobType = "CustomTenantOperation"
 )
 
-// ContainerDetails specifies the details of the Container
-type ContainerDetails struct {
+// CommonDetails specifies the common details of the Container/Pod that may be relevant for both Deployments and Jobs
+type CommonDetails struct {
 	// Image info for the container
 	Image string `json:"image"`
 	// Pull policy for the container image
@@ -304,8 +304,12 @@ type ContainerDetails struct {
 	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
 	// SecurityContext for the Pod
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+	// Node Name
+	NodeName string `json:"nodeName,omitempty"`
 	// Node Selector
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	// Priority Class
+	PriorityClassName string `json:"priorityClassName,omitempty"`
 	// Affinity
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
 	// Tolerations

@@ -47,6 +47,8 @@ type tentantOperationWorkload struct {
 	podSecurityContext        *corev1.PodSecurityContext
 	affinity                  *corev1.Affinity
 	nodeSelector              map[string]string
+	nodeName                  string
+	priorityClassName         string
 	topologySpreadConstraints []corev1.TopologySpreadConstraint
 	tolerations               []corev1.Toleration
 	backoffLimit              *int32
@@ -493,6 +495,8 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 					Containers:                getContainers(payload, ctop, derivedWorkload, workload, params),
 					SecurityContext:           derivedWorkload.podSecurityContext,
 					NodeSelector:              derivedWorkload.nodeSelector,
+					NodeName:                  derivedWorkload.nodeName,
+					PriorityClassName:         derivedWorkload.priorityClassName,
 					Affinity:                  derivedWorkload.affinity,
 					TopologySpreadConstraints: derivedWorkload.topologySpreadConstraints,
 					Tolerations:               derivedWorkload.tolerations,
@@ -584,6 +588,8 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 		result.podSecurityContext = workload.DeploymentDefinition.PodSecurityContext
 		result.affinity = workload.DeploymentDefinition.Affinity
 		result.nodeSelector = workload.DeploymentDefinition.NodeSelector
+		result.nodeName = workload.DeploymentDefinition.NodeName
+		result.priorityClassName = workload.DeploymentDefinition.PriorityClassName
 		result.topologySpreadConstraints = workload.DeploymentDefinition.TopologySpreadConstraints
 		result.tolerations = workload.DeploymentDefinition.Tolerations
 	} else {
@@ -603,6 +609,8 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 		}
 		result.affinity = workload.JobDefinition.Affinity
 		result.nodeSelector = workload.JobDefinition.NodeSelector
+		result.nodeName = workload.JobDefinition.NodeName
+		result.priorityClassName = workload.JobDefinition.PriorityClassName
 		result.topologySpreadConstraints = workload.JobDefinition.TopologySpreadConstraints
 		result.tolerations = workload.JobDefinition.Tolerations
 	}
@@ -631,6 +639,8 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 					RestartPolicy:             corev1.RestartPolicyNever,
 					SecurityContext:           workload.JobDefinition.PodSecurityContext,
 					NodeSelector:              workload.JobDefinition.NodeSelector,
+					NodeName:                  workload.JobDefinition.NodeName,
+					PriorityClassName:         workload.JobDefinition.PriorityClassName,
 					Affinity:                  workload.JobDefinition.Affinity,
 					TopologySpreadConstraints: workload.JobDefinition.TopologySpreadConstraints,
 					Tolerations:               workload.JobDefinition.Tolerations,

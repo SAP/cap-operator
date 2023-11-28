@@ -616,6 +616,8 @@ spec:
                               format: int32
                               type: integer
                           type: object
+                        nodeName:
+                          type: string
                         nodeSelector:
                           additionalProperties:
                             type: string
@@ -706,6 +708,8 @@ spec:
                             - port
                             type: object
                           type: array
+                        priorityClassName:
+                          type: string
                         readinessProbe:
                           properties:
                             exec:
@@ -1395,6 +1399,8 @@ spec:
                           type: string
                         imagePullPolicy:
                           type: string
+                        nodeName:
+                          type: string
                         nodeSelector:
                           additionalProperties:
                             type: string
@@ -1463,6 +1469,8 @@ spec:
                                   type: string
                               type: object
                           type: object
+                        priorityClassName:
+                          type: string
                         resources:
                           properties:
                             claims:

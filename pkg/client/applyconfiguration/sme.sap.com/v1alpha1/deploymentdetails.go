@@ -15,12 +15,12 @@ import (
 // DeploymentDetailsApplyConfiguration represents an declarative configuration of the DeploymentDetails type for use
 // with apply.
 type DeploymentDetailsApplyConfiguration struct {
-	ContainerDetailsApplyConfiguration `json:",inline"`
-	Type                               *smesapcomv1alpha1.DeploymentType `json:"type,omitempty"`
-	Replicas                           *int32                            `json:"replicas,omitempty"`
-	Ports                              []PortsApplyConfiguration         `json:"ports,omitempty"`
-	LivenessProbe                      *v1.Probe                         `json:"livenessProbe,omitempty"`
-	ReadinessProbe                     *v1.Probe                         `json:"readinessProbe,omitempty"`
+	CommonDetailsApplyConfiguration `json:",inline"`
+	Type                            *smesapcomv1alpha1.DeploymentType `json:"type,omitempty"`
+	Replicas                        *int32                            `json:"replicas,omitempty"`
+	Ports                           []PortsApplyConfiguration         `json:"ports,omitempty"`
+	LivenessProbe                   *v1.Probe                         `json:"livenessProbe,omitempty"`
+	ReadinessProbe                  *v1.Probe                         `json:"readinessProbe,omitempty"`
 }
 
 // DeploymentDetailsApplyConfiguration constructs an declarative configuration of the DeploymentDetails type for use with
@@ -89,6 +89,14 @@ func (b *DeploymentDetailsApplyConfiguration) WithPodSecurityContext(value v1.Po
 	return b
 }
 
+// WithNodeName sets the NodeName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the NodeName field is set to the value of the last call.
+func (b *DeploymentDetailsApplyConfiguration) WithNodeName(value string) *DeploymentDetailsApplyConfiguration {
+	b.NodeName = &value
+	return b
+}
+
 // WithNodeSelector puts the entries into the NodeSelector field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, the entries provided by each call will be put on the NodeSelector field,
@@ -100,6 +108,14 @@ func (b *DeploymentDetailsApplyConfiguration) WithNodeSelector(entries map[strin
 	for k, v := range entries {
 		b.NodeSelector[k] = v
 	}
+	return b
+}
+
+// WithPriorityClassName sets the PriorityClassName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the PriorityClassName field is set to the value of the last call.
+func (b *DeploymentDetailsApplyConfiguration) WithPriorityClassName(value string) *DeploymentDetailsApplyConfiguration {
+	b.PriorityClassName = &value
 	return b
 }
 

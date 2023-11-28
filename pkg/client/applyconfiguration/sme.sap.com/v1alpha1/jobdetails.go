@@ -15,10 +15,10 @@ import (
 // JobDetailsApplyConfiguration represents an declarative configuration of the JobDetails type for use
 // with apply.
 type JobDetailsApplyConfiguration struct {
-	ContainerDetailsApplyConfiguration `json:",inline"`
-	Type                               *smesapcomv1alpha1.JobType `json:"type,omitempty"`
-	BackoffLimit                       *int32                     `json:"backoffLimit,omitempty"`
-	TTLSecondsAfterFinished            *int32                     `json:"ttlSecondsAfterFinished,omitempty"`
+	CommonDetailsApplyConfiguration `json:",inline"`
+	Type                            *smesapcomv1alpha1.JobType `json:"type,omitempty"`
+	BackoffLimit                    *int32                     `json:"backoffLimit,omitempty"`
+	TTLSecondsAfterFinished         *int32                     `json:"ttlSecondsAfterFinished,omitempty"`
 }
 
 // JobDetailsApplyConfiguration constructs an declarative configuration of the JobDetails type for use with
@@ -87,6 +87,14 @@ func (b *JobDetailsApplyConfiguration) WithPodSecurityContext(value v1.PodSecuri
 	return b
 }
 
+// WithNodeName sets the NodeName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the NodeName field is set to the value of the last call.
+func (b *JobDetailsApplyConfiguration) WithNodeName(value string) *JobDetailsApplyConfiguration {
+	b.NodeName = &value
+	return b
+}
+
 // WithNodeSelector puts the entries into the NodeSelector field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, the entries provided by each call will be put on the NodeSelector field,
@@ -98,6 +106,14 @@ func (b *JobDetailsApplyConfiguration) WithNodeSelector(entries map[string]strin
 	for k, v := range entries {
 		b.NodeSelector[k] = v
 	}
+	return b
+}
+
+// WithPriorityClassName sets the PriorityClassName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the PriorityClassName field is set to the value of the last call.
+func (b *JobDetailsApplyConfiguration) WithPriorityClassName(value string) *JobDetailsApplyConfiguration {
+	b.PriorityClassName = &value
 	return b
 }
 

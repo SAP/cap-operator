@@ -704,3 +704,23 @@ func TestCAV_Tolerations(t *testing.T) {
 		},
 	)
 }
+
+func TestCAV_Node_PriorityClass_Names(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with nodeName and priorityClassName",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/content-job-completed.yaml",
+				"testdata/capapplicationversion/cav-node-prio.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-node-prio.yaml",
+			backlogItems: []string{
+				"ERP4SMEPREPWORKAPPPLAT-3294", // More workload configuration enhancements
+			},
+		},
+	)
+}
