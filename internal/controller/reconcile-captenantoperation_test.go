@@ -660,3 +660,25 @@ func TestMultiXSUAAWithAnnotation(t *testing.T) {
 		},
 	)
 }
+
+func TestProvisioningWithSchedulingConfig(t *testing.T) {
+	_ = reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+		TestData{
+			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-3294"}, // More workload configuration enhancements
+			description:  "Provisioning - With scheduling config",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+				"testdata/common/capapplicationversion-v1-scheduling.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/captenantoperation/ctop-scheduling.initial.yaml", // The config in there might not make sense in the real world!
+			},
+			expectedResources: "testdata/captenantoperation/ctop-scheduling.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+			},
+		},
+	)
+}
