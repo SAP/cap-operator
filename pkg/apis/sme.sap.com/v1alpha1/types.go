@@ -304,17 +304,17 @@ type CommonDetails struct {
 	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
 	// SecurityContext for the Pod
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
-	// Node Name
+	// The name of the node to which the Pod should be assigned to. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodename
 	NodeName string `json:"nodeName,omitempty"`
-	// Node Selector
+	// The label selectors using which node for the Pod would be determined. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-	// Priority Class
+	// Priority class name mapping used to prioritize and schedule the Pod. See: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass
 	PriorityClassName string `json:"priorityClassName,omitempty"`
-	// Affinity
+	// Affinity/anti-affinity used to provide more constraints for node selection. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
 	Affinity *corev1.Affinity `json:"affinity,omitempty"`
-	// Tolerations
+	// Tolerations used to schedule the Pod. See: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-	// Topology spread constraints
+	// The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 }
 

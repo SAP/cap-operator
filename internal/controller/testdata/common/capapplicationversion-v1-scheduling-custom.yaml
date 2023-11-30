@@ -1,0 +1,142 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPApplicationVersion
+metadata:
+  generation: 1
+  annotations:
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+    sme.sap.com/owner-identifier: default.test-cap-01
+  labels:
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/owner-generation: "2"
+    sme.sap.com/owner-identifier-hash: 1f74ae2fbff71a708786a4df4bb2ca87ec603581
+  name: test-cap-01-cav-v2
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplication
+      name: test-cap-01
+      uid: 3c7ba7cb-dc04-4fd1-be86-3eb3a5c64a98
+  resourceVersion: "11371108"
+  uid: 5e64489b-7346-4984-8617-e8c37338b3d8
+spec:
+  capApplicationInstance: test-cap-01
+  version: 8.9.10
+  registrySecrets:
+    - regcred
+  workloads:
+    - name: cap-backend
+      consumedBTPServices:
+        - cap-uaa
+        - cap-service-manager
+        - cap-saas-registry
+      deploymentDefinition:
+        type: CAP
+        image: docker.image.repo/srv/server:v2
+        env:
+          - name: foo
+            value: bar
+    - name: content-job
+      consumedBTPServices:
+        - cap-uaa
+      jobDefinition:
+        type: Content
+        image: docker.image.repo/content/cap-content:v2
+    - name: app-router
+      consumedBTPServices:
+        - cap-uaa
+        - cap-saas-registry
+      deploymentDefinition:
+        type: Router
+        image: docker.image.repo/approuter/approuter:v2
+    - name: ten-op
+      consumedBTPServices:
+        - cap-uaa
+        - cap-service-manager
+        - cap-saas-registry
+      jobDefinition:
+        type: "TenantOperation"
+        backoffLimit: 1
+        ttlSecondsAfterFinished: 150
+        image: docker.image.repo/srv/server:latest
+        env:
+          - name: flow
+            value: glow
+    - name: custom-say
+      consumedBTPServices:
+        - cap-uaa
+      jobDefinition:
+        type: "CustomTenantOperation"
+        image: docker/whalesay
+        command: ["cowsay", "$(CAPOP_TENANT_OPERATION)", "$(CAPOP_TENANT_ID)"]
+        backoffLimit: 1
+        ttlSecondsAfterFinished: 150
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 2000
+        podSecurityContext:
+          runAsUser: 2000
+          runAsGroup: 2000
+        nodeSelector:
+          disktype: ssd
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: topology.kubernetes.io/zone
+                      operator: In
+                      values:
+                        - antarctica-east1
+                        - antarctica-west1
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 1
+                preference:
+                  matchExpressions:
+                    - key: another-node-label-key
+                      operator: In
+                      values:
+                        - another-node-label-value
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: someZone
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                foo: bar
+            matchLabelKeys:
+              - dummy-test-1.27
+        tolerations:
+          - key: "test"
+            operator: "Equal"
+            value: "foo"
+            effect: "NoExecute"
+            tolerationSeconds: 300
+          - key: "never-exec"
+            operator: "Equal"
+            value: "noexec"
+            effect: "NoExecute"
+        nodeName: foo
+        priorityClassName: prio
+        env:
+          - name: close
+            value: encounter
+  tenantOperations:
+    provisioning:
+      - workloadName: custom-say
+      - workloadName: content-job # this will be ignored
+      - workloadName: ten-op
+    upgrade:
+      - workloadName: custom-say
+      - workloadName: ten-op
+      - workloadName: custom-say
+status:
+  conditions:
+    - lastTransitionTime: "2022-03-18T23:07:47Z"
+      lastUpdateTime: "2022-03-18T23:07:47Z"
+      reason: CreatedDeployments
+      status: "True"
+      type: Ready
+  observedGeneration: 1
+  state: Ready
