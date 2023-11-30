@@ -1478,13 +1478,13 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.ContainerDetails">ContainerDetails
+<h3 id="sme.sap.com/v1alpha1.CommonDetails">CommonDetails
 </h3>
 <p>
 (<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>, <a href="#sme.sap.com/v1alpha1.JobDetails">JobDetails</a>)
 </p>
 <div>
-<p>ContainerDetails specifies the details of the Container</p>
+<p>CommonDetails specifies the common details of the Container/Pod that may be relevant for both Deployments and Jobs</p>
 </div>
 <table>
 <thead>
@@ -1581,6 +1581,78 @@ Kubernetes core/v1.PodSecurityContext
 <p>SecurityContext for the Pod</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>nodeName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The name of the node to which the Pod should be assigned to. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodename">https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodename</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>nodeSelector</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>The label selectors using which node for the Pod would be determined. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector">https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Priority class name mapping used to prioritize and schedule the Pod. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass">https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>affinity</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Affinity">
+Kubernetes core/v1.Affinity
+</a>
+</em>
+</td>
+<td>
+<p>Affinity/anti-affinity used to provide more constraints for node selection. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity">https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tolerations</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Toleration">
+[]Kubernetes core/v1.Toleration
+</a>
+</em>
+</td>
+<td>
+<p>Tolerations used to schedule the Pod. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/">https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>topologySpreadConstraints</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#TopologySpreadConstraint">
+[]Kubernetes core/v1.TopologySpreadConstraint
+</a>
+</em>
+</td>
+<td>
+<p>The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints">https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints</a></p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails
@@ -1601,16 +1673,16 @@ Kubernetes core/v1.PodSecurityContext
 <tbody>
 <tr>
 <td>
-<code>ContainerDetails</code><br/>
+<code>CommonDetails</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.ContainerDetails">
-ContainerDetails
+<a href="#sme.sap.com/v1alpha1.CommonDetails">
+CommonDetails
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ContainerDetails</code> are embedded into this type.)
+(Members of <code>CommonDetails</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -1765,16 +1837,16 @@ int64
 <tbody>
 <tr>
 <td>
-<code>ContainerDetails</code><br/>
+<code>CommonDetails</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.ContainerDetails">
-ContainerDetails
+<a href="#sme.sap.com/v1alpha1.CommonDetails">
+CommonDetails
 </a>
 </em>
 </td>
 <td>
 <p>
-(Members of <code>ContainerDetails</code> are embedded into this type.)
+(Members of <code>CommonDetails</code> are embedded into this type.)
 </p>
 </td>
 </tr>
@@ -2252,5 +2324,5 @@ JobDetails
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>0db0df0</code>.
+on git commit <code>b107e81</code>.
 </em></p>

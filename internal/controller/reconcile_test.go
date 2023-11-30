@@ -205,7 +205,7 @@ func createCavCRO(name string, state v1alpha1.CAPApplicationVersionState, versio
 					},
 					DeploymentDefinition: &v1alpha1.DeploymentDetails{
 						Type: v1alpha1.DeploymentCAP,
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "test://image",
 						},
 					},
@@ -214,7 +214,7 @@ func createCavCRO(name string, state v1alpha1.CAPApplicationVersionState, versio
 					Name:                "app-router",
 					ConsumedBTPServices: []string{},
 					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "test://image",
 						},
 					},

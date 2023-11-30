@@ -8,29 +8,37 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
-	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 )
 
-// JobDetailsApplyConfiguration represents an declarative configuration of the JobDetails type for use
+// CommonDetailsApplyConfiguration represents an declarative configuration of the CommonDetails type for use
 // with apply.
-type JobDetailsApplyConfiguration struct {
-	CommonDetailsApplyConfiguration `json:",inline"`
-	Type                            *smesapcomv1alpha1.JobType `json:"type,omitempty"`
-	BackoffLimit                    *int32                     `json:"backoffLimit,omitempty"`
-	TTLSecondsAfterFinished         *int32                     `json:"ttlSecondsAfterFinished,omitempty"`
+type CommonDetailsApplyConfiguration struct {
+	Image                     *string                       `json:"image,omitempty"`
+	ImagePullPolicy           *v1.PullPolicy                `json:"imagePullPolicy,omitempty"`
+	Command                   []string                      `json:"command,omitempty"`
+	Env                       []v1.EnvVar                   `json:"env,omitempty"`
+	Resources                 *v1.ResourceRequirements      `json:"resources,omitempty"`
+	SecurityContext           *v1.SecurityContext           `json:"securityContext,omitempty"`
+	PodSecurityContext        *v1.PodSecurityContext        `json:"podSecurityContext,omitempty"`
+	NodeName                  *string                       `json:"nodeName,omitempty"`
+	NodeSelector              map[string]string             `json:"nodeSelector,omitempty"`
+	PriorityClassName         *string                       `json:"priorityClassName,omitempty"`
+	Affinity                  *v1.Affinity                  `json:"affinity,omitempty"`
+	Tolerations               []v1.Toleration               `json:"tolerations,omitempty"`
+	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 }
 
-// JobDetailsApplyConfiguration constructs an declarative configuration of the JobDetails type for use with
+// CommonDetailsApplyConfiguration constructs an declarative configuration of the CommonDetails type for use with
 // apply.
-func JobDetails() *JobDetailsApplyConfiguration {
-	return &JobDetailsApplyConfiguration{}
+func CommonDetails() *CommonDetailsApplyConfiguration {
+	return &CommonDetailsApplyConfiguration{}
 }
 
 // WithImage sets the Image field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Image field is set to the value of the last call.
-func (b *JobDetailsApplyConfiguration) WithImage(value string) *JobDetailsApplyConfiguration {
+func (b *CommonDetailsApplyConfiguration) WithImage(value string) *CommonDetailsApplyConfiguration {
 	b.Image = &value
 	return b
 }
@@ -38,7 +46,7 @@ func (b *JobDetailsApplyConfiguration) WithImage(value string) *JobDetailsApplyC
 // WithImagePullPolicy sets the ImagePullPolicy field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ImagePullPolicy field is set to the value of the last call.
-func (b *JobDetailsApplyConfiguration) WithImagePullPolicy(value v1.PullPolicy) *JobDetailsApplyConfiguration {
+func (b *CommonDetailsApplyConfiguration) WithImagePullPolicy(value v1.PullPolicy) *CommonDetailsApplyConfiguration {
 	b.ImagePullPolicy = &value
 	return b
 }
@@ -46,7 +54,7 @@ func (b *JobDetailsApplyConfiguration) WithImagePullPolicy(value v1.PullPolicy) 
 // WithCommand adds the given value to the Command field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Command field.
-func (b *JobDetailsApplyConfiguration) WithCommand(values ...string) *JobDetailsApplyConfiguration {
+func (b *CommonDetailsApplyConfiguration) WithCommand(values ...string) *CommonDetailsApplyConfiguration {
 	for i := range values {
 		b.Command = append(b.Command, values[i])
 	}
@@ -56,7 +64,7 @@ func (b *JobDetailsApplyConfiguration) WithCommand(values ...string) *JobDetails
 // WithEnv adds the given value to the Env field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Env field.
-func (b *JobDetailsApplyConfiguration) WithEnv(values ...v1.EnvVar) *JobDetailsApplyConfiguration {
+func (b *CommonDetailsApplyConfiguration) WithEnv(values ...v1.EnvVar) *CommonDetailsApplyConfiguration {
 	for i := range values {
 		b.Env = append(b.Env, values[i])
 	}
@@ -66,7 +74,7 @@ func (b *JobDetailsApplyConfiguration) WithEnv(values ...v1.EnvVar) *JobDetailsA
 // WithResources sets the Resources field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Resources field is set to the value of the last call.
-func (b *JobDetailsApplyConfiguration) WithResources(value v1.ResourceRequirements) *JobDetailsApplyConfiguration {
+func (b *CommonDetailsApplyConfiguration) WithResources(value v1.ResourceRequirements) *CommonDetailsApplyConfiguration {
 	b.Resources = &value
 	return b
 }
@@ -74,7 +82,7 @@ func (b *JobDetailsApplyConfiguration) WithResources(value v1.ResourceRequiremen
 // WithSecurityContext sets the SecurityContext field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the SecurityContext field is set to the value of the last call.
-func (b *JobDetailsApplyConfiguration) WithSecurityContext(value v1.SecurityContext) *JobDetailsApplyConfiguration {
+func (b *CommonDetailsApplyConfiguration) WithSecurityContext(value v1.SecurityContext) *CommonDetailsApplyConfiguration {
 	b.SecurityContext = &value
 	return b
 }
@@ -82,7 +90,7 @@ func (b *JobDetailsApplyConfiguration) WithSecurityContext(value v1.SecurityCont
 // WithPodSecurityContext sets the PodSecurityContext field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the PodSecurityContext field is set to the value of the last call.
-func (b *JobDetailsApplyConfiguration) WithPodSecurityContext(value v1.PodSecurityContext) *JobDetailsApplyConfiguration {
+func (b *CommonDetailsApplyConfiguration) WithPodSecurityContext(value v1.PodSecurityContext) *CommonDetailsApplyConfiguration {
 	b.PodSecurityContext = &value
 	return b
 }
@@ -90,7 +98,7 @@ func (b *JobDetailsApplyConfiguration) WithPodSecurityContext(value v1.PodSecuri
 // WithNodeName sets the NodeName field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the NodeName field is set to the value of the last call.
-func (b *JobDetailsApplyConfiguration) WithNodeName(value string) *JobDetailsApplyConfiguration {
+func (b *CommonDetailsApplyConfiguration) WithNodeName(value string) *CommonDetailsApplyConfiguration {
 	b.NodeName = &value
 	return b
 }
@@ -99,7 +107,7 @@ func (b *JobDetailsApplyConfiguration) WithNodeName(value string) *JobDetailsApp
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, the entries provided by each call will be put on the NodeSelector field,
 // overwriting an existing map entries in NodeSelector field with the same key.
-func (b *JobDetailsApplyConfiguration) WithNodeSelector(entries map[string]string) *JobDetailsApplyConfiguration {
+func (b *CommonDetailsApplyConfiguration) WithNodeSelector(entries map[string]string) *CommonDetailsApplyConfiguration {
 	if b.NodeSelector == nil && len(entries) > 0 {
 		b.NodeSelector = make(map[string]string, len(entries))
 	}
@@ -112,7 +120,7 @@ func (b *JobDetailsApplyConfiguration) WithNodeSelector(entries map[string]strin
 // WithPriorityClassName sets the PriorityClassName field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the PriorityClassName field is set to the value of the last call.
-func (b *JobDetailsApplyConfiguration) WithPriorityClassName(value string) *JobDetailsApplyConfiguration {
+func (b *CommonDetailsApplyConfiguration) WithPriorityClassName(value string) *CommonDetailsApplyConfiguration {
 	b.PriorityClassName = &value
 	return b
 }
@@ -120,7 +128,7 @@ func (b *JobDetailsApplyConfiguration) WithPriorityClassName(value string) *JobD
 // WithAffinity sets the Affinity field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Affinity field is set to the value of the last call.
-func (b *JobDetailsApplyConfiguration) WithAffinity(value v1.Affinity) *JobDetailsApplyConfiguration {
+func (b *CommonDetailsApplyConfiguration) WithAffinity(value v1.Affinity) *CommonDetailsApplyConfiguration {
 	b.Affinity = &value
 	return b
 }
@@ -128,7 +136,7 @@ func (b *JobDetailsApplyConfiguration) WithAffinity(value v1.Affinity) *JobDetai
 // WithTolerations adds the given value to the Tolerations field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Tolerations field.
-func (b *JobDetailsApplyConfiguration) WithTolerations(values ...v1.Toleration) *JobDetailsApplyConfiguration {
+func (b *CommonDetailsApplyConfiguration) WithTolerations(values ...v1.Toleration) *CommonDetailsApplyConfiguration {
 	for i := range values {
 		b.Tolerations = append(b.Tolerations, values[i])
 	}
@@ -138,33 +146,9 @@ func (b *JobDetailsApplyConfiguration) WithTolerations(values ...v1.Toleration) 
 // WithTopologySpreadConstraints adds the given value to the TopologySpreadConstraints field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the TopologySpreadConstraints field.
-func (b *JobDetailsApplyConfiguration) WithTopologySpreadConstraints(values ...v1.TopologySpreadConstraint) *JobDetailsApplyConfiguration {
+func (b *CommonDetailsApplyConfiguration) WithTopologySpreadConstraints(values ...v1.TopologySpreadConstraint) *CommonDetailsApplyConfiguration {
 	for i := range values {
 		b.TopologySpreadConstraints = append(b.TopologySpreadConstraints, values[i])
 	}
-	return b
-}
-
-// WithType sets the Type field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Type field is set to the value of the last call.
-func (b *JobDetailsApplyConfiguration) WithType(value smesapcomv1alpha1.JobType) *JobDetailsApplyConfiguration {
-	b.Type = &value
-	return b
-}
-
-// WithBackoffLimit sets the BackoffLimit field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the BackoffLimit field is set to the value of the last call.
-func (b *JobDetailsApplyConfiguration) WithBackoffLimit(value int32) *JobDetailsApplyConfiguration {
-	b.BackoffLimit = &value
-	return b
-}
-
-// WithTTLSecondsAfterFinished sets the TTLSecondsAfterFinished field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the TTLSecondsAfterFinished field is set to the value of the last call.
-func (b *JobDetailsApplyConfiguration) WithTTLSecondsAfterFinished(value int32) *JobDetailsApplyConfiguration {
-	b.TTLSecondsAfterFinished = &value
 	return b
 }
