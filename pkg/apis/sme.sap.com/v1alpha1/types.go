@@ -298,6 +298,12 @@ type CommonDetails struct {
 	Command []string `json:"command,omitempty"`
 	// Environment Config for the Container
 	Env []corev1.EnvVar `json:"env,omitempty"`
+	// Volume Configuration for the Pod
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+	// Volume Mount Configuration for the Container
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
+	// Name of the ServiceAccount to use to run the Pod
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// Resources
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 	// SecurityContext for the Container

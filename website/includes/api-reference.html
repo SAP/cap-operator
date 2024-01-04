@@ -1544,6 +1544,43 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
+<code>volumes</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Volume">
+[]Kubernetes core/v1.Volume
+</a>
+</em>
+</td>
+<td>
+<p>Volume Configuration for the Pod</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeMounts</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#VolumeMount">
+[]Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+<p>Volume Mount Configuration for the Container</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccountName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the ServiceAccount to use to run the Pod</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>resources</code><br/>
 <em>
 <a href="https://pkg.go.dev/k8s.io/api/core/v1#ResourceRequirements">
@@ -2324,5 +2361,5 @@ JobDetails
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>b107e81</code>.
+on git commit <code>7facd90</code>.
 </em></p>
