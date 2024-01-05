@@ -704,3 +704,47 @@ func TestProvisioningWithSchedulingConfigCustom(t *testing.T) {
 		},
 	)
 }
+
+func TestProvisioningWithVolAndServiceAccountName(t *testing.T) {
+	_ = reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+		TestData{
+			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-6370"}, // More workload configuration enhancements
+			description:  "Provisioning - With volume and service account config",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+				"testdata/common/capapplicationversion-v1-vol.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/captenantoperation/ctop-vol.initial.yaml", // The config in there might not make sense in the real world!
+			},
+			expectedResources: "testdata/captenantoperation/ctop-vol.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+			},
+		},
+	)
+}
+
+func TestProvisioningWithVolumeAndServiceAccountNameCustom(t *testing.T) {
+	_ = reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+		TestData{
+			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-6370"}, // More workload configuration enhancements
+			description:  "Provisioning - With volume and serviceAccountName config for CustomTenantOperation",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+				"testdata/common/capapplicationversion-v1-vol-custom.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/captenantoperation/ctop-vol-custom.initial.yaml",
+			},
+			expectedResources: "testdata/captenantoperation/ctop-vol-custom.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+			},
+		},
+	)
+}
