@@ -518,20 +518,20 @@ func isMTXSDisabled(envVars []corev1.EnvVar) bool {
 }
 
 func getContainers(payload []byte, ctop *v1alpha1.CAPTenantOperation, derivedWorkload tentantOperationWorkload, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) []corev1.Container {
+	container := &corev1.Container{
+		Name:            workload.Name,
+		Image:           derivedWorkload.image,
+		ImagePullPolicy: derivedWorkload.imagePullPolicy,
+		Env: append([]corev1.EnvVar{
+			{Name: EnvCAPOpAppVersion, Value: params.version}, {Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId}, {Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)}, {Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
+		}, derivedWorkload.env...),
+		EnvFrom:         params.envFromVCAPSecret,
+		VolumeMounts:    derivedWorkload.volumeMounts,
+		Resources:       derivedWorkload.resources,
+		SecurityContext: derivedWorkload.securityContext,
+	}
 	if !isMTXSDisabled(derivedWorkload.env) {
 		var operation string
-		container := &corev1.Container{
-			Name:            workload.Name,
-			Image:           derivedWorkload.image,
-			ImagePullPolicy: derivedWorkload.imagePullPolicy,
-			Env: append([]corev1.EnvVar{
-				{Name: EnvCAPOpAppVersion, Value: params.version}, {Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId}, {Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)}, {Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
-			}, derivedWorkload.env...),
-			EnvFrom:         params.envFromVCAPSecret,
-			VolumeMounts:    derivedWorkload.volumeMounts,
-			Resources:       derivedWorkload.resources,
-			SecurityContext: derivedWorkload.securityContext,
-		}
 
 		if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
 			operation = "subscribe"
@@ -550,6 +550,9 @@ func getContainers(payload []byte, ctop *v1alpha1.CAPTenantOperation, derivedWor
 		return append([]corev1.Container{}, *container)
 	}
 
+	container.Command = []string{"/bin/sh", "-c"}
+	container.Args = []string{"node ./node_modules/@sap/cds/bin/cds run & nc -lv -s localhost -p 8080"}
+
 	return []corev1.Container{
 		{
 			Name:  "trigger", // TODO: get rid of this --> hopefully with mtxs cli where we start a single container image
@@ -564,20 +567,7 @@ func getContainers(payload []byte, ctop *v1alpha1.CAPTenantOperation, derivedWor
 			},
 			EnvFrom: params.envFromVCAPSecret,
 		},
-		{
-			Name:            workload.Name,
-			Image:           derivedWorkload.image,
-			ImagePullPolicy: derivedWorkload.imagePullPolicy,
-			Env: append([]corev1.EnvVar{
-				{Name: EnvCAPOpAppVersion, Value: params.version}, {Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId}, {Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)}, {Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
-			}, derivedWorkload.env...),
-			EnvFrom:         params.envFromVCAPSecret,
-			VolumeMounts:    derivedWorkload.volumeMounts,
-			Resources:       derivedWorkload.resources,
-			SecurityContext: derivedWorkload.securityContext,
-			Command:         []string{"/bin/sh", "-c"},
-			Args:            []string{"node ./node_modules/@sap/cds/bin/cds run & nc -lv -s localhost -p 8080"},
-		},
+		*container,
 	}
 }
 
