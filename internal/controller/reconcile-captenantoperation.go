@@ -42,6 +42,9 @@ type tentantOperationWorkload struct {
 	imagePullPolicy           corev1.PullPolicy
 	command                   []string
 	env                       []corev1.EnvVar
+	volumeMounts              []corev1.VolumeMount
+	volumes                   []corev1.Volume
+	serviceAccountName        string
 	resources                 corev1.ResourceRequirements
 	securityContext           *corev1.SecurityContext
 	podSecurityContext        *corev1.PodSecurityContext
@@ -493,6 +496,8 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 					RestartPolicy:             corev1.RestartPolicyNever,
 					ImagePullSecrets:          params.imagePullSecrets,
 					Containers:                getContainers(payload, ctop, derivedWorkload, workload, params),
+					Volumes:                   derivedWorkload.volumes,
+					ServiceAccountName:        derivedWorkload.serviceAccountName,
 					SecurityContext:           derivedWorkload.podSecurityContext,
 					NodeSelector:              derivedWorkload.nodeSelector,
 					NodeName:                  derivedWorkload.nodeName,
@@ -513,19 +518,20 @@ func isMTXSDisabled(envVars []corev1.EnvVar) bool {
 }
 
 func getContainers(payload []byte, ctop *v1alpha1.CAPTenantOperation, derivedWorkload tentantOperationWorkload, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) []corev1.Container {
+	container := &corev1.Container{
+		Name:            workload.Name,
+		Image:           derivedWorkload.image,
+		ImagePullPolicy: derivedWorkload.imagePullPolicy,
+		Env: append([]corev1.EnvVar{
+			{Name: EnvCAPOpAppVersion, Value: params.version}, {Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId}, {Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)}, {Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
+		}, derivedWorkload.env...),
+		EnvFrom:         params.envFromVCAPSecret,
+		VolumeMounts:    derivedWorkload.volumeMounts,
+		Resources:       derivedWorkload.resources,
+		SecurityContext: derivedWorkload.securityContext,
+	}
 	if !isMTXSDisabled(derivedWorkload.env) {
 		var operation string
-		container := &corev1.Container{
-			Name:            workload.Name,
-			Image:           derivedWorkload.image,
-			ImagePullPolicy: derivedWorkload.imagePullPolicy,
-			Env: append([]corev1.EnvVar{
-				{Name: EnvCAPOpAppVersion, Value: params.version}, {Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId}, {Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)}, {Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
-			}, derivedWorkload.env...),
-			EnvFrom:         params.envFromVCAPSecret,
-			Resources:       derivedWorkload.resources,
-			SecurityContext: derivedWorkload.securityContext,
-		}
 
 		if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
 			operation = "subscribe"
@@ -544,6 +550,9 @@ func getContainers(payload []byte, ctop *v1alpha1.CAPTenantOperation, derivedWor
 		return append([]corev1.Container{}, *container)
 	}
 
+	container.Command = []string{"/bin/sh", "-c"}
+	container.Args = []string{"node ./node_modules/@sap/cds/bin/cds run & nc -lv -s localhost -p 8080"}
+
 	return []corev1.Container{
 		{
 			Name:  "trigger", // TODO: get rid of this --> hopefully with mtxs cli where we start a single container image
@@ -558,19 +567,7 @@ func getContainers(payload []byte, ctop *v1alpha1.CAPTenantOperation, derivedWor
 			},
 			EnvFrom: params.envFromVCAPSecret,
 		},
-		{
-			Name:            workload.Name,
-			Image:           derivedWorkload.image,
-			ImagePullPolicy: derivedWorkload.imagePullPolicy,
-			Env: append([]corev1.EnvVar{
-				{Name: EnvCAPOpAppVersion, Value: params.version}, {Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId}, {Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)}, {Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
-			}, derivedWorkload.env...),
-			EnvFrom:         params.envFromVCAPSecret,
-			Resources:       derivedWorkload.resources,
-			SecurityContext: derivedWorkload.securityContext,
-			Command:         []string{"/bin/sh", "-c"},
-			Args:            []string{"node ./node_modules/@sap/cds/bin/cds run & nc -lv -s localhost -p 8080"},
-		},
+		*container,
 	}
 }
 
@@ -581,6 +578,9 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 		result.image = workload.DeploymentDefinition.Image
 		result.imagePullPolicy = workload.DeploymentDefinition.ImagePullPolicy
 		result.env = workload.DeploymentDefinition.Env
+		result.volumeMounts = workload.DeploymentDefinition.VolumeMounts
+		result.volumes = workload.DeploymentDefinition.Volumes
+		result.serviceAccountName = workload.DeploymentDefinition.ServiceAccountName
 		result.resources = workload.DeploymentDefinition.Resources
 		result.backoffLimit = &backoffLimitValue
 		result.ttlSecondsAfterFinished = &tTLSecondsAfterFinishedValue
@@ -598,6 +598,9 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 		result.imagePullPolicy = workload.JobDefinition.ImagePullPolicy
 		result.command = workload.JobDefinition.Command
 		result.env = workload.JobDefinition.Env
+		result.volumeMounts = workload.JobDefinition.VolumeMounts
+		result.volumes = workload.JobDefinition.Volumes
+		result.serviceAccountName = workload.JobDefinition.ServiceAccountName
 		result.resources = workload.JobDefinition.Resources
 		result.securityContext = workload.JobDefinition.SecurityContext
 		result.podSecurityContext = workload.JobDefinition.PodSecurityContext
@@ -638,6 +641,8 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 				Spec: corev1.PodSpec{
 					RestartPolicy:             corev1.RestartPolicyNever,
 					SecurityContext:           workload.JobDefinition.PodSecurityContext,
+					Volumes:                   workload.JobDefinition.Volumes,
+					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,
 					NodeSelector:              workload.JobDefinition.NodeSelector,
 					NodeName:                  workload.JobDefinition.NodeName,
 					PriorityClassName:         workload.JobDefinition.PriorityClassName,
@@ -654,6 +659,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 								{Name: EnvCAPOpAppVersion, Value: params.version}, {Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId}, {Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)}, {Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
 							}, workload.JobDefinition.Env...),
 							EnvFrom:         params.envFromVCAPSecret,
+							VolumeMounts:    workload.JobDefinition.VolumeMounts,
 							Command:         workload.JobDefinition.Command,
 							Resources:       workload.JobDefinition.Resources,
 							SecurityContext: workload.JobDefinition.SecurityContext,

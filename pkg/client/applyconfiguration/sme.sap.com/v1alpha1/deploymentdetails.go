@@ -65,6 +65,34 @@ func (b *DeploymentDetailsApplyConfiguration) WithEnv(values ...v1.EnvVar) *Depl
 	return b
 }
 
+// WithVolumes adds the given value to the Volumes field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Volumes field.
+func (b *DeploymentDetailsApplyConfiguration) WithVolumes(values ...v1.Volume) *DeploymentDetailsApplyConfiguration {
+	for i := range values {
+		b.Volumes = append(b.Volumes, values[i])
+	}
+	return b
+}
+
+// WithVolumeMounts adds the given value to the VolumeMounts field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the VolumeMounts field.
+func (b *DeploymentDetailsApplyConfiguration) WithVolumeMounts(values ...v1.VolumeMount) *DeploymentDetailsApplyConfiguration {
+	for i := range values {
+		b.VolumeMounts = append(b.VolumeMounts, values[i])
+	}
+	return b
+}
+
+// WithServiceAccountName sets the ServiceAccountName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ServiceAccountName field is set to the value of the last call.
+func (b *DeploymentDetailsApplyConfiguration) WithServiceAccountName(value string) *DeploymentDetailsApplyConfiguration {
+	b.ServiceAccountName = &value
+	return b
+}
+
 // WithResources sets the Resources field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Resources field is set to the value of the last call.

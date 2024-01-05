@@ -724,3 +724,23 @@ func TestCAV_Node_PriorityClass_Names(t *testing.T) {
 		},
 	)
 }
+
+func TestCAV_Volumes_and_ServiceAccountName(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with volumes and serviceAccountName",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/content-job-completed.yaml",
+				"testdata/capapplicationversion/cav-vol.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-vol.yaml",
+			backlogItems: []string{
+				"ERP4SMEPREPWORKAPPPLAT-6370", // More workload configuration enhancements
+			},
+		},
+	)
+}
