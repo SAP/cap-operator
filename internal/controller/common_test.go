@@ -445,6 +445,13 @@ func addInitialObjectToStore(t *testing.T, resource []byte, c *Controller) error
 	}
 
 	switch obj.(type) {
+	case *appsv1.Deployment:
+		fakeClient, ok := c.kubeClient.(*k8sfake.Clientset)
+		if !ok {
+			return fmt.Errorf("controller is not using a fake clientset")
+		}
+		fakeClient.Tracker().Add(obj)
+		err = c.kubeInformerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(obj)
 	case *corev1.Secret, *corev1.Pod, *corev1.Namespace, *corev1.Service:
 		fakeClient, ok := c.kubeClient.(*k8sfake.Clientset)
 		if !ok {

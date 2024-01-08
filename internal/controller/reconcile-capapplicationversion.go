@@ -179,13 +179,21 @@ func (c *Controller) processDeployments(ctx context.Context, ca *v1alpha1.CAPApp
 		return nil, err
 	}
 
-	// TODO: Checks for issues with Deployment(s)!
 	// Check for status of contentWorkloads
 	processing, err := c.checkContentWorkloadStatus(ctx, cav)
 	if processing {
 		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 0), nil
 	} else if err != nil {
-		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInWorkloadStatus", Message: err.Error()})
+		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInContentJobStatus", Message: err.Error()})
+		return nil, err
+	}
+
+	// Checks for issues with Deployment(s)!
+	processing, err = c.checkDeploymentWorkloadStatus(ctx, cav)
+	if processing {
+		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 0), nil
+	} else if err != nil {
+		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInDeploymentWorkloadStatus", Message: err.Error()})
 		return nil, err
 	}
 
@@ -203,7 +211,7 @@ func getContentJobName(contentJobWorkloadName string, cav *v1alpha1.CAPApplicati
 func getNextContentJob(cav *v1alpha1.CAPApplicationVersion) *v1alpha1.WorkloadDetails {
 
 	// If the previous job failed, we should not trigger the next job
-	if len(cav.Status.Conditions) > 0 && cav.Status.Conditions[0].Reason == "ErrorInWorkloadStatus" {
+	if err := checkContentWorkloadConditions(cav); err != nil {
 		return nil
 	}
 
@@ -840,12 +848,59 @@ func checkAndUpdateJobStatusFinishedJobs(contentDeployJob *batchv1.Job, cav *v1a
 	return nil
 }
 
+func (c *Controller) checkDeploymentWorkloadStatus(ctx context.Context, cav *v1alpha1.CAPApplicationVersion) (bool, error) {
+
+	// We should check the deployment status only during the first deployment. Once the CAV is ready, we should not
+	// check the deployment status again because if it goes to Error state, the tenant will get downgraded to the
+	// previous version
+	if cav.Status.State == v1alpha1.CAPApplicationVersionStateReady {
+		return false, nil
+	}
+
+	for _, workload := range cav.Spec.Workloads {
+		if workload.DeploymentDefinition == nil {
+			continue
+		}
+
+		deploymentName := cav.Name + "-" + strings.ToLower(string(workload.Name))
+		// Get the workloadDeployment with the name
+		workloadDeployment, err := c.kubeClient.AppsV1().Deployments(cav.Namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		if workloadDeployment.Spec.Replicas == nil || *workloadDeployment.Spec.Replicas == 0 {
+			continue
+		}
+
+		if workloadDeployment.Status.Replicas == workloadDeployment.Status.UnavailableReplicas {
+			return false, fmt.Errorf("deployment %s in error state", deploymentName)
+		}
+
+		if workloadDeployment.Status.Replicas != workloadDeployment.Status.ReadyReplicas {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}
+
+func checkContentWorkloadConditions(cav *v1alpha1.CAPApplicationVersion) error {
+	// Keeping "ErrorInWorkloadStatus" for backend compactibility
+	if len(cav.Status.Conditions) > 0 && (cav.Status.Conditions[0].Reason == "ErrorInWorkloadStatus" || cav.Status.Conditions[0].Reason == "ErrorInContentJobStatus") {
+		return fmt.Errorf("%s", cav.Status.Conditions[0].Message)
+	}
+
+	return nil
+}
+
 func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alpha1.CAPApplicationVersion) (bool, error) {
 	// Once the cav goes into Error state, we should not check the jobs again in the next reconciliation loop
 	// because it could happen that the job can get deleted meanwhile and we won't be able
 	// to determine the state of the job correctly.
-	if len(cav.Status.Conditions) > 0 && cav.Status.Conditions[0].Reason == "ErrorInWorkloadStatus" {
-		return false, fmt.Errorf("%s", cav.Status.Conditions[0].Message)
+
+	if err := checkContentWorkloadConditions(cav); err != nil {
+		return false, err
 	}
 
 	for _, contentJobName := range getContentJobInOrder(cav) {

@@ -60,7 +60,7 @@ spec:
         type: TenantOperation
 status:
   conditions:
-    - reason: ErrorInWorkloadStatus
+    - reason: ErrorInContentJobStatus
       observedGeneration: 1
       status: "False"
       type: Ready

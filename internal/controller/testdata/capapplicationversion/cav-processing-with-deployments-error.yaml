@@ -1,7 +1,6 @@
 apiVersion: sme.sap.com/v1alpha1
 kind: CAPApplicationVersion
 metadata:
-  creationTimestamp: "2022-07-18T06:13:52Z"
   generation: 1
   annotations:
     sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
@@ -12,8 +11,6 @@ metadata:
     sme.sap.com/owner-identifier-hash: 1f74ae2fbff71a708786a4df4bb2ca87ec603581
   name: test-cap-01-cav-v1
   namespace: default
-  finalizers:
-    - "sme.sap.com/capapplicationversion"
   ownerReferences:
     - apiVersion: sme.sap.com/v1alpha1
       blockOwnerDeletion: true
@@ -37,6 +34,7 @@ spec:
       deploymentDefinition:
         image: docker.image.repo/srv/server:latest
         type: CAP
+        replicas: 1
     - name: app-router
       consumedBTPServices:
         - cap-uaa
@@ -44,12 +42,7 @@ spec:
       deploymentDefinition:
         image: docker.image.repo/approuter/approuter:latest
         type: Router
-    - name: content-job
-      consumedBTPServices:
-        - cap-uaa
-      jobDefinition:
-        image: docker.image.repo/content/cap-content:latest
-        type: Content
+        replicas: 1
     - name: mtx-job
       consumedBTPServices:
         - cap-uaa
@@ -60,11 +53,9 @@ spec:
         type: TenantOperation
 status:
   conditions:
-    - reason: ErrorInContentJobStatus
+    - reason: ReadyForProcessing
       status: "False"
+      observedGeneration: 1
       type: Ready
-      message: "content deployer error in job 'test-cap-01-cav-v1-content'"
   observedGeneration: 1
-  finishedJobs:
-    - "test-cap-01-cav-v1-content"
-  state: Error
+  state: Processing
