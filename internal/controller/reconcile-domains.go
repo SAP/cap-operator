@@ -584,9 +584,9 @@ func (c *Controller) checkTenantDNSEntries(ctx context.Context, cat *v1alpha1.CA
 
 func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
 	var (
-		reason, message        string
-		drModified, vsModified bool
-		eventType              string = corev1.EventTypeNormal
+		reason, message                           string
+		drModified, vsModified, prevCAVDrModified bool
+		eventType                                 string = corev1.EventTypeNormal
 	)
 
 	defer func() {
@@ -603,7 +603,12 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 		}
 	}()
 
-	if drModified, err = c.reconcileTenantDestinationRule(ctx, cat, cavName, ca); err != nil {
+	if drModified, err = c.reconcileTenantDestinationRule(ctx, cat.Name, cat, cavName, ca); err != nil {
+		reason = CAPTenantEventDestinationRuleModificationFailed
+		return
+	}
+
+	if prevCAVDrModified, err = c.reconcileTenantDestinationRulePrevCav(ctx, cat, ca); err != nil {
 		reason = CAPTenantEventDestinationRuleModificationFailed
 		return
 	}
@@ -614,7 +619,7 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 	}
 
 	// update tenant status
-	if drModified || vsModified {
+	if drModified || vsModified || prevCAVDrModified {
 		message = fmt.Sprintf("VirtualService (and DestinationRule) %s.%s was reconciled", cat.Namespace, cat.Name)
 		reason = CAPTenantEventTenantNetworkingModified
 		conditionStatus := metav1.ConditionFalse
@@ -627,16 +632,42 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 	return
 }
 
-func (c *Controller) reconcileTenantDestinationRule(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (modified bool, err error) {
+func (c *Controller) reconcileTenantDestinationRulePrevCav(ctx context.Context, cat *v1alpha1.CAPTenant, ca *v1alpha1.CAPApplication) (modified bool, err error) {
+
+	if !(cat.Status.PreviousCAPApplicationVersions != nil && len(cat.Status.PreviousCAPApplicationVersions) > 0) {
+		return false, nil
+	}
+
+	prevCAV := cat.Status.PreviousCAPApplicationVersions[len(cat.Status.PreviousCAPApplicationVersions)-1]
+	_, cavGetErr := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(prevCAV)
+	if !errors.IsNotFound(cavGetErr) {
+		return c.reconcileTenantDestinationRule(ctx, cat.Name+"-"+prevCAV, cat, prevCAV, ca)
+	}
+
+	// delete the destination rule for the second last CAV
+	if len(cat.Status.PreviousCAPApplicationVersions) > 1 {
+		drName := cat.Name + "-" + cat.Status.PreviousCAPApplicationVersions[len(cat.Status.PreviousCAPApplicationVersions)-2]
+		_, drGetErr := c.istioClient.NetworkingV1beta1().DestinationRules(cat.Namespace).Get(ctx, drName, metav1.GetOptions{})
+		if !errors.IsNotFound(drGetErr) {
+			if err = c.istioClient.NetworkingV1beta1().DestinationRules(cat.Namespace).Delete(ctx, drName, metav1.DeleteOptions{}); err != nil {
+				return false, err
+			}
+		}
+	}
+
+	return true, nil
+}
+
+func (c *Controller) reconcileTenantDestinationRule(ctx context.Context, drName string, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (modified bool, err error) {
 	var (
 		create, update bool
 		dr             *istionwv1beta1.DestinationRule
 	)
-	dr, err = c.istioClient.NetworkingV1beta1().DestinationRules(cat.Namespace).Get(ctx, cat.Name, metav1.GetOptions{})
+	dr, err = c.istioClient.NetworkingV1beta1().DestinationRules(cat.Namespace).Get(ctx, drName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		dr = &istionwv1beta1.DestinationRule{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:            cat.Name, // keep the same name as CAPTenant to avoid duplicates
+				Name:            drName, // keep the same name as CAPTenant to avoid duplicates
 				Namespace:       cat.Namespace,
 				Labels:          map[string]string{},
 				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(cat, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind))},
@@ -754,27 +785,16 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 		return modified, err
 	}
 
-	routerPortInfo, err := c.getRouterServicePortInfo(cavName, ca.Namespace)
+	spec := &networkingv1beta1.VirtualService{
+		Gateways: []string{ca.Spec.BTPAppName + "-gw"},
+		Hosts:    []string{cat.Spec.SubDomain + "." + ca.Spec.Domains.Primary},
+	}
+
+	spec.Http, err = c.getVirtualServiceHTTPRoutes(ca.Namespace, cat, cavName)
 	if err != nil {
 		return modified, err
 	}
 
-	spec := &networkingv1beta1.VirtualService{
-		Gateways: []string{ca.Spec.BTPAppName + "-gw"},
-		Hosts:    []string{cat.Spec.SubDomain + "." + ca.Spec.Domains.Primary},
-		Http: []*networkingv1beta1.HTTPRoute{{
-			Match: []*networkingv1beta1.HTTPMatchRequest{
-				{Uri: &networkingv1beta1.StringMatch{MatchType: &networkingv1beta1.StringMatch_Prefix{Prefix: "/"}}},
-			},
-			Route: []*networkingv1beta1.HTTPRouteDestination{{
-				Destination: &networkingv1beta1.Destination{
-					Host: routerPortInfo.WorkloadName + ServiceSuffix + "." + cat.Namespace + ".svc.cluster.local",
-					Port: &networkingv1beta1.PortSelector{Number: uint32(routerPortInfo.Ports[0].Port)},
-				},
-				Weight: 100,
-			}},
-		}},
-	}
 	err = c.updateTenantVirtualServiceSpecWithSecondaryDomains(ctx, spec, cat, ca)
 	if err != nil {
 		return modified, err
@@ -793,6 +813,124 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 	}
 
 	return modified, err
+}
+
+func (c *Controller) getVirtualServiceHTTPRoutes(caNamespace string, cat *v1alpha1.CAPTenant, currentCAVName string) ([]*networkingv1beta1.HTTPRoute, error) {
+
+	var prevCAVDestination *networkingv1beta1.Destination
+	var err error
+	var prevCAVName string
+	httpRoute := []*networkingv1beta1.HTTPRoute{}
+
+	if cat.Status.PreviousCAPApplicationVersions != nil && len(cat.Status.PreviousCAPApplicationVersions) > 0 {
+		prevCAVName = cat.Status.PreviousCAPApplicationVersions[len(cat.Status.PreviousCAPApplicationVersions)-1]
+		_, cavGetErr := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(prevCAVName)
+		if !errors.IsNotFound(cavGetErr) {
+			prevCAVDestination, err = c.getVirtualServiceHTTPRouteDestination(caNamespace, cat.Namespace, prevCAVName)
+			if err != nil {
+				return httpRoute, err
+			}
+		}
+	}
+
+	currentCAVDestination, err := c.getVirtualServiceHTTPRouteDestination(caNamespace, cat.Namespace, currentCAVName)
+	if err != nil {
+		return httpRoute, err
+	}
+
+	// add logoff/logout route
+	if prevCAVDestination != nil {
+		httpRoute = append(httpRoute, addVirtualServiceLogOffHTTPRoute(prevCAVName, prevCAVDestination))
+	}
+	httpRoute = append(httpRoute, addVirtualServiceLogOffHTTPRoute(currentCAVName, currentCAVDestination))
+
+	// add cookie route
+	if prevCAVDestination != nil {
+		httpRoute = append(httpRoute, addVirtualServiceCookieHTTPRoute(prevCAVName, prevCAVDestination))
+	}
+	httpRoute = append(httpRoute, addVirtualServiceCookieHTTPRoute(currentCAVName, currentCAVDestination))
+
+	// add default route to new approuter
+	httpRoute = append(httpRoute, &networkingv1beta1.HTTPRoute{
+		Route: []*networkingv1beta1.HTTPRouteDestination{{
+			Destination: currentCAVDestination,
+			Headers: &networkingv1beta1.Headers{
+				Response: &networkingv1beta1.Headers_HeaderOperations{
+					Add: map[string]string{
+						"Set-Cookie": "COP_CAV=" + currentCAVName + ";Path=/;HttpOnly;Secure;Max-Age=Session",
+					},
+				},
+			},
+			Weight: 100,
+		}},
+	})
+
+	return httpRoute, nil
+}
+
+func addVirtualServiceLogOffHTTPRoute(cavName string, cavRouteDestination *networkingv1beta1.Destination) *networkingv1beta1.HTTPRoute {
+	return &networkingv1beta1.HTTPRoute{
+		Match: []*networkingv1beta1.HTTPMatchRequest{{
+			Headers: map[string]*networkingv1beta1.StringMatch{
+				"Cookie": {
+					MatchType: &networkingv1beta1.StringMatch_Regex{
+						Regex: "(^|.*; )COP_CAV=" + cavName + "($|; .*)",
+					},
+				},
+			},
+			Uri: &networkingv1beta1.StringMatch{
+				MatchType: &networkingv1beta1.StringMatch_Regex{
+					Regex: "^|.*(logout|logoff).*",
+				},
+			},
+		}},
+		Route: []*networkingv1beta1.HTTPRouteDestination{{
+			Destination: cavRouteDestination,
+			Headers: &networkingv1beta1.Headers{
+				Response: &networkingv1beta1.Headers_HeaderOperations{
+					Set: map[string]string{
+						"Set-Cookie": "COP_CAV=" + cavName + ";Path=/;HttpOnly;Secure;Max-Age=0",
+					},
+				},
+			},
+			Weight: 100,
+		}},
+	}
+}
+
+func addVirtualServiceCookieHTTPRoute(cavName string, cavRouteDestination *networkingv1beta1.Destination) *networkingv1beta1.HTTPRoute {
+	return &networkingv1beta1.HTTPRoute{
+		Match: []*networkingv1beta1.HTTPMatchRequest{{
+			Headers: map[string]*networkingv1beta1.StringMatch{
+				"Cookie": {
+					MatchType: &networkingv1beta1.StringMatch_Regex{
+						Regex: "(^|.*; )COP_CAV=" + cavName + "($|; .*)",
+					},
+				},
+			},
+		}},
+		Route: []*networkingv1beta1.HTTPRouteDestination{{
+			Destination: cavRouteDestination,
+			Weight:      100,
+		}},
+	}
+}
+
+func (c *Controller) getVirtualServiceHTTPRouteDestination(caNamespace string, catNamespace string, CAVName string) (*networkingv1beta1.Destination, error) {
+
+	if CAVName == "" {
+		return nil, nil
+	}
+
+	CAVRouterPortInfo, err := c.getRouterServicePortInfo(CAVName, caNamespace)
+	if err != nil {
+		return nil, err
+	}
+
+	return &networkingv1beta1.Destination{
+		Host: CAVRouterPortInfo.WorkloadName + ServiceSuffix + "." + catNamespace + ".svc.cluster.local",
+		Port: &networkingv1beta1.PortSelector{Number: uint32(CAVRouterPortInfo.Ports[0].Port)},
+	}, nil
 }
 
 type OperatorGatewayMissingError struct{}
