@@ -75,7 +75,7 @@ apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
   annotations:
-    sme.sap.com/resource-hash: 5d065e2112f26ad9b5ace902461365ba9cbf539123dea326f060534bc30e22d1
+    sme.sap.com/resource-hash: 76ac6b80ce55711ae052011d8d29727030c897d4869ba6c403ac6842f08b93d6
     sme.sap.com/owner-identifier: default.test-cap-01-provider
   labels:
     sme.sap.com/owner-generation: "0"
@@ -94,6 +94,6 @@ spec:
     loadBalancer:
       consistentHash:
         httpCookie:
-          name: JSESSIONID
+          name: CAPOP_ROUTER_STICKY
           path: /
           ttl: 0s

@@ -680,7 +680,7 @@ func (c *Controller) getUpdatedTenantDestinationRuleObject(ctx context.Context, 
 					ConsistentHash: &networkingv1beta1.LoadBalancerSettings_ConsistentHashLB{
 						HashKey: &networkingv1beta1.LoadBalancerSettings_ConsistentHashLB_HttpCookie{
 							HttpCookie: &networkingv1beta1.LoadBalancerSettings_ConsistentHashLB_HTTPCookie{
-								Name: HttpCookieName,
+								Name: RouterHttpCookieName,
 								Ttl:  durationpb.New(0 * time.Second),
 								Path: "/",
 							},
