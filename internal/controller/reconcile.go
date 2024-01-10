@@ -69,8 +69,8 @@ const (
 	ConsumerTenantType = "consumer"
 )
 
-// Use same name as default cookie from approuter used for session stickiness
-const HttpCookieName = "JSESSIONID"
+// Use a different name for sticky cookie than the one from approuter (JSESSIONID) used for session handling
+const RouterHttpCookieName = "CAPOP_ROUTER_STICKY"
 
 const (
 	EnvCAPOpAppVersion      = "CAPOP_APP_VERSION"
