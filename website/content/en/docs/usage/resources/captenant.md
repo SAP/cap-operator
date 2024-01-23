@@ -29,4 +29,4 @@ spec:
 
 The specification contains attributes relevant for SAP BTP, which identifies a tenant such as `tenantId` and `subDomain`.
 
-The `version` field corresponds to the `CAPApplicationVersion` on which the tenant is provisioned or was upgraded. When a newer `CAPApplicationVersion` is available, the operator automatically increments the tenant version, which triggers the upgrade process. The `versionUpgradeStrategy` is by default `always`, but can be set to `none` in exceptional cases to prevent an automatic upgrade of the tenant.
+The `version` field corresponds to the `CAPApplicationVersion` on which the tenant is provisioned or was upgraded. When a newer `CAPApplicationVersion` is available, the operator automatically increments the tenant version, which triggers the upgrade process. The `versionUpgradeStrategy` is by default `always`, but can be set to `never` in exceptional cases to prevent an automatic upgrade of the tenant.
