@@ -40,6 +40,8 @@ spec:
 - An array of workloads (`workloads`) must be defined that include the various software components of the SAP Cloud Application Programming Model application. A deployment representing the CAP application server or a job that which is used for tenant operations are examples of such workloads. A workload must have either a `deploymentDefinition` or a `jobDefinition`. See the next section for more details.
 - An optional attribute `tenantOperations` can be used to define a sequence of steps (jobs) to be executed during tenant operations (provisioning / upgrade / deprovisioning).
 
+> The `CAPApplicationVersion` resource is meant to be immutable - it's spec should not be modified once it is deployed. This is also prevented by our web-hooks which we recommend to always keep active (default).
+
 ### Workloads with `deploymentDefinition`
 
 ```yaml
@@ -79,7 +81,7 @@ For `deploymentDefinition`, other than type `Router` it would be possible to spe
 The port configurations aren't mandatory and can be omitted. This would mean that the operator will configure services using defaults. The following defaults are applied if port configuration is omitted:
 
 - For workload of type `CAP`, the default port used by CAP, `4004`, will be added to the service and a destination with name `srv-api` will be added to the approuter referring to this service port (any existing `destinations` environment configuration for this workload will be taken over by overwriting the `URL`).
-- For workload of type `Router`, the port `4000` will be exposed in the service. This service will be used as the target for HTTP traffic reaching the application domain (domains are specified within the `CAPApplication` resource).
+- For workload of type `Router`, the port `5000` will be exposed in the service. This service will be used as the target for HTTP traffic reaching the application domain (domains are specified within the `CAPApplication` resource).
 
 > NOTE: If multiple ports are configured for a workload of type `Router`, the first available port will be used to target external traffic to the application domain.
 
