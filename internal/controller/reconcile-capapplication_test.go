@@ -436,6 +436,7 @@ func TestDeletion_Case7(t *testing.T) {
 			initialResources: []string{
 				"testdata/capapplication/ca-19.initial.yaml",
 				"testdata/capapplication/istio-ingress-with-cert.yaml",
+				"testdata/common/credential-secrets.yaml",
 			},
 			expectedResources: "testdata/capapplication/ca-19.expected.yaml",
 		},
