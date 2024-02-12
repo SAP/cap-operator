@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path"
 
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
@@ -49,6 +50,10 @@ const (
 	FinalizerCAPTenant                 = "sme.sap.com/captenant"
 	FinalizerCAPTenantOperation        = "sme.sap.com/captenantoperation"
 	GardenerDNSClassIdentifier         = "dns.gardener.cloud/class"
+)
+
+const (
+	CDSVolMountPrefix = "/etc/secrets/cds"
 )
 
 const (
@@ -517,4 +522,31 @@ func copyMaps(originalMap map[string]string, additionalMap map[string]string) ma
 		newMap[key] = value
 	}
 	return newMap
+}
+
+func getVolumeMounts(serviceInfos []v1alpha1.ServiceInfo) []corev1.VolumeMount {
+	volumeMounts := []corev1.VolumeMount{}
+
+	for _, serviceInfo := range serviceInfos {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: serviceInfo.Name, MountPath: path.Join("/etc/secrets/sapcp", serviceInfo.Class, serviceInfo.Name), ReadOnly: true})
+	}
+	return volumeMounts
+}
+
+func getCAPVolumeMounts(serviceInfos []v1alpha1.ServiceInfo, mountPrefix string) []corev1.VolumeMount {
+	volumeMounts := []corev1.VolumeMount{}
+
+	for _, serviceInfo := range serviceInfos {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: serviceInfo.Name, MountPath: path.Join(mountPrefix, "requires", serviceInfo.Class, "credentials"), ReadOnly: true})
+	}
+	return volumeMounts
+}
+
+func getVolumes(serviceInfos []v1alpha1.ServiceInfo) []corev1.Volume {
+	volumes := []corev1.Volume{}
+
+	for _, serviceInfo := range serviceInfos {
+		volumes = append(volumes, corev1.Volume{Name: serviceInfo.Name, VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: serviceInfo.Secret}}})
+	}
+	return volumes
 }

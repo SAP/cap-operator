@@ -423,6 +423,7 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 		envFromVCAPSecret: getEnvFrom(vcapSecretName),
 		imagePullSecrets:  convertToLocalObjectReferences(relatedResources.CAPApplicationVersion.Spec.RegistrySecrets),
 		version:           relatedResources.CAPApplicationVersion.Spec.Version,
+		volume:            getVolumes(consumedServiceInfos),
 	}
 
 	var job *batchv1.Job
@@ -430,8 +431,10 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 		if params.xsuaaInstanceName, err = getXSUAAInstanceName(consumedServiceInfos, relatedResources, c.kubeClient); err != nil {
 			return
 		}
+		params.volumeMount = getCAPVolumeMounts(consumedServiceInfos, CDSVolMountPrefix)
 		job, err = c.createTenantOperationJob(ctx, ctop, workload, params)
 	} else { // custom tenant operation
+		params.volumeMount = getVolumeMounts(consumedServiceInfos)
 		job, err = c.createCustomTenantOperationJob(ctx, ctop, workload, params)
 	}
 	if err != nil {
@@ -454,6 +457,8 @@ type jobCreateParams struct {
 	imagePullSecrets  []corev1.LocalObjectReference
 	version           string
 	xsuaaInstanceName string
+	volume            []corev1.Volume
+	volumeMount       []corev1.VolumeMount
 }
 
 func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {

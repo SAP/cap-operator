@@ -49,6 +49,8 @@ type DeploymentParameters struct {
 	OwnerRef        *metav1.OwnerReference
 	WorkloadDetails v1alpha1.WorkloadDetails
 	VCAPSecretName  string
+	Volume          []corev1.Volume
+	VolumeMount     []corev1.VolumeMount
 }
 
 func (c *Controller) reconcileCAPApplicationVersion(ctx context.Context, item QueueItem, attempts int) (*ReconcileResult, error) {
@@ -270,6 +272,9 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 		AnnotationIstioSidecarInject: "false",
 	})
 
+	// Get ServiceInfos for consumed BTP services
+	consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), ca.Spec.BTP.Services)
+
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        getContentJobName(workload.Name, cav),
@@ -298,14 +303,14 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 								{Name: EnvCAPOpAppVersion, Value: cav.Spec.Version},
 							}, workload.JobDefinition.Env...),
 							EnvFrom:         getEnvFrom(vcapSecretName),
-							VolumeMounts:    workload.JobDefinition.VolumeMounts,
+							VolumeMounts:    append(workload.JobDefinition.VolumeMounts, getVolumeMounts(consumedServiceInfos)...),
 							Resources:       workload.JobDefinition.Resources,
 							SecurityContext: workload.JobDefinition.SecurityContext,
 						},
 					},
 					SecurityContext:           workload.JobDefinition.PodSecurityContext,
 					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,
-					Volumes:                   workload.JobDefinition.Volumes,
+					Volumes:                   append(workload.JobDefinition.Volumes, getVolumes(consumedServiceInfos)...),
 					ImagePullSecrets:          convertToLocalObjectReferences(cav.Spec.RegistrySecrets),
 					RestartPolicy:             corev1.RestartPolicyOnFailure,
 					NodeSelector:              workload.JobDefinition.NodeSelector,
@@ -557,12 +562,22 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 
 // newDeployment creates a new generic Deployment for a CAV resource based on the type. It also sets the appropriate OwnerReferences.
 func newDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails, ownerRef metav1.OwnerReference, vcapSecretName string) *appsv1.Deployment {
+	// Get ServiceInfos for consumed BTP services
+	consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), ca.Spec.BTP.Services)
+
 	params := &DeploymentParameters{
 		CA:              ca,
 		CAV:             cav,
 		OwnerRef:        &ownerRef,
 		WorkloadDetails: *workload,
 		VCAPSecretName:  vcapSecretName,
+		Volume:          getVolumes(consumedServiceInfos),
+	}
+
+	if workload.DeploymentDefinition.Type == v1alpha1.DeploymentCAP {
+		params.VolumeMount = getCAPVolumeMounts(consumedServiceInfos, CDSVolMountPrefix)
+	} else {
+		params.VolumeMount = getVolumeMounts(consumedServiceInfos)
 	}
 
 	return createDeployment(params)
@@ -597,7 +612,7 @@ func createDeployment(params *DeploymentParameters) *appsv1.Deployment {
 					ImagePullSecrets:          convertToLocalObjectReferences(params.CAV.Spec.RegistrySecrets),
 					Containers:                getContainer(params),
 					ServiceAccountName:        params.WorkloadDetails.DeploymentDefinition.ServiceAccountName,
-					Volumes:                   params.WorkloadDetails.DeploymentDefinition.Volumes,
+					Volumes:                   append(params.WorkloadDetails.DeploymentDefinition.Volumes, params.Volume...),
 					SecurityContext:           params.WorkloadDetails.DeploymentDefinition.PodSecurityContext,
 					NodeSelector:              params.WorkloadDetails.DeploymentDefinition.NodeSelector,
 					NodeName:                  params.WorkloadDetails.DeploymentDefinition.NodeName,
@@ -619,7 +634,7 @@ func getContainer(params *DeploymentParameters) []corev1.Container {
 		Command:         params.WorkloadDetails.DeploymentDefinition.Command,
 		Env:             getEnv(params),
 		EnvFrom:         getEnvFrom(params.VCAPSecretName),
-		VolumeMounts:    params.WorkloadDetails.DeploymentDefinition.VolumeMounts,
+		VolumeMounts:    append(params.WorkloadDetails.DeploymentDefinition.VolumeMounts, params.VolumeMount...),
 		LivenessProbe:   params.WorkloadDetails.DeploymentDefinition.LivenessProbe,
 		ReadinessProbe:  params.WorkloadDetails.DeploymentDefinition.ReadinessProbe,
 		Resources:       params.WorkloadDetails.DeploymentDefinition.Resources,
