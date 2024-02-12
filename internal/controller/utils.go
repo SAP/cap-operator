@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package controller
 
 import (
+	"context"
 	"crypto/sha1"
 	"crypto/sha256"
 	"fmt"
@@ -19,6 +20,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
 )
+
+const recoveredPanic = "RecoveredPanic"
 
 const (
 	certManagerGardener      = "gardener"
@@ -220,4 +223,39 @@ func updateLabelAnnotationMetadata(object *metav1.ObjectMeta, appMetadata *appMe
 	}
 
 	return updated
+}
+
+func (c *Controller) setCAStatusError(ctx context.Context, itemKey NamespacedResourceKey, err error) {
+	cached, _ := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister().CAPApplications(itemKey.Namespace).Get(itemKey.Name)
+	ca := cached.DeepCopy()
+	ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, recoveredPanic, err.Error())
+	c.crdClient.SmeV1alpha1().CAPApplications(itemKey.Namespace).UpdateStatus(ctx, ca, metav1.UpdateOptions{})
+}
+
+func (c *Controller) setCAVStatusError(ctx context.Context, itemKey NamespacedResourceKey, err error) {
+	cached, _ := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(itemKey.Namespace).Get(itemKey.Name)
+	cav := cached.DeepCopy()
+	cav.SetStatusWithReadyCondition(v1alpha1.CAPApplicationVersionStateError, metav1.ConditionFalse, recoveredPanic, err.Error())
+	c.crdClient.SmeV1alpha1().CAPApplicationVersions(itemKey.Namespace).UpdateStatus(ctx, cav, metav1.UpdateOptions{})
+}
+
+func (c *Controller) setCATStatusError(ctx context.Context, itemKey NamespacedResourceKey, err error) {
+	cached, _ := c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(itemKey.Namespace).Get(itemKey.Name)
+	cat := cached.DeepCopy()
+	var state v1alpha1.CAPTenantState
+	// Determine error state based on current tenant state
+	if cat.Status.State == v1alpha1.CAPTenantStateUpgrading {
+		state = v1alpha1.CAPTenantStateUpgradeError
+	} else {
+		state = v1alpha1.CAPTenantStateProvisioningError
+	}
+	cat.SetStatusWithReadyCondition(state, metav1.ConditionFalse, recoveredPanic, err.Error())
+	c.crdClient.SmeV1alpha1().CAPTenants(itemKey.Namespace).UpdateStatus(ctx, cat, metav1.UpdateOptions{})
+}
+
+func (c *Controller) setCTOPStatusError(ctx context.Context, itemKey NamespacedResourceKey, err error) {
+	cached, _ := c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Lister().CAPTenantOperations(itemKey.Namespace).Get(itemKey.Name)
+	ctop := cached.DeepCopy()
+	ctop.SetStatusWithReadyCondition(v1alpha1.CAPTenantOperationStateFailed, metav1.ConditionFalse, recoveredPanic, err.Error())
+	c.crdClient.SmeV1alpha1().CAPTenantOperations(itemKey.Namespace).UpdateStatus(ctx, ctop, metav1.UpdateOptions{})
 }
