@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -227,6 +228,10 @@ func (c *Controller) processQueueItem(ctx context.Context, key int) error {
 	}
 
 	attempts := q.NumRequeues(item)
+
+	// Attempt to recover panics during reconciliation.
+	defer c.recoverFromPanic(ctx, item, q)
+
 	klog.Info("processing ", item.ResourceKey.Namespace, ".", item.ResourceKey.Name, " of type ", getResourceKindFromKey(key), " (attempt ", attempts, ")")
 
 	switch item.Key {
@@ -279,4 +284,29 @@ func (c *Controller) processReconcileResult(result *ReconcileResult) {
 			q.AddAfter(QueueItem{Key: i, ResourceKey: item.resourceKey}, item.requeueAfter)
 		}
 	}
+}
+
+func (c *Controller) recoverFromPanic(ctx context.Context, item QueueItem, q workqueue.RateLimitingInterface) {
+	if r := recover(); r != nil {
+		// Log the Error / Stack Trace
+		klog.Error(recoveredPanic, " in ", item.ResourceKey.Namespace, ".", item.ResourceKey.Name, " of type ", getResourceKindFromKey(item.Key))
+		err := fmt.Errorf("panic: %v", r)
+		klog.Errorf("Trace: %s\n%s", err, debug.Stack())
+
+		// Set the resource in Error state
+		switch item.Key {
+		case ResourceCAPApplicationVersion:
+			c.setCAVStatusError(ctx, item.ResourceKey, err)
+		case ResourceCAPTenant:
+			c.setCATStatusError(ctx, item.ResourceKey, err)
+		case ResourceCAPTenantOperation:
+			c.setCTOPStatusError(ctx, item.ResourceKey, err)
+		default:
+			c.setCAStatusError(ctx, item.ResourceKey, err)
+		}
+
+		// Add the item back to the queue to be processed again with a RateLimited delay
+		q.AddRateLimited(item)
+	}
+
 }
