@@ -16,6 +16,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -264,6 +265,47 @@ func (c *Controller) checkSecretsExist(serviceInfos []v1alpha1.ServiceInfo, name
 		secretName := service.Secret
 		if _, err = secretLister.Secrets(namespace).Get(secretName); err != nil {
 			break
+		}
+	}
+	return err
+}
+
+func (c *Controller) checkAndPreserveSecrets(serviceInfos []v1alpha1.ServiceInfo, namespace string) error {
+	var err error
+	var secret *corev1.Secret
+	secretLister := c.kubeInformerFactory.Core().V1().Secrets().Lister()
+
+	for _, service := range serviceInfos {
+		secretName := service.Secret
+		if secret, err = secretLister.Secrets(namespace).Get(secretName); err != nil {
+			break
+		}
+		// Add finalizer to preserve Secret from being deleted accidentally
+		if addFinalizer(&secret.Finalizers, FinalizerCAPApplication) {
+			if _, err = c.kubeClient.CoreV1().Secrets(namespace).Update(context.TODO(), secret, metav1.UpdateOptions{}); err != nil {
+				break
+			}
+		}
+	}
+	return err
+}
+
+func (c *Controller) cleanupPreservedSecrets(serviceInfos []v1alpha1.ServiceInfo, namespace string) error {
+	var err error
+	var secret *corev1.Secret
+	secretLister := c.kubeInformerFactory.Core().V1().Secrets().Lister()
+
+	for _, service := range serviceInfos {
+		secretName := service.Secret
+		// Check if a secret exists
+		if secret, err = secretLister.Secrets(namespace).Get(secretName); err != nil && !k8sErrors.IsNotFound(err) {
+			break
+		}
+		// Remove finalizer from preserved Secret (if one exists) to allow it to be cleaned up if needed
+		if secret != nil && removeFinalizer(&secret.Finalizers, FinalizerCAPApplication) {
+			if _, err = c.kubeClient.CoreV1().Secrets(namespace).Update(context.TODO(), secret, metav1.UpdateOptions{}); err != nil {
+				break
+			}
 		}
 	}
 	return err

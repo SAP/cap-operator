@@ -252,9 +252,8 @@ func (c *Controller) updateCAPApplicationStatus(ctx context.Context, ca *v1alpha
 	return err
 }
 
-// TODO: remove this entirely from CA soon
 func (c *Controller) validateSecrets(ctx context.Context, ca *v1alpha1.CAPApplication, attempts int) (bool, error) {
-	err := c.checkSecretsExist(ca.Spec.BTP.Services, ca.Namespace)
+	err := c.checkAndPreserveSecrets(ca.Spec.BTP.Services, ca.Namespace)
 
 	if err == nil {
 		return false, nil
@@ -354,6 +353,10 @@ func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alp
 	// delete CAPTenants - return if found in this loop, to verify deletion
 	var tenantFound bool
 	if tenantFound, err = c.deleteTenants(ctx, ca); tenantFound || err != nil {
+		return nil, err
+	}
+
+	if err = c.cleanupPreservedSecrets(ca.Spec.BTP.Services, ca.Namespace); err != nil && !k8sErrors.IsNotFound(err) {
 		return nil, err
 	}
 
