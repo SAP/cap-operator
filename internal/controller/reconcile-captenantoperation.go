@@ -424,12 +424,15 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 		providerTenantId:  relatedResources.CAPApplication.Spec.Provider.TenantId,
 		providerSubdomain: relatedResources.CAPApplication.Spec.Provider.SubDomain,
 		tenantType:        relatedResources.CAPTenant.Labels[LabelTenantType],
+		volume:            getVolumes(consumedServiceInfos),
 	}
 
 	var job *batchv1.Job
 	if ctop.Spec.Steps[*ctop.Status.CurrentStep-1].Type == v1alpha1.JobTenantOperation {
+		params.volumeMount = getCAPVolumeMounts(consumedServiceInfos, CDSVolMountPrefix)
 		job, err = c.createTenantOperationJob(ctx, ctop, workload, params)
 	} else { // custom tenant operation
+		params.volumeMount = getVolumeMounts(consumedServiceInfos)
 		job, err = c.createCustomTenantOperationJob(ctx, ctop, workload, params)
 	}
 	if err != nil {
@@ -458,6 +461,8 @@ type jobCreateParams struct {
 	providerTenantId  string
 	providerSubdomain string
 	tenantType        string
+	volume            []corev1.Volume
+	volumeMount       []corev1.VolumeMount
 }
 
 func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {

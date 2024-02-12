@@ -52,6 +52,8 @@ type DeploymentParameters struct {
 	OwnerRef        *metav1.OwnerReference
 	WorkloadDetails v1alpha1.WorkloadDetails
 	VCAPSecretName  string
+	Volume          []corev1.Volume
+	VolumeMount     []corev1.VolumeMount
 }
 
 func (c *Controller) reconcileCAPApplicationVersion(ctx context.Context, item QueueItem, attempts int) (*ReconcileResult, error) {
@@ -265,7 +267,7 @@ func (c *Controller) handleContentDeployJob(ca *v1alpha1.CAPApplication, cav *v1
 		vcapSecretName, err = createVCAPSecret(jobName, cav.Namespace, ownerRef, consumedServiceInfos, c.kubeClient)
 
 		if err == nil {
-			contentDeployJob, err = c.kubeClient.BatchV1().Jobs(cav.Namespace).Create(context.TODO(), newContentDeploymentJob(cav, workload, ownerRef, vcapSecretName), metav1.CreateOptions{})
+			contentDeployJob, err = c.kubeClient.BatchV1().Jobs(cav.Namespace).Create(context.TODO(), newContentDeploymentJob(ca, cav, workload, ownerRef, vcapSecretName), metav1.CreateOptions{})
 			if err == nil {
 				util.LogInfo("Content job created successfully", string(Processing), cav, contentDeployJob, "version", cav.Spec.Version)
 			}
@@ -276,7 +278,7 @@ func (c *Controller) handleContentDeployJob(ca *v1alpha1.CAPApplication, cav *v1
 }
 
 // newContentDeploymentJob creates a Content Deployment Job for the CAV resource. It also sets the appropriate OwnerReferences.
-func newContentDeploymentJob(cav *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails, ownerRef metav1.OwnerReference, vcapSecretName string) *batchv1.Job {
+func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails, ownerRef metav1.OwnerReference, vcapSecretName string) *batchv1.Job {
 	labels := copyMaps(workload.Labels, map[string]string{
 		LabelDisableKarydia: "true",
 	})
@@ -288,6 +290,8 @@ func newContentDeploymentJob(cav *v1alpha1.CAPApplicationVersion, workload *v1al
 	contentJobName := getContentJobName(workload.Name, cav)
 
 	util.LogInfo("Creating content job", string(Processing), cav, nil, "contentJobName", contentJobName, "version", cav.Spec.Version)
+	// Get ServiceInfos for consumed BTP services
+	consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), ca.Spec.BTP.Services)
 
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -317,7 +321,7 @@ func newContentDeploymentJob(cav *v1alpha1.CAPApplicationVersion, workload *v1al
 								{Name: EnvCAPOpAppVersion, Value: cav.Spec.Version},
 							}, workload.JobDefinition.Env...),
 							EnvFrom:         getEnvFrom(vcapSecretName),
-							VolumeMounts:    workload.JobDefinition.VolumeMounts,
+							VolumeMounts:    append(workload.JobDefinition.VolumeMounts, getVolumeMounts(consumedServiceInfos)...),
 							Resources:       workload.JobDefinition.Resources,
 							SecurityContext: workload.JobDefinition.SecurityContext,
 						},
@@ -327,7 +331,7 @@ func newContentDeploymentJob(cav *v1alpha1.CAPApplicationVersion, workload *v1al
 					}, vcapSecretName),
 					SecurityContext:           workload.JobDefinition.PodSecurityContext,
 					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,
-					Volumes:                   workload.JobDefinition.Volumes,
+					Volumes:                   append(workload.JobDefinition.Volumes, getVolumes(consumedServiceInfos)...),
 					ImagePullSecrets:          convertToLocalObjectReferences(cav.Spec.RegistrySecrets),
 					RestartPolicy:             corev1.RestartPolicyOnFailure,
 					NodeSelector:              workload.JobDefinition.NodeSelector,
@@ -689,12 +693,22 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 
 // newDeployment creates a new generic Deployment for a CAV resource based on the type. It also sets the appropriate OwnerReferences.
 func newDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails, ownerRef metav1.OwnerReference, vcapSecretName string) *appsv1.Deployment {
+	// Get ServiceInfos for consumed BTP services
+	consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), ca.Spec.BTP.Services)
+
 	params := &DeploymentParameters{
 		CA:              ca,
 		CAV:             cav,
 		OwnerRef:        &ownerRef,
 		WorkloadDetails: *workload,
 		VCAPSecretName:  vcapSecretName,
+		Volume:          getVolumes(consumedServiceInfos),
+	}
+
+	if workload.DeploymentDefinition.Type == v1alpha1.DeploymentCAP {
+		params.VolumeMount = getCAPVolumeMounts(consumedServiceInfos, CDSVolMountPrefix)
+	} else {
+		params.VolumeMount = getVolumeMounts(consumedServiceInfos)
 	}
 
 	return createDeployment(params)
@@ -734,7 +748,7 @@ func createDeployment(params *DeploymentParameters) *appsv1.Deployment {
 					}, params.VCAPSecretName),
 					Containers:                getContainer(params),
 					ServiceAccountName:        params.WorkloadDetails.DeploymentDefinition.ServiceAccountName,
-					Volumes:                   params.WorkloadDetails.DeploymentDefinition.Volumes,
+					Volumes:                   append(params.WorkloadDetails.DeploymentDefinition.Volumes, params.Volume...),
 					SecurityContext:           params.WorkloadDetails.DeploymentDefinition.PodSecurityContext,
 					NodeSelector:              params.WorkloadDetails.DeploymentDefinition.NodeSelector,
 					NodeName:                  params.WorkloadDetails.DeploymentDefinition.NodeName,
@@ -756,7 +770,7 @@ func getContainer(params *DeploymentParameters) []corev1.Container {
 		Command:         params.WorkloadDetails.DeploymentDefinition.Command,
 		Env:             getEnv(params),
 		EnvFrom:         getEnvFrom(params.VCAPSecretName),
-		VolumeMounts:    params.WorkloadDetails.DeploymentDefinition.VolumeMounts,
+		VolumeMounts:    append(params.WorkloadDetails.DeploymentDefinition.VolumeMounts, params.VolumeMount...),
 		LivenessProbe:   params.WorkloadDetails.DeploymentDefinition.LivenessProbe,
 		ReadinessProbe:  params.WorkloadDetails.DeploymentDefinition.ReadinessProbe,
 		Resources:       params.WorkloadDetails.DeploymentDefinition.Resources,
