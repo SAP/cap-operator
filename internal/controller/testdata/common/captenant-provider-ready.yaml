@@ -6,6 +6,7 @@ metadata:
   annotations:
     sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
     sme.sap.com/owner-identifier: default.test-cap-01
+    sme.sap.com/subscription-context-secret: test-cap-01-gen
   labels:
     sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
     sme.sap.com/btp-tenant-id: tenant-id-for-provider

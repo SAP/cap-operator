@@ -15,7 +15,6 @@ import (
 	"golang.org/x/mod/semver"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -25,31 +24,32 @@ import (
 )
 
 const (
-	LabelOwnerIdentifierHash           = "sme.sap.com/owner-identifier-hash"
-	LabelOwnerGeneration               = "sme.sap.com/owner-generation"
-	LabelWorkloadName                  = "sme.sap.com/workload-name"
-	LabelWorkloadType                  = "sme.sap.com/workload-type"
-	LabelResourceCategory              = "sme.sap.com/category"
-	LabelBTPApplicationIdentifierHash  = "sme.sap.com/btp-app-identifier-hash"
-	LabelTenantType                    = "sme.sap.com/tenant-type"
-	LabelTenantId                      = "sme.sap.com/btp-tenant-id"
-	LabelTenantOperationType           = "sme.sap.com/tenant-operation-type"
-	LabelTenantOperationStep           = "sme.sap.com/tenant-operation-step"
-	LabelCAVVersion                    = "sme.sap.com/cav-version"
-	LabelRelevantDNSTarget             = "sme.sap.com/relevant-dns-target-hash"
-	LabelDisableKarydia                = "x4.sap.com/disable-karydia"
-	AnnotationOwnerIdentifier          = "sme.sap.com/owner-identifier"
-	AnnotationBTPApplicationIdentifier = "sme.sap.com/btp-app-identifier"
-	AnnotationResourceHash             = "sme.sap.com/resource-hash"
-	AnnotationControllerClass          = "sme.sap.com/controller-class"
-	AnnotationIstioSidecarInject       = "sidecar.istio.io/inject"
-	AnnotationGardenerDNSTarget        = "dns.gardener.cloud/dnsnames"
-	AnnotationKubernetesDNSTarget      = "external-dns.alpha.kubernetes.io/hostname"
-	FinalizerCAPApplication            = "sme.sap.com/capapplication"
-	FinalizerCAPApplicationVersion     = "sme.sap.com/capapplicationversion"
-	FinalizerCAPTenant                 = "sme.sap.com/captenant"
-	FinalizerCAPTenantOperation        = "sme.sap.com/captenantoperation"
-	GardenerDNSClassIdentifier         = "dns.gardener.cloud/class"
+	LabelOwnerIdentifierHash            = "sme.sap.com/owner-identifier-hash"
+	LabelOwnerGeneration                = "sme.sap.com/owner-generation"
+	LabelWorkloadName                   = "sme.sap.com/workload-name"
+	LabelWorkloadType                   = "sme.sap.com/workload-type"
+	LabelResourceCategory               = "sme.sap.com/category"
+	LabelBTPApplicationIdentifierHash   = "sme.sap.com/btp-app-identifier-hash"
+	LabelTenantType                     = "sme.sap.com/tenant-type"
+	LabelTenantId                       = "sme.sap.com/btp-tenant-id"
+	LabelTenantOperationType            = "sme.sap.com/tenant-operation-type"
+	LabelTenantOperationStep            = "sme.sap.com/tenant-operation-step"
+	LabelCAVVersion                     = "sme.sap.com/cav-version"
+	LabelRelevantDNSTarget              = "sme.sap.com/relevant-dns-target-hash"
+	LabelDisableKarydia                 = "x4.sap.com/disable-karydia"
+	AnnotationOwnerIdentifier           = "sme.sap.com/owner-identifier"
+	AnnotationBTPApplicationIdentifier  = "sme.sap.com/btp-app-identifier"
+	AnnotationResourceHash              = "sme.sap.com/resource-hash"
+	AnnotationControllerClass           = "sme.sap.com/controller-class"
+	AnnotationIstioSidecarInject        = "sidecar.istio.io/inject"
+	AnnotationGardenerDNSTarget         = "dns.gardener.cloud/dnsnames"
+	AnnotationKubernetesDNSTarget       = "external-dns.alpha.kubernetes.io/hostname"
+	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
+	FinalizerCAPApplication             = "sme.sap.com/capapplication"
+	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
+	FinalizerCAPTenant                  = "sme.sap.com/captenant"
+	FinalizerCAPTenantOperation         = "sme.sap.com/captenantoperation"
+	GardenerDNSClassIdentifier          = "dns.gardener.cloud/class"
 )
 
 const (
@@ -74,11 +74,12 @@ const (
 const RouterHttpCookieName = "CAPOP_ROUTER_STICKY"
 
 const (
-	EnvCAPOpAppVersion      = "CAPOP_APP_VERSION"
-	EnvCAPOpTenantID        = "CAPOP_TENANT_ID"
-	EnvCAPOpTenantSubDomain = "CAPOP_TENANT_SUBDOMAIN"
-	EnvCAPOpTenantOperation = "CAPOP_TENANT_OPERATION"
-	EnvVCAPServices         = "VCAP_SERVICES"
+	EnvCAPOpAppVersion          = "CAPOP_APP_VERSION"
+	EnvCAPOpTenantID            = "CAPOP_TENANT_ID"
+	EnvCAPOpTenantSubDomain     = "CAPOP_TENANT_SUBDOMAIN"
+	EnvCAPOpTenantOperation     = "CAPOP_TENANT_OPERATION"
+	EnvCAPOpSubscriptionPayload = "CAPOP_SUBSCRIPTION_PAYLOAD"
+	EnvVCAPServices             = "VCAP_SERVICES"
 )
 
 type JobState string
@@ -109,7 +110,8 @@ type destinationInfo struct {
 }
 
 const (
-	ServiceSuffix = "-svc"
+	ServiceSuffix       = "-svc"
+	SubscriptionContext = "subscriptionContext"
 )
 
 var restrictedEnvNames = map[string]struct{}{
@@ -314,7 +316,7 @@ func (c *Controller) cleanupPreservedSecrets(serviceInfos []v1alpha1.ServiceInfo
 // This method is called to handle NotFound error at the beginning of reconciliation to skip requeue on errors due to deletion of resource
 func handleOperatorResourceErrors(err error) error {
 	// Handle NotFound errors (object was most likely deleted)
-	if errors.IsNotFound(err) {
+	if k8sErrors.IsNotFound(err) {
 		return nil // No error, to skips requeue of the resource
 	}
 	return err

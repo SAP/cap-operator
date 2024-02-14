@@ -8,6 +8,7 @@ metadata:
     - sme.sap.com/captenantoperation
   annotations:
     sme.sap.com/owner-identifier: default.test-cap-01-provider
+    sme.sap.com/subscription-context-secret: test-cap-01-gen
   labels:
     sme.sap.com/tenant-operation-type: provisioning
     sme.sap.com/owner-generation: "0"

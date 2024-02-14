@@ -8,6 +8,7 @@ metadata:
     - sme.sap.com/captenantoperation
   annotations:
     sme.sap.com/owner-identifier: default.test-cap-01-provider
+    sme.sap.com/subscription-context-secret: test-cap-01-gen
   labels:
     sme.sap.com/tenant-operation-type: provisioning
     sme.sap.com/owner-generation: "0"
@@ -96,6 +97,11 @@ spec:
               value: provisioning
             - name: CAPOP_TENANT_SUBDOMAIN
               value: my-provider
+            - name: CAPOP_SUBSCRIPTION_PAYLOAD
+              valueFrom:
+                secretKeyRef:
+                  name: test-cap-01-gen
+                  key: subscriptionContext
           envFrom:
             - secretRef:
                 name: test-cap-01-provider-abcd-mtx-gen
