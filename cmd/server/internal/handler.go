@@ -32,6 +32,8 @@ import (
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned"
 )
 
+const AnnotationSubscriptionContext = "sme.sap.com/subscription-context"
+
 const (
 	LabelBTPApplicationIdentifierHash = "sme.sap.com/btp-app-identifier-hash"
 	LabelTenantId                     = "sme.sap.com/btp-tenant-id"
@@ -85,38 +87,50 @@ type AdditionalInformation struct {
 }
 
 type DeprovisioningRequest struct {
+	SubscriptionGUID               string   `json:"subscriptionGUID"`
 	SubscriptionAppId              string   `json:"subscriptionAppId"`
 	SubscriptionAppName            string   `json:"subscriptionAppName"`
 	SubscribedTenantId             string   `json:"subscribedTenantId"`
-	SubscribedZoneId               string   `json:"subscribedZoneId"`
+	SubscribedZoneId               string   `json:"subscribedZoneId"` //Deprecated?
 	SubscribedSubdomain            string   `json:"subscribedSubdomain"`
 	SubscribedSubaccountId         string   `json:"subscribedSubaccountId"`
 	SubscribedCrmId                string   `json:"subscribedCrmId"`
+	SubscribedCostObjectId         string   `json:"subscribedCostObjectId"`
 	SubscriptionAppPlan            string   `json:"subscriptionAppPlan"`
 	SubscriptionAppAmount          string   `json:"subscriptionAppAmount"`
-	DependentServiceInstanceAppIds string   `json:"dependentServiceInstanceAppIds"`
+	DependentServiceInstanceAppIds []string `json:"dependentServiceInstanceAppIds"`
+	DependentServiceInstancesInfo  any      `json:"dependentServiceInstancesInfo"`
 	GlobalAccountGUID              string   `json:"globalAccountGUID"`
+	ProviderSubaccountId           string   `json:"providerSubaccountId"`
 	UserId                         string   `json:"userId"`
 	UserInfo                       UserInfo `json:"userInfo"`
 }
 
 type ProvisioningRequest struct {
-	SubscriptionAppId              string                `json:"subscriptionAppId"`
-	SubscriptionAppName            string                `json:"subscriptionAppName"`
-	SubscribedTenantId             string                `json:"subscribedTenantId"`
-	SubscribedZoneId               string                `json:"subscribedZoneId"`
-	SubscribedSubdomain            string                `json:"subscribedSubdomain"`
-	SubscribedSubaccountId         string                `json:"subscribedSubaccountId"`
-	SubscribedLicenseType          string                `json:"subscribedLicenseType"`
-	SubscribedCrmId                string                `json:"subscribedCrmId"`
-	SubscriptionAppPlan            string                `json:"subscriptionAppPlan"`
-	SubscriptionAppAmount          string                `json:"subscriptionAppAmount"`
-	DependentServiceInstanceAppIds string                `json:"dependentServiceInstanceAppIds"`
-	GlobalAccountGUID              string                `json:"globalAccountGUID"`
-	EventType                      string                `json:"eventType"`
-	AdditionalInformation          AdditionalInformation `json:"additionalInformation"`
-	UserId                         string                `json:"userId"`
-	UserInfo                       UserInfo              `json:"userInfo"`
+	SubscriptionGUID                       string                `json:"subscriptionGUID"`
+	SubscriptionAppId                      string                `json:"subscriptionAppId"`
+	SubscriptionAppName                    string                `json:"subscriptionAppName"`
+	SubscribedTenantId                     string                `json:"subscribedTenantId"`
+	SubscribedZoneId                       string                `json:"subscribedZoneId"` //Deprecated?
+	SubscribedSubdomain                    string                `json:"subscribedSubdomain"`
+	SubscribedSubaccountId                 string                `json:"subscribedSubaccountId"`
+	SubscribedLicenseType                  string                `json:"subscribedLicenseType"`
+	SubscribedCrmId                        string                `json:"subscribedCrmId"`
+	SubscribedCostObjectId                 string                `json:"subscribedCostObjectId"`
+	SubscriptionAppPlan                    string                `json:"subscriptionAppPlan"`
+	SubscriptionAppAmount                  string                `json:"subscriptionAppAmount"`
+	DependentServiceInstanceAppIds         []string              `json:"dependentServiceInstanceAppIds"`
+	DependentServiceInstancesInfo          any                   `json:"dependentServiceInstancesInfo"`
+	GlobalAccountGUID                      string                `json:"globalAccountGUID"`
+	ProviderSubaccountId                   string                `json:"providerSubaccountId"`
+	EventType                              string                `json:"eventType"`
+	AdditionalInformation                  AdditionalInformation `json:"additionalInformation"`
+	UserId                                 string                `json:"userId"`
+	UserInfo                               UserInfo              `json:"userInfo"`
+	SubscriptionParams                     string                `json:"subscriptionParams"`
+	MovedFromSaasProvisioning              bool                  `json:"movedFromSaasProvisioning"`
+	AppNameBeforeMovedFromSaasProvisioning string                `json:"appNameBeforeMovedFromSaasProvisioning"`
+	SubscriptionCommercialAppName          string                `json:"subscriptionCommercialAppName"`
 }
 
 type GetRequest struct {
@@ -173,10 +187,14 @@ func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
 	if tenant == nil {
 		created = true
 		klog.InfoS("Creating Tenant")
+		jsonReqByte, _ := json.Marshal(reqType)
 		tenant, _ = s.Clientset.SmeV1alpha1().CAPTenants(ca.Namespace).Create(context.TODO(), &v1alpha1.CAPTenant{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: ca.Name + "-",
 				Namespace:    ca.Namespace,
+				Annotations: map[string]string{
+					AnnotationSubscriptionContext: string(jsonReqByte),
+				},
 				Labels: map[string]string{
 					LabelBTPApplicationIdentifierHash: sha1Sum(reqType.GlobalAccountGUID, reqType.SubscriptionAppName),
 					LabelTenantId:                     reqType.SubscribedTenantId,
