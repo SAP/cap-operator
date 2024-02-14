@@ -292,6 +292,26 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 			return false, err
 		}
 
+		// Create a secret with the provider subscription context (dervied from the spec of CAPApplication)
+		secret, _ := c.kubeClient.CoreV1().Secrets(ca.Namespace).Create(context.TODO(), &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				GenerateName: providerTenantName + "-",
+				Namespace:    ca.Namespace,
+				Labels: map[string]string{
+					LabelBTPApplicationIdentifierHash: sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName),
+					LabelTenantId:                     ca.Spec.Provider.TenantId,
+				},
+			},
+			StringData: map[string]string{
+				SubscriptionContext: `{
+					"subscriptionAppName": "` + ca.Spec.BTPAppName + `",
+					"subscribedTenantId": "` + ca.Spec.Provider.TenantId + `",
+					"subscribedSubdomain": "` + ca.Spec.Provider.SubDomain + `",
+					"globalAccountGUID": "` + ca.Spec.GlobalAccountId + `"
+				}`,
+			},
+		}, metav1.CreateOptions{})
+
 		// Create provider tenant
 		if tenant, err = c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Create(
 			ctx, &v1alpha1.CAPTenant{
@@ -299,7 +319,9 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 					Name:      providerTenantName,
 					Namespace: ca.Namespace,
 					Annotations: map[string]string{
-						AnnotationBTPApplicationIdentifier: ca.Spec.GlobalAccountId + "." + ca.Spec.BTPAppName,
+						AnnotationBTPApplicationIdentifier:  ca.Spec.GlobalAccountId + "." + ca.Spec.BTPAppName,
+						AnnotationSubscriptionContextSecret: secret.Name, // Store the secret name in the tenant annotation
+
 					},
 					Labels: map[string]string{
 						LabelBTPApplicationIdentifierHash: sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName),
@@ -318,6 +340,16 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 			}, metav1.CreateOptions{}); err != nil {
 			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
 			return false, err
+		}
+		if tenant != nil {
+			secret.OwnerReferences = []metav1.OwnerReference{
+				*metav1.NewControllerRef(tenant, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind)),
+			}
+			_, err = c.kubeClient.CoreV1().Secrets(tenant.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
+			if err != nil {
+				ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
+				return false, err
+			}
 		}
 		c.Event(ca, tenant, corev1.EventTypeNormal, CAPApplicationEventProviderTenantCreated, EventActionProviderTenantProcessing, fmt.Sprintf("created provider tenant %s.%s", tenant.Namespace, tenant.Name))
 	}

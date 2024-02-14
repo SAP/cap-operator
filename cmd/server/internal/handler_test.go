@@ -264,7 +264,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request without CROs",
 			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			expectedStatusCode: http.StatusNotAcceptable,
 			expectedResponse: Result{
 				Message: "the server could not find the requested resource (get capapplications.sme.sap.com)", //TODO
@@ -273,7 +273,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request with CROs with invalid app name",
 			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"test-app","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `"}`,
+			body:               `{"subscriptionAppName":"test-app","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:         true,
 			expectedStatusCode: http.StatusNotAcceptable,
 			expectedResponse: Result{
@@ -283,7 +283,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request valid",
 			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:         true,
 			expectedStatusCode: http.StatusAccepted,
 			expectedResponse: Result{
@@ -293,7 +293,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request with existing tenant",
 			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:         true,
 			existingTenant:     true,
 			expectedStatusCode: http.StatusAccepted,
@@ -367,7 +367,7 @@ func Test_deprovisioning(t *testing.T) {
 			name:   "Deprovisioning Request w/o CROs",
 			method: http.MethodDelete,
 
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			expectedStatusCode: http.StatusNotAcceptable,
 			expectedResponse: Result{
 				Message: "the server could not find the requested resource (get capapplications.sme.sap.com)", //TODO
@@ -377,7 +377,7 @@ func Test_deprovisioning(t *testing.T) {
 			name:               "Deprovisioning Request valid",
 			method:             http.MethodDelete,
 			createCROs:         true,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			expectedStatusCode: http.StatusAccepted,
 			expectedResponse: Result{
 				Message: ResourceDeleted,
@@ -388,7 +388,7 @@ func Test_deprovisioning(t *testing.T) {
 			method:             http.MethodDelete,
 			createCROs:         true,
 			existingTenant:     true,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			expectedStatusCode: http.StatusAccepted,
 			expectedResponse: Result{
 				Message: ResourceDeleted,

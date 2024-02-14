@@ -162,6 +162,11 @@ func (c *Controller) prepareCAPTenantOperation(ctop *v1alpha1.CAPTenantOperation
 		update = true
 	}
 
+	// copy over the subscription context secret from tenant if any
+	if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning && cat.Annotations[AnnotationSubscriptionContextSecret] != "" {
+		ctop.Annotations[AnnotationSubscriptionContextSecret] = cat.Annotations[AnnotationSubscriptionContextSecret]
+	}
+
 	if ctop.DeletionTimestamp == nil {
 		// set finalizers if not added
 		if ctop.Finalizers == nil {
@@ -523,7 +528,10 @@ func getContainers(payload []byte, ctop *v1alpha1.CAPTenantOperation, derivedWor
 		Image:           derivedWorkload.image,
 		ImagePullPolicy: derivedWorkload.imagePullPolicy,
 		Env: append([]corev1.EnvVar{
-			{Name: EnvCAPOpAppVersion, Value: params.version}, {Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId}, {Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)}, {Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
+			{Name: EnvCAPOpAppVersion, Value: params.version},
+			{Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId},
+			{Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)},
+			{Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
 		}, derivedWorkload.env...),
 		EnvFrom:         params.envFromVCAPSecret,
 		VolumeMounts:    derivedWorkload.volumeMounts,
@@ -541,10 +549,18 @@ func getContainers(payload []byte, ctop *v1alpha1.CAPTenantOperation, derivedWor
 			operation = "unsubscribe"
 		}
 
+		appendCommand := false
 		if derivedWorkload.command != nil {
 			container.Command = derivedWorkload.command
 		} else {
 			container.Command = []string{"node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx", operation, ctop.Spec.TenantId}
+			appendCommand = true
+		}
+		if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
+			container.Env = append(container.Env, corev1.EnvVar{Name: EnvCAPOpSubscriptionPayload, ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: ctop.Annotations[AnnotationSubscriptionContextSecret]}, Key: SubscriptionContext}}})
+			if appendCommand {
+				container.Command = append(container.Command, "--body", `$(`+EnvCAPOpSubscriptionPayload+`)`)
+			}
 		}
 
 		return append([]corev1.Container{}, *container)
