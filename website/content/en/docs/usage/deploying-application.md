@@ -68,7 +68,7 @@ metadata:
   name: cav-cap-app-01-1
   namespace: cap-app-01
 spec:
-  capApplicationInstance: cap-cap-app-01 # <-- reference to CAPApplication in the same namespace
+  capApplicationInstance: cap-app-01 # <-- reference to CAPApplication in the same namespace
   version: "1" # <-- semantic version
   registrySecrets:
     - regcred
