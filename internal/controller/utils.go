@@ -33,6 +33,7 @@ const (
 const (
 	certManagerEnv = "CERT_MANAGER"
 	dnsManagerEnv  = "DNS_MANAGER"
+	dnsTargetEnv   = "DNS_TARGET"
 )
 
 type ownerInfo struct {
@@ -155,6 +156,16 @@ func dnsManager() string {
 		}
 	}
 	return mgr
+}
+
+func envDNSTarget() string {
+	target := ""
+	env := os.Getenv(dnsTargetEnv)
+	if env != "" {
+		// convert to lower case
+		target = strings.ToLower(env)
+	}
+	return target
 }
 
 func updateResourceAnnotation(object *metav1.ObjectMeta, hash string) {
