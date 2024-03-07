@@ -68,7 +68,7 @@ func (c *Controller) handleDomains(ctx context.Context, ca *v1alpha1.CAPApplicat
 	}
 
 	c.handlePrimaryDomainCertificate(ctx, ca, commonName, secretName, istioIngressGatewayInfo.Namespace)
-	c.handlePrimaryDomainDNSEntry(ctx, ca, commonName, ca.Namespace, istioIngressGatewayInfo.DNSTarget)
+	c.handlePrimaryDomainDNSEntry(ctx, ca, commonName, ca.Namespace, sanitizeDNSTarget(istioIngressGatewayInfo.DNSTarget))
 
 	if domainsHash != ca.Status.DomainSpecHash {
 
@@ -516,7 +516,8 @@ func (c *Controller) reconcileTenantDNSEntries(ctx context.Context, cat *v1alpha
 	if err != nil {
 		return err
 	}
-	hash := sha256Sum(ingressGatewayInfo.DNSTarget, cat.Spec.SubDomain, strings.Join(ca.Spec.Domains.Secondary, ""))
+	dnsTarget := sanitizeDNSTarget(ingressGatewayInfo.DNSTarget)
+	hash := sha256Sum(dnsTarget, cat.Spec.SubDomain, strings.Join(ca.Spec.Domains.Secondary, ""))
 	changeDetected, err := c.detectTenantDNSEntryChanges(ctx, cat, ca, hash)
 	if err != nil || !changeDetected {
 		return err
@@ -542,7 +543,7 @@ func (c *Controller) reconcileTenantDNSEntries(ctx context.Context, cat *v1alpha
 				Spec: dnsv1alpha1.DNSEntrySpec{
 					DNSName: cat.Spec.SubDomain + "." + domain,
 					Targets: []string{
-						ingressGatewayInfo.DNSTarget,
+						dnsTarget,
 					},
 				},
 			}, metav1.CreateOptions{},
@@ -1274,6 +1275,10 @@ func trimDNSTarget(dnsTarget string) string {
 	for len(dnsTarget) > 64 {
 		dnsTarget = dnsTarget[strings.Index(dnsTarget, ".")+1:]
 	}
-	// Fix for domain gw/creds secret name (Replace *.domain with x.domain for secret name)
+	return sanitizeDNSTarget(dnsTarget)
+}
+
+func sanitizeDNSTarget(dnsTarget string) string {
+	// Replace *.domain with x.domain as * is not a valid subdomain for a dns target
 	return strings.ReplaceAll(dnsTarget, "*", "x")
 }
