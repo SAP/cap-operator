@@ -879,7 +879,11 @@ func (c *Controller) getIngressGatewayInfo(ctx context.Context, ca *v1alpha1.CAP
 	// Get dnsTarget
 	// First try to use dnsTarget --> if it is set
 	dnsTarget := ca.Spec.Domains.DnsTarget
-	// Attempt to get dnsTarget from Service via annotation(s)
+	// Attempt to get dnsTarget from Env
+	if dnsTarget == "" {
+		dnsTarget = envDNSTarget()
+	}
+	// Finally attempt to get dnsTarget from Service via annotation(s)
 	if dnsTarget == "" {
 		ingressGWSvc, err := c.getIngressGatewayService(ctx, namespace, relevantPodsNames, ca)
 		if err != nil {

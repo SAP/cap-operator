@@ -18,6 +18,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+const envDNS = "env-ingress.some.cluster.sap"
+
 func TestController_reconcileOperatorDomains(t *testing.T) {
 	tests := []struct {
 		name                  string
@@ -25,6 +27,8 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 		createCA2             bool
 		updateCA              bool
 		createIngress         bool
+		withoutDNSNames       bool
+		useEnvDNS             bool
 		cleanUpDomains        bool
 		wantErr               bool
 		expectDomainResources bool
@@ -63,6 +67,25 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 			createIngress:         true,
 			wantErr:               false,
 			expectDomainResources: true,
+		},
+		{
+			name:                  "Test with multiple CAPApplications and Ingress GW without DNS names",
+			createCA:              true,
+			createCA2:             true,
+			createIngress:         true,
+			withoutDNSNames:       true,
+			wantErr:               true, // ingress gateway service not annotated with dns target name for CAPApplication default.ca-test-name
+			expectDomainResources: false,
+		},
+		{
+			name:                  "Test with multiple CAPApplications and Ingress GW without DNS names but DNS_TARGET env",
+			createCA:              true,
+			createCA2:             true,
+			createIngress:         true,
+			withoutDNSNames:       true,
+			useEnvDNS:             true,
+			wantErr:               false,
+			expectDomainResources: true, // Creates resources because of DNS_TARGET env
 		},
 		// {
 		// 	name:                  "Test cleanup with multiple CAPApplications and Ingress GW",
@@ -127,13 +150,17 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 			expectDomainResources: true,
 		},
 	}
-	defer os.Setenv(certManagerEnv, "")
+	defer os.Unsetenv(certManagerEnv)
+	defer os.Unsetenv(dnsTargetEnv)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.enableCertManagerEnv {
 				os.Setenv(certManagerEnv, certManagerCertManagerIO)
 			} else {
 				os.Setenv(certManagerEnv, certManagerGardener)
+			}
+			if tt.useEnvDNS {
+				os.Setenv(dnsTargetEnv, envDNS)
 			}
 			var c *Controller
 			var ca *v1alpha1.CAPApplication
@@ -150,7 +177,11 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 			}
 
 			if tt.createIngress {
-				ingressRes = createIngressResource(ingressGWName, ca, dnsTarget)
+				dns := dnsTarget
+				if tt.withoutDNSNames {
+					dns = ""
+				}
+				ingressRes = createIngressResource(ingressGWName, ca, dns)
 			}
 
 			c = getTestController(testResources{
