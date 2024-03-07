@@ -52,8 +52,8 @@ type DeploymentParameters struct {
 	OwnerRef        *metav1.OwnerReference
 	WorkloadDetails v1alpha1.WorkloadDetails
 	VCAPSecretName  string
-	Volume          []corev1.Volume
-	VolumeMount     []corev1.VolumeMount
+	Volumes         []corev1.Volume
+	VolumeMounts    []corev1.VolumeMount
 }
 
 func (c *Controller) reconcileCAPApplicationVersion(ctx context.Context, item QueueItem, attempts int) (*ReconcileResult, error) {
@@ -293,6 +293,17 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 	// Get ServiceInfos for consumed BTP services
 	consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), ca.Spec.BTP.Services)
 
+	var envFrom []corev1.EnvFromSource
+	var serviceSecretVolumeMounts []corev1.VolumeMount
+	var serviceSecretVolumes []corev1.Volume
+
+	if useVolumeMounts(workload.JobDefinition.Env) {
+		serviceSecretVolumeMounts = getVolumeMounts(consumedServiceInfos)
+		serviceSecretVolumes = getVolumes(consumedServiceInfos)
+	} else {
+		envFrom = getEnvFrom(vcapSecretName)
+	}
+
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        contentJobName,
@@ -320,8 +331,8 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 							Env: append([]corev1.EnvVar{
 								{Name: EnvCAPOpAppVersion, Value: cav.Spec.Version},
 							}, workload.JobDefinition.Env...),
-							EnvFrom:         getEnvFrom(vcapSecretName),
-							VolumeMounts:    append(workload.JobDefinition.VolumeMounts, getVolumeMounts(consumedServiceInfos)...),
+							EnvFrom:         envFrom,
+							VolumeMounts:    append(workload.JobDefinition.VolumeMounts, serviceSecretVolumeMounts...),
 							Resources:       workload.JobDefinition.Resources,
 							SecurityContext: workload.JobDefinition.SecurityContext,
 						},
@@ -331,7 +342,7 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 					}, vcapSecretName),
 					SecurityContext:           workload.JobDefinition.PodSecurityContext,
 					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,
-					Volumes:                   append(workload.JobDefinition.Volumes, getVolumes(consumedServiceInfos)...),
+					Volumes:                   append(workload.JobDefinition.Volumes, serviceSecretVolumes...),
 					ImagePullSecrets:          convertToLocalObjectReferences(cav.Spec.RegistrySecrets),
 					RestartPolicy:             corev1.RestartPolicyOnFailure,
 					NodeSelector:              workload.JobDefinition.NodeSelector,
@@ -702,13 +713,15 @@ func newDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVers
 		OwnerRef:        &ownerRef,
 		WorkloadDetails: *workload,
 		VCAPSecretName:  vcapSecretName,
-		Volume:          getVolumes(consumedServiceInfos),
 	}
 
-	if workload.DeploymentDefinition.Type == v1alpha1.DeploymentCAP {
-		params.VolumeMount = getCAPVolumeMounts(consumedServiceInfos, CDSVolMountPrefix)
-	} else {
-		params.VolumeMount = getVolumeMounts(consumedServiceInfos)
+	if useVolumeMounts(workload.DeploymentDefinition.Env) {
+		if workload.DeploymentDefinition.Type == v1alpha1.DeploymentCAP {
+			params.VolumeMounts = getCAPVolumeMounts(consumedServiceInfos, CDSVolMountPrefix)
+		} else {
+			params.VolumeMounts = getVolumeMounts(consumedServiceInfos)
+		}
+		params.Volumes = getVolumes(consumedServiceInfos)
 	}
 
 	return createDeployment(params)
@@ -748,7 +761,7 @@ func createDeployment(params *DeploymentParameters) *appsv1.Deployment {
 					}, params.VCAPSecretName),
 					Containers:                getContainer(params),
 					ServiceAccountName:        params.WorkloadDetails.DeploymentDefinition.ServiceAccountName,
-					Volumes:                   append(params.WorkloadDetails.DeploymentDefinition.Volumes, params.Volume...),
+					Volumes:                   append(params.WorkloadDetails.DeploymentDefinition.Volumes, params.Volumes...),
 					SecurityContext:           params.WorkloadDetails.DeploymentDefinition.PodSecurityContext,
 					NodeSelector:              params.WorkloadDetails.DeploymentDefinition.NodeSelector,
 					NodeName:                  params.WorkloadDetails.DeploymentDefinition.NodeName,
@@ -770,7 +783,7 @@ func getContainer(params *DeploymentParameters) []corev1.Container {
 		Command:         params.WorkloadDetails.DeploymentDefinition.Command,
 		Env:             getEnv(params),
 		EnvFrom:         getEnvFrom(params.VCAPSecretName),
-		VolumeMounts:    append(params.WorkloadDetails.DeploymentDefinition.VolumeMounts, params.VolumeMount...),
+		VolumeMounts:    append(params.WorkloadDetails.DeploymentDefinition.VolumeMounts, params.VolumeMounts...),
 		LivenessProbe:   params.WorkloadDetails.DeploymentDefinition.LivenessProbe,
 		ReadinessProbe:  params.WorkloadDetails.DeploymentDefinition.ReadinessProbe,
 		Resources:       params.WorkloadDetails.DeploymentDefinition.Resources,

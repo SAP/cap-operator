@@ -387,8 +387,21 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 		return nil, fmt.Errorf("could not find workload %s in %s %s.%s", step.Name, v1alpha1.CAPApplicationVersionKind, relatedResources.CAPApplicationVersion.Namespace, relatedResources.CAPApplicationVersion.Name)
 	}
 
-	// create VCAP secret from consumed BTP services
 	consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), relatedResources.CAPApplication.Spec.BTP.Services)
+
+	var serviceSecretVolumeMounts []corev1.VolumeMount
+	var serviceSecretVolumes []corev1.Volume
+
+	if (workload.JobDefinition != nil && useVolumeMounts(workload.JobDefinition.Env)) || (workload.DeploymentDefinition != nil && useVolumeMounts(workload.DeploymentDefinition.Env)) {
+		if ctop.Spec.Steps[*ctop.Status.CurrentStep-1].Type == v1alpha1.JobTenantOperation {
+			serviceSecretVolumeMounts = getCAPVolumeMounts(consumedServiceInfos, CDSVolMountPrefix)
+		} else {
+			serviceSecretVolumeMounts = getVolumeMounts(consumedServiceInfos)
+		}
+		serviceSecretVolumes = getVolumes(consumedServiceInfos)
+	}
+
+	// create VCAP secret from consumed BTP services
 	vcapSecretName, err := createVCAPSecret(ctop.Name+"-"+strings.ToLower(workload.Name), ctop.Namespace, *metav1.NewControllerRef(ctop, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantOperationKind)), consumedServiceInfos, c.kubeClient)
 	if err != nil {
 		return nil, err
@@ -424,15 +437,14 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 		providerTenantId:  relatedResources.CAPApplication.Spec.Provider.TenantId,
 		providerSubdomain: relatedResources.CAPApplication.Spec.Provider.SubDomain,
 		tenantType:        relatedResources.CAPTenant.Labels[LabelTenantType],
-		volume:            getVolumes(consumedServiceInfos),
+		volumeMounts:      serviceSecretVolumeMounts,
+		volumes:           serviceSecretVolumes,
 	}
 
 	var job *batchv1.Job
 	if ctop.Spec.Steps[*ctop.Status.CurrentStep-1].Type == v1alpha1.JobTenantOperation {
-		params.volumeMount = getCAPVolumeMounts(consumedServiceInfos, CDSVolMountPrefix)
 		job, err = c.createTenantOperationJob(ctx, ctop, workload, params)
 	} else { // custom tenant operation
-		params.volumeMount = getVolumeMounts(consumedServiceInfos)
 		job, err = c.createCustomTenantOperationJob(ctx, ctop, workload, params)
 	}
 	if err != nil {
@@ -461,8 +473,8 @@ type jobCreateParams struct {
 	providerTenantId  string
 	providerSubdomain string
 	tenantType        string
-	volume            []corev1.Volume
-	volumeMount       []corev1.VolumeMount
+	volumes           []corev1.Volume
+	volumeMounts      []corev1.VolumeMount
 }
 
 func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {
@@ -490,7 +502,7 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 					ImagePullSecrets:          params.imagePullSecrets,
 					Containers:                getContainers(ctop, derivedWorkload, workload, params),
 					InitContainers:            *updateInitContainers(derivedWorkload.initContainers, getCTOPEnv(params, ctop), params.vcapSecretName),
-					Volumes:                   derivedWorkload.volumes,
+					Volumes:                   append(derivedWorkload.volumes, params.volumes...),
 					ServiceAccountName:        derivedWorkload.serviceAccountName,
 					SecurityContext:           derivedWorkload.podSecurityContext,
 					NodeSelector:              derivedWorkload.nodeSelector,
@@ -515,7 +527,7 @@ func getContainers(ctop *v1alpha1.CAPTenantOperation, derivedWorkload tentantOpe
 		ImagePullPolicy: derivedWorkload.imagePullPolicy,
 		Env:             append(getCTOPEnv(params, ctop), derivedWorkload.env...),
 		EnvFrom:         getEnvFrom(params.vcapSecretName),
-		VolumeMounts:    derivedWorkload.volumeMounts,
+		VolumeMounts:    append(derivedWorkload.volumeMounts, params.volumeMounts...),
 		Resources:       derivedWorkload.resources,
 		SecurityContext: derivedWorkload.securityContext,
 	}
@@ -619,7 +631,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 				Spec: corev1.PodSpec{
 					RestartPolicy:             corev1.RestartPolicyNever,
 					SecurityContext:           workload.JobDefinition.PodSecurityContext,
-					Volumes:                   workload.JobDefinition.Volumes,
+					Volumes:                   append(workload.JobDefinition.Volumes, params.volumes...),
 					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,
 					NodeSelector:              workload.JobDefinition.NodeSelector,
 					NodeName:                  workload.JobDefinition.NodeName,
@@ -635,7 +647,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 							ImagePullPolicy: workload.JobDefinition.ImagePullPolicy,
 							Env:             append(getCTOPEnv(params, ctop), workload.JobDefinition.Env...),
 							EnvFrom:         getEnvFrom(params.vcapSecretName),
-							VolumeMounts:    workload.JobDefinition.VolumeMounts,
+							VolumeMounts:    append(workload.JobDefinition.VolumeMounts, params.volumeMounts...),
 							Command:         workload.JobDefinition.Command,
 							Resources:       workload.JobDefinition.Resources,
 							SecurityContext: workload.JobDefinition.SecurityContext,
