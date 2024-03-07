@@ -1,16 +1,16 @@
 module github.com/sap/cap-operator
 
-go 1.22.0
+go 1.22.1
 
 require (
 	github.com/MicahParks/keyfunc/v2 v2.1.0
 	github.com/cert-manager/cert-manager v1.14.3
-	github.com/gardener/cert-management v0.12.0
+	github.com/gardener/cert-management v0.12.1
 	github.com/gardener/external-dns-management v0.18.3
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
-	github.com/lestrrat-go/jwx/v2 v2.0.20
+	github.com/lestrrat-go/jwx/v2 v2.0.21
 	golang.org/x/mod v0.16.0
 	google.golang.org/protobuf v1.33.0
 	istio.io/api v1.20.2
@@ -42,7 +42,7 @@ require (
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.2 // indirect
 	github.com/lestrrat-go/httpcc v1.0.1 // indirect
-	github.com/lestrrat-go/httprc v1.0.4 // indirect
+	github.com/lestrrat-go/httprc v1.0.5 // indirect
 	github.com/lestrrat-go/iter v1.0.2 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
