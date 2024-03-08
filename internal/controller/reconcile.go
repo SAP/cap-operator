@@ -9,9 +9,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path"
 
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"golang.org/x/exp/slices"
 	"golang.org/x/mod/semver"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -53,6 +55,10 @@ const (
 )
 
 const (
+	CDSVolMountPrefix = "/etc/secrets/cds"
+)
+
+const (
 	CertificateSuffix     = "certificate"
 	GardenerDNSClassValue = "garden"
 	GatewaySuffix         = "gw"
@@ -79,6 +85,7 @@ const (
 	EnvCAPOpTenantSubDomain = "CAPOP_TENANT_SUBDOMAIN"
 	EnvCAPOpTenantOperation = "CAPOP_TENANT_OPERATION"
 	EnvVCAPServices         = "VCAP_SERVICES"
+	EnvUseVolumeMounts      = "USE_VOLUME_MOUNTS"
 )
 
 type JobState string
@@ -559,4 +566,35 @@ func copyMaps(originalMap map[string]string, additionalMap map[string]string) ma
 		newMap[key] = value
 	}
 	return newMap
+}
+
+func getVolumeMounts(serviceInfos []v1alpha1.ServiceInfo) []corev1.VolumeMount {
+	volumeMounts := []corev1.VolumeMount{}
+
+	for _, serviceInfo := range serviceInfos {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: serviceInfo.Name, MountPath: path.Join("/etc/secrets/sapcp", serviceInfo.Class, serviceInfo.Name), ReadOnly: true})
+	}
+	return volumeMounts
+}
+
+func getCAPVolumeMounts(serviceInfos []v1alpha1.ServiceInfo, mountPrefix string) []corev1.VolumeMount {
+	volumeMounts := []corev1.VolumeMount{}
+
+	for _, serviceInfo := range serviceInfos {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: serviceInfo.Name, MountPath: path.Join(mountPrefix, "requires", serviceInfo.Class, "credentials"), ReadOnly: true})
+	}
+	return volumeMounts
+}
+
+func getVolumes(serviceInfos []v1alpha1.ServiceInfo) []corev1.Volume {
+	volumes := []corev1.Volume{}
+
+	for _, serviceInfo := range serviceInfos {
+		volumes = append(volumes, corev1.Volume{Name: serviceInfo.Name, VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: serviceInfo.Secret}}})
+	}
+	return volumes
+}
+
+func useVolumeMounts(envVars []corev1.EnvVar) bool {
+	return slices.ContainsFunc(envVars, func(env corev1.EnvVar) bool { return env.Name == EnvUseVolumeMounts && env.Value == "true" })
 }
