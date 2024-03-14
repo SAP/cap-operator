@@ -225,7 +225,7 @@ func execute() int {
 
 		// log final error, if any
 		if err != nil {
-			klog.Error("aborting with error: ", err.Error())
+			klog.ErrorS(err, "Aborting with error")
 		}
 	}()
 
@@ -254,15 +254,15 @@ func execute() int {
 }
 
 func terminateMTXSidecar() {
-	klog.Info("Terminating by TCP connect..")
+	klog.InfoS("Terminating by TCP connect..")
 	// TODO: make port configurable
 	conn, err := net.Dial("tcp", "localhost:8080")
 	if err != nil {
-		klog.Error("Error during mtx termination: ", err)
+		klog.ErrorS(err, "Error during mtx termination")
 	}
 	if conn != nil {
 		conn.Close()
-		klog.Info("Terminated..")
+		klog.InfoS("Terminated..")
 	}
 }
 
@@ -313,7 +313,7 @@ func getTenants(mtxURL *url.URL, client http.Client, token *OAuthResponse) error
 			return err
 		}
 
-		klog.Infof("%s: %s", v1alpha1.CAPTenantResource, body)
+		klog.InfoS("Response from "+mtxURL.Path, v1alpha1.CAPTenantResource, body)
 		return nil
 	} else {
 		return fmt.Errorf("mtx returned status %s", resp.Status)
@@ -353,7 +353,7 @@ func fetchOAuthToken(client http.Client) (*OAuthResponse, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not parse oauth response: %w", err)
 	} else {
-		klog.Infof("retrieved token with scope: %s", token.Scope)
+		klog.InfoS("retrieved token", "scope", token.Scope)
 	}
 
 	return &token, nil
@@ -446,7 +446,7 @@ func processSubscription(requestType string, mtxURL *url.URL, client http.Client
 		return err
 	}
 
-	klog.Infof("%s %s %s response code: %d", v1alpha1.CAPTenantKind, tenantId, requestType, resp.StatusCode)
+	klog.InfoS("Response received from mtx", "tenant id", tenantId, "type", requestType, "http status code", resp.StatusCode)
 	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
 		return nil
 	} else {
@@ -472,14 +472,14 @@ func processUpgrade(mtxURL *url.URL, client http.Client, token *OAuthResponse) e
 		return err
 	}
 
-	klog.Infof("%s %s upgrade response code: %d", v1alpha1.CAPTenantKind, tenantId, resp.StatusCode)
+	klog.InfoS("Response received from mtx", "tenant id", tenantId, "type", "upgrade", "http status code", resp.StatusCode)
 	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
 		decoder := json.NewDecoder(resp.Body)
 		defer resp.Body.Close()
 		var asyncUpgradeResp asyncUpgradeResponse
 		err = decoder.Decode(&asyncUpgradeResp)
 		if err != nil {
-			klog.Errorf("Error parsing response for async upgrade: %v", err)
+			klog.ErrorS(err, "Error parsing response for async upgrade")
 			return err
 		}
 		// Check the final job status
@@ -521,7 +521,7 @@ func fetchJobStatus(tenantId string, client http.Client, req *http.Request) (boo
 	var upgradeJobResp upgradeJobResponse
 	err = decoder.Decode(&upgradeJobResp)
 	if err != nil {
-		klog.Errorf("parsing response for async upgrade of %s: %s%s%v", v1alpha1.CAPTenantKind, tenantId, FailedWith, err)
+		klog.ErrorS(err, "Parsing response failed for async upgrade", v1alpha1.CAPTenantKind, tenantId, FailedWith, err)
 		return false, err
 	}
 	// Re-trigger after sleeping for 10s if status is not "FINISHED"
@@ -539,6 +539,6 @@ func fetchJobStatus(tenantId string, client http.Client, req *http.Request) (boo
 		return false, fmt.Errorf("upgrade of %s: %s %s: %s", v1alpha1.CAPTenantKind, tenantId, FailedWith, upgradeJobResp.Result.Tenants[tenantId].Message)
 	}
 	// tenant upgrade was successful
-	klog.Infof("%s upgrade for %s successful!", v1alpha1.CAPTenantKind, tenantId)
+	klog.InfoS("upgrade successful!", "tenant id", tenantId)
 	return true, nil
 }

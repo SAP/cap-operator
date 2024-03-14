@@ -314,7 +314,7 @@ func (c *Controller) checkPrimaryDomainResources(ctx context.Context, ca *v1alph
 		if dnsEntry.Status.State == dnsv1alpha1.STATE_ERROR {
 			return false, fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name, *dnsEntry.Status.Message)
 		} else if dnsEntry.Status.State != dnsv1alpha1.STATE_READY {
-			klog.Infof(formatResourceState, dnsv1alpha1.DNSEntryKind, dnsEntry.Status.State, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
+			klog.InfoS("Resource not ready", "kind", dnsv1alpha1.DNSEntryKind, "state", dnsEntry.Status.State, v1alpha1.CAPApplicationKind, ca.Name, "namespace", ca.Namespace)
 			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, "DomainResourcesProcessing", "")
 			return true, nil
 		}
@@ -395,7 +395,7 @@ func (c *Controller) checkCertificateStatus(ctx context.Context, ca *v1alpha1.CA
 		if certificate.Status.State == certv1alpha1.StateError {
 			return false, fmt.Errorf(formatResourceStateErr, certv1alpha1.CertificateKind, certv1alpha1.StateError, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name, *certificate.Status.Message)
 		} else if certificate.Status.State != certv1alpha1.StateReady {
-			klog.Infof(formatResourceState, certv1alpha1.CertificateKind, certificate.Status.State, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
+			klog.InfoS("Resource not ready", "kind", certv1alpha1.CertificateKind, "state", certificate.Status.State, v1alpha1.CAPApplicationKind, ca.Name, "namespace", ca.Namespace)
 			return true, nil
 		}
 	case certManagerCertManagerIO:
@@ -409,7 +409,7 @@ func (c *Controller) checkCertificateStatus(ctx context.Context, ca *v1alpha1.CA
 		readyCond := getCertManagerReadyCondition(certificate)
 		// check for ready state
 		if readyCond == nil || readyCond.Status == certManagermetav1.ConditionUnknown {
-			klog.Infof(formatResourceState, certManagerv1.CertificateKind, "unknown", v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
+			klog.InfoS("Resource not ready", "kind", certv1alpha1.CertificateKind, "state", "unknown", v1alpha1.CAPApplicationKind, ca.Name, "namespace", ca.Namespace)
 			return true, nil
 		} else if readyCond.Status == certManagermetav1.ConditionFalse {
 			return false, fmt.Errorf(formatResourceStateErr, certManagerv1.CertificateKind, "not ready", v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name, readyCond.Message)
@@ -574,7 +574,7 @@ func (c *Controller) checkTenantDNSEntries(ctx context.Context, cat *v1alpha1.CA
 			if dnsEntry.Status.State == dnsv1alpha1.STATE_ERROR {
 				return false, fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name, *dnsEntry.Status.Message)
 			} else if dnsEntry.Status.State != dnsv1alpha1.STATE_READY {
-				klog.Infof(formatResourceState, dnsv1alpha1.DNSEntryKind, dnsEntry.Status.State, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name)
+				klog.InfoS("Resource not ready", "kind", dnsv1alpha1.DNSEntryKind, "state", dnsEntry.Status.State, v1alpha1.CAPTenantKind, cat.Name, "namespace", cat.Namespace)
 				return true, nil
 			}
 		}

@@ -278,7 +278,7 @@ func TestController_processQueueItem(t *testing.T) {
 				if res < 1 {
 					t.Error("Unexpected result", expectedRes, "; expected to contain", tt.errorString)
 				} else {
-					klog.Info("Error res", expectedRes, " expected result: ", tt.errorString)
+					klog.InfoS("Expected error occured", "result", expectedRes, "expected result", tt.errorString)
 				}
 			} else {
 				if tt.expectRequeue {

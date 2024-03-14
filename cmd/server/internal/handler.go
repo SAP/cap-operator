@@ -136,21 +136,21 @@ type OAuthResponse struct {
 }
 
 func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
-	klog.Info("Create Tenant triggered")
+	klog.InfoS("Create Tenant triggered")
 	var created = false
 	// Get the relevant provisioning request
 	decoder := json.NewDecoder(req.Body)
 	var reqType ProvisioningRequest
 	err := decoder.Decode(&reqType)
 	if err != nil {
-		klog.Error(ErrorOccurred, err.Error())
+		klog.ErrorS(err, ErrorOccurred)
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
 	// Check if CAPApplication instance for the given btpApp exists
 	ca, err := s.checkCAPApp(reqType.GlobalAccountGUID, reqType.SubscriptionAppName)
 	if err != nil {
-		klog.Error(ErrorOccurred, err.Error())
+		klog.ErrorS(err, ErrorOccurred)
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
@@ -172,7 +172,7 @@ func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
 	// If the resource doesn't exist, we'll create it
 	if tenant == nil {
 		created = true
-		klog.Info("Creating Tenant")
+		klog.InfoS("Creating Tenant")
 		tenant, _ = s.Clientset.SmeV1alpha1().CAPTenants(ca.Namespace).Create(context.TODO(), &v1alpha1.CAPTenant{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: ca.Name + "-",
@@ -205,7 +205,7 @@ func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
 			return ResourceFound
 		}
 	}
-	klog.V(2).Info("Done with create: ", message(created), tenant)
+	klog.V(2).InfoS("Done with create", "message", message(created), "tenant", tenant)
 	return &Result{Tenant: tenant, Message: message(created)}
 }
 
@@ -215,47 +215,44 @@ func (s *SubscriptionHandler) getTenant(globalAccountGUID string, btpAppName str
 		LabelTenantId:                     tenantId,
 	})
 	if err != nil {
-		klog.Error("Error occurred in getTenant", err.Error())
+		klog.ErrorS(err, "Error occurred in getTenant")
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
 	ctList, err := s.Clientset.SmeV1alpha1().CAPTenants(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
 	if err != nil {
-		klog.Error("Error occurred in getTenant", err.Error())
+		klog.ErrorS(err, "Error occurred in getTenant")
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 	if len(ctList.Items) == 0 {
-		klog.Info("No tenant found")
+		klog.InfoS("No tenant found")
 		return &Result{Tenant: nil, Message: ResourceNotFound}
 	}
 	// Assume only 1 tenant actually matches the selector!
-	klog.V(2).Info("Tenant found", &ctList.Items[0])
+	klog.V(2).InfoS("Tenant found", v1alpha1.CAPApplicationKind, &ctList.Items[0])
 	return &Result{Tenant: &ctList.Items[0], Message: ResourceFound}
 }
 
 func (s *SubscriptionHandler) DeleteTenant(req *http.Request) *Result {
-	klog.Info("Delete Tenant triggered")
+	klog.InfoS("Delete Tenant triggered")
 	// Get the relevant deprovisioning request
 	decoder := json.NewDecoder(req.Body)
 	var reqType DeprovisioningRequest
 	err := decoder.Decode(&reqType)
 	if err != nil {
-		klog.Error(ErrorOccurred, err.Error())
+		klog.ErrorS(err, ErrorOccurred)
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
 	// Check if CAPApplication instance for the given btpApp exists
 	ca, err := s.checkCAPApp(reqType.GlobalAccountGUID, reqType.SubscriptionAppName)
 	if err != nil {
-		klog.Error(ErrorOccurred, err.Error())
+		klog.ErrorS(err, ErrorOccurred)
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
 	// fetch SaaS Registry and XSUAA information
 	saasData, uaaData := s.getServiceDetails(ca)
-	if saasData == nil || uaaData == nil {
-		return &Result{Tenant: nil, Message: ResourceNotFound}
-	}
 	if saasData == nil || uaaData == nil {
 		return &Result{Tenant: nil, Message: ResourceNotFound}
 	}
@@ -271,10 +268,10 @@ func (s *SubscriptionHandler) DeleteTenant(req *http.Request) *Result {
 	tenantName := "foo" //TODO
 	if tenant != nil {
 		tenantName = tenant.Name
-		klog.Info("Tenant found, deleting")
+		klog.InfoS("Tenant found, deleting")
 		err = s.Clientset.SmeV1alpha1().CAPTenants(tenant.Namespace).Delete(context.TODO(), tenant.Name, metav1.DeleteOptions{})
 		if err != nil {
-			klog.Error("Error deleting tenant", err.Error())
+			klog.ErrorS(err, "Error deleting tenant")
 			return &Result{Tenant: nil, Message: err.Error()}
 		}
 	}
@@ -316,7 +313,7 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 		RequiredScopes: []string{uaaData.XSAppName + ".Callback", uaaData.XSAppName + ".mtcallback"},
 	}, s.httpClientGenerator.NewHTTPClient())
 	if err != nil {
-		klog.Errorf("failed token validation: %s", err.Error())
+		klog.ErrorS(err, "failed token validation")
 		return errors.New(AuthorizationCheckFailed)
 	}
 	return nil
@@ -325,7 +322,7 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1.CAPApplication, saasData *util.SaasRegistryCredentials, req *http.Request, tenantSubDomain string, isProvisioning bool) {
 	appUrl := "https://" + tenantSubDomain + "." + ca.Spec.Domains.Primary
 	asyncCallbackPath := req.Header.Get("STATUS_CALLBACK")
-	klog.Infof("Subscription URL: %s, Async callback URL: %s", appUrl, asyncCallbackPath)
+	klog.InfoS("callback initialized", "subscription URL", appUrl, "async callback path", asyncCallbackPath)
 
 	go func() {
 		// create a context for tenant checks and outgoing requests
@@ -333,14 +330,14 @@ func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1
 		defer cancel()
 
 		// Check tenant status asynchronously
-		klog.Info("Waiting for tenant status check...")
+		klog.InfoS("Waiting for tenant status check...")
 		status := s.checkCAPTenantStatus(ctx, ca.Namespace, tenantName, isProvisioning, saasData.CallbackTimeoutMillis)
-		klog.Info("CAPTenant check result: ", status)
+		klog.InfoS("CAPTenant check complete", "status", status)
 
 		s.handleAsyncCallback(ctx, saasData, status, asyncCallbackPath, appUrl, isProvisioning)
 	}()
 
-	klog.Info("Waiting for async saas callback after checks...")
+	klog.InfoS("Waiting for async saas callback after checks...")
 }
 
 func (s *SubscriptionHandler) checkCAPTenantStatus(ctx context.Context, tenantNamespace string, tenantName string, provisioning bool, callbackTimeoutMs string) bool {
@@ -360,15 +357,15 @@ func (s *SubscriptionHandler) checkCAPTenantStatus(ctx context.Context, tenantNa
 		default:
 			capTenant, err := s.Clientset.SmeV1alpha1().CAPTenants(tenantNamespace).Get(context.TODO(), tenantName, metav1.GetOptions{})
 			if k8sErrors.IsNotFound(err) {
-				klog.Info("No tenant found.. Exiting CAPTenant status check.")
+				klog.InfoS("No tenant found.. Exiting CAPTenant status check.")
 				if !provisioning {
 					return true
 				}
 			}
 			if capTenant != nil {
-				klog.Info("CAPTenant (tenantid: "+capTenant.Spec.TenantId+"), status: ", capTenant.Status.State)
+				klog.InfoS("CAPTenant Found", "Tenantid", capTenant.Spec.TenantId, "status", capTenant.Status.State)
 				if provisioning && (capTenant.Status.State == v1alpha1.CAPTenantStateReady || capTenant.Status.State == v1alpha1.CAPTenantStateProvisioningError) {
-					klog.Info("Exiting CAPTenant status check: ", capTenant.Status.State)
+					klog.InfoS("Exiting CAPTenant status check", "result status", capTenant.Status.State)
 					return capTenant.Status.State == v1alpha1.CAPTenantStateReady
 				}
 			}
@@ -408,7 +405,7 @@ func (s *SubscriptionHandler) getSaasDetails(capApp *v1alpha1.CAPApplication) *u
 		result, err = util.ReadServiceCredentialsFromSecret[util.SaasRegistryCredentials](info, capApp.Namespace, s.KubeClienset)
 	}
 	if err != nil {
-		klog.Error("SaaS Registry credentials could not be read. Exiting..", err.Error())
+		klog.ErrorS(err, "SaaS Registry credentials could not be read. Exiting..")
 	}
 	return result
 }
@@ -428,7 +425,7 @@ func (s *SubscriptionHandler) getXSUAADetails(capApp *v1alpha1.CAPApplication) *
 	}
 
 	if err != nil {
-		klog.Error("XSUAA credentials could not be read. Exiting..", err.Error())
+		klog.ErrorS(err, "XSUAA credentials could not be read. Exiting..")
 	}
 	return result
 }
@@ -497,23 +494,23 @@ func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, saasData 
 	tokenClient := s.httpClientGenerator.NewHTTPClient()
 	tokenReq, err := prepareTokenRequest(ctx, saasData, tokenClient)
 	if err != nil {
-		klog.Error(err.Error())
+		klog.ErrorS(err, ErrorOccurred)
 		return
 	}
-	klog.V(2).Info("Triggering OAuth: ", tokenReq)
+	klog.V(2).InfoS("Triggering OAuth", "request", tokenReq)
 
 	tokenResponse, err := tokenClient.Do(tokenReq)
 	if err != nil {
-		klog.Error("Error getting token for async callback: ", err.Error())
+		klog.ErrorS(err, "Error getting token for async callback")
 		return
 	} else {
-		klog.V(2).Info("Response from token handling for async callback: ", tokenResponse)
+		klog.V(2).InfoS("Obtained token for async callback", "response", tokenResponse)
 		// Get the relevant OAuth request
 		decoder := json.NewDecoder(tokenResponse.Body)
 		var oAuthType OAuthResponse
 		err := decoder.Decode(&oAuthType)
 		if err != nil {
-			klog.Error("Error parsing token for async callback: ", err.Error())
+			klog.ErrorS(err, "Error parsing token for async callback")
 			return
 		}
 		defer tokenResponse.Body.Close()
@@ -535,19 +532,19 @@ func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, saasData 
 		callbackReq.Header.Set("Authorization", BearerPrefix+oAuthType.AccessToken)
 
 		client := s.httpClientGenerator.NewHTTPClient()
-		klog.V(2).Info("Triggering callback: ", callbackReq)
+		klog.V(2).InfoS("Triggering callback", "request", callbackReq)
 
 		callbackResponse, err := client.Do(callbackReq)
 		if err != nil {
-			klog.Error("Error sending async callback: ", err.Error())
+			klog.ErrorS(err, "Error sending async callback")
 			return
 		} else {
-			klog.Info("Response from async callback: ", callbackResponse)
+			klog.InfoS("Async callback done", "response", callbackResponse)
 			defer callbackResponse.Body.Close()
 		}
 	}
 
-	klog.Info("Exiting from async callback..")
+	klog.InfoS("Exiting from async callback..")
 }
 
 func (s *SubscriptionHandler) HandleRequest(w http.ResponseWriter, req *http.Request) {

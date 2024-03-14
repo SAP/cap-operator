@@ -35,7 +35,7 @@ const (
 	OperatorDomains = "OperatorDomains"
 )
 
-const queuing = "queuing "
+const queuing = "queuing resource for reconciliation"
 
 var (
 	KindMap = map[int]string{
@@ -94,7 +94,7 @@ func (c *Controller) initializeInformers() {
 	case dnsManagerKubernetes:
 		// no activity needed on our side so far
 	}
-	klog.Info("informers initialized")
+	klog.InfoS("informers initialized")
 }
 
 func (c *Controller) getEventHandlerFuncsForResource(res int) cache.ResourceEventHandlerFuncs {
@@ -184,7 +184,7 @@ func (c *Controller) enqueueModifiedResource(sourceKey int, new, old interface{}
 
 	mapping, ok := QueueMapping[sourceKey]
 	if !ok {
-		klog.Error("could not map modification event to a work queue for key: ", sourceKey)
+		klog.ErrorS(nil, "could not map modification event to a work queue", "key", sourceKey)
 		return
 	}
 
@@ -196,20 +196,20 @@ func (c *Controller) enqueueModifiedResource(sourceKey int, new, old interface{}
 			if oldObj != nil && !hasReconciliationRelevantChanges(newObj, oldObj) {
 				continue // do not enqueue
 			}
-			klog.Info(queuing, newObj.GetNamespace(), ".", newObj.GetName(), " as ", dependentKind)
+			klog.InfoS(queuing, "namespace", newObj.GetNamespace(), "name", newObj.GetName(), "kind", dependentKind)
 			q.Add(QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: newObj.GetName(), Namespace: newObj.GetNamespace()}})
 		} else if owner, ok := getOwnerByKind(newObj.GetOwnerReferences(), dependentKind); ok {
-			klog.Info(queuing, newObj.GetNamespace(), ".", owner.Name, " as ", dependentKind)
+			klog.InfoS(queuing, "namespace", newObj.GetNamespace(), "name", owner.Name, "kind", dependentKind)
 			q.Add(QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: owner.Name, Namespace: newObj.GetNamespace()}})
 		} else if owner, ok := getOwnerFromObjectMetadata(newObj, dependentKind); ok {
-			klog.Info(queuing, owner.Namespace, ".", owner.Name, " as ", dependentKind)
+			klog.InfoS(queuing, "namespace", owner.Namespace, "name", owner.Name, "kind", dependentKind)
 			q.Add(QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: owner.Name, Namespace: owner.Namespace}})
 		}
 	}
 
 	// Reconcile OperatorDomains just after all CAPApplication updates
 	if sourceKey == ResourceCAPApplication {
-		klog.Info(queuing, "all.domains", " as ", KindMap[ResourceOperatorDomains])
+		klog.InfoS(queuing, "resource", KindMap[ResourceOperatorDomains])
 		// Reconcile Secondary domains via a dummy resource (separate reconciliation) after 1s
 		c.queues[ResourceOperatorDomains].AddAfter(QueueItem{Key: ResourceOperatorDomains, ResourceKey: NamespacedResourceKey{Namespace: metav1.NamespaceAll, Name: ""}}, 1*time.Second)
 	}
@@ -223,7 +223,7 @@ func getMetaObject(obj interface{}) (metav1.Object, bool) {
 	ok := true
 	metaObj, err := meta.Accessor(obj)
 	if err != nil {
-		klog.Error("could not type cast event object to meta object: ", err.Error())
+		klog.ErrorS(err, "could not type cast event object to meta object: ")
 		ok = false
 	}
 	return metaObj, ok

@@ -134,7 +134,7 @@ func (c *Controller) Event(main runtime.Object, related runtime.Object, eventTyp
 	defer func() {
 		// do not let the routine dump due to event recording errors
 		if r := recover(); r != nil {
-			klog.Error("error when recording event: ", r)
+			klog.ErrorS(nil, "error when recording event", "recovered error", r)
 		}
 	}()
 	c.eventRecorder.Eventf(main, related, eventType, reason, action, message)
