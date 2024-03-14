@@ -34,7 +34,7 @@ func main() {
 	if portEnv != "" {
 		port, err = strconv.Atoi(portEnv)
 		if err != nil {
-			klog.Error("Error parsing Webhook server port: ", err.Error())
+			klog.ErrorS(err, "Error parsing Webhook server port")
 		}
 	}
 
@@ -46,7 +46,7 @@ func main() {
 	if t != "" {
 		tlsEnabled, err = strconv.ParseBool(t)
 		if err != nil {
-			klog.Error("Error parsing tls: ", err.Error())
+			klog.ErrorS(err, "Error parsing tls")
 		}
 	}
 	parameters.tlsEnabled = tlsEnabled

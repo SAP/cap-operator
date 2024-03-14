@@ -117,7 +117,7 @@ func NewController(client kubernetes.Interface, crdClient versioned.Interface, i
 func throwInformerStartError(resources map[reflect.Type]bool) {
 	for resource, ok := range resources {
 		if !ok {
-			klog.Error("could not start informer for resource ", resource.String())
+			klog.ErrorS(nil, "could not start informer", "resource", resource.String())
 		}
 	}
 }
@@ -174,7 +174,7 @@ func (c *Controller) Start(ctx context.Context) {
 			defer wg.Done()
 			err := c.processQueue(qCxt, key)
 			if err != nil {
-				klog.Error("worker queue ", key, " ended with error: ", err.Error())
+				klog.ErrorS(err, "worker queue ended with error", "key", key)
 			}
 			qCancel() // cancel context to inform other workers
 		}(k)
@@ -185,11 +185,11 @@ func (c *Controller) Start(ctx context.Context) {
 }
 
 func (c *Controller) processQueue(ctx context.Context, key int) error {
-	klog.Info("starting to process queue ", getResourceKindFromKey(key))
+	klog.InfoS("starting to process queue", "resource", getResourceKindFromKey(key))
 	for {
 		select {
 		case <-ctx.Done():
-			klog.Info("context done; ending processing of queue ", getResourceKindFromKey(key))
+			klog.InfoS("context done; ending processing of queue", "resource", getResourceKindFromKey(key))
 			return nil
 		default: // fall through - to avoid blocking
 			err := c.processQueueItem(ctx, key)
@@ -206,7 +206,7 @@ func (c *Controller) processQueueItem(ctx context.Context, key int) error {
 		return fmt.Errorf("unknown queue; ending worker %d", key)
 	}
 
-	klog.V(2).Info("current work queue (", getResourceKindFromKey(key), ") length: ", q.Len())
+	klog.V(2).InfoS("Processing queue item in work queue", "resource", getResourceKindFromKey(key), "queue length", q.Len())
 
 	i, shutdown := q.Get()
 	if shutdown {
@@ -223,7 +223,7 @@ func (c *Controller) processQueueItem(ctx context.Context, key int) error {
 	)
 	item, ok := i.(QueueItem)
 	if !ok {
-		klog.Error("unknown item found in queue ", getResourceKindFromKey(key))
+		klog.ErrorS(err, "unknown item found in queue", "resource", getResourceKindFromKey(key))
 		return nil // process next item
 	}
 
@@ -232,7 +232,7 @@ func (c *Controller) processQueueItem(ctx context.Context, key int) error {
 	// Attempt to recover panics during reconciliation.
 	defer c.recoverFromPanic(ctx, item, q)
 
-	klog.Info("processing ", item.ResourceKey.Namespace, ".", item.ResourceKey.Name, " of type ", getResourceKindFromKey(key), " (attempt ", attempts, ")")
+	klog.InfoS("Processing Resource", "namespace", item.ResourceKey.Namespace, "name", item.ResourceKey.Name, "kind", getResourceKindFromKey(key), "attempt", attempts)
 
 	switch item.Key {
 	case ResourceCAPApplication:
@@ -251,7 +251,7 @@ func (c *Controller) processQueueItem(ctx context.Context, key int) error {
 	}
 	// Handle reconcile errors
 	if err != nil {
-		klog.Error("queue processing error (", getResourceKindFromKey(key), "): ", err.Error())
+		klog.ErrorS(err, "queue processing error", "resource", getResourceKindFromKey(key))
 		if !skipItem {
 			// add back to queue for re-processing
 			q.AddRateLimited(i)
@@ -275,11 +275,11 @@ func (c *Controller) processReconcileResult(result *ReconcileResult) {
 	for i, items := range result.requeueResources {
 		q, ok := c.queues[i]
 		if !ok {
-			klog.Errorf("could not identify a resource queue with key %v", i)
+			klog.ErrorS(nil, "could not identify a resource queue", "key", i)
 			return
 		}
 		for _, item := range items {
-			klog.Infof("(re)queueing %s.%s as %s after %s", item.resourceKey.Namespace, item.resourceKey.Name, KindMap[i], item.requeueAfter.String())
+			klog.InfoS("(re)queueing resource", "namespace", item.resourceKey.Namespace, "name", item.resourceKey.Name, "kind", KindMap[i], "requeue delay", item.requeueAfter.String())
 			// add back item to queue w/o rate limits for re-processing after specified duration
 			q.AddAfter(QueueItem{Key: i, ResourceKey: item.resourceKey}, item.requeueAfter)
 		}
@@ -289,10 +289,8 @@ func (c *Controller) processReconcileResult(result *ReconcileResult) {
 func (c *Controller) recoverFromPanic(ctx context.Context, item QueueItem, q workqueue.RateLimitingInterface) {
 	if r := recover(); r != nil {
 		// Log the Error / Stack Trace
-		klog.Error(recoveredPanic, " in ", item.ResourceKey.Namespace, ".", item.ResourceKey.Name, " of type ", getResourceKindFromKey(item.Key))
 		err := fmt.Errorf("panic: %v", r)
-		klog.Errorf("Trace: %s\n%s", err, debug.Stack())
-
+		klog.ErrorS(err, recoveredPanic, "namespace", item.ResourceKey.Namespace, "name", item.ResourceKey.Name, "kind", getResourceKindFromKey(item.Key), "stack", debug.Stack())
 		// Set the resource in Error state
 		switch item.Key {
 		case ResourceCAPApplicationVersion:

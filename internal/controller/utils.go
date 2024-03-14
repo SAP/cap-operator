@@ -139,7 +139,7 @@ func certificateManager() string {
 		if env == certManagerGardener || env == certManagerCertManagerIO {
 			mgr = env
 		} else {
-			klog.Error("Error parsing certificate manager environment variable: invalid value")
+			klog.ErrorS(nil, "Error parsing certificate manager environment variable: invalid value")
 		}
 	}
 	return mgr
@@ -152,7 +152,7 @@ func dnsManager() string {
 		if env == dnsManagerGardener || env == dnsManagerKubernetes {
 			mgr = env
 		} else {
-			klog.Error("Error parsing DNS manager environment variable: invalid value")
+			klog.ErrorS(nil, "Error parsing DNS manager environment variable: invalid value")
 		}
 	}
 	return mgr
@@ -192,7 +192,7 @@ func amendObjectMetadata(object *metav1.ObjectMeta, annotatedOldLabel string, ha
 	// Check if old label exists, if so remove it
 	if _, ok := object.Labels[annotatedOldLabel]; ok {
 		// Should never happen
-		klog.Infof("Unexpected label %s=%s found for resource %s.%s", annotatedOldLabel, oldValue, object.Namespace, object.Name)
+		klog.InfoS("Unexpected label found", "old label", annotatedOldLabel, "labelvalue", oldValue, "namespace", object.Namespace, "resource name", object.Name)
 		delete(object.Labels, annotatedOldLabel)
 		updated = true
 	}
