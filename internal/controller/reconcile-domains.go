@@ -156,6 +156,7 @@ func (c *Controller) handlePrimaryDomainCertificate(ctx context.Context, ca *v1a
 		gardenerCertSpec := getGardenerCertificateSpec(commonName, secretName)
 		if errors.IsNotFound(err) {
 			// create certificate
+			klog.InfoS("Processing Domains - Creating gardener certificates", "caName", ca.Name, "namespace", ca.Namespace, "certificateName", certName, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
 			_, err = c.gardenerCertificateClient.CertV1alpha1().Certificates(istioNamespace).Create(
 				ctx, &certv1alpha1.Certificate{
 					ObjectMeta: metav1.ObjectMeta{
@@ -192,6 +193,7 @@ func (c *Controller) handlePrimaryDomainCertificate(ctx context.Context, ca *v1a
 
 		if errors.IsNotFound(err) {
 			// create certificate
+			klog.InfoS("Processing Domains - Creating certManager certificates", "caName", ca.Name, "namespace", ca.Namespace, "certificateName", certName, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
 			_, err = c.certManagerCertificateClient.CertmanagerV1().Certificates(istioNamespace).Create(
 				ctx, &certManagerv1.Certificate{
 					ObjectMeta: metav1.ObjectMeta{
@@ -243,6 +245,7 @@ func (c *Controller) handlePrimaryDomainDNSEntry(ctx context.Context, ca *v1alph
 
 		if errors.IsNotFound(err) {
 			// create DNSEntry
+			klog.InfoS("Processing CAPApplication - Creating DNSEntry", "name", ca.Name, "namespace", ca.Namespace, "dnsEntryName", dnsEntryName, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
 			_, err = c.gardenerDNSClient.DnsV1alpha1().DNSEntries(namespace).Create(
 				ctx, &dnsv1alpha1.DNSEntry{
 					ObjectMeta: metav1.ObjectMeta{
@@ -314,7 +317,7 @@ func (c *Controller) checkPrimaryDomainResources(ctx context.Context, ca *v1alph
 		if dnsEntry.Status.State == dnsv1alpha1.STATE_ERROR {
 			return false, fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name, *dnsEntry.Status.Message)
 		} else if dnsEntry.Status.State != dnsv1alpha1.STATE_READY {
-			klog.InfoS("Resource not ready", "kind", dnsv1alpha1.DNSEntryKind, "state", dnsEntry.Status.State, v1alpha1.CAPApplicationKind, ca.Name, "namespace", ca.Namespace)
+			klog.InfoS("Resource not ready", "kind", dnsv1alpha1.DNSEntryKind, "state", dnsEntry.Status.State, v1alpha1.CAPApplicationKind, ca.Name, "namespace", ca.Namespace, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
 			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, "DomainResourcesProcessing", "")
 			return true, nil
 		}
@@ -395,7 +398,7 @@ func (c *Controller) checkCertificateStatus(ctx context.Context, ca *v1alpha1.CA
 		if certificate.Status.State == certv1alpha1.StateError {
 			return false, fmt.Errorf(formatResourceStateErr, certv1alpha1.CertificateKind, certv1alpha1.StateError, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name, *certificate.Status.Message)
 		} else if certificate.Status.State != certv1alpha1.StateReady {
-			klog.InfoS("Resource not ready", "kind", certv1alpha1.CertificateKind, "state", certificate.Status.State, v1alpha1.CAPApplicationKind, ca.Name, "namespace", ca.Namespace)
+			klog.InfoS("Resource not ready", "kind", certv1alpha1.CertificateKind, "state", certificate.Status.State, v1alpha1.CAPApplicationKind, ca.Name, "namespace", ca.Namespace, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
 			return true, nil
 		}
 	case certManagerCertManagerIO:
@@ -409,7 +412,7 @@ func (c *Controller) checkCertificateStatus(ctx context.Context, ca *v1alpha1.CA
 		readyCond := getCertManagerReadyCondition(certificate)
 		// check for ready state
 		if readyCond == nil || readyCond.Status == certManagermetav1.ConditionUnknown {
-			klog.InfoS("Resource not ready", "kind", certv1alpha1.CertificateKind, "state", "unknown", v1alpha1.CAPApplicationKind, ca.Name, "namespace", ca.Namespace)
+			klog.InfoS("Resource not ready", "kind", certv1alpha1.CertificateKind, "state", "unknown", v1alpha1.CAPApplicationKind, ca.Name, "namespace", ca.Namespace, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
 			return true, nil
 		} else if readyCond.Status == certManagermetav1.ConditionFalse {
 			return false, fmt.Errorf(formatResourceStateErr, certManagerv1.CertificateKind, "not ready", v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name, readyCond.Message)
@@ -574,7 +577,7 @@ func (c *Controller) checkTenantDNSEntries(ctx context.Context, cat *v1alpha1.CA
 			if dnsEntry.Status.State == dnsv1alpha1.STATE_ERROR {
 				return false, fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name, *dnsEntry.Status.Message)
 			} else if dnsEntry.Status.State != dnsv1alpha1.STATE_READY {
-				klog.InfoS("Resource not ready", "kind", dnsv1alpha1.DNSEntryKind, "state", dnsEntry.Status.State, v1alpha1.CAPTenantKind, cat.Name, "namespace", cat.Namespace)
+				klog.InfoS("Resource not ready", "kind", dnsv1alpha1.DNSEntryKind, "state", dnsEntry.Status.State, v1alpha1.CAPTenantKind, cat.Name, "namespace", cat.Namespace, AnnotationBTPApplicationIdentifier, cat.Annotations[AnnotationBTPApplicationIdentifier])
 				return true, nil
 			}
 		}
