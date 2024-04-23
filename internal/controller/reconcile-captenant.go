@@ -148,7 +148,7 @@ var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *C
 		// Check if all Tenant DNSEntries are Ready
 		processing, err := c.checkTenantDNSEntries(ctx, cat)
 		if err != nil {
-			klog.ErrorS(err, "error with DNS Entries for CAPTenant", "namespace", cat.Namespace, "tenant", cat, AnnotationBTPApplicationIdentifier, cat.Annotations[AnnotationBTPApplicationIdentifier])
+			klog.ErrorS(err, "error with DNS Entries for CAPTenant", "namespace", cat.Namespace, "tenant", cat, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
 			return nil, err
 		}
 		if processing {
@@ -222,7 +222,7 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, att
 	// Skip processing until the right version is set on the CAPTenant (via CAPApplication)
 	// This indirectly ensures that we do not create duplicate tenant operations for consumer tenant provisioning scenarios!
 	if cat.Spec.Version == "" {
-		klog.InfoS("Tenant without version detected, skip processing until version is set", "namespace", cat.Namespace, "tenant", cat.Name, AnnotationBTPApplicationIdentifier, cat.Annotations[AnnotationBTPApplicationIdentifier])
+		klog.InfoS("Tenant without version detected, skip processing until version is set", "namespace", cat.Namespace, "tenant", cat.Name, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
 		return requeue, nil
 	}
 
@@ -234,7 +234,7 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, att
 	}
 
 	// create and track CAPTenantOperations based on state, deletion timestamp, version change etc.
-	klog.InfoS("Processing CAPTenant - Creating CAPTenantOperations", "name", cat.Name, "namespace", cat.Namespace, AnnotationBTPApplicationIdentifier, cat.Annotations[AnnotationBTPApplicationIdentifier])
+	klog.InfoS("Processing CAPTenant - Creating CAPTenantOperations", "name", cat.Name, "namespace", cat.Namespace, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
 	requeue, err = c.handleTenantOperationsForCAPTenant(ctx, cat)
 	if err != nil || requeue != nil {
 		return

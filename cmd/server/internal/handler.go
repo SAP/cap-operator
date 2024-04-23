@@ -36,7 +36,6 @@ import (
 const (
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
 	AnnotationSaaSAdditionalOutput      = "sme.sap.com/saas-additional-output"
-	AnnotationBTPApplicationIdentifier  = "sme.sap.com/btp-app-identifier"
 )
 
 const (
@@ -145,7 +144,7 @@ func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
 			return &Result{Tenant: nil, Message: err.Error()}
 		}
 
-		klog.InfoS("Creating tenant", "caName", ca.Name, "namespace", ca.Namespace, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+		klog.InfoS("Creating tenant", "caName", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 		tenant, _ = s.Clientset.SmeV1alpha1().CAPTenants(ca.Namespace).Create(context.TODO(), &v1alpha1.CAPTenant{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: ca.Name + "-",
@@ -187,7 +186,7 @@ func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
 			return ResourceFound
 		}
 	}
-	klog.V(2).InfoS("Tenant successfully created", "message", message(created), "tenant", tenant, "caName", ca.Name, "namespace", ca.Namespace, "tenant", tenant, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+	klog.V(2).InfoS("Tenant successfully created", "message", message(created), "tenant", tenant, "caName", ca.Name, "namespace", ca.Namespace, "tenant", tenant, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 	return &Result{Tenant: tenant, Message: message(created)}
 }
 
@@ -211,21 +210,21 @@ func (s *SubscriptionHandler) getTenant(globalAccountGUID string, btpAppName str
 		LabelTenantId:                     tenantId,
 	})
 	if err != nil {
-		klog.ErrorS(err, "Error occurred in getTenant", "namespace", namespace, "tenantId", tenantId, AnnotationBTPApplicationIdentifier, globalAccountGUID+"."+btpAppName)
+		klog.ErrorS(err, "Error occurred in getTenant", "namespace", namespace, "tenantId", tenantId, LabelBTPApplicationIdentifierHash, sha1Sum(globalAccountGUID, btpAppName))
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
 	ctList, err := s.Clientset.SmeV1alpha1().CAPTenants(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
 	if err != nil {
-		klog.ErrorS(err, "Error occurred in getTenant", "namespace", namespace, "tenantId", tenantId, AnnotationBTPApplicationIdentifier, globalAccountGUID+"."+btpAppName)
+		klog.ErrorS(err, "Error occurred in getTenant", "namespace", namespace, "tenantId", tenantId, LabelBTPApplicationIdentifierHash, sha1Sum(globalAccountGUID, btpAppName))
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 	if len(ctList.Items) == 0 {
-		klog.InfoS("No tenant found", "namespace", namespace, "tenantId", tenantId, AnnotationBTPApplicationIdentifier, globalAccountGUID+"."+btpAppName)
+		klog.InfoS("No tenant found", "namespace", namespace, "tenantId", tenantId, LabelBTPApplicationIdentifierHash, sha1Sum(globalAccountGUID, btpAppName))
 		return &Result{Tenant: nil, Message: ResourceNotFound}
 	}
 	// Assume only 1 tenant actually matches the selector!
-	klog.V(2).InfoS("Tenant found", v1alpha1.CAPApplicationKind, &ctList.Items[0], "namespace", namespace, "tenantId", tenantId, AnnotationBTPApplicationIdentifier, globalAccountGUID+"."+btpAppName)
+	klog.V(2).InfoS("Tenant found", v1alpha1.CAPApplicationKind, &ctList.Items[0], "namespace", namespace, "tenantId", tenantId, LabelBTPApplicationIdentifierHash, sha1Sum(globalAccountGUID, btpAppName))
 	return &Result{Tenant: &ctList.Items[0], Message: ResourceFound}
 }
 
@@ -256,7 +255,7 @@ func (s *SubscriptionHandler) DeleteTenant(req *http.Request) *Result {
 	// validate token
 	err = s.checkAuthorization(req.Header.Get("Authorization"), saasData, uaaData)
 	if err != nil {
-		klog.ErrorS(err, "Error occurred in checkAuthorization", AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+		klog.ErrorS(err, "Error occurred in checkAuthorization", LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
@@ -265,10 +264,10 @@ func (s *SubscriptionHandler) DeleteTenant(req *http.Request) *Result {
 	tenantName := ResourceNotFound
 	if tenant != nil {
 		tenantName = tenant.Name
-		klog.InfoS("Tenant found, deleting", "tenant", tenantName, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+		klog.InfoS("Tenant found, deleting", "tenant", tenantName, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 		err = s.Clientset.SmeV1alpha1().CAPTenants(tenant.Namespace).Delete(context.TODO(), tenant.Name, metav1.DeleteOptions{})
 		if err != nil {
-			klog.ErrorS(err, "Error deleting tenant", "tenant", tenantName, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+			klog.ErrorS(err, "Error deleting tenant", "tenant", tenantName, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 			return &Result{Tenant: nil, Message: err.Error()}
 		}
 	}
@@ -319,7 +318,7 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1.CAPApplication, saasData *util.SaasRegistryCredentials, req *http.Request, tenantSubDomain string, isProvisioning bool) {
 	appUrl := "https://" + tenantSubDomain + "." + ca.Spec.Domains.Primary
 	asyncCallbackPath := req.Header.Get("STATUS_CALLBACK")
-	klog.InfoS("callback initialized", "subscription URL", appUrl, "async callback path", asyncCallbackPath, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+	klog.InfoS("callback initialized", "subscription URL", appUrl, "async callback path", asyncCallbackPath, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 
 	go func() {
 		// create a context for tenant checks and outgoing requests
@@ -327,9 +326,9 @@ func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1
 		defer cancel()
 
 		// Check tenant status asynchronously
-		klog.InfoS("Waiting for tenant status check...", AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+		klog.InfoS("Waiting for tenant status check...", LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 		status := s.checkCAPTenantStatus(ctx, ca.Namespace, tenantName, isProvisioning, saasData.CallbackTimeoutMillis)
-		klog.InfoS("CAPTenant check complete", "status", status, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+		klog.InfoS("CAPTenant check complete", "status", status, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 
 		additionalOutput := &map[string]any{}
 		if isProvisioning {
@@ -348,7 +347,7 @@ func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1
 		s.handleAsyncCallback(ctx, saasData, status, asyncCallbackPath, appUrl, additionalOutput, isProvisioning)
 	}()
 
-	klog.InfoS("Waiting for async saas callback after checks...", AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+	klog.InfoS("Waiting for async saas callback after checks...", LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 }
 
 func (s *SubscriptionHandler) checkCAPTenantStatus(ctx context.Context, tenantNamespace string, tenantName string, provisioning bool, callbackTimeoutMs string) bool {
@@ -374,9 +373,9 @@ func (s *SubscriptionHandler) checkCAPTenantStatus(ctx context.Context, tenantNa
 				}
 			}
 			if capTenant != nil {
-				klog.InfoS("CAPTenant Found", "Tenantid", capTenant.Spec.TenantId, "status", capTenant.Status.State, AnnotationBTPApplicationIdentifier, capTenant.Annotations[AnnotationBTPApplicationIdentifier])
+				klog.InfoS("CAPTenant Found", "Tenantid", capTenant.Spec.TenantId, "status", capTenant.Status.State, LabelBTPApplicationIdentifierHash, capTenant.Labels[LabelBTPApplicationIdentifierHash])
 				if provisioning && (capTenant.Status.State == v1alpha1.CAPTenantStateReady || capTenant.Status.State == v1alpha1.CAPTenantStateProvisioningError) {
-					klog.InfoS("Exiting CAPTenant status check", "result status", capTenant.Status.State, AnnotationBTPApplicationIdentifier, capTenant.Annotations[AnnotationBTPApplicationIdentifier])
+					klog.InfoS("Exiting CAPTenant status check", "result status", capTenant.Status.State, LabelBTPApplicationIdentifierHash, capTenant.Labels[LabelBTPApplicationIdentifierHash])
 					return capTenant.Status.State == v1alpha1.CAPTenantStateReady
 				}
 			}
@@ -416,7 +415,7 @@ func (s *SubscriptionHandler) getSaasDetails(capApp *v1alpha1.CAPApplication) *u
 		result, err = util.ReadServiceCredentialsFromSecret[util.SaasRegistryCredentials](info, capApp.Namespace, s.KubeClienset)
 	}
 	if err != nil {
-		klog.ErrorS(err, "SaaS Registry credentials could not be read. Exiting..", AnnotationBTPApplicationIdentifier, capApp.Spec.GlobalAccountId+"."+capApp.Spec.BTPAppName)
+		klog.ErrorS(err, "SaaS Registry credentials could not be read. Exiting..", LabelBTPApplicationIdentifierHash, capApp.Labels[LabelBTPApplicationIdentifierHash])
 	}
 	return result
 }
@@ -436,7 +435,7 @@ func (s *SubscriptionHandler) getXSUAADetails(capApp *v1alpha1.CAPApplication) *
 	}
 
 	if err != nil {
-		klog.ErrorS(err, "XSUAA credentials could not be read. Exiting..", AnnotationBTPApplicationIdentifier, capApp.Spec.GlobalAccountId+"."+capApp.Spec.BTPAppName)
+		klog.ErrorS(err, "XSUAA credentials could not be read. Exiting..", LabelBTPApplicationIdentifierHash, capApp.Labels[LabelBTPApplicationIdentifierHash])
 	}
 	return result
 }

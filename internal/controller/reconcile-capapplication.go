@@ -90,13 +90,13 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 	}()
 
 	// step 1 - validate BTPServices
-	klog.InfoS("Processing CAPApplication - Validating Secrets", "name", ca.Name, "namespace", ca.Namespace, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+	klog.InfoS("Processing CAPApplication - Validating Secrets", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 	if processing, err = c.validateSecrets(ctx, ca, attempts); err != nil || processing {
 		return
 	}
 
 	// step 2 - check for valid versions
-	klog.InfoS("Processing CAPApplication - Checking if the latest CAV is ready", "name", ca.Name, "namespace", ca.Namespace, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+	klog.InfoS("Processing CAPApplication - Checking if the latest CAV is ready", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 	cav, err := c.getLatestReadyCAPApplicationVersion(ctx, ca, true)
 	if err != nil {
 		// do not update the CAPApplication status - this is not an error reported by the version, but error while fetching the version
@@ -122,7 +122,7 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 	}
 
 	// step 5 - check state of dependant resources
-	klog.InfoS("Processing CAPApplication - Checking if domain resources are ready", "name", ca.Name, "namespace", ca.Namespace, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+	klog.InfoS("Processing CAPApplication - Checking if domain resources are ready", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 	if processing, err = c.checkPrimaryDomainResources(ctx, ca); err != nil || processing {
 		return
 	}
@@ -316,7 +316,7 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 		}, metav1.CreateOptions{})
 
 		// Create provider tenant
-		klog.InfoS("Processing CAPApplication - Creating Provider tenant", "name", ca.Name, "namespace", ca.Namespace, "tenantId", ca.Spec.Provider.TenantId, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+		klog.InfoS("Processing CAPApplication - Creating Provider tenant", "name", ca.Name, "namespace", ca.Namespace, "tenantId", ca.Spec.Provider.TenantId, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 
 		if tenant, err = c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Create(
 			ctx, &v1alpha1.CAPTenant{
@@ -367,7 +367,7 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 		}
 
 		msg := fmt.Sprintf("provider %v not ready for %v %v.%v; waiting for it to be ready", v1alpha1.CAPTenantKind, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
-		klog.InfoS(msg, "provider tenant", tenant.Name, v1alpha1.CAPApplicationKind, ca, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+		klog.InfoS(msg, "provider tenant", tenant.Name, v1alpha1.CAPApplicationKind, ca, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, EventActionProviderTenantProcessing, msg)
 		return true, nil
 	}
@@ -378,26 +378,26 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alpha1.CAPApplication) (*ReconcileResult, error) {
 	var err error
 
-	klog.InfoS("Deleting CAPApplication", "name", ca.Name, "namespace", ca.Namespace, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+	klog.InfoS("Deleting CAPApplication", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 	if ca.Status.State != v1alpha1.CAPApplicationStateDeleting {
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateDeleting, metav1.ConditionFalse, "DeleteTriggered", "")
 		return NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0), nil
 	}
 
 	// TODO: cleanup domain resources via reconciliation
-	klog.InfoS("Deleting CAPApplication - Primary Domain Certificate", "name", ca.Name, "namespace", ca.Namespace, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+	klog.InfoS("Deleting CAPApplication - Primary Domain Certificate", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 	if err = c.deletePrimaryDomainCertificate(ctx, ca); err != nil && !k8sErrors.IsNotFound(err) {
 		return nil, err
 	}
 
 	// delete CAPTenants - return if found in this loop, to verify deletion
 	var tenantFound bool
-	klog.InfoS("Deleting CAPApplication - CAPTenants", "name", ca.Name, "namespace", ca.Namespace, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+	klog.InfoS("Deleting CAPApplication - CAPTenants", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 	if tenantFound, err = c.deleteTenants(ctx, ca); tenantFound || err != nil {
 		return nil, err
 	}
 
-	klog.InfoS("Deleting CAPApplication - Secrets", "name", ca.Name, "namespace", ca.Namespace, AnnotationBTPApplicationIdentifier, ca.Spec.GlobalAccountId+"."+ca.Spec.BTPAppName)
+	klog.InfoS("Deleting CAPApplication - Secrets", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 	if err = c.cleanupPreservedSecrets(ca.Spec.BTP.Services, ca.Namespace); err != nil && !k8sErrors.IsNotFound(err) {
 		return nil, err
 	}
