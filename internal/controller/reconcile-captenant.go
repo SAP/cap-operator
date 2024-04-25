@@ -234,7 +234,6 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, att
 	}
 
 	// create and track CAPTenantOperations based on state, deletion timestamp, version change etc.
-	klog.InfoS("Processing CAPTenant - Creating CAPTenantOperations", "name", cat.Name, "namespace", cat.Namespace, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
 	requeue, err = c.handleTenantOperationsForCAPTenant(ctx, cat)
 	if err != nil || requeue != nil {
 		return
@@ -426,6 +425,7 @@ func (c *Controller) createCAPTenantOperation(ctx context.Context, cat *v1alpha1
 		},
 	}
 	addCAPTenantOperationLabels(ctop, cat) // NOTE: this is very important to do here as subsequent reconciliation of tenant will be inconsistent otherwise
+	klog.InfoS("Processing CAPTenant - Creating CAPTenantOperations", "name", cat.Name, "namespace", cat.Namespace, "operation", opType, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
 	return c.crdClient.SmeV1alpha1().CAPTenantOperations(cat.Namespace).Create(ctx, ctop, metav1.CreateOptions{})
 }
 

@@ -105,11 +105,11 @@ func (c *Controller) handleCAPApplicationVersion(ctx context.Context, cav *v1alp
 	ca, _ := c.getCachedCAPApplication(cav.Namespace, cav.Spec.CAPApplicationInstance)
 
 	// Check for valid secrets
-	klog.InfoS("Processing CAPApplicationVersion - Checking if the required secrets exists", "name", cav.Name, "namespace", cav.Namespace, LabelBTPApplicationIdentifierHash, cav.Labels[LabelBTPApplicationIdentifierHash])
 	err := c.checkSecretsExist(ca.Spec.BTP.Services, ca.Namespace)
 
 	if err != nil {
 		// Requeue after 10s to check if secrets exist
+		klog.InfoS("Processing CAPApplicationVersion - Check again if the required secrets exists after 10 seconds", "name", cav.Name, "namespace", cav.Namespace, LabelBTPApplicationIdentifierHash, cav.Labels[LabelBTPApplicationIdentifierHash])
 		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second), c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "WaitingForSecrets"})
 	}
 

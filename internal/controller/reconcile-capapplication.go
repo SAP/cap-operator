@@ -90,13 +90,11 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 	}()
 
 	// step 1 - validate BTPServices
-	klog.InfoS("Processing CAPApplication - Validating Secrets", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 	if processing, err = c.validateSecrets(ctx, ca, attempts); err != nil || processing {
 		return
 	}
 
 	// step 2 - check for valid versions
-	klog.InfoS("Processing CAPApplication - Checking if the latest CAV is ready", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 	cav, err := c.getLatestReadyCAPApplicationVersion(ctx, ca, true)
 	if err != nil {
 		// do not update the CAPApplication status - this is not an error reported by the version, but error while fetching the version
@@ -122,7 +120,6 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 	}
 
 	// step 5 - check state of dependant resources
-	klog.InfoS("Processing CAPApplication - Checking if domain resources are ready", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 	if processing, err = c.checkPrimaryDomainResources(ctx, ca); err != nil || processing {
 		return
 	}
