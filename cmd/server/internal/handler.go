@@ -309,7 +309,7 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 		RequiredScopes: []string{uaaData.XSAppName + ".Callback", uaaData.XSAppName + ".mtcallback"},
 	}, s.httpClientGenerator.NewHTTPClient())
 	if err != nil {
-		klog.ErrorS(err, "failed token validation")
+		klog.ErrorS(err, "failed token validation", "XSAppName", uaaData.XSAppName)
 		return errors.New(AuthorizationCheckFailed)
 	}
 	return nil
@@ -318,7 +318,7 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1.CAPApplication, saasData *util.SaasRegistryCredentials, req *http.Request, tenantSubDomain string, isProvisioning bool) {
 	appUrl := "https://" + tenantSubDomain + "." + ca.Spec.Domains.Primary
 	asyncCallbackPath := req.Header.Get("STATUS_CALLBACK")
-	klog.InfoS("callback initialized", "subscription URL", appUrl, "async callback path", asyncCallbackPath, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
+	klog.InfoS("callback initialized", "subscription URL", appUrl, "async callback path", asyncCallbackPath, "tenantId", ca.Spec.Provider.TenantId, "tenantName", tenantName, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 
 	go func() {
 		// create a context for tenant checks and outgoing requests
@@ -326,9 +326,9 @@ func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1
 		defer cancel()
 
 		// Check tenant status asynchronously
-		klog.InfoS("Waiting for tenant status check...", LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
+		klog.InfoS("Waiting for tenant status check...", "tenantId", ca.Spec.Provider.TenantId, "tenantName", tenantName, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 		status := s.checkCAPTenantStatus(ctx, ca.Namespace, tenantName, isProvisioning, saasData.CallbackTimeoutMillis)
-		klog.InfoS("CAPTenant check complete", "status", status, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
+		klog.InfoS("CAPTenant check complete", "status", status, "tenantId", ca.Spec.Provider.TenantId, "tenantName", tenantName, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 
 		additionalOutput := &map[string]any{}
 		if isProvisioning {
@@ -347,7 +347,7 @@ func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1
 		s.handleAsyncCallback(ctx, saasData, status, asyncCallbackPath, appUrl, additionalOutput, isProvisioning)
 	}()
 
-	klog.InfoS("Waiting for async saas callback after checks...", LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
+	klog.InfoS("Waiting for async saas callback after checks...", "tenantId", ca.Spec.Provider.TenantId, "tenantName", tenantName, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 }
 
 func (s *SubscriptionHandler) checkCAPTenantStatus(ctx context.Context, tenantNamespace string, tenantName string, provisioning bool, callbackTimeoutMs string) bool {
@@ -367,15 +367,15 @@ func (s *SubscriptionHandler) checkCAPTenantStatus(ctx context.Context, tenantNa
 		default:
 			capTenant, err := s.Clientset.SmeV1alpha1().CAPTenants(tenantNamespace).Get(context.TODO(), tenantName, metav1.GetOptions{})
 			if k8sErrors.IsNotFound(err) {
-				klog.InfoS("No tenant found.. Exiting CAPTenant status check.")
+				klog.InfoS("No tenant found.. Exiting CAPTenant status check.", "tenantName", tenantName, "namespace", tenantNamespace)
 				if !provisioning {
 					return true
 				}
 			}
 			if capTenant != nil {
-				klog.InfoS("CAPTenant Found", "Tenantid", capTenant.Spec.TenantId, "status", capTenant.Status.State, LabelBTPApplicationIdentifierHash, capTenant.Labels[LabelBTPApplicationIdentifierHash])
+				klog.InfoS("CAPTenant Found", "tenantid", capTenant.Spec.TenantId, "status", capTenant.Status.State, LabelBTPApplicationIdentifierHash, capTenant.Labels[LabelBTPApplicationIdentifierHash])
 				if provisioning && (capTenant.Status.State == v1alpha1.CAPTenantStateReady || capTenant.Status.State == v1alpha1.CAPTenantStateProvisioningError) {
-					klog.InfoS("Exiting CAPTenant status check", "result status", capTenant.Status.State, LabelBTPApplicationIdentifierHash, capTenant.Labels[LabelBTPApplicationIdentifierHash])
+					klog.InfoS("Exiting CAPTenant status check", "tenantid", capTenant.Spec.TenantId, "result status", capTenant.Status.State, LabelBTPApplicationIdentifierHash, capTenant.Labels[LabelBTPApplicationIdentifierHash])
 					return capTenant.Status.State == v1alpha1.CAPTenantStateReady
 				}
 			}
@@ -415,7 +415,7 @@ func (s *SubscriptionHandler) getSaasDetails(capApp *v1alpha1.CAPApplication) *u
 		result, err = util.ReadServiceCredentialsFromSecret[util.SaasRegistryCredentials](info, capApp.Namespace, s.KubeClienset)
 	}
 	if err != nil {
-		klog.ErrorS(err, "SaaS Registry credentials could not be read. Exiting..", LabelBTPApplicationIdentifierHash, capApp.Labels[LabelBTPApplicationIdentifierHash])
+		klog.ErrorS(err, "SaaS Registry credentials could not be read. Exiting..", "tenantId", capApp.Spec.Provider.TenantId, LabelBTPApplicationIdentifierHash, capApp.Labels[LabelBTPApplicationIdentifierHash])
 	}
 	return result
 }
