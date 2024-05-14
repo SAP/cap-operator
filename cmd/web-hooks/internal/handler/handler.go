@@ -551,6 +551,9 @@ func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissio
 
 func unmarshalRawObj(w http.ResponseWriter, rawBytes []byte, response responseInterface, resourceKind string) validateResource {
 	if err := json.Unmarshal(rawBytes, response); err != nil || response.isEmpty() {
+		klog.Info(rawBytes, "DEBUGGGGG")
+		klog.ErrorS(err, "DEBUGGGGG")
+		klog.Error(response, "DEBUGGGGG")
 		return invalidAdmissionReviewObj(w, resourceKind, err)
 	}
 	return validAdmissionReviewObj()
