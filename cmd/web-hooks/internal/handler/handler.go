@@ -463,9 +463,9 @@ func (wh *WebhookHandler) validateCAPApplicationVersion(w http.ResponseWriter, a
 	if admissionReview.Request.Operation == admissionv1.Update && !cmp.Equal(cavObjOld.Spec, cavObjNew.Spec) {
 		klog.InfoS("DEBUGGG - cav update line 464")
 		klog.InfoS("=======================================")
-		klog.InfoS("DEBUGGG old spec", cavObjOld.Spec)
+		klog.InfoS("DEBUGGG old spec", cavObjOld.Spec.Workloads[3].JobDefinition.CommonDetails.Env)
 		klog.InfoS("=======================================")
-		klog.InfoS("DEBUGGG new spec", cavObjNew.Spec)
+		klog.InfoS("DEBUGGG new spec", cavObjNew.Spec.Workloads[3].JobDefinition.CommonDetails.Env)
 		klog.InfoS("=======================================")
 		klog.InfoS("DEBUGGG diff", cmp.Diff(cavObjOld.Spec, cavObjNew.Spec))
 		return validateResource{
