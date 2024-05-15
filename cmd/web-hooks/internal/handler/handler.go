@@ -431,6 +431,7 @@ func (wh *WebhookHandler) validateCAPApplicationVersion(w http.ResponseWriter, a
 	// Note: Object is nil for "DELETE" operation
 	if admissionReview.Request.Operation == admissionv1.Create || admissionReview.Request.Operation == admissionv1.Update {
 		if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &cavObjNew, v1alpha1.CAPApplicationVersionKind); !validatedResource.allowed {
+			klog.InfoS("DEBUGGG - cav failed create or update line 434")
 			return validatedResource
 		}
 	}
@@ -438,6 +439,7 @@ func (wh *WebhookHandler) validateCAPApplicationVersion(w http.ResponseWriter, a
 	// Note: OldObject is nil for "CONNECT" and "CREATE" operations
 	if admissionReview.Request.Operation == admissionv1.Delete || admissionReview.Request.Operation == admissionv1.Update {
 		if validatedResource := unmarshalRawObj(w, admissionReview.Request.OldObject.Raw, &cavObjOld, v1alpha1.CAPApplicationVersionKind); !validatedResource.allowed {
+			klog.InfoS("DEBUGGG - cav failed delete or update line 442")
 			return validatedResource
 		}
 	}
@@ -459,6 +461,7 @@ func (wh *WebhookHandler) validateCAPApplicationVersion(w http.ResponseWriter, a
 
 	// check: update on .Spec
 	if admissionReview.Request.Operation == admissionv1.Update && !cmp.Equal(cavObjOld.Spec, cavObjNew.Spec) {
+		klog.InfoS("DEBUGGG - cav update line 464")
 		return validateResource{
 			allowed: false,
 			message: fmt.Sprintf("%s %s spec cannot be modified for: %s.%s", InvalidationMessage, cavObjNew.Kind, cavObjNew.Metadata.Namespace, cavObjNew.Metadata.Name),
@@ -585,6 +588,7 @@ func (wh *WebhookHandler) Validate(w http.ResponseWriter, r *http.Request) {
 	switch admissionReview.Request.Kind.Kind {
 	case v1alpha1.CAPApplicationVersionKind:
 		if validation = wh.validateCAPApplicationVersion(w, admissionReview); validation.errorOccured {
+			klog.InfoS("DEBUGGG - cav failed line 591")
 			return
 		}
 	case v1alpha1.CAPTenantKind:
@@ -669,6 +673,7 @@ func httpError(w http.ResponseWriter, code int, err error) {
 }
 
 func invalidAdmissionReviewObj(w http.ResponseWriter, kind string, sourceErr error) validateResource {
+	klog.ErrorS(sourceErr, "DEBUGGGGG line 676")
 	httpError(w, http.StatusInternalServerError, fmt.Errorf("%s %s %s %w", InvalidResource, kind, AdmissionError, sourceErr))
 	return validateResource{errorOccured: true}
 }
