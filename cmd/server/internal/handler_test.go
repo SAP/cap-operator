@@ -454,6 +454,7 @@ func TestAsyncCallback(t *testing.T) {
 		testName          string
 		status            bool
 		useCredentialType string
+		additionalData    *map[string]any
 		isProvisioning    bool
 	}
 	saasData := &util.SaasRegistryCredentials{
@@ -512,6 +513,7 @@ func TestAsyncCallback(t *testing.T) {
 				if err != nil {
 					t.Fatalf("could not read callback request body: %s", err.Error())
 				}
+				t.Logf("Async callback payload = %s", body)
 				err = json.Unmarshal(body, payload)
 				if err != nil {
 					t.Fatalf("could not parse callback request body: %s", err.Error())
@@ -527,6 +529,9 @@ func TestAsyncCallback(t *testing.T) {
 					if strings.Index(payload.Message, "Deprovisioning ") != 0 {
 						t.Fatal("incorrect message in payload")
 					}
+				}
+				if params.additionalData != nil && payload.AdditionalOutput == nil {
+					t.Fatal("expected additional output in payload")
 				}
 				w.WriteHeader(200)
 			}
@@ -566,6 +571,8 @@ func TestAsyncCallback(t *testing.T) {
 		{testName: "1", status: true, useCredentialType: "x509", isProvisioning: true},
 		{testName: "2", status: true, useCredentialType: "x509", isProvisioning: false},
 		{testName: "3", status: false, useCredentialType: "instance-secret", isProvisioning: true},
+		{testName: "4", status: false, useCredentialType: "instance-secret", additionalData: &map[string]any{"foo": "bar"}, isProvisioning: true},
+		{testName: "5", status: false, useCredentialType: "x509", additionalData: &map[string]any{"foo1": "bar2", "someKey": &map[string]string{"name": "key", "plan": "none"}}, isProvisioning: true},
 	}
 
 	ctx := context.WithValue(context.Background(), cKey, true)
@@ -580,6 +587,7 @@ func TestAsyncCallback(t *testing.T) {
 				p.status,
 				"/async/callback",
 				"https://app.cluster.local",
+				p.additionalData,
 				p.isProvisioning,
 			)
 		})
