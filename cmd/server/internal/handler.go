@@ -33,7 +33,10 @@ import (
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned"
 )
 
-const AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
+const (
+	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
+	AnnotationSaaSAdditionalOutput      = "sme.sap.com/saas-additional-output"
+)
 
 const (
 	LabelBTPApplicationIdentifierHash = "sme.sap.com/btp-app-identifier-hash"
@@ -74,9 +77,10 @@ type SubscriptionHandler struct {
 }
 
 type CallbackResponse struct {
-	Status          string `json:"status"`
-	Message         string `json:"message"`
-	SubscriptionUrl string `json:"subscriptionUrl"`
+	Status           string          `json:"status"`
+	Message          string          `json:"message"`
+	SubscriptionUrl  string          `json:"subscriptionUrl"`
+	AdditionalOutput *map[string]any `json:"additionalOutput,omitempty"`
 }
 type OAuthResponse struct {
 	AccessToken string `json:"access_token"`
@@ -325,7 +329,21 @@ func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1
 		status := s.checkCAPTenantStatus(ctx, ca.Namespace, tenantName, isProvisioning, saasData.CallbackTimeoutMillis)
 		klog.InfoS("CAPTenant check complete", "status", status)
 
-		s.handleAsyncCallback(ctx, saasData, status, asyncCallbackPath, appUrl, isProvisioning)
+		additionalOutput := &map[string]any{}
+		if isProvisioning {
+			saasAdditionalOutput := ca.Annotations[AnnotationSaaSAdditionalOutput]
+			if saasAdditionalOutput != "" {
+				// Add additional output to the callback response
+				err := json.Unmarshal([]byte(saasAdditionalOutput), additionalOutput)
+				if err != nil {
+					klog.ErrorS(err, "Error parsing additional output", "annotation value", saasAdditionalOutput)
+					additionalOutput = nil
+				}
+			}
+		} else {
+			additionalOutput = nil
+		}
+		s.handleAsyncCallback(ctx, saasData, status, asyncCallbackPath, appUrl, additionalOutput, isProvisioning)
 	}()
 
 	klog.InfoS("Waiting for async saas callback after checks...")
@@ -480,7 +498,7 @@ func prepareTokenRequest(ctx context.Context, saasData *util.SaasRegistryCredent
 	return tokenReq, nil
 }
 
-func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, saasData *util.SaasRegistryCredentials, status bool, asyncCallbackPath string, appUrl string, isProvisioning bool) {
+func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, saasData *util.SaasRegistryCredentials, status bool, asyncCallbackPath string, appUrl string, additionalOutput *map[string]any, isProvisioning bool) {
 	// Get OAuth token
 	tokenClient := s.httpClientGenerator.NewHTTPClient()
 	tokenReq, err := prepareTokenRequest(ctx, saasData, tokenClient)
@@ -514,9 +532,10 @@ func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, saasData 
 		}
 
 		payload, _ := json.Marshal(&CallbackResponse{
-			Status:          checkMatch(status, CallbackSucceeded, CallbackFailed),
-			Message:         checkMatch(status, checkMatch(isProvisioning, ProvisioningSucceededMessage, DeprovisioningSucceededMessage), checkMatch(isProvisioning, ProvisioningFailedMessage, DeprovisioningFailedMessage)),
-			SubscriptionUrl: appUrl,
+			Status:           checkMatch(status, CallbackSucceeded, CallbackFailed),
+			Message:          checkMatch(status, checkMatch(isProvisioning, ProvisioningSucceededMessage, DeprovisioningSucceededMessage), checkMatch(isProvisioning, ProvisioningFailedMessage, DeprovisioningFailedMessage)),
+			SubscriptionUrl:  appUrl,
+			AdditionalOutput: additionalOutput,
 		})
 		callbackReq, _ := http.NewRequestWithContext(ctx, http.MethodPut, saasData.SaasManagerUrl+asyncCallbackPath, bytes.NewBuffer(payload))
 		callbackReq.Header.Set("Content-Type", "application/json")
@@ -530,7 +549,7 @@ func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, saasData 
 			klog.ErrorS(err, "Error sending async callback")
 			return
 		} else {
-			klog.InfoS("Async callback done", "response", callbackResponse)
+			klog.InfoS("Async callback done", "response", callbackResponse.Body, "status", callbackResponse.Status)
 			defer callbackResponse.Body.Close()
 		}
 	}

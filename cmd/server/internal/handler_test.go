@@ -243,14 +243,16 @@ func Test_IncorrectMethod(t *testing.T) {
 
 func Test_provisioning(t *testing.T) {
 	tests := []struct {
-		name               string
-		method             string
-		body               string
-		createCROs         bool
-		withSecretKey      bool
-		existingTenant     bool
-		expectedStatusCode int
-		expectedResponse   Result
+		name                  string
+		method                string
+		body                  string
+		createCROs            bool
+		withAdditionalData    bool
+		invalidAdditionalData bool
+		withSecretKey         bool
+		existingTenant        bool
+		expectedStatusCode    int
+		expectedResponse      Result
 	}{
 		{
 			name:               "Invalid Provisioning Request",
@@ -291,6 +293,31 @@ func Test_provisioning(t *testing.T) {
 			},
 		},
 		{
+			name:               "Provisioning Request valid with additional data and existing tenant",
+			method:             http.MethodPut,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			createCROs:         true,
+			withAdditionalData: true,
+			existingTenant:     true,
+			expectedStatusCode: http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceCreated,
+			},
+		},
+		{
+			name:                  "Provisioning Request valid with invalid additional data and existing tenant",
+			method:                http.MethodPut,
+			body:                  `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			createCROs:            true,
+			withAdditionalData:    true,
+			invalidAdditionalData: true,
+			existingTenant:        true,
+			expectedStatusCode:    http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceCreated,
+			},
+		},
+		{
 			name:               "Provisioning Request with existing tenant",
 			method:             http.MethodPut,
 			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
@@ -309,9 +336,16 @@ func Test_provisioning(t *testing.T) {
 			var cat *v1alpha1.CAPTenant
 			if testData.createCROs {
 				ca = createCA()
+				if testData.withAdditionalData {
+					if !testData.invalidAdditionalData {
+						ca.Annotations = map[string]string{AnnotationSaaSAdditionalOutput: "{\"foo\":\"bar\"}"}
+					} else {
+						ca.Annotations = map[string]string{AnnotationSaaSAdditionalOutput: "{foo\":\"bar\"}"} //invalid json
+					}
+				}
 			}
 			if testData.existingTenant {
-				cat = createCAT(false)
+				cat = createCAT(testData.withAdditionalData)
 			}
 			client, tokenString, err := SetupValidTokenAndIssuerForSubscriptionTests("appname!b14")
 			if err != nil {
@@ -454,6 +488,7 @@ func TestAsyncCallback(t *testing.T) {
 		testName          string
 		status            bool
 		useCredentialType string
+		additionalData    *map[string]any
 		isProvisioning    bool
 	}
 	saasData := &util.SaasRegistryCredentials{
@@ -512,6 +547,7 @@ func TestAsyncCallback(t *testing.T) {
 				if err != nil {
 					t.Fatalf("could not read callback request body: %s", err.Error())
 				}
+				t.Logf("Async callback payload = %s", body)
 				err = json.Unmarshal(body, payload)
 				if err != nil {
 					t.Fatalf("could not parse callback request body: %s", err.Error())
@@ -527,6 +563,9 @@ func TestAsyncCallback(t *testing.T) {
 					if strings.Index(payload.Message, "Deprovisioning ") != 0 {
 						t.Fatal("incorrect message in payload")
 					}
+				}
+				if params.additionalData != nil && payload.AdditionalOutput == nil {
+					t.Fatal("expected additional output in payload")
 				}
 				w.WriteHeader(200)
 			}
@@ -566,6 +605,8 @@ func TestAsyncCallback(t *testing.T) {
 		{testName: "1", status: true, useCredentialType: "x509", isProvisioning: true},
 		{testName: "2", status: true, useCredentialType: "x509", isProvisioning: false},
 		{testName: "3", status: false, useCredentialType: "instance-secret", isProvisioning: true},
+		{testName: "4", status: false, useCredentialType: "instance-secret", additionalData: &map[string]any{"foo": "bar"}, isProvisioning: true},
+		{testName: "5", status: false, useCredentialType: "x509", additionalData: &map[string]any{"foo1": "bar2", "someKey": &map[string]string{"name": "key", "plan": "none"}}, isProvisioning: true},
 	}
 
 	ctx := context.WithValue(context.Background(), cKey, true)
@@ -580,6 +621,7 @@ func TestAsyncCallback(t *testing.T) {
 				p.status,
 				"/async/callback",
 				"https://app.cluster.local",
+				p.additionalData,
 				p.isProvisioning,
 			)
 		})
