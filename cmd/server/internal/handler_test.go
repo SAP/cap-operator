@@ -243,14 +243,16 @@ func Test_IncorrectMethod(t *testing.T) {
 
 func Test_provisioning(t *testing.T) {
 	tests := []struct {
-		name               string
-		method             string
-		body               string
-		createCROs         bool
-		withSecretKey      bool
-		existingTenant     bool
-		expectedStatusCode int
-		expectedResponse   Result
+		name                  string
+		method                string
+		body                  string
+		createCROs            bool
+		withAdditionalData    bool
+		invalidAdditionalData bool
+		withSecretKey         bool
+		existingTenant        bool
+		expectedStatusCode    int
+		expectedResponse      Result
 	}{
 		{
 			name:               "Invalid Provisioning Request",
@@ -291,6 +293,31 @@ func Test_provisioning(t *testing.T) {
 			},
 		},
 		{
+			name:               "Provisioning Request valid with additional data and existing tenant",
+			method:             http.MethodPut,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			createCROs:         true,
+			withAdditionalData: true,
+			existingTenant:     true,
+			expectedStatusCode: http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceCreated,
+			},
+		},
+		{
+			name:                  "Provisioning Request valid with invalid additional data and existing tenant",
+			method:                http.MethodPut,
+			body:                  `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			createCROs:            true,
+			withAdditionalData:    true,
+			invalidAdditionalData: true,
+			existingTenant:        true,
+			expectedStatusCode:    http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceCreated,
+			},
+		},
+		{
 			name:               "Provisioning Request with existing tenant",
 			method:             http.MethodPut,
 			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
@@ -309,9 +336,16 @@ func Test_provisioning(t *testing.T) {
 			var cat *v1alpha1.CAPTenant
 			if testData.createCROs {
 				ca = createCA()
+				if testData.withAdditionalData {
+					if !testData.invalidAdditionalData {
+						ca.Annotations = map[string]string{AnnotationSaaSAdditionalOutput: "{\"foo\":\"bar\"}"}
+					} else {
+						ca.Annotations = map[string]string{AnnotationSaaSAdditionalOutput: "{foo\":\"bar\"}"} //invalid json
+					}
+				}
 			}
 			if testData.existingTenant {
-				cat = createCAT(false)
+				cat = createCAT(testData.withAdditionalData)
 			}
 			client, tokenString, err := SetupValidTokenAndIssuerForSubscriptionTests("appname!b14")
 			if err != nil {

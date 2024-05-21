@@ -336,7 +336,7 @@ func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1
 				// Add additional output to the callback response
 				err := json.Unmarshal([]byte(saasAdditionalOutput), additionalOutput)
 				if err != nil {
-					klog.ErrorS(err, "Error parsing additional output")
+					klog.ErrorS(err, "Error parsing additional output", "annotation value", saasAdditionalOutput)
 					additionalOutput = nil
 				}
 			}
