@@ -10,6 +10,10 @@ import (
 	"path"
 	"strings"
 
+	"github.com/go-logr/logr"
+	"github.com/go-logr/zapr"
+	"go.uber.org/zap"
+
 	// Import all Kubernetes client auth plugins (OIDC)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
@@ -59,4 +63,9 @@ func GetNamespace() string {
 	}
 
 	return "default"
+}
+
+func GetLogger() logr.Logger {
+	logger, _ := zap.NewProduction()
+	return zapr.NewLogger(logger)
 }

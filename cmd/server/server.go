@@ -19,6 +19,7 @@ import (
 )
 
 func main() {
+	klog.SetLogger(util.GetLogger())
 	subHandler := getSubscriptionHandler()
 	http.HandleFunc("/provision/", subHandler.HandleRequest)
 

@@ -7,10 +7,13 @@ require (
 	github.com/cert-manager/cert-manager v1.14.5
 	github.com/gardener/cert-management v0.14.2
 	github.com/gardener/external-dns-management v0.18.5
+	github.com/go-logr/logr v1.4.1
+	github.com/go-logr/zapr v1.3.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.0.21
+	go.uber.org/zap v1.26.0
 	golang.org/x/mod v0.17.0
 	google.golang.org/protobuf v1.34.1
 	istio.io/api v1.22.0
@@ -27,7 +30,6 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.12.0 // indirect
 	github.com/evanphx/json-patch v5.9.0+incompatible // indirect
-	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
@@ -52,6 +54,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.23.0 // indirect
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842
 	golang.org/x/net v0.25.0 // indirect

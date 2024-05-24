@@ -208,6 +208,7 @@ type OAuthResponse struct {
 }
 
 func main() {
+	klog.SetLogger(util.GetLogger())
 	os.Exit(execute())
 }
 

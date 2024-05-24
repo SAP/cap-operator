@@ -148,7 +148,7 @@ var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *C
 		// Check if all Tenant DNSEntries are Ready
 		processing, err := c.checkTenantDNSEntries(ctx, cat)
 		if err != nil {
-			klog.ErrorS(err, "error with DNS Entries for CAPTenant", "namespace", cat.Namespace, "tenant", cat)
+			klog.ErrorS(err, "error with DNS Entries for CAPTenant", "namespace", cat.Namespace, "tenant", cat, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
 			return nil, err
 		}
 		if processing {
@@ -222,7 +222,7 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, att
 	// Skip processing until the right version is set on the CAPTenant (via CAPApplication)
 	// This indirectly ensures that we do not create duplicate tenant operations for consumer tenant provisioning scenarios!
 	if cat.Spec.Version == "" {
-		klog.InfoS("Tenant without version detected, skip processing until version is set", "namespace", cat.Namespace, "tenant", cat.Name)
+		klog.InfoS("Tenant without version detected, skip processing until version is set", "namespace", cat.Namespace, "tenant", cat.Name, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
 		return requeue, nil
 	}
 
@@ -425,6 +425,7 @@ func (c *Controller) createCAPTenantOperation(ctx context.Context, cat *v1alpha1
 		},
 	}
 	addCAPTenantOperationLabels(ctop, cat) // NOTE: this is very important to do here as subsequent reconciliation of tenant will be inconsistent otherwise
+	klog.InfoS("Processing CAPTenant - Creating CAPTenantOperations", "name", cat.Name, "namespace", cat.Namespace, "operation", opType, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
 	return c.crdClient.SmeV1alpha1().CAPTenantOperations(cat.Namespace).Create(ctx, ctop, metav1.CreateOptions{})
 }
 
