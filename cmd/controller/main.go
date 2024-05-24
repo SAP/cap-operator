@@ -33,6 +33,7 @@ const (
 )
 
 func main() {
+	klog.SetLogger(util.GetLogger())
 	config := util.GetConfig()
 	if config == nil {
 		klog.Fatal("Config not found")
