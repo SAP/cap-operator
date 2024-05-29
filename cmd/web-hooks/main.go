@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -26,6 +26,7 @@ type ServerParameters struct {
 var parameters ServerParameters
 
 func main() {
+	klog.SetLogger(util.GetLogger())
 	// check env for relevant values
 	portEnv := os.Getenv("WEBHOOK_PORT")
 	port := 8443
@@ -34,7 +35,7 @@ func main() {
 	if portEnv != "" {
 		port, err = strconv.Atoi(portEnv)
 		if err != nil {
-			klog.Error("Error parsing Webhook server port: ", err.Error())
+			klog.ErrorS(err, "Error parsing Webhook server port")
 		}
 	}
 
@@ -46,7 +47,7 @@ func main() {
 	if t != "" {
 		tlsEnabled, err = strconv.ParseBool(t)
 		if err != nil {
-			klog.Error("Error parsing tls: ", err.Error())
+			klog.ErrorS(err, "Error parsing tls")
 		}
 	}
 	parameters.tlsEnabled = tlsEnabled

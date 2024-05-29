@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -64,7 +64,7 @@ func checkHashedLabels(checkDone chan bool, client kubernetes.Interface, crdClie
 	}
 
 	ctx := context.TODO()
-	klog.Info("checking for old Labels on known resources")
+	klog.InfoS("checking for old Labels on known resources")
 
 	btpAppLabelReq, _ := labels.NewRequirement(AnnotationBTPApplicationIdentifier, selection.Exists, []string{})
 	ownerLabelReq, _ := labels.NewRequirement(AnnotationOwnerIdentifier, selection.Exists, []string{})
@@ -81,7 +81,7 @@ func checkHashedLabels(checkDone chan bool, client kubernetes.Interface, crdClie
 	// CAP application with LabelBTPApplicationIdentifier
 	caList, err := crdClient.SmeV1alpha1().CAPApplications("").List(ctx, metav1.ListOptions{LabelSelector: btpAppSelector.String()})
 	if err != nil {
-		klog.Error(err)
+		klog.ErrorS(err, "error getting CAPApplications", "selector", btpAppSelector.String())
 		return
 	}
 	for _, ca := range caList.Items {
@@ -109,7 +109,7 @@ func checkHashedLabels(checkDone chan bool, client kubernetes.Interface, crdClie
 	// CAP application version with LabelBTPApplicationIdentifier and LabelOwnerIdentifier
 	cavList, err := crdClient.SmeV1alpha1().CAPApplicationVersions("").List(ctx, metav1.ListOptions{LabelSelector: btpAppOwnerSelector.String()})
 	if err != nil {
-		klog.Error(err)
+		klog.ErrorS(err, "error getting CAPApplicationVersions", "selector", btpAppOwnerSelector.String())
 		return
 	}
 	for _, cav := range cavList.Items {
@@ -125,7 +125,7 @@ func checkHashedLabels(checkDone chan bool, client kubernetes.Interface, crdClie
 	// CAP Tenant with LabelBTPApplicationIdentifier and LabelOwnerIdentifier
 	catList, err := crdClient.SmeV1alpha1().CAPTenants("").List(ctx, metav1.ListOptions{LabelSelector: btpAppOwnerSelector.String()})
 	if err != nil {
-		klog.Error(err)
+		klog.ErrorS(err, "error getting CAPTenants", "selector", btpAppOwnerSelector.String())
 		return
 	}
 	for _, cat := range catList.Items {
@@ -147,7 +147,7 @@ func checkHashedLabels(checkDone chan bool, client kubernetes.Interface, crdClie
 	// CAP Tenant Operation with LabelOwnerIdentifier
 	ctopList, err := crdClient.SmeV1alpha1().CAPTenantOperations("").List(ctx, metav1.ListOptions{LabelSelector: ownerSelector.String()})
 	if err != nil {
-		klog.Error(err)
+		klog.ErrorS(err, "error getting CAPTenantOperations", "selector", ownerSelector.String())
 		return
 	}
 	for _, ctop := range ctopList.Items {
@@ -164,7 +164,7 @@ func checkHashedLabels(checkDone chan bool, client kubernetes.Interface, crdClie
 	// Cert Manager Certificates
 	certManagerCertificateList, err := certManagerCertificateClient.CertmanagerV1().Certificates("").List(ctx, metav1.ListOptions{LabelSelector: ownerSelector.String()})
 	if err != nil {
-		klog.Error(err)
+		klog.ErrorS(err, "error getting Certificates", "selector", ownerSelector.String())
 		return
 	}
 	for _, cert := range certManagerCertificateList.Items {
@@ -176,7 +176,7 @@ func checkHashedLabels(checkDone chan bool, client kubernetes.Interface, crdClie
 	// Gardener Certificates
 	gardenerCertificateList, err := gardenerCertificateClient.CertV1alpha1().Certificates("").List(ctx, metav1.ListOptions{LabelSelector: ownerSelector.String()})
 	if err != nil {
-		klog.Error(err)
+		klog.ErrorS(err, "error getting Certificates", "selector", ownerSelector.String())
 		return
 	}
 	for _, cert := range gardenerCertificateList.Items {
@@ -188,7 +188,7 @@ func checkHashedLabels(checkDone chan bool, client kubernetes.Interface, crdClie
 	// Gateways
 	gwList, err := istioClient.NetworkingV1beta1().Gateways("").List(ctx, metav1.ListOptions{LabelSelector: btpAppOwnerSelector.String()})
 	if err != nil {
-		klog.Error(err)
+		klog.ErrorS(err, "error getting Gateways", "selector", btpAppOwnerSelector.String())
 		return
 	}
 	for _, gw := range gwList.Items {
@@ -205,7 +205,7 @@ func checkHashedLabels(checkDone chan bool, client kubernetes.Interface, crdClie
 	// DNS Entries
 	dnsEntryList, err := gardenerDNSClient.DnsV1alpha1().DNSEntries("").List(ctx, metav1.ListOptions{LabelSelector: ownerSelector.String()})
 	if err != nil {
-		klog.Error(err)
+		klog.ErrorS(err, "error getting DNSEntries", "selector", ownerSelector.String())
 		return
 	}
 	for _, dnsEntry := range dnsEntryList.Items {
@@ -217,7 +217,7 @@ func checkHashedLabels(checkDone chan bool, client kubernetes.Interface, crdClie
 	// Destination Rules
 	destRuleList, err := istioClient.NetworkingV1beta1().DestinationRules("").List(ctx, metav1.ListOptions{LabelSelector: ownerSelector.String()})
 	if err != nil {
-		klog.Error(err)
+		klog.ErrorS(err, "error getting DestinationRules", "selector", ownerSelector.String())
 		return
 	}
 	for _, destRule := range destRuleList.Items {
@@ -229,7 +229,7 @@ func checkHashedLabels(checkDone chan bool, client kubernetes.Interface, crdClie
 	// Virtual Services
 	virtualServiceList, err := istioClient.NetworkingV1beta1().VirtualServices("").List(ctx, metav1.ListOptions{LabelSelector: ownerSelector.String()})
 	if err != nil {
-		klog.Error(err)
+		klog.ErrorS(err, "error getting VirtualServices", "selector", ownerSelector.String())
 		return
 	}
 	for _, virtualService := range virtualServiceList.Items {
@@ -241,7 +241,7 @@ func checkHashedLabels(checkDone chan bool, client kubernetes.Interface, crdClie
 	// CAV Deployments
 	deploymentList, err := client.AppsV1().Deployments("").List(ctx, metav1.ListOptions{LabelSelector: btpAppOwnerSelector.String()})
 	if err != nil {
-		klog.Error(err)
+		klog.ErrorS(err, "error getting Deployments", "selector", btpAppOwnerSelector.String())
 		return
 	}
 	for _, deployment := range deploymentList.Items {
@@ -253,7 +253,7 @@ func checkHashedLabels(checkDone chan bool, client kubernetes.Interface, crdClie
 	// CAV Services
 	serviceList, err := client.CoreV1().Services("").List(ctx, metav1.ListOptions{LabelSelector: btpAppOwnerSelector.String()})
 	if err != nil {
-		klog.Error(err)
+		klog.ErrorS(err, "error getting Services", "selector", btpAppOwnerSelector.String())
 		return
 	}
 	for _, service := range serviceList.Items {
@@ -265,7 +265,7 @@ func checkHashedLabels(checkDone chan bool, client kubernetes.Interface, crdClie
 	// CTOP Jobs
 	jobList, err := client.BatchV1().Jobs("").List(ctx, metav1.ListOptions{LabelSelector: btpAppOwnerSelector.String()})
 	if err != nil {
-		klog.Error(err)
+		klog.ErrorS(err, "error getting Jobs", "selector", btpAppOwnerSelector.String())
 		return
 	}
 	for _, job := range jobList.Items {
@@ -284,19 +284,19 @@ func amendObjectMetadata(object *metav1.ObjectMeta, annotatedOldLabel string, ha
 	// Check if old label exists, if so remove it
 	if _, ok := object.Labels[annotatedOldLabel]; ok {
 		delete(object.Labels, annotatedOldLabel)
-		klog.Infof("Removed old label %s=%s for resource %s.%s", annotatedOldLabel, oldValue, object.Namespace, object.Name)
+		klog.InfoS("Removed old label", "label", annotatedOldLabel, "label value", oldValue, "namespace", object.Namespace, "resource name", object.Name)
 		updated = true
 	}
 	// Add hashed label as the new label with the hashed identifier value
 	if _, ok := object.Labels[hashLabel]; !ok {
 		object.Labels[hashLabel] = hashedValue
-		klog.Infof("Added hashed label %s=%s for resource %s.%s", hashLabel, hashedValue, object.Namespace, object.Name)
+		klog.InfoS("Added hashed label", "label", hashLabel, "label value", hashedValue, "namespace", object.Namespace, "resource name", object.Name)
 		updated = true
 	}
 	// Add old label as an annotation with the old value
 	if _, ok := object.Annotations[annotatedOldLabel]; !ok {
 		object.Annotations[annotatedOldLabel] = oldValue
-		klog.Infof("Added annotation %s=%s for resource %s.%s", annotatedOldLabel, oldValue, object.Namespace, object.Name)
+		klog.InfoS("Added annotation", "annotation", annotatedOldLabel, "annotation value", oldValue, "namespace", object.Namespace, "resource name", object.Name)
 		updated = true
 	}
 	// return if something was updated

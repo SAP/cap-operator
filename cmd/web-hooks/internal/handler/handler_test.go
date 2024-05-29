@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -181,7 +181,7 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 							ConsumedBTPServices: []string{},
 							DeploymentDefinition: &v1alpha1.DeploymentDetails{
 								Type: v1alpha1.DeploymentCAP,
-								ContainerDetails: v1alpha1.ContainerDetails{
+								CommonDetails: v1alpha1.CommonDetails{
 									Image: "foo",
 								},
 							},
@@ -191,7 +191,7 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 							ConsumedBTPServices: []string{},
 							DeploymentDefinition: &v1alpha1.DeploymentDetails{
 								Type: v1alpha1.DeploymentRouter,
-								ContainerDetails: v1alpha1.ContainerDetails{
+								CommonDetails: v1alpha1.CommonDetails{
 									Image: "foo",
 								},
 							},
@@ -201,7 +201,7 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 							ConsumedBTPServices: []string{},
 							JobDefinition: &v1alpha1.JobDetails{
 								Type: v1alpha1.JobContent,
-								ContainerDetails: v1alpha1.ContainerDetails{
+								CommonDetails: v1alpha1.CommonDetails{
 									Image: "foo",
 								},
 							},
@@ -897,7 +897,7 @@ func TestCavInvalidity(t *testing.T) {
 							ConsumedBTPServices: []string{},
 							DeploymentDefinition: &v1alpha1.DeploymentDetails{
 								Type: v1alpha1.DeploymentCAP,
-								ContainerDetails: v1alpha1.ContainerDetails{
+								CommonDetails: v1alpha1.CommonDetails{
 									Image: "foo",
 								},
 							},
@@ -907,7 +907,7 @@ func TestCavInvalidity(t *testing.T) {
 							ConsumedBTPServices: []string{},
 							DeploymentDefinition: &v1alpha1.DeploymentDetails{
 								Type: v1alpha1.DeploymentRouter,
-								ContainerDetails: v1alpha1.ContainerDetails{
+								CommonDetails: v1alpha1.CommonDetails{
 									Image: "foo",
 								},
 							},
@@ -917,7 +917,7 @@ func TestCavInvalidity(t *testing.T) {
 							ConsumedBTPServices: []string{},
 							JobDefinition: &v1alpha1.JobDetails{
 								Type: v1alpha1.JobContent,
-								ContainerDetails: v1alpha1.ContainerDetails{
+								CommonDetails: v1alpha1.CommonDetails{
 									Image: "foo",
 								},
 							},
@@ -933,7 +933,7 @@ func TestCavInvalidity(t *testing.T) {
 					ConsumedBTPServices: []string{},
 					DeploymentDefinition: &v1alpha1.DeploymentDetails{
 						Type: v1alpha1.DeploymentAdditional,
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "foo",
 						},
 					},
@@ -949,7 +949,7 @@ func TestCavInvalidity(t *testing.T) {
 					ConsumedBTPServices: []string{},
 					DeploymentDefinition: &v1alpha1.DeploymentDetails{
 						Type: v1alpha1.DeploymentCAP,
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "foo",
 						},
 					},
@@ -961,7 +961,7 @@ func TestCavInvalidity(t *testing.T) {
 					ConsumedBTPServices: []string{},
 					DeploymentDefinition: &v1alpha1.DeploymentDetails{
 						Type: v1alpha1.DeploymentRouter,
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "foo",
 						},
 					},
@@ -989,7 +989,7 @@ func TestCavInvalidity(t *testing.T) {
 					ConsumedBTPServices: []string{},
 					JobDefinition: &v1alpha1.JobDetails{
 						Type: v1alpha1.JobCustomTenantOperation,
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "foo",
 						},
 					},
@@ -1001,7 +1001,7 @@ func TestCavInvalidity(t *testing.T) {
 					ConsumedBTPServices: []string{},
 					JobDefinition: &v1alpha1.JobDetails{
 						Type: v1alpha1.JobTenantOperation,
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "foo",
 						},
 					},
@@ -1011,7 +1011,7 @@ func TestCavInvalidity(t *testing.T) {
 					ConsumedBTPServices: []string{},
 					JobDefinition: &v1alpha1.JobDetails{
 						Type: v1alpha1.JobCustomTenantOperation,
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "foo",
 						},
 					},
@@ -1034,7 +1034,7 @@ func TestCavInvalidity(t *testing.T) {
 					ConsumedBTPServices: []string{},
 					JobDefinition: &v1alpha1.JobDetails{
 						Type: v1alpha1.JobTenantOperation,
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "foo",
 						},
 					},
@@ -1057,7 +1057,7 @@ func TestCavInvalidity(t *testing.T) {
 					ConsumedBTPServices: []string{},
 					JobDefinition: &v1alpha1.JobDetails{
 						Type: v1alpha1.JobTenantOperation,
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "foo",
 						},
 					},
@@ -1067,7 +1067,7 @@ func TestCavInvalidity(t *testing.T) {
 					ConsumedBTPServices: []string{},
 					JobDefinition: &v1alpha1.JobDetails{
 						Type: v1alpha1.JobCustomTenantOperation,
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "foo",
 						},
 					},
@@ -1116,7 +1116,7 @@ func TestCavInvalidity(t *testing.T) {
 					ConsumedBTPServices: []string{},
 					JobDefinition: &v1alpha1.JobDetails{
 						Type: v1alpha1.JobContent,
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "foo",
 						},
 					},
@@ -1127,7 +1127,7 @@ func TestCavInvalidity(t *testing.T) {
 					ConsumedBTPServices: []string{},
 					JobDefinition: &v1alpha1.JobDetails{
 						Type: v1alpha1.JobContent,
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "foo",
 						},
 					},
@@ -1139,7 +1139,7 @@ func TestCavInvalidity(t *testing.T) {
 					ConsumedBTPServices: []string{},
 					JobDefinition: &v1alpha1.JobDetails{
 						Type: v1alpha1.JobContent,
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "foo",
 						},
 					},

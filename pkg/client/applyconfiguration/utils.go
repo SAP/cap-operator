@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -50,8 +50,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.CAPTenantSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantStatus"):
 		return &smesapcomv1alpha1.CAPTenantStatusApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("ContainerDetails"):
-		return &smesapcomv1alpha1.ContainerDetailsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CommonDetails"):
+		return &smesapcomv1alpha1.CommonDetailsApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DeploymentDetails"):
 		return &smesapcomv1alpha1.DeploymentDetailsApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("GenericStatus"):

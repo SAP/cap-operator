@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -68,7 +68,7 @@ func (c *Controller) handleDomains(ctx context.Context, ca *v1alpha1.CAPApplicat
 	}
 
 	c.handlePrimaryDomainCertificate(ctx, ca, commonName, secretName, istioIngressGatewayInfo.Namespace)
-	c.handlePrimaryDomainDNSEntry(ctx, ca, commonName, ca.Namespace, istioIngressGatewayInfo.DNSTarget)
+	c.handlePrimaryDomainDNSEntry(ctx, ca, commonName, ca.Namespace, sanitizeDNSTarget(istioIngressGatewayInfo.DNSTarget))
 
 	if domainsHash != ca.Status.DomainSpecHash {
 
@@ -156,6 +156,7 @@ func (c *Controller) handlePrimaryDomainCertificate(ctx context.Context, ca *v1a
 		gardenerCertSpec := getGardenerCertificateSpec(commonName, secretName)
 		if errors.IsNotFound(err) {
 			// create certificate
+			klog.InfoS("Processing Domains - Creating gardener certificates", "caName", ca.Name, "namespace", ca.Namespace, "certificateName", certName, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 			_, err = c.gardenerCertificateClient.CertV1alpha1().Certificates(istioNamespace).Create(
 				ctx, &certv1alpha1.Certificate{
 					ObjectMeta: metav1.ObjectMeta{
@@ -192,6 +193,7 @@ func (c *Controller) handlePrimaryDomainCertificate(ctx context.Context, ca *v1a
 
 		if errors.IsNotFound(err) {
 			// create certificate
+			klog.InfoS("Processing Domains - Creating certManager certificates", "caName", ca.Name, "namespace", ca.Namespace, "certificateName", certName, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 			_, err = c.certManagerCertificateClient.CertmanagerV1().Certificates(istioNamespace).Create(
 				ctx, &certManagerv1.Certificate{
 					ObjectMeta: metav1.ObjectMeta{
@@ -243,6 +245,7 @@ func (c *Controller) handlePrimaryDomainDNSEntry(ctx context.Context, ca *v1alph
 
 		if errors.IsNotFound(err) {
 			// create DNSEntry
+			klog.InfoS("Processing CAPApplication - Creating DNSEntry", "name", ca.Name, "namespace", ca.Namespace, "dnsEntryName", dnsEntryName, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 			_, err = c.gardenerDNSClient.DnsV1alpha1().DNSEntries(namespace).Create(
 				ctx, &dnsv1alpha1.DNSEntry{
 					ObjectMeta: metav1.ObjectMeta{
@@ -314,7 +317,7 @@ func (c *Controller) checkPrimaryDomainResources(ctx context.Context, ca *v1alph
 		if dnsEntry.Status.State == dnsv1alpha1.STATE_ERROR {
 			return false, fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name, *dnsEntry.Status.Message)
 		} else if dnsEntry.Status.State != dnsv1alpha1.STATE_READY {
-			klog.Infof(formatResourceState, dnsv1alpha1.DNSEntryKind, dnsEntry.Status.State, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
+			klog.InfoS("Resource not ready", "kind", dnsv1alpha1.DNSEntryKind, "state", dnsEntry.Status.State, v1alpha1.CAPApplicationKind, ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, "DomainResourcesProcessing", "")
 			return true, nil
 		}
@@ -395,7 +398,7 @@ func (c *Controller) checkCertificateStatus(ctx context.Context, ca *v1alpha1.CA
 		if certificate.Status.State == certv1alpha1.StateError {
 			return false, fmt.Errorf(formatResourceStateErr, certv1alpha1.CertificateKind, certv1alpha1.StateError, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name, *certificate.Status.Message)
 		} else if certificate.Status.State != certv1alpha1.StateReady {
-			klog.Infof(formatResourceState, certv1alpha1.CertificateKind, certificate.Status.State, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
+			klog.InfoS("Resource not ready", "kind", certv1alpha1.CertificateKind, "state", certificate.Status.State, v1alpha1.CAPApplicationKind, ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 			return true, nil
 		}
 	case certManagerCertManagerIO:
@@ -409,7 +412,7 @@ func (c *Controller) checkCertificateStatus(ctx context.Context, ca *v1alpha1.CA
 		readyCond := getCertManagerReadyCondition(certificate)
 		// check for ready state
 		if readyCond == nil || readyCond.Status == certManagermetav1.ConditionUnknown {
-			klog.Infof(formatResourceState, certManagerv1.CertificateKind, "unknown", v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
+			klog.InfoS("Resource not ready", "kind", certv1alpha1.CertificateKind, "state", "unknown", v1alpha1.CAPApplicationKind, ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
 			return true, nil
 		} else if readyCond.Status == certManagermetav1.ConditionFalse {
 			return false, fmt.Errorf(formatResourceStateErr, certManagerv1.CertificateKind, "not ready", v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name, readyCond.Message)
@@ -516,7 +519,8 @@ func (c *Controller) reconcileTenantDNSEntries(ctx context.Context, cat *v1alpha
 	if err != nil {
 		return err
 	}
-	hash := sha256Sum(ingressGatewayInfo.DNSTarget, cat.Spec.SubDomain, strings.Join(ca.Spec.Domains.Secondary, ""))
+	dnsTarget := sanitizeDNSTarget(ingressGatewayInfo.DNSTarget)
+	hash := sha256Sum(dnsTarget, cat.Spec.SubDomain, strings.Join(ca.Spec.Domains.Secondary, ""))
 	changeDetected, err := c.detectTenantDNSEntryChanges(ctx, cat, ca, hash)
 	if err != nil || !changeDetected {
 		return err
@@ -542,7 +546,7 @@ func (c *Controller) reconcileTenantDNSEntries(ctx context.Context, cat *v1alpha
 				Spec: dnsv1alpha1.DNSEntrySpec{
 					DNSName: cat.Spec.SubDomain + "." + domain,
 					Targets: []string{
-						ingressGatewayInfo.DNSTarget,
+						dnsTarget,
 					},
 				},
 			}, metav1.CreateOptions{},
@@ -573,7 +577,7 @@ func (c *Controller) checkTenantDNSEntries(ctx context.Context, cat *v1alpha1.CA
 			if dnsEntry.Status.State == dnsv1alpha1.STATE_ERROR {
 				return false, fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name, *dnsEntry.Status.Message)
 			} else if dnsEntry.Status.State != dnsv1alpha1.STATE_READY {
-				klog.Infof(formatResourceState, dnsv1alpha1.DNSEntryKind, dnsEntry.Status.State, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name)
+				klog.InfoS("Resource not ready", "kind", dnsv1alpha1.DNSEntryKind, "state", dnsEntry.Status.State, v1alpha1.CAPTenantKind, cat.Name, "namespace", cat.Namespace, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
 				return true, nil
 			}
 		}
@@ -711,7 +715,7 @@ func (c *Controller) getUpdatedTenantDestinationRuleObject(ctx context.Context, 
 					ConsistentHash: &networkingv1beta1.LoadBalancerSettings_ConsistentHashLB{
 						HashKey: &networkingv1beta1.LoadBalancerSettings_ConsistentHashLB_HttpCookie{
 							HttpCookie: &networkingv1beta1.LoadBalancerSettings_ConsistentHashLB_HTTPCookie{
-								Name: HttpCookieName,
+								Name: RouterHttpCookieName,
 								Ttl:  durationpb.New(0 * time.Second),
 								Path: "/",
 							},
@@ -1016,7 +1020,11 @@ func (c *Controller) getIngressGatewayInfo(ctx context.Context, ca *v1alpha1.CAP
 	// Get dnsTarget
 	// First try to use dnsTarget --> if it is set
 	dnsTarget := ca.Spec.Domains.DnsTarget
-	// Attempt to get dnsTarget from Service via annotation(s)
+	// Attempt to get dnsTarget from Env
+	if dnsTarget == "" {
+		dnsTarget = envDNSTarget()
+	}
+	// Finally attempt to get dnsTarget from Service via annotation(s)
 	if dnsTarget == "" {
 		ingressGWSvc, err := c.getIngressGatewayService(ctx, namespace, relevantPodsNames, ca)
 		if err != nil {
@@ -1412,6 +1420,10 @@ func trimDNSTarget(dnsTarget string) string {
 	for len(dnsTarget) > 64 {
 		dnsTarget = dnsTarget[strings.Index(dnsTarget, ".")+1:]
 	}
-	// Fix for domain gw/creds secret name (Replace *.domain with x.domain for secret name)
+	return sanitizeDNSTarget(dnsTarget)
+}
+
+func sanitizeDNSTarget(dnsTarget string) string {
+	// Replace *.domain with x.domain as * is not a valid subdomain for a dns target
 	return strings.ReplaceAll(dnsTarget, "*", "x")
 }

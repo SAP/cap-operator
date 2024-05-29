@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -436,6 +436,7 @@ func TestDeletion_Case7(t *testing.T) {
 			initialResources: []string{
 				"testdata/capapplication/ca-19.initial.yaml",
 				"testdata/capapplication/istio-ingress-with-cert.yaml",
+				"testdata/common/credential-secrets.yaml",
 			},
 			expectedResources: "testdata/capapplication/ca-19.expected.yaml",
 		},

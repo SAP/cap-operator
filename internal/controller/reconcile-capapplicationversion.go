@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -86,7 +86,7 @@ func (c *Controller) updateCAPApplicationVersionStatus(ctx context.Context, cav 
 		*cav = *cavUpdated
 	}
 	if statusErr != nil {
-		klog.Errorf("could not update status of %s %s.%s: %v", v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name, statusErr.Error())
+		klog.ErrorS(statusErr, "could not update status of application version", "namespace", cav.Namespace, v1alpha1.CAPApplicationVersionKind, cav, LabelBTPApplicationIdentifierHash, cav.Labels[LabelBTPApplicationIdentifierHash])
 	}
 
 	return statusErr
@@ -109,6 +109,7 @@ func (c *Controller) handleCAPApplicationVersion(ctx context.Context, cav *v1alp
 
 	if err != nil {
 		// Requeue after 10s to check if secrets exist
+		klog.InfoS("Processing CAPApplicationVersion - Check again if the required secrets exists after 10 seconds", "name", cav.Name, "namespace", cav.Namespace, LabelBTPApplicationIdentifierHash, cav.Labels[LabelBTPApplicationIdentifierHash])
 		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second), c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "WaitingForSecrets"})
 	}
 
@@ -270,9 +271,13 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 		AnnotationIstioSidecarInject: "false",
 	})
 
+	contentJobName := getContentJobName(workload.Name, cav)
+
+	klog.InfoS("Processing CAPApplicationVersion - Creating content job", "name", cav.Name, "namespace", cav.Namespace, "contentJobName", contentJobName, LabelBTPApplicationIdentifierHash, cav.Labels[LabelBTPApplicationIdentifierHash])
+
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        getContentJobName(workload.Name, cav),
+			Name:        contentJobName,
 			Namespace:   cav.Namespace,
 			Annotations: workload.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
@@ -298,13 +303,22 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 								{Name: EnvCAPOpAppVersion, Value: cav.Spec.Version},
 							}, workload.JobDefinition.Env...),
 							EnvFrom:         getEnvFrom(vcapSecretName),
+							VolumeMounts:    workload.JobDefinition.VolumeMounts,
 							Resources:       workload.JobDefinition.Resources,
 							SecurityContext: workload.JobDefinition.SecurityContext,
 						},
 					},
-					SecurityContext:  workload.JobDefinition.PodSecurityContext,
-					ImagePullSecrets: convertToLocalObjectReferences(cav.Spec.RegistrySecrets),
-					RestartPolicy:    corev1.RestartPolicyOnFailure,
+					SecurityContext:           workload.JobDefinition.PodSecurityContext,
+					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,
+					Volumes:                   workload.JobDefinition.Volumes,
+					ImagePullSecrets:          convertToLocalObjectReferences(cav.Spec.RegistrySecrets),
+					RestartPolicy:             corev1.RestartPolicyOnFailure,
+					NodeSelector:              workload.JobDefinition.NodeSelector,
+					NodeName:                  workload.JobDefinition.NodeName,
+					PriorityClassName:         workload.JobDefinition.PriorityClassName,
+					Affinity:                  workload.JobDefinition.Affinity,
+					TopologySpreadConstraints: workload.JobDefinition.TopologySpreadConstraints,
+					Tolerations:               workload.JobDefinition.Tolerations,
 				},
 			},
 		},
@@ -384,6 +398,8 @@ func newService(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion
 
 	labels := copyMaps(workload.Labels, getLabels(ca, cav, CategoryService, workloadServicePortInfo.DeploymentType, workloadServicePortInfo.WorkloadName+ServiceSuffix, true))
 
+	klog.InfoS("Processing CAPApplicationVersion - Creating service", "name", cav.Name, "namespace", cav.Namespace, "serviceName", workloadServicePortInfo.WorkloadName+ServiceSuffix, LabelBTPApplicationIdentifierHash, cav.Labels[LabelBTPApplicationIdentifierHash])
+
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        workloadServicePortInfo.WorkloadName + ServiceSuffix,
@@ -445,6 +461,7 @@ func (c *Controller) createNetworkPolicy(name string, spec networkingv1.NetworkP
 	networkPolicy, err := c.kubeClient.NetworkingV1().NetworkPolicies(cav.Namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	// If the resource doesn't exist, we'll create it
 	if k8sErrors.IsNotFound(err) {
+		klog.InfoS("Processing CAPApplicationVersion - Creating network policy", "name", cav.Name, "namespace", cav.Namespace, "networkPolicyName", name, LabelBTPApplicationIdentifierHash, cav.Labels[LabelBTPApplicationIdentifierHash])
 		networkPolicy, err = c.kubeClient.NetworkingV1().NetworkPolicies(cav.Namespace).Create(context.TODO(), &networkingv1.NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
@@ -564,6 +581,8 @@ func createDeployment(params *DeploymentParameters) *appsv1.Deployment {
 	annotations := copyMaps(params.WorkloadDetails.Annotations, getAnnotations(params.CA, params.CAV, true))
 	labels := copyMaps(params.WorkloadDetails.Labels, getLabels(params.CA, params.CAV, CategoryWorkload, string(params.WorkloadDetails.DeploymentDefinition.Type), workloadName, true))
 
+	klog.InfoS("Processing CAPApplicationVersion - Creating deployment", "name", params.CAV.Name, "namespace", params.CAV.Namespace, "deploymentName", workloadName, LabelBTPApplicationIdentifierHash, params.CAV.Labels[LabelBTPApplicationIdentifierHash])
+
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      workloadName,
@@ -585,9 +604,17 @@ func createDeployment(params *DeploymentParameters) *appsv1.Deployment {
 					Labels:      labels,
 				},
 				Spec: corev1.PodSpec{
-					ImagePullSecrets: convertToLocalObjectReferences(params.CAV.Spec.RegistrySecrets),
-					Containers:       getContainer(params),
-					SecurityContext:  params.WorkloadDetails.DeploymentDefinition.PodSecurityContext,
+					ImagePullSecrets:          convertToLocalObjectReferences(params.CAV.Spec.RegistrySecrets),
+					Containers:                getContainer(params),
+					ServiceAccountName:        params.WorkloadDetails.DeploymentDefinition.ServiceAccountName,
+					Volumes:                   params.WorkloadDetails.DeploymentDefinition.Volumes,
+					SecurityContext:           params.WorkloadDetails.DeploymentDefinition.PodSecurityContext,
+					NodeSelector:              params.WorkloadDetails.DeploymentDefinition.NodeSelector,
+					NodeName:                  params.WorkloadDetails.DeploymentDefinition.NodeName,
+					PriorityClassName:         params.WorkloadDetails.DeploymentDefinition.PriorityClassName,
+					Affinity:                  params.WorkloadDetails.DeploymentDefinition.Affinity,
+					TopologySpreadConstraints: params.WorkloadDetails.DeploymentDefinition.TopologySpreadConstraints,
+					Tolerations:               params.WorkloadDetails.DeploymentDefinition.Tolerations,
 				},
 			},
 		},
@@ -602,6 +629,7 @@ func getContainer(params *DeploymentParameters) []corev1.Container {
 		Command:         params.WorkloadDetails.DeploymentDefinition.Command,
 		Env:             getEnv(params),
 		EnvFrom:         getEnvFrom(params.VCAPSecretName),
+		VolumeMounts:    params.WorkloadDetails.DeploymentDefinition.VolumeMounts,
 		LivenessProbe:   params.WorkloadDetails.DeploymentDefinition.LivenessProbe,
 		ReadinessProbe:  params.WorkloadDetails.DeploymentDefinition.ReadinessProbe,
 		Resources:       params.WorkloadDetails.DeploymentDefinition.Resources,
@@ -882,6 +910,7 @@ func (c *Controller) getRelevantTenantsForCAV(cav *v1alpha1.CAPApplicationVersio
 
 func (c *Controller) deleteCAPApplicationVersion(ctx context.Context, cav *v1alpha1.CAPApplicationVersion) (*ReconcileResult, error) {
 	// Update State if it is not set yet
+	klog.InfoS("Deleting CAPApplicationVersion", "name", cav.Name, "namespace", cav.Namespace, LabelBTPApplicationIdentifierHash, cav.Labels[LabelBTPApplicationIdentifierHash])
 	if cav.Status.State != v1alpha1.CAPApplicationVersionStateDeleting {
 		var deleteCondition metav1.Condition
 		if len(cav.Status.Conditions) > 0 {
@@ -902,6 +931,7 @@ func (c *Controller) deleteCAPApplicationVersion(ctx context.Context, cav *v1alp
 	// Check if tenants exists
 	if len(tenants) > 0 {
 		// Requeue after 10s to check if all tenants are gone
+		klog.InfoS("Deleting CAP Application version failed; tenants exists on this version", "name", cav.Name, "namespace", cav.Namespace, LabelBTPApplicationIdentifierHash, cav.Labels[LabelBTPApplicationIdentifierHash])
 		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second), nil
 	} else if removeFinalizer(&cav.Finalizers, FinalizerCAPApplicationVersion) { // All tenants are gone --> remove finalizer and process deletion
 		return nil, c.updateCAPApplicationVersion(ctx, cav)

@@ -53,3 +53,14 @@ status:
       reason: AllTenantsReady
       observedGeneration: 0
       status: "True"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cap-cap-01-uaa-bind-cf
+  namespace: default
+  finalizers:
+    - sme.sap.com/capapplication # CA presevered secret exists
+type: Opaque
+data:
+  credentials: ewogICJ1YWFkb21haW4iOiAiYXV0aC5zZXJ2aWNlLmxvY2FsIiwKICAieHNhcHBuYW1lIjogInRlc3QtY2FwLTAxIWIxNCIsCiAgInVybCI6ICJodHRwczovL2FwcC1kb21haW4uYXV0aC5zZXJ2aWNlLmxvY2FsIiwKICAiY3JlZGVudGlhbC10eXBlIjogImluc3RhbmNlLXNlY3JldCIKfQo=

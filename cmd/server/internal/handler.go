@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -30,6 +31,11 @@ import (
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned"
+)
+
+const (
+	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
+	AnnotationSaaSAdditionalOutput      = "sme.sap.com/saas-additional-output"
 )
 
 const (
@@ -70,87 +76,32 @@ type SubscriptionHandler struct {
 	httpClientGenerator httpClientGenerator
 }
 
-type UserInfo struct {
-	UserId   string `json:"userId"`
-	UserName string `json:"userName"`
-	Email    string `json:"email"`
-	SubIdp   string `json:"subIdp"`
-	Sub      string `json:"sub"`
-}
-
-type AdditionalInformation struct {
-	Clientid     string `json:"clientid"`
-	Clientsecret string `json:"clientsecret"`
-	Tokenurl     string `json:"tokenurl"`
-}
-
-type DeprovisioningRequest struct {
-	SubscriptionAppId              string   `json:"subscriptionAppId"`
-	SubscriptionAppName            string   `json:"subscriptionAppName"`
-	SubscribedTenantId             string   `json:"subscribedTenantId"`
-	SubscribedZoneId               string   `json:"subscribedZoneId"`
-	SubscribedSubdomain            string   `json:"subscribedSubdomain"`
-	SubscribedSubaccountId         string   `json:"subscribedSubaccountId"`
-	SubscribedCrmId                string   `json:"subscribedCrmId"`
-	SubscriptionAppPlan            string   `json:"subscriptionAppPlan"`
-	SubscriptionAppAmount          string   `json:"subscriptionAppAmount"`
-	DependentServiceInstanceAppIds string   `json:"dependentServiceInstanceAppIds"`
-	GlobalAccountGUID              string   `json:"globalAccountGUID"`
-	UserId                         string   `json:"userId"`
-	UserInfo                       UserInfo `json:"userInfo"`
-}
-
-type ProvisioningRequest struct {
-	SubscriptionAppId              string                `json:"subscriptionAppId"`
-	SubscriptionAppName            string                `json:"subscriptionAppName"`
-	SubscribedTenantId             string                `json:"subscribedTenantId"`
-	SubscribedZoneId               string                `json:"subscribedZoneId"`
-	SubscribedSubdomain            string                `json:"subscribedSubdomain"`
-	SubscribedSubaccountId         string                `json:"subscribedSubaccountId"`
-	SubscribedLicenseType          string                `json:"subscribedLicenseType"`
-	SubscribedCrmId                string                `json:"subscribedCrmId"`
-	SubscriptionAppPlan            string                `json:"subscriptionAppPlan"`
-	SubscriptionAppAmount          string                `json:"subscriptionAppAmount"`
-	DependentServiceInstanceAppIds string                `json:"dependentServiceInstanceAppIds"`
-	GlobalAccountGUID              string                `json:"globalAccountGUID"`
-	EventType                      string                `json:"eventType"`
-	AdditionalInformation          AdditionalInformation `json:"additionalInformation"`
-	UserId                         string                `json:"userId"`
-	UserInfo                       UserInfo              `json:"userInfo"`
-}
-
-type GetRequest struct {
-	SubscriptionAppName string `json:"subscriptionAppName"`
-	GlobalAccountGUID   string `json:"globalAccountGUID"`
-	SubscribedTenantId  string `json:"subscribedTenantId"`
-}
-
 type CallbackResponse struct {
-	Status          string `json:"status"`
-	Message         string `json:"message"`
-	SubscriptionUrl string `json:"subscriptionUrl"`
+	Status           string          `json:"status"`
+	Message          string          `json:"message"`
+	SubscriptionUrl  string          `json:"subscriptionUrl"`
+	AdditionalOutput *map[string]any `json:"additionalOutput,omitempty"`
 }
-
 type OAuthResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
 func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
-	klog.Info("Create Tenant triggered")
+	klog.InfoS("Create Tenant triggered")
 	var created = false
 	// Get the relevant provisioning request
 	decoder := json.NewDecoder(req.Body)
-	var reqType ProvisioningRequest
+	var reqType map[string]any
 	err := decoder.Decode(&reqType)
 	if err != nil {
-		klog.Error(ErrorOccurred, err.Error())
+		klog.ErrorS(err, ErrorOccurred)
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
 	// Check if CAPApplication instance for the given btpApp exists
-	ca, err := s.checkCAPApp(reqType.GlobalAccountGUID, reqType.SubscriptionAppName)
+	ca, err := s.checkCAPApp(reqType["globalAccountGUID"].(string), reqType["subscriptionAppName"].(string))
 	if err != nil {
-		klog.Error(ErrorOccurred, err.Error())
+		klog.ErrorS(err, ErrorOccurred)
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
@@ -167,34 +118,64 @@ func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
 	}
 
 	// Check if A CRO for CAPTenant already exists
-	tenant := s.getTenant(reqType.GlobalAccountGUID, reqType.SubscriptionAppName, reqType.SubscribedTenantId, ca.Namespace).Tenant
+	tenant := s.getTenant(reqType["globalAccountGUID"].(string), reqType["subscriptionAppName"].(string), reqType["subscribedTenantId"].(string), ca.Namespace).Tenant
 
 	// If the resource doesn't exist, we'll create it
 	if tenant == nil {
 		created = true
-		klog.Info("Creating Tenant")
+		jsonReqByte, _ := json.Marshal(reqType)
+		// Create a secret to store the subscription context (payload from the request)
+		secret, err := s.KubeClienset.CoreV1().Secrets(ca.Namespace).Create(context.TODO(), &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				GenerateName: ca.Name + "-consumer-",
+				Namespace:    ca.Namespace,
+				Labels: map[string]string{
+					LabelBTPApplicationIdentifierHash: sha1Sum(reqType["globalAccountGUID"].(string), reqType["subscriptionAppName"].(string)),
+					LabelTenantId:                     reqType["subscribedTenantId"].(string),
+				},
+			},
+			StringData: map[string]string{
+				"subscriptionContext": string(jsonReqByte),
+			},
+		}, metav1.CreateOptions{})
+		if err != nil {
+			// Log error and exit if secret creation fails
+			klog.ErrorS(err, "Error creating secret")
+			return &Result{Tenant: nil, Message: err.Error()}
+		}
+
+		klog.InfoS("Creating tenant", "caName", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 		tenant, _ = s.Clientset.SmeV1alpha1().CAPTenants(ca.Namespace).Create(context.TODO(), &v1alpha1.CAPTenant{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: ca.Name + "-",
 				Namespace:    ca.Namespace,
+				Annotations: map[string]string{
+					AnnotationSubscriptionContextSecret: secret.Name, // Store the secret name in the tenant annotation
+				},
 				Labels: map[string]string{
-					LabelBTPApplicationIdentifierHash: sha1Sum(reqType.GlobalAccountGUID, reqType.SubscriptionAppName),
-					LabelTenantId:                     reqType.SubscribedTenantId,
+					LabelBTPApplicationIdentifierHash: sha1Sum(reqType["globalAccountGUID"].(string), reqType["subscriptionAppName"].(string)),
+					LabelTenantId:                     reqType["subscribedTenantId"].(string),
 				},
 			},
 			Spec: v1alpha1.CAPTenantSpec{
 				CAPApplicationInstance: ca.Name,
 				BTPTenantIdentification: v1alpha1.BTPTenantIdentification{
-					SubDomain: reqType.SubscribedSubdomain,
-					TenantId:  reqType.SubscribedTenantId,
+					SubDomain: reqType["subscribedSubdomain"].(string),
+					TenantId:  reqType["subscribedTenantId"].(string),
 				},
 			},
 		}, metav1.CreateOptions{})
+
+		// Log error and exit if secret updation fails
+		err = s.updateSecret(tenant, secret)
+		if err != nil {
+			return &Result{Tenant: nil, Message: err.Error()}
+		}
 	}
 
-	// TODO: consider retying tenant creation if it is in Error state
+	// TODO: consider retrying tenant creation if it is in Error state
 	if tenant != nil {
-		s.initializeCallback(tenant.Name, ca, saasData, req, reqType.SubscribedSubdomain, true)
+		s.initializeCallback(tenant.Name, ca, saasData, req, reqType["subscribedSubdomain"].(string), true)
 	}
 
 	// Tenant created/exists
@@ -205,8 +186,22 @@ func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
 			return ResourceFound
 		}
 	}
-	klog.V(2).Info("Done with create: ", message(created), tenant)
+	klog.V(2).InfoS("Tenant successfully created", "message", message(created), "tenant", tenant, "caName", ca.Name, "namespace", ca.Namespace, "tenant", tenant, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 	return &Result{Tenant: tenant, Message: message(created)}
+}
+
+func (s *SubscriptionHandler) updateSecret(tenant *v1alpha1.CAPTenant, secret *corev1.Secret) error {
+	if tenant != nil {
+		secret.OwnerReferences = []metav1.OwnerReference{
+			*metav1.NewControllerRef(tenant, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind)),
+		}
+		_, err := s.KubeClienset.CoreV1().Secrets(tenant.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
+		if err != nil {
+			klog.ErrorS(err, "Error updating payload tenant subscription secret")
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *SubscriptionHandler) getTenant(globalAccountGUID string, btpAppName string, tenantId string, namespace string) *Result {
@@ -215,39 +210,39 @@ func (s *SubscriptionHandler) getTenant(globalAccountGUID string, btpAppName str
 		LabelTenantId:                     tenantId,
 	})
 	if err != nil {
-		klog.Error("Error occurred in getTenant", err.Error())
+		klog.ErrorS(err, "Error occurred in getTenant", "namespace", namespace, "tenantId", tenantId, LabelBTPApplicationIdentifierHash, sha1Sum(globalAccountGUID, btpAppName))
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
 	ctList, err := s.Clientset.SmeV1alpha1().CAPTenants(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
 	if err != nil {
-		klog.Error("Error occurred in getTenant", err.Error())
+		klog.ErrorS(err, "Error occurred in getTenant", "namespace", namespace, "tenantId", tenantId, LabelBTPApplicationIdentifierHash, sha1Sum(globalAccountGUID, btpAppName))
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 	if len(ctList.Items) == 0 {
-		klog.Info("No tenant found")
+		klog.InfoS("No tenant found", "namespace", namespace, "tenantId", tenantId, LabelBTPApplicationIdentifierHash, sha1Sum(globalAccountGUID, btpAppName))
 		return &Result{Tenant: nil, Message: ResourceNotFound}
 	}
 	// Assume only 1 tenant actually matches the selector!
-	klog.V(2).Info("Tenant found", &ctList.Items[0])
+	klog.V(2).InfoS("Tenant found", v1alpha1.CAPApplicationKind, &ctList.Items[0], "namespace", namespace, "tenantId", tenantId, LabelBTPApplicationIdentifierHash, sha1Sum(globalAccountGUID, btpAppName))
 	return &Result{Tenant: &ctList.Items[0], Message: ResourceFound}
 }
 
 func (s *SubscriptionHandler) DeleteTenant(req *http.Request) *Result {
-	klog.Info("Delete Tenant triggered")
+	klog.InfoS("Delete Tenant triggered")
 	// Get the relevant deprovisioning request
 	decoder := json.NewDecoder(req.Body)
-	var reqType DeprovisioningRequest
+	var reqType map[string]interface{}
 	err := decoder.Decode(&reqType)
 	if err != nil {
-		klog.Error(ErrorOccurred, err.Error())
+		klog.ErrorS(err, ErrorOccurred)
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
 	// Check if CAPApplication instance for the given btpApp exists
-	ca, err := s.checkCAPApp(reqType.GlobalAccountGUID, reqType.SubscriptionAppName)
+	ca, err := s.checkCAPApp(reqType["globalAccountGUID"].(string), reqType["subscriptionAppName"].(string))
 	if err != nil {
-		klog.Error(ErrorOccurred, err.Error())
+		klog.ErrorS(err, ErrorOccurred)
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
@@ -256,30 +251,28 @@ func (s *SubscriptionHandler) DeleteTenant(req *http.Request) *Result {
 	if saasData == nil || uaaData == nil {
 		return &Result{Tenant: nil, Message: ResourceNotFound}
 	}
-	if saasData == nil || uaaData == nil {
-		return &Result{Tenant: nil, Message: ResourceNotFound}
-	}
 
 	// validate token
 	err = s.checkAuthorization(req.Header.Get("Authorization"), saasData, uaaData)
 	if err != nil {
+		klog.ErrorS(err, "Error occurred in checkAuthorization", LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
-	tenant := s.getTenant(reqType.GlobalAccountGUID, reqType.SubscriptionAppName, reqType.SubscribedTenantId, ca.Namespace).Tenant
+	tenant := s.getTenant(reqType["globalAccountGUID"].(string), reqType["subscriptionAppName"].(string), reqType["subscribedTenantId"].(string), ca.Namespace).Tenant
 
-	tenantName := "foo" //TODO
+	tenantName := ResourceNotFound
 	if tenant != nil {
 		tenantName = tenant.Name
-		klog.Info("Tenant found, deleting")
+		klog.InfoS("Tenant found, deleting", "tenant", tenantName, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 		err = s.Clientset.SmeV1alpha1().CAPTenants(tenant.Namespace).Delete(context.TODO(), tenant.Name, metav1.DeleteOptions{})
 		if err != nil {
-			klog.Error("Error deleting tenant", err.Error())
+			klog.ErrorS(err, "Error deleting tenant", "tenant", tenantName, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 			return &Result{Tenant: nil, Message: err.Error()}
 		}
 	}
 
-	s.initializeCallback(tenantName, ca, saasData, req, reqType.SubscribedSubdomain, false)
+	s.initializeCallback(tenantName, ca, saasData, req, reqType["subscribedSubdomain"].(string), false)
 
 	return &Result{Tenant: tenant, Message: ResourceDeleted}
 }
@@ -297,7 +290,7 @@ func (s *SubscriptionHandler) checkCAPApp(globalAccountId string, btpAppName str
 		return nil, err
 	}
 	if len(capAppsList.Items) == 0 {
-		return nil, errors.New(ResourceNotFound) // TODO proper error message handling
+		return nil, errors.New(ResourceNotFound)
 	}
 	// Assume only 1 app actually matches the selector!
 	return &capAppsList.Items[0], nil
@@ -316,7 +309,7 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 		RequiredScopes: []string{uaaData.XSAppName + ".Callback", uaaData.XSAppName + ".mtcallback"},
 	}, s.httpClientGenerator.NewHTTPClient())
 	if err != nil {
-		klog.Errorf("failed token validation: %s", err.Error())
+		klog.ErrorS(err, "failed token validation", "XSAppName", uaaData.XSAppName)
 		return errors.New(AuthorizationCheckFailed)
 	}
 	return nil
@@ -325,7 +318,7 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1.CAPApplication, saasData *util.SaasRegistryCredentials, req *http.Request, tenantSubDomain string, isProvisioning bool) {
 	appUrl := "https://" + tenantSubDomain + "." + ca.Spec.Domains.Primary
 	asyncCallbackPath := req.Header.Get("STATUS_CALLBACK")
-	klog.Infof("Subscription URL: %s, Async callback URL: %s", appUrl, asyncCallbackPath)
+	klog.InfoS("callback initialized", "subscription URL", appUrl, "async callback path", asyncCallbackPath, "tenantId", ca.Spec.Provider.TenantId, "tenantName", tenantName, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 
 	go func() {
 		// create a context for tenant checks and outgoing requests
@@ -333,14 +326,28 @@ func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1
 		defer cancel()
 
 		// Check tenant status asynchronously
-		klog.Info("Waiting for tenant status check...")
+		klog.InfoS("Waiting for tenant status check...", "tenantId", ca.Spec.Provider.TenantId, "tenantName", tenantName, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 		status := s.checkCAPTenantStatus(ctx, ca.Namespace, tenantName, isProvisioning, saasData.CallbackTimeoutMillis)
-		klog.Info("CAPTenant check result: ", status)
+		klog.InfoS("CAPTenant check complete", "status", status, "tenantId", ca.Spec.Provider.TenantId, "tenantName", tenantName, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 
-		s.handleAsyncCallback(ctx, saasData, status, asyncCallbackPath, appUrl, isProvisioning)
+		additionalOutput := &map[string]any{}
+		if isProvisioning {
+			saasAdditionalOutput := ca.Annotations[AnnotationSaaSAdditionalOutput]
+			if saasAdditionalOutput != "" {
+				// Add additional output to the callback response
+				err := json.Unmarshal([]byte(saasAdditionalOutput), additionalOutput)
+				if err != nil {
+					klog.ErrorS(err, "Error parsing additional output", "annotation value", saasAdditionalOutput)
+					additionalOutput = nil
+				}
+			}
+		} else {
+			additionalOutput = nil
+		}
+		s.handleAsyncCallback(ctx, saasData, status, asyncCallbackPath, appUrl, additionalOutput, isProvisioning)
 	}()
 
-	klog.Info("Waiting for async saas callback after checks...")
+	klog.InfoS("Waiting for async saas callback after checks...", "tenantId", ca.Spec.Provider.TenantId, "tenantName", tenantName, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 }
 
 func (s *SubscriptionHandler) checkCAPTenantStatus(ctx context.Context, tenantNamespace string, tenantName string, provisioning bool, callbackTimeoutMs string) bool {
@@ -360,15 +367,15 @@ func (s *SubscriptionHandler) checkCAPTenantStatus(ctx context.Context, tenantNa
 		default:
 			capTenant, err := s.Clientset.SmeV1alpha1().CAPTenants(tenantNamespace).Get(context.TODO(), tenantName, metav1.GetOptions{})
 			if k8sErrors.IsNotFound(err) {
-				klog.Info("No tenant found.. Exiting CAPTenant status check.")
+				klog.InfoS("No tenant found.. Exiting CAPTenant status check.", "tenantName", tenantName, "namespace", tenantNamespace)
 				if !provisioning {
 					return true
 				}
 			}
 			if capTenant != nil {
-				klog.Info("CAPTenant (tenantid: "+capTenant.Spec.TenantId+"), status: ", capTenant.Status.State)
+				klog.InfoS("CAPTenant Found", "tenantid", capTenant.Spec.TenantId, "status", capTenant.Status.State, LabelBTPApplicationIdentifierHash, capTenant.Labels[LabelBTPApplicationIdentifierHash])
 				if provisioning && (capTenant.Status.State == v1alpha1.CAPTenantStateReady || capTenant.Status.State == v1alpha1.CAPTenantStateProvisioningError) {
-					klog.Info("Exiting CAPTenant status check: ", capTenant.Status.State)
+					klog.InfoS("Exiting CAPTenant status check", "tenantid", capTenant.Spec.TenantId, "result status", capTenant.Status.State, LabelBTPApplicationIdentifierHash, capTenant.Labels[LabelBTPApplicationIdentifierHash])
 					return capTenant.Status.State == v1alpha1.CAPTenantStateReady
 				}
 			}
@@ -408,7 +415,7 @@ func (s *SubscriptionHandler) getSaasDetails(capApp *v1alpha1.CAPApplication) *u
 		result, err = util.ReadServiceCredentialsFromSecret[util.SaasRegistryCredentials](info, capApp.Namespace, s.KubeClienset)
 	}
 	if err != nil {
-		klog.Error("SaaS Registry credentials could not be read. Exiting..", err.Error())
+		klog.ErrorS(err, "SaaS Registry credentials could not be read. Exiting..", "tenantId", capApp.Spec.Provider.TenantId, LabelBTPApplicationIdentifierHash, capApp.Labels[LabelBTPApplicationIdentifierHash])
 	}
 	return result
 }
@@ -428,7 +435,7 @@ func (s *SubscriptionHandler) getXSUAADetails(capApp *v1alpha1.CAPApplication) *
 	}
 
 	if err != nil {
-		klog.Error("XSUAA credentials could not be read. Exiting..", err.Error())
+		klog.ErrorS(err, "XSUAA credentials could not be read. Exiting..", LabelBTPApplicationIdentifierHash, capApp.Labels[LabelBTPApplicationIdentifierHash])
 	}
 	return result
 }
@@ -492,28 +499,28 @@ func prepareTokenRequest(ctx context.Context, saasData *util.SaasRegistryCredent
 	return tokenReq, nil
 }
 
-func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, saasData *util.SaasRegistryCredentials, status bool, asyncCallbackPath string, appUrl string, isProvisioning bool) {
+func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, saasData *util.SaasRegistryCredentials, status bool, asyncCallbackPath string, appUrl string, additionalOutput *map[string]any, isProvisioning bool) {
 	// Get OAuth token
 	tokenClient := s.httpClientGenerator.NewHTTPClient()
 	tokenReq, err := prepareTokenRequest(ctx, saasData, tokenClient)
 	if err != nil {
-		klog.Error(err.Error())
+		klog.ErrorS(err, ErrorOccurred)
 		return
 	}
-	klog.V(2).Info("Triggering OAuth: ", tokenReq)
+	klog.V(2).InfoS("Triggering OAuth", "request", tokenReq)
 
 	tokenResponse, err := tokenClient.Do(tokenReq)
 	if err != nil {
-		klog.Error("Error getting token for async callback: ", err.Error())
+		klog.ErrorS(err, "Error getting token for async callback")
 		return
 	} else {
-		klog.V(2).Info("Response from token handling for async callback: ", tokenResponse)
+		klog.V(2).InfoS("Obtained token for async callback", "response", tokenResponse)
 		// Get the relevant OAuth request
 		decoder := json.NewDecoder(tokenResponse.Body)
 		var oAuthType OAuthResponse
 		err := decoder.Decode(&oAuthType)
 		if err != nil {
-			klog.Error("Error parsing token for async callback: ", err.Error())
+			klog.ErrorS(err, "Error parsing token for async callback")
 			return
 		}
 		defer tokenResponse.Body.Close()
@@ -526,28 +533,29 @@ func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, saasData 
 		}
 
 		payload, _ := json.Marshal(&CallbackResponse{
-			Status:          checkMatch(status, CallbackSucceeded, CallbackFailed),
-			Message:         checkMatch(status, checkMatch(isProvisioning, ProvisioningSucceededMessage, DeprovisioningSucceededMessage), checkMatch(isProvisioning, ProvisioningFailedMessage, DeprovisioningFailedMessage)),
-			SubscriptionUrl: appUrl,
+			Status:           checkMatch(status, CallbackSucceeded, CallbackFailed),
+			Message:          checkMatch(status, checkMatch(isProvisioning, ProvisioningSucceededMessage, DeprovisioningSucceededMessage), checkMatch(isProvisioning, ProvisioningFailedMessage, DeprovisioningFailedMessage)),
+			SubscriptionUrl:  appUrl,
+			AdditionalOutput: additionalOutput,
 		})
 		callbackReq, _ := http.NewRequestWithContext(ctx, http.MethodPut, saasData.SaasManagerUrl+asyncCallbackPath, bytes.NewBuffer(payload))
 		callbackReq.Header.Set("Content-Type", "application/json")
 		callbackReq.Header.Set("Authorization", BearerPrefix+oAuthType.AccessToken)
 
 		client := s.httpClientGenerator.NewHTTPClient()
-		klog.V(2).Info("Triggering callback: ", callbackReq)
+		klog.V(2).InfoS("Triggering callback", "request", callbackReq)
 
 		callbackResponse, err := client.Do(callbackReq)
 		if err != nil {
-			klog.Error("Error sending async callback: ", err.Error())
+			klog.ErrorS(err, "Error sending async callback")
 			return
 		} else {
-			klog.Info("Response from async callback: ", callbackResponse)
+			klog.InfoS("Async callback done", "response", callbackResponse.Body, "status", callbackResponse.Status)
 			defer callbackResponse.Body.Close()
 		}
 	}
 
-	klog.Info("Exiting from async callback..")
+	klog.InfoS("Exiting from async callback..")
 }
 
 func (s *SubscriptionHandler) HandleRequest(w http.ResponseWriter, req *http.Request) {
@@ -571,6 +579,7 @@ func (s *SubscriptionHandler) HandleRequest(w http.ResponseWriter, req *http.Req
 		subscriptionResult = &Result{Tenant: nil, Message: InvalidRequestMethod}
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
+	subscriptionResult.Tenant = nil // Don't return tenant details in response
 	res, _ := json.Marshal(subscriptionResult)
 	w.Write(res)
 }

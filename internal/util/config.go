@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -9,6 +9,10 @@ import (
 	"os"
 	"path"
 	"strings"
+
+	"github.com/go-logr/logr"
+	"github.com/go-logr/zapr"
+	"go.uber.org/zap"
 
 	// Import all Kubernetes client auth plugins (OIDC)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -37,10 +41,10 @@ func GetConfig() *rest.Config {
 			klog.Fatal("Error: ", err)
 			return nil
 		} else {
-			klog.Info("Found config file in: ", clientConfig.ConfigAccess().GetDefaultFilename())
+			klog.InfoS("Found config", "file", clientConfig.ConfigAccess().GetDefaultFilename())
 		}
 	} else {
-		klog.Info("Found config in cluster")
+		klog.InfoS("Found config in cluster")
 	}
 
 	return config
@@ -59,4 +63,9 @@ func GetNamespace() string {
 	}
 
 	return "default"
+}
+
+func GetLogger() logr.Logger {
+	logger, _ := zap.NewProduction()
+	return zapr.NewLogger(logger)
 }

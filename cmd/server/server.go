@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -19,6 +19,7 @@ import (
 )
 
 func main() {
+	klog.SetLogger(util.GetLogger())
 	subHandler := getSubscriptionHandler()
 	http.HandleFunc("/provision/", subHandler.HandleRequest)
 
@@ -40,14 +41,14 @@ func main() {
 	if tlsEnv != "" {
 		tlsEnvBool, err := strconv.ParseBool(tlsEnv)
 		if err != nil {
-			klog.Error("Error parsing TLS_ENABLED: ", err.Error())
+			klog.ErrorS(err, "Error parsing TLS_ENABLED")
 		}
 		tlsEnabled = tlsEnvBool
 		tlsCertFile = os.Getenv("TLS_CERT")
 		tlsKeyFile = os.Getenv("TLS_KEY")
 	}
 
-	klog.Info("Server running and listening (provider) with TLS: ", tlsEnabled, ", at port: ", port)
+	klog.InfoS("Server running and listening", "tls enabled", tlsEnabled, "port", port)
 	if tlsEnabled {
 		klog.Fatal(http.ListenAndServeTLS(":"+port, tlsCertFile, tlsKeyFile, nil))
 	} else {

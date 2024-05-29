@@ -68,7 +68,7 @@ metadata:
   name: cav-cap-app-01-1
   namespace: cap-app-01
 spec:
-  capApplicationInstance: cap-cap-app-01 # <-- reference to CAPApplication in the same namespace
+  capApplicationInstance: cap-app-01 # <-- reference to CAPApplication in the same namespace
   version: "1" # <-- semantic version
   registrySecrets:
     - regcred
@@ -125,3 +125,5 @@ The controller component of CAP Operator reacts to these objects and creates fur
 > The content deployer is used to deploy content or configuration to SAP BTP services, before using them.
 
 Once these resources are available, the `CAPApplicationVersion` status changes to `Ready`. **The controller proceeds to automatically create an object of type `CAPTenant`, which corresponds to the tenant of the provider subaccount.** Please see [tenant subscription]({{< ref "/tenant-provisioning.md" >}}) for details on how the `CAPTenant` resource is reconciled.
+
+> The `CAPApplicationVersion` resource is meant to be immutable - it's spec should not be modified once it is deployed. This is also prevented by our web-hooks which we recommend to always keep active (default).

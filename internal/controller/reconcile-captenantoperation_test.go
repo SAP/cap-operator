@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -654,6 +654,94 @@ func TestMultiXSUAAWithAnnotation(t *testing.T) {
 				"testdata/captenantoperation/ctop-26.initial.yaml",
 			},
 			expectedResources: "testdata/captenantoperation/ctop-26.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+			},
+		},
+	)
+}
+
+func TestProvisioningWithSchedulingConfig(t *testing.T) {
+	_ = reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+		TestData{
+			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-3294"}, // More workload configuration enhancements
+			description:  "Provisioning - With scheduling config",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+				"testdata/common/capapplicationversion-v1-scheduling.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/captenantoperation/ctop-scheduling.initial.yaml", // The config in there might not make sense in the real world!
+			},
+			expectedResources: "testdata/captenantoperation/ctop-scheduling.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+			},
+		},
+	)
+}
+
+func TestProvisioningWithSchedulingConfigCustom(t *testing.T) {
+	_ = reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+		TestData{
+			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-3294"}, // More workload configuration enhancements
+			description:  "Provisioning - With scheduling config for CustomTenantOperation",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+				"testdata/common/capapplicationversion-v1-scheduling-custom.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/captenantoperation/ctop-scheduling-custom.initial.yaml", // The config in there might not make sense in the real world!
+			},
+			expectedResources: "testdata/captenantoperation/ctop-scheduling-custom.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+			},
+		},
+	)
+}
+
+func TestProvisioningWithVolAndServiceAccountName(t *testing.T) {
+	_ = reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+		TestData{
+			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-6370"}, // More workload configuration enhancements
+			description:  "Provisioning - With volume and service account config",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+				"testdata/common/capapplicationversion-v1-vol.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/captenantoperation/ctop-vol.initial.yaml", // The config in there might not make sense in the real world!
+			},
+			expectedResources: "testdata/captenantoperation/ctop-vol.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+			},
+		},
+	)
+}
+
+func TestProvisioningWithVolumeAndServiceAccountNameCustom(t *testing.T) {
+	_ = reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+		TestData{
+			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-6370"}, // More workload configuration enhancements
+			description:  "Provisioning - With volume and serviceAccountName config for CustomTenantOperation",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+				"testdata/common/capapplicationversion-v1-vol-custom.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/captenantoperation/ctop-vol-custom.initial.yaml",
+			},
+			expectedResources: "testdata/captenantoperation/ctop-vol-custom.expected.yaml",
 			expectedRequeue: map[int][]NamespacedResourceKey{
 				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
 			},

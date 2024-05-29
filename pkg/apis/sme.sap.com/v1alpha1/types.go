@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -128,13 +128,12 @@ type BTP struct {
 
 // Service information
 type ServiceInfo struct {
-	// Name of service instance
+	// A unique name of service based on usage in the app (this may be the name of the instance or binding)
 	Name string `json:"name"`
 	// Secret containing service access credentials
 	Secret string `json:"secret"`
 	// Type of service
 	Class string `json:"class"`
-	// TODO: enhance this with params and other options --> Needed if/when we want to create the services via BTP/CF Operator
 }
 
 // Custom resource status
@@ -241,7 +240,7 @@ type WorkloadDetails struct {
 
 // DeploymentDetails specifies the details of the Deployment
 type DeploymentDetails struct {
-	ContainerDetails `json:",inline"`
+	CommonDetails `json:",inline"`
 	// Type of the Deployment
 	Type DeploymentType `json:"type"`
 	// Number of replicas
@@ -268,7 +267,7 @@ const (
 
 // JobDetails specifies the details of the Job
 type JobDetails struct {
-	ContainerDetails `json:",inline"`
+	CommonDetails `json:",inline"`
 	// Type of Job
 	Type JobType `json:"type"`
 	// Specifies the number of retries before marking this job failed.
@@ -289,8 +288,8 @@ const (
 	JobCustomTenantOperation JobType = "CustomTenantOperation"
 )
 
-// ContainerDetails specifies the details of the Container
-type ContainerDetails struct {
+// CommonDetails specifies the common details of the Container/Pod that may be relevant for both Deployments and Jobs
+type CommonDetails struct {
 	// Image info for the container
 	Image string `json:"image"`
 	// Pull policy for the container image
@@ -299,12 +298,30 @@ type ContainerDetails struct {
 	Command []string `json:"command,omitempty"`
 	// Environment Config for the Container
 	Env []corev1.EnvVar `json:"env,omitempty"`
+	// Volume Configuration for the Pod
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+	// Volume Mount Configuration for the Container
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
+	// Name of the ServiceAccount to use to run the Pod
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// Resources
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 	// SecurityContext for the Container
 	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
 	// SecurityContext for the Pod
 	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+	// The name of the node to which the Pod should be assigned to. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodename
+	NodeName string `json:"nodeName,omitempty"`
+	// The label selectors using which node for the Pod would be determined. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	// Priority class name mapping used to prioritize and schedule the Pod. See: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass
+	PriorityClassName string `json:"priorityClassName,omitempty"`
+	// Affinity/anti-affinity used to provide more constraints for node selection. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+	// Tolerations used to schedule the Pod. See: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+	// The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
+	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 }
 
 // Configuration of Service Ports for the deployment

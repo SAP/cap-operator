@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -65,6 +65,7 @@ type testResources struct {
 	cas             []*v1alpha1.CAPApplication
 	cavs            []*v1alpha1.CAPApplicationVersion
 	cats            []*v1alpha1.CAPTenant
+	ctops           []*v1alpha1.CAPTenantOperation
 	ingressGW       []*ingressResources
 	gateway         *istionwv1beta1.Gateway
 	gardenerCert    *certv1alpha1.Certificate
@@ -205,7 +206,7 @@ func createCavCRO(name string, state v1alpha1.CAPApplicationVersionState, versio
 					},
 					DeploymentDefinition: &v1alpha1.DeploymentDetails{
 						Type: v1alpha1.DeploymentCAP,
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "test://image",
 						},
 					},
@@ -214,7 +215,7 @@ func createCavCRO(name string, state v1alpha1.CAPApplicationVersionState, versio
 					Name:                "app-router",
 					ConsumedBTPServices: []string{},
 					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						ContainerDetails: v1alpha1.ContainerDetails{
+						CommonDetails: v1alpha1.CommonDetails{
 							Image: "test://image",
 						},
 					},
@@ -260,6 +261,7 @@ func createCatCRO(caName string, tenantType string, withFinalizers bool) *v1alph
 		},
 		Status: v1alpha1.CAPTenantStatus{
 			CurrentCAPApplicationVersionInstance: cavCroName,
+			GenericStatus:                        v1alpha1.GenericStatus{},
 		},
 	}
 
@@ -301,6 +303,10 @@ func getTestController(resources testResources) *Controller {
 
 	for _, cat := range resources.cats {
 		addRuntimeObjects(&crdObjects, cat)
+	}
+
+	for _, ctop := range resources.ctops {
+		addRuntimeObjects(&crdObjects, ctop)
 	}
 
 	for _, ingressGW := range resources.ingressGW {
@@ -350,6 +356,12 @@ func getTestController(resources testResources) *Controller {
 	for _, cat := range resources.cats {
 		if cat != nil {
 			c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Informer().GetIndexer().Add(cat)
+		}
+	}
+
+	for _, ctop := range resources.ctops {
+		if ctop != nil {
+			c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Informer().GetIndexer().Add(ctop)
 		}
 	}
 

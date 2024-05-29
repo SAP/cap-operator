@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -148,7 +148,7 @@ var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *C
 		// Check if all Tenant DNSEntries are Ready
 		processing, err := c.checkTenantDNSEntries(ctx, cat)
 		if err != nil {
-			klog.Error("error with DNS Entries for CAPTenant ", cat.Namespace, ".", cat.Name)
+			klog.ErrorS(err, "error with DNS Entries for CAPTenant", "namespace", cat.Namespace, "tenant", cat, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
 			return nil, err
 		}
 		if processing {
@@ -222,7 +222,7 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, att
 	// Skip processing until the right version is set on the CAPTenant (via CAPApplication)
 	// This indirectly ensures that we do not create duplicate tenant operations for consumer tenant provisioning scenarios!
 	if cat.Spec.Version == "" {
-		klog.Info(v1alpha1.CAPTenantKind, " without version detected, skip processing until version is set on ", cat.Namespace, ".", cat.Name)
+		klog.InfoS("Tenant without version detected, skip processing until version is set", "namespace", cat.Namespace, "tenant", cat.Name, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
 		return requeue, nil
 	}
 
@@ -425,6 +425,7 @@ func (c *Controller) createCAPTenantOperation(ctx context.Context, cat *v1alpha1
 		},
 	}
 	addCAPTenantOperationLabels(ctop, cat) // NOTE: this is very important to do here as subsequent reconciliation of tenant will be inconsistent otherwise
+	klog.InfoS("Processing CAPTenant - Creating CAPTenantOperations", "name", cat.Name, "namespace", cat.Namespace, "operation", opType, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
 	return c.crdClient.SmeV1alpha1().CAPTenantOperations(cat.Namespace).Create(ctx, ctop, metav1.CreateOptions{})
 }
 
@@ -541,7 +542,7 @@ func (c *Controller) getCAPApplicationVersionForTenantOperationType(ctx context.
 		if err != nil {
 			return nil, err
 		}
-		klog.V(2).Info("identified CAPApplicationVersion ", cav.Namespace, ".", cav.Name, " (", cav.Spec.Version, ") for ", opType, " of CAPTenant ", cat.Namespace, ".", cat.Name)
+		klog.V(2).InfoS("identified CAPApplicationVersion", "namespace", cav.Namespace, "name", cav.Name, "version", cav.Spec.Version, "operation", opType, "tenant name", cat.Name)
 		return cav, nil
 	case v1alpha1.CAPTenantOperationTypeDeprovisioning: // for deletion - use the current CAPApplicationVersion (from status)
 		if cat.Status.CurrentCAPApplicationVersionInstance == "" {
