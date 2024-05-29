@@ -45,6 +45,7 @@ const (
 	AnnotationGardenerDNSTarget         = "dns.gardener.cloud/dnsnames"
 	AnnotationKubernetesDNSTarget       = "external-dns.alpha.kubernetes.io/hostname"
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
+	AnnotationProviderSubAccountId      = "sme.sap.com/provider-sub-account-id"
 	FinalizerCAPApplication             = "sme.sap.com/capapplication"
 	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
 	FinalizerCAPTenant                  = "sme.sap.com/captenant"

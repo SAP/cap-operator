@@ -293,6 +293,12 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 		}
 
 		// Create a secret with the provider subscription context (dervied from the spec of CAPApplication)
+		// Try to get the provider subaccount id from the annotations
+		providerSubAccountId := ca.Annotations[AnnotationProviderSubAccountId]
+		// If no provider subaccount id annotation is found use provider tenantId that is needed because some cds / hana APIs seem to rely on this field instead of tenantId!
+		if providerSubAccountId == "" {
+			providerSubAccountId = ca.Spec.Provider.TenantId
+		}
 		secret, _ := c.kubeClient.CoreV1().Secrets(ca.Namespace).Create(context.TODO(), &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: providerTenantName + "-",
@@ -306,6 +312,7 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 				SubscriptionContext: `{
 					"subscriptionAppName": "` + ca.Spec.BTPAppName + `",
 					"subscribedTenantId": "` + ca.Spec.Provider.TenantId + `",
+					"subscribedSubaccountId": "` + providerSubAccountId + `",
 					"subscribedSubdomain": "` + ca.Spec.Provider.SubDomain + `",
 					"globalAccountGUID": "` + ca.Spec.GlobalAccountId + `"
 				}`,
