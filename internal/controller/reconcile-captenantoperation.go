@@ -38,6 +38,7 @@ type UpgradePayload struct {
 }
 
 type tentantOperationWorkload struct {
+	initContainers            []corev1.Container
 	image                     string
 	imagePullPolicy           corev1.PullPolicy
 	command                   []string
@@ -507,6 +508,7 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 					RestartPolicy:             corev1.RestartPolicyNever,
 					ImagePullSecrets:          params.imagePullSecrets,
 					Containers:                getContainers(payload, ctop, derivedWorkload, workload, params),
+					InitContainers:            derivedWorkload.initContainers,
 					Volumes:                   derivedWorkload.volumes,
 					ServiceAccountName:        derivedWorkload.serviceAccountName,
 					SecurityContext:           derivedWorkload.podSecurityContext,
@@ -598,6 +600,7 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 	result := tentantOperationWorkload{}
 	if workload.JobDefinition == nil {
 		// this must be a reference to CAP workload
+		result.initContainers = workload.DeploymentDefinition.InitContainers
 		result.image = workload.DeploymentDefinition.Image
 		result.imagePullPolicy = workload.DeploymentDefinition.ImagePullPolicy
 		result.env = workload.DeploymentDefinition.Env
@@ -617,6 +620,7 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 		result.tolerations = workload.DeploymentDefinition.Tolerations
 	} else {
 		// use job definition
+		result.initContainers = workload.JobDefinition.InitContainers
 		result.image = workload.JobDefinition.Image
 		result.imagePullPolicy = workload.JobDefinition.ImagePullPolicy
 		result.command = workload.JobDefinition.Command
@@ -688,6 +692,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 							SecurityContext: workload.JobDefinition.SecurityContext,
 						},
 					},
+					InitContainers: workload.JobDefinition.InitContainers,
 				},
 			},
 		},

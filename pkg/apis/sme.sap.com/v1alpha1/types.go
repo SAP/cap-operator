@@ -322,6 +322,8 @@ type CommonDetails struct {
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 	// The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+	// List of containers executed before the main container is started
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 }
 
 // Configuration of Service Ports for the deployment
