@@ -1690,6 +1690,19 @@ Kubernetes core/v1.Affinity
 <p>The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints">https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints</a></p>
 </td>
 </tr>
+<tr>
+<td>
+<code>initContainers</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Container">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<p>List of containers executed before the main container is started</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails
@@ -2361,5 +2374,5 @@ JobDetails
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>932af34</code>.
+on git commit <code>32027f9</code>.
 </em></p>

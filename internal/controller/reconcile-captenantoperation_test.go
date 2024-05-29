@@ -748,3 +748,47 @@ func TestProvisioningWithVolumeAndServiceAccountNameCustom(t *testing.T) {
 		},
 	)
 }
+
+func TestProvisioningWithInitContainers(t *testing.T) {
+	_ = reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+		TestData{
+			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-7450"}, // initContainers for Tenant Operation
+			description:  "Provisioning - With initContainers for TenantOperation",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+				"testdata/common/capapplicationversion-v1-init.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/captenantoperation/ctop-init.initial.yaml",
+			},
+			expectedResources: "testdata/captenantoperation/ctop-init.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+			},
+		},
+	)
+}
+
+func TestProvisioningWithInitContainersCustom(t *testing.T) {
+	_ = reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+		TestData{
+			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-7450"}, // initContainers for Custom Tenant Operation
+			description:  "Provisioning - With initContainers for CustomTenantOperation",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+				"testdata/common/capapplicationversion-v1-init-custom.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/captenantoperation/ctop-init-custom.initial.yaml",
+			},
+			expectedResources: "testdata/captenantoperation/ctop-init-custom.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+			},
+		},
+	)
+}

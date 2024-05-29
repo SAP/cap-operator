@@ -175,6 +175,16 @@ func (b *DeploymentDetailsApplyConfiguration) WithTopologySpreadConstraints(valu
 	return b
 }
 
+// WithInitContainers adds the given value to the InitContainers field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the InitContainers field.
+func (b *DeploymentDetailsApplyConfiguration) WithInitContainers(values ...v1.Container) *DeploymentDetailsApplyConfiguration {
+	for i := range values {
+		b.InitContainers = append(b.InitContainers, values[i])
+	}
+	return b
+}
+
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.

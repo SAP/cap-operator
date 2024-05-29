@@ -744,3 +744,23 @@ func TestCAV_Volumes_and_ServiceAccountName(t *testing.T) {
 		},
 	)
 }
+
+func TestCAV_InitContainers(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with initContainers",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/content-job-completed.yaml",
+				"testdata/capapplicationversion/cav-init.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-init.yaml",
+			backlogItems: []string{
+				"ERP4SMEPREPWORKAPPPLAT-7450", //initContainers
+			},
+		},
+	)
+}

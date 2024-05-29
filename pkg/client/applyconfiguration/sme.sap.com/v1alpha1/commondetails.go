@@ -30,6 +30,7 @@ type CommonDetailsApplyConfiguration struct {
 	Affinity                  *v1.Affinity                  `json:"affinity,omitempty"`
 	Tolerations               []v1.Toleration               `json:"tolerations,omitempty"`
 	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+	InitContainers            []v1.Container                `json:"initContainers,omitempty"`
 }
 
 // CommonDetailsApplyConfiguration constructs an declarative configuration of the CommonDetails type for use with
@@ -180,6 +181,16 @@ func (b *CommonDetailsApplyConfiguration) WithTolerations(values ...v1.Toleratio
 func (b *CommonDetailsApplyConfiguration) WithTopologySpreadConstraints(values ...v1.TopologySpreadConstraint) *CommonDetailsApplyConfiguration {
 	for i := range values {
 		b.TopologySpreadConstraints = append(b.TopologySpreadConstraints, values[i])
+	}
+	return b
+}
+
+// WithInitContainers adds the given value to the InitContainers field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the InitContainers field.
+func (b *CommonDetailsApplyConfiguration) WithInitContainers(values ...v1.Container) *CommonDetailsApplyConfiguration {
+	for i := range values {
+		b.InitContainers = append(b.InitContainers, values[i])
 	}
 	return b
 }
