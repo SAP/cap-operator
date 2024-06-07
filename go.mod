@@ -4,8 +4,8 @@ go 1.22.3
 
 require (
 	github.com/MicahParks/keyfunc/v2 v2.1.0
-	github.com/cert-manager/cert-manager v1.14.5
-	github.com/gardener/cert-management v0.14.3
+	github.com/cert-manager/cert-manager v1.15.0
+	github.com/gardener/cert-management v0.15.0
 	github.com/gardener/external-dns-management v0.18.6
 	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/zapr v1.3.0
@@ -14,10 +14,10 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.0.21
 	go.uber.org/zap v1.27.0
-	golang.org/x/mod v0.17.0
+	golang.org/x/mod v0.18.0
 	google.golang.org/protobuf v1.34.1
-	istio.io/api v1.22.0
-	istio.io/client-go v1.22.0
+	istio.io/api v1.22.1
+	istio.io/client-go v1.22.1
 	k8s.io/api v0.30.1
 	k8s.io/apimachinery v0.30.1
 	k8s.io/client-go v0.30.1
@@ -55,17 +55,17 @@ require (
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.23.0 // indirect
-	golang.org/x/exp v0.0.0-20240531132922-fd00a4e0eefc
-	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/oauth2 v0.20.0 // indirect
+	golang.org/x/crypto v0.24.0 // indirect
+	golang.org/x/exp v0.0.0-20240604190554-fc45aab8b7f8
+	golang.org/x/net v0.26.0 // indirect
+	golang.org/x/oauth2 v0.21.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/term v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/sys v0.21.0 // indirect
+	golang.org/x/term v0.21.0 // indirect
+	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.21.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240528184218-531527333157 // indirect
+	golang.org/x/tools v0.22.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240604185151-ef581f913117 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
