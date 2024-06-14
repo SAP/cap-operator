@@ -306,7 +306,7 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 		UAADomain:      saasData.UAADomain,
 		ClientID:       saasData.ClientId,
 		XSAppName:      uaaData.XSAppName,
-		RequiredScopes: []string{uaaData.XSAppName + ".Callback", uaaData.XSAppName + ".mtcallback"},
+		RequiredScopes: []string{uaaData.XSAppName + ".Callback", uaaData.XSAppName + ".mtcallback"}, //TODO: We may have to we make this configurable
 	}, s.httpClientGenerator.NewHTTPClient())
 	if err != nil {
 		klog.ErrorS(err, "failed token validation", "XSAppName", uaaData.XSAppName)
