@@ -133,6 +133,30 @@ type RouterDestination struct {
 	ProxyType            string `json:"proxyType,omitempty"`
 }
 
+const (
+	Step          = "step"
+	Name          = "name"
+	Namespace     = "namespace"
+	Kind          = "kind"
+	DependantName = "dependantName"
+	DependantKind = "dependantKind"
+)
+
+type Steps string
+
+const (
+	ApplicationProcessing        Steps = "Application Processing"
+	ApplicationDeleting          Steps = "Application Deleting"
+	ApplicationConsistent        Steps = "Application Consistent"
+	ApplicationVersionProcessing Steps = "ApplicationVersion Processing"
+	ApplicationVersionDeleting   Steps = "ApplicationVersion Deleting"
+	ApplicationVersionReady      Steps = "ApplicationVersion Ready"
+	TanantProcessing             Steps = "Tenant Processing"
+	TenantProvisioning           Steps = "Tenant Provisioning"
+	TenantDeprovisioning         Steps = "Tenant Deprovisioning"
+	TenantUpgrading              Steps = "Tenant Upgrading"
+)
+
 func (c *Controller) Event(main runtime.Object, related runtime.Object, eventType, reason, action, message string) {
 	defer func() {
 		// do not let the routine dump due to event recording errors
@@ -562,4 +586,41 @@ func copyMaps(originalMap map[string]string, additionalMap map[string]string) ma
 		newMap[key] = value
 	}
 	return newMap
+}
+
+func extractEntityMeta(entity interface{}, rootDetails bool) []map[string]string {
+	typeMeta := entity.(metav1.TypeMeta)
+	objectMeta := entity.(metav1.ObjectMeta)
+	args := []map[string]string{
+		{Name: objectMeta.Name},
+		{Namespace: objectMeta.Namespace},
+		{Kind: typeMeta.Kind},
+	}
+
+	if rootDetails {
+		args = append(args, map[string]string{LabelBTPApplicationIdentifierHash: objectMeta.GetLabels()[LabelBTPApplicationIdentifierHash]})
+	}
+
+	return args
+}
+
+func logArgs(step Steps, entity interface{}, child interface{}, inArgs ...interface{}) []interface{} {
+	args := []interface{}{}
+	args = append(args, map[string]string{Step: string(step)})
+	args = append(args, extractEntityMeta(entity, true))
+	args = append(args, inArgs...)
+	if child != nil {
+		args = append(args, extractEntityMeta(child, false))
+	}
+	return args
+}
+
+func logInfo(msg string, step Steps, entity interface{}, child interface{}, args ...interface{}) {
+	overallArgs := logArgs(step, entity, child, args)
+	klog.InfoS(msg, overallArgs)
+}
+
+func logError(error error, msg string, step Steps, entity interface{}, child interface{}, args ...interface{}) {
+	overallArgs := logArgs(step, entity, child, args)
+	klog.ErrorS(error, msg, overallArgs)
 }

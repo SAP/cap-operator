@@ -16,7 +16,6 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/klog/v2"
 )
 
 const (
@@ -265,7 +264,8 @@ func (c *Controller) validateSecrets(ctx context.Context, ca *v1alpha1.CAPApplic
 
 	// waiting for secrets
 	message := fmt.Sprintf("waiting for secrets to get ready for %s %s.%s", v1alpha1.CAPApplicationKind, ca.Name, ca.Namespace)
-	klog.V(2).InfoS(message)
+
+	logInfo(message, ApplicationProcessing, ca, nil)
 	c.Event(ca, nil, corev1.EventTypeWarning, CAPApplicationEventMissingSecrets, EventActionProcessingSecrets, message)
 	ca.SetStatusWithReadyCondition(ca.Status.State, metav1.ConditionFalse, EventActionProcessingSecrets, message)
 	return true, nil
@@ -320,7 +320,7 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 		}, metav1.CreateOptions{})
 
 		// Create provider tenant
-		klog.InfoS("Processing CAPApplication - Creating Provider tenant", "name", ca.Name, "namespace", ca.Namespace, "tenantId", ca.Spec.Provider.TenantId, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+		logInfo("Creating Provider tenant", ApplicationProcessing, ca, nil, "tenantId", ca.Spec.Provider.TenantId)
 
 		if tenant, err = c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Create(
 			ctx, &v1alpha1.CAPTenant{
@@ -371,7 +371,7 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 		}
 
 		msg := fmt.Sprintf("provider %v not ready for %v %v.%v; waiting for it to be ready", v1alpha1.CAPTenantKind, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
-		klog.InfoS(msg, "provider tenant", tenant.Name, v1alpha1.CAPApplicationKind, ca, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+		logInfo(msg, ApplicationProcessing, ca, tenant, "tenantId", ca.Spec.Provider.TenantId)
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, EventActionProviderTenantProcessing, msg)
 		return true, nil
 	}
@@ -382,26 +382,26 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alpha1.CAPApplication) (*ReconcileResult, error) {
 	var err error
 
-	klog.InfoS("Deleting CAPApplication", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+	logInfo("Deleting CAPApplication", ApplicationDeleting, ca, nil)
 	if ca.Status.State != v1alpha1.CAPApplicationStateDeleting {
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateDeleting, metav1.ConditionFalse, "DeleteTriggered", "")
 		return NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0), nil
 	}
 
 	// TODO: cleanup domain resources via reconciliation
-	klog.InfoS("Deleting CAPApplication - Primary Domain Certificate", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+	logInfo("Removing Primary Domain Certificate", ApplicationDeleting, ca, nil)
 	if err = c.deletePrimaryDomainCertificate(ctx, ca); err != nil && !k8sErrors.IsNotFound(err) {
 		return nil, err
 	}
 
 	// delete CAPTenants - return if found in this loop, to verify deletion
 	var tenantFound bool
-	klog.InfoS("Deleting CAPApplication - CAPTenants", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+	logInfo("Deleting Tenants", ApplicationDeleting, ca, nil)
 	if tenantFound, err = c.deleteTenants(ctx, ca); tenantFound || err != nil {
 		return nil, err
 	}
 
-	klog.InfoS("Deleting CAPApplication - Secrets", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+	logInfo("Cleaning up secrets", ApplicationDeleting, ca, nil)
 	if err = c.cleanupPreservedSecrets(ca.Spec.BTP.Services, ca.Namespace); err != nil && !k8sErrors.IsNotFound(err) {
 		return nil, err
 	}
