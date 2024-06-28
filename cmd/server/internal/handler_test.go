@@ -681,7 +681,7 @@ func TestMultiXSUAA(t *testing.T) {
 		ca := createCA()
 
 		subHandler := setup(ca, nil, nil)
-		uaaCreds := subHandler.getXSUAADetails(ca)
+		uaaCreds := subHandler.getXSUAADetails(ca, "Test")
 
 		if uaaCreds.AuthUrl != "https://app-domain.auth.service.local" {
 			t.Error("incorrect uaa returned")
@@ -693,7 +693,7 @@ func TestMultiXSUAA(t *testing.T) {
 			util.AnnotationPrimaryXSUAA: "test-xsuaa2",
 		}
 
-		uaaCreds = subHandler.getXSUAADetails(ca2)
+		uaaCreds = subHandler.getXSUAADetails(ca2, "Test")
 
 		if uaaCreds.AuthUrl != "https://app2-domain.auth2.service.local" {
 			t.Error("incorrect uaa via annotations returned")
