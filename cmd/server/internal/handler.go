@@ -36,6 +36,7 @@ import (
 const (
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
 	AnnotationSaaSAdditionalOutput      = "sme.sap.com/saas-additional-output"
+	AnnotationSubscriptionDomain        = "sme.sap.com/subscription-domain"
 )
 
 const (
@@ -316,7 +317,11 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 }
 
 func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1.CAPApplication, saasData *util.SaasRegistryCredentials, req *http.Request, tenantSubDomain string, isProvisioning bool) {
-	appUrl := "https://" + tenantSubDomain + "." + ca.Spec.Domains.Primary
+	subscriptionDomain := ca.Annotations[AnnotationSubscriptionDomain]
+	if subscriptionDomain == "" {
+		subscriptionDomain = ca.Spec.Domains.Primary
+	}
+	appUrl := "https://" + tenantSubDomain + "." + subscriptionDomain
 	asyncCallbackPath := req.Header.Get("STATUS_CALLBACK")
 	klog.InfoS("callback initialized", "subscription URL", appUrl, "async callback path", asyncCallbackPath, "tenantId", ca.Spec.Provider.TenantId, "tenantName", tenantName, LabelBTPApplicationIdentifierHash, ca.Labels[LabelBTPApplicationIdentifierHash])
 
