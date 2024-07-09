@@ -16,6 +16,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -589,12 +590,13 @@ func copyMaps(originalMap map[string]string, additionalMap map[string]string) ma
 }
 
 func extractEntityMeta(entity interface{}, rootDetails bool) []map[string]string {
-	typeMeta := entity.(metav1.TypeMeta)
-	objectMeta := entity.(metav1.ObjectMeta)
+	runtimeObj := entity.(runtime.Object) // Convert to runtime object to determine Kind in a generic way
+	kind := runtimeObj.GetObjectKind()
+	objectMeta, _ := meta.Accessor(entity)
 	args := []map[string]string{
-		{Name: objectMeta.Name},
-		{Namespace: objectMeta.Namespace},
-		{Kind: typeMeta.Kind},
+		{Name: objectMeta.GetName()},
+		{Namespace: objectMeta.GetNamespace()},
+		{Kind: kind.GroupVersionKind().Kind},
 	}
 
 	if rootDetails {

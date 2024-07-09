@@ -398,7 +398,7 @@ func newService(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion
 
 	labels := copyMaps(workload.Labels, getLabels(ca, cav, CategoryService, workloadServicePortInfo.DeploymentType, workloadServicePortInfo.WorkloadName+ServiceSuffix, true))
 
-	logInfo("Creating service", ApplicationVersionProcessing, cav, "serviceName", workloadServicePortInfo.WorkloadName+ServiceSuffix)
+	logInfo("Creating service", ApplicationVersionProcessing, cav, nil, "serviceName", workloadServicePortInfo.WorkloadName+ServiceSuffix)
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
