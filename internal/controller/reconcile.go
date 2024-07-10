@@ -592,18 +592,24 @@ func copyMaps(originalMap map[string]string, additionalMap map[string]string) ma
 	return newMap
 }
 
-func extractEntityMeta(entity interface{}, rootDetails bool) []map[string]string {
+func extractEntityMeta(entity interface{}, isRoot bool) []map[string]string {
 	runtimeObj := entity.(runtime.Object) // Convert to runtime object to determine Kind in a generic way
 	kind := runtimeObj.GetObjectKind()
 	objectMeta, _ := meta.Accessor(entity)
-	args := []map[string]string{
-		{Name: objectMeta.GetName()},
-		{Namespace: objectMeta.GetNamespace()},
-		{Kind: kind.GroupVersionKind().Kind},
-	}
+	var args []map[string]string
 
-	if rootDetails {
-		args = append(args, map[string]string{LabelBTPApplicationIdentifierHash: objectMeta.GetLabels()[LabelBTPApplicationIdentifierHash]})
+	if isRoot {
+		args = []map[string]string{
+			{Name: objectMeta.GetName()},
+			{Namespace: objectMeta.GetNamespace()},
+			{Kind: kind.GroupVersionKind().Kind},
+			{LabelBTPApplicationIdentifierHash: objectMeta.GetLabels()[LabelBTPApplicationIdentifierHash]},
+		}
+	} else {
+		args = []map[string]string{
+			{DependantName: objectMeta.GetName()},
+			{DependantKind: kind.GroupVersionKind().Kind},
+		}
 	}
 
 	return args
