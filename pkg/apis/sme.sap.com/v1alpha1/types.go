@@ -92,7 +92,7 @@ type CAPApplicationSpec struct {
 type ApplicationDomains struct {
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
 	// +kubebuilder:validation:MaxLength=62
-	// Primary application domain will be used to generate a wildcard TLS certificate. In SAP Gardener managed clusters this is (usually) a subdomain of the cluster domain
+	// Primary application domain will be used to generate a wildcard TLS certificate. In project "Gardener" managed clusters this is (usually) a subdomain of the cluster domain
 	Primary string `json:"primary"`
 	// Customer specific domains to serve application endpoints (optional)
 	Secondary []string `json:"secondary,omitempty"`
