@@ -305,15 +305,15 @@ func (c *Controller) setCAPTenantOperationStatusFromJob(ctop *v1alpha1.CAPTenant
 	processStepCompletion := func() {
 		status.conditionReason = CAPTenantOperationConditionReasonStepCompleted
 		if ctop.Spec.Steps[*ctop.Status.CurrentStep-1].Type == v1alpha1.JobTenantOperation {
-			klog.InfoS("Processing CAPTenantOperations - Tenant Operation Job finished", "job", job.Name, "namespace", job.Namespace, "CAPTenantOperation", ctop.Name, "tenantID", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
+			logInfo("Tenant Operation Job finished", TenantOperationProcessing, ctop, job, "tenantID", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
 		} else {
-			klog.InfoS("Processing CAPTenantOperations - Custom Tenant Operation Job finished", "job", job.Name, "namespace", job.Namespace, "CAPTenantOperation", ctop.Name, "tenantID", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
+			logInfo("Custom Tenant Operation Job finished", TenantOperationProcessing, ctop, job, "tenantID", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
 		}
 		if isFinalStep {
 			status.state = v1alpha1.CAPTenantOperationStateCompleted
 			status.conditionStatus = metav1.ConditionTrue
 			ctop.SetStatusCurrentStep(nil, nil)
-			klog.InfoS("Processing CAPTenantOperations - Completed CAPTenantOperations", "namespace", job.Namespace, "CAPTenantOperation", ctop.Name, "tenantID", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
+			logInfo("Completed CAPTenantOperations", TenantOperationProcessing, ctop, job, "tenantID", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
 		} else {
 			status.state = v1alpha1.CAPTenantOperationStateProcessing
 			status.conditionStatus = metav1.ConditionFalse
@@ -523,7 +523,7 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 		},
 	}
 
-	klog.InfoS("Processing CAPTenantOperations - Creating job for tenant operation", "namespace", job.Namespace, "CAPTenantOperation", ctop.Name, "tenantID", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
+	logInfo("Creating job for tenant operation", TenantOperationProcessing, ctop, job, "tenantID", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
 	return c.kubeClient.BatchV1().Jobs(ctop.Namespace).Create(ctx, job, metav1.CreateOptions{})
 }
 
@@ -698,7 +698,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 		},
 	}
 
-	klog.InfoS("Processing CAPTenantOperations - Creating job for custom tenant operation", "namespace", job.Namespace, "CAPTenantOperation", ctop.Name, "tenantID", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
+	logInfo("Creating job for custom tenant operation", TenantOperationProcessing, ctop, job, "tenantID", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
 	return c.kubeClient.BatchV1().Jobs(ctop.Namespace).Create(ctx, job, metav1.CreateOptions{})
 }
 

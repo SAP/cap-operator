@@ -152,10 +152,13 @@ const (
 	ApplicationVersionProcessing Steps = "ApplicationVersion Processing"
 	ApplicationVersionDeleting   Steps = "ApplicationVersion Deleting"
 	ApplicationVersionReady      Steps = "ApplicationVersion Ready"
-	TanantProcessing             Steps = "Tenant Processing"
+	TenantProcessing             Steps = "Tenant Processing"
 	TenantProvisioning           Steps = "Tenant Provisioning"
 	TenantDeprovisioning         Steps = "Tenant Deprovisioning"
 	TenantUpgrading              Steps = "Tenant Upgrading"
+	TenantOperationProcessing    Steps = "TenantOperation Processing"
+	TenantOperationDeleting      Steps = "TenantOperation Deleting"
+	TenantOperationReady         Steps = "TenantOperation Ready"
 )
 
 func (c *Controller) Event(main runtime.Object, related runtime.Object, eventType, reason, action, message string) {
