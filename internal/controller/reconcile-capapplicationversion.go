@@ -105,7 +105,6 @@ func (c *Controller) handleCAPApplicationVersion(ctx context.Context, cav *v1alp
 
 	// Check for valid secrets
 	err := c.checkSecretsExist(ca.Spec.BTP.Services, ca.Namespace)
-
 	if err != nil {
 		// Requeue after 10s to check if secrets exist
 		logInfo("Missing secrets; Check again if the required secrets exists after 10 seconds", ApplicationVersionProcessing, cav, nil)
@@ -253,7 +252,9 @@ func (c *Controller) handleContentDeployJob(ca *v1alpha1.CAPApplication, cav *v1
 
 		if err == nil {
 			contentDeployJob, err = c.kubeClient.BatchV1().Jobs(cav.Namespace).Create(context.TODO(), newContentDeploymentJob(ca, cav, workload, ownerRef, vcapSecretName), metav1.CreateOptions{})
-			logInfo("Content Job created successfully", ApplicationVersionProcessing, cav, contentDeployJob)
+			if err == nil {
+				logInfo("Content Job created successfully", ApplicationVersionProcessing, cav, contentDeployJob)
+			}
 		}
 	}
 
@@ -372,6 +373,9 @@ func (c *Controller) updateServices(ca *v1alpha1.CAPApplication, cav *v1alpha1.C
 		// If the resource doesn't exist, we'll create it
 		if k8sErrors.IsNotFound(err) {
 			service, err = c.kubeClient.CoreV1().Services(cav.Namespace).Create(context.TODO(), newService(ca, cav, workloadServicePortInfo), metav1.CreateOptions{})
+			if err == nil {
+				logInfo("Service created successfully", ApplicationVersionProcessing, cav, service)
+			}
 		}
 
 		err = doChecks(err, service, cav, workloadServicePortInfo.WorkloadName+ServiceSuffix)
@@ -472,6 +476,9 @@ func (c *Controller) createNetworkPolicy(name string, spec networkingv1.NetworkP
 			},
 			Spec: spec,
 		}, metav1.CreateOptions{})
+		if err == nil {
+			logInfo("Network Policy created successfully", ApplicationVersionProcessing, cav, networkPolicy)
+		}
 	}
 	return doChecks(err, networkPolicy, cav, "NetworkPolicy")
 }
@@ -557,6 +564,9 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 
 		if err == nil {
 			workloadDeployment, err = c.kubeClient.AppsV1().Deployments(cav.Namespace).Create(context.TODO(), newDeployment(ca, cav, workload, ownerRef, vcapSecretName), metav1.CreateOptions{})
+			if err == nil {
+				logInfo("Deployment created successfully", ApplicationVersionProcessing, cav, workloadDeployment)
+			}
 		}
 	}
 
@@ -813,6 +823,7 @@ func doChecks(err error, obj metav1.Object, cav *v1alpha1.CAPApplicationVersion,
 	// attempt processing again later. This could have been caused by a
 	// temporary network failure, or any other transient reason.
 	if err != nil {
+		logError(err, "Error during CAPApplicationVersion Processing", ApplicationVersionProcessing, cav, obj, "resource", res)
 		return err
 	}
 
@@ -883,11 +894,13 @@ func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alph
 
 		// If the job is still running, set processing to true
 		if !cav.CheckFinishedJobs(job) {
+			logInfo("Waiting for Content Job(s) to complete", ApplicationVersionProcessing, cav, nil, DependantName, job, DependantKind, "Job")
 			return true, nil
 		}
 	}
 
 	// All Jobs are executed
+	logInfo("Content Job(s) Completed", ApplicationVersionProcessing, cav, nil)
 	return false, nil
 }
 
@@ -935,6 +948,7 @@ func (c *Controller) deleteCAPApplicationVersion(ctx context.Context, cav *v1alp
 		logInfo("Could not delete; tenants exists in this version", ApplicationVersionDeleting, cav, nil)
 		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second), nil
 	} else if removeFinalizer(&cav.Finalizers, FinalizerCAPApplicationVersion) { // All tenants are gone --> remove finalizer and process deletion
+		logInfo("Removing Finalizer; finished deleting this version", ApplicationVersionDeleting, cav, nil)
 		return nil, c.updateCAPApplicationVersion(ctx, cav)
 	}
 
