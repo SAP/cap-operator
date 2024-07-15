@@ -16,7 +16,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -134,27 +133,18 @@ type RouterDestination struct {
 	ProxyType            string `json:"proxyType,omitempty"`
 }
 
-const (
-	Step          = "step"
-	Name          = "name"
-	Namespace     = "namespace"
-	Kind          = "kind"
-	DependantName = "dependantName"
-	DependantKind = "dependantKind"
-)
-
 type Steps string
 
 const (
 	ApplicationProcessing        Steps = "Application Processing"
 	ApplicationDeleting          Steps = "Application Deleting"
-	ApplicationConsistent        Steps = "Application Consistent"
 	ApplicationVersionProcessing Steps = "ApplicationVersion Processing"
 	ApplicationVersionDeleting   Steps = "ApplicationVersion Deleting"
 	ApplicationVersionReady      Steps = "ApplicationVersion Ready"
 	TenantProcessing             Steps = "Tenant Processing"
 	TenantProvisioning           Steps = "Tenant Provisioning"
 	TenantDeprovisioning         Steps = "Tenant Deprovisioning"
+	TenantDeleting               Steps = "Tenant Deleting"
 	TenantUpgrading              Steps = "Tenant Upgrading"
 	TenantOperationProcessing    Steps = "TenantOperation Processing"
 	TenantOperationDeleting      Steps = "TenantOperation Deleting"
@@ -590,48 +580,4 @@ func copyMaps(originalMap map[string]string, additionalMap map[string]string) ma
 		newMap[key] = value
 	}
 	return newMap
-}
-
-func extractEntityMeta(entity interface{}, isRoot bool) []map[string]string {
-	runtimeObj := entity.(runtime.Object) // Convert to runtime object to determine Kind in a generic way
-	kind := runtimeObj.GetObjectKind()
-	objectMeta, _ := meta.Accessor(entity)
-	var args []map[string]string
-
-	if isRoot {
-		args = []map[string]string{
-			{Name: objectMeta.GetName()},
-			{Namespace: objectMeta.GetNamespace()},
-			{Kind: kind.GroupVersionKind().Kind},
-			{LabelBTPApplicationIdentifierHash: objectMeta.GetLabels()[LabelBTPApplicationIdentifierHash]},
-		}
-	} else {
-		args = []map[string]string{
-			{DependantName: objectMeta.GetName()},
-			{DependantKind: kind.GroupVersionKind().Kind},
-		}
-	}
-
-	return args
-}
-
-func logArgs(step Steps, entity interface{}, child interface{}, inArgs ...interface{}) []interface{} {
-	args := []interface{}{}
-	args = append(args, map[string]string{Step: string(step)})
-	args = append(args, extractEntityMeta(entity, true))
-	args = append(args, inArgs...)
-	if child != nil {
-		args = append(args, extractEntityMeta(child, false))
-	}
-	return args
-}
-
-func logInfo(msg string, step Steps, entity interface{}, child interface{}, args ...interface{}) {
-	overallArgs := logArgs(step, entity, child, args)
-	klog.InfoS(msg, overallArgs)
-}
-
-func logError(error error, msg string, step Steps, entity interface{}, child interface{}, args ...interface{}) {
-	overallArgs := logArgs(step, entity, child, args)
-	klog.ErrorS(error, msg, overallArgs)
 }
