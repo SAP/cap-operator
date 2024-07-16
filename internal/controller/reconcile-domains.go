@@ -588,7 +588,7 @@ func (c *Controller) checkTenantDNSEntries(ctx context.Context, cat *v1alpha1.CA
 			if dnsEntry.Status.State == dnsv1alpha1.STATE_ERROR {
 				return false, fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name, *dnsEntry.Status.Message)
 			} else if dnsEntry.Status.State != dnsv1alpha1.STATE_READY {
-				util.LogInfo("DNSEntry resource not ready", string(TenantProcessing), cat, nil, util.DependantName, dnsEntry.Name, util.DependantKind, "DNSEntry")
+				util.LogInfo("DNSEntry resource not ready", string(TenantProcessing), cat, dnsEntry)
 				return true, nil
 			}
 		}
