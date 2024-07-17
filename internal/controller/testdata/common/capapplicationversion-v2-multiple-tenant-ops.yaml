@@ -63,8 +63,6 @@ spec:
         env:
           - name: flow
             value: glow
-          - name: "IS_MTXS_ENABLED" 
-            value: "false"
     - name: custom-say
       consumedBTPServices:
         - cap-uaa

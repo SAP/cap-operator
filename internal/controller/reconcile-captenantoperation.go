@@ -10,21 +10,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	"golang.org/x/exp/slices"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog/v2"
 )
 
 type ProvisioningPayload struct {
@@ -61,13 +57,6 @@ type tentantOperationWorkload struct {
 
 const (
 	CAPTenantOperationEventInvalidReference = "InvalidReference"
-)
-
-const (
-	EnvMTXJobImage            = "MTX_JOB_IMAGE"
-	MTXJobImageAllowedPattern = "^ghcr\\.io/sap/cap-operator"
-	MTXJobImageDefault        = "ghcr.io/sap/cap-operator/mtx-job"
-	EnvIsMTXSEnabled          = "IS_MTXS_ENABLED"
 )
 
 type cros struct {
@@ -527,10 +516,6 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 	return c.kubeClient.BatchV1().Jobs(ctop.Namespace).Create(ctx, job, metav1.CreateOptions{})
 }
 
-func isMTXSDisabled(envVars []corev1.EnvVar) bool {
-	return slices.ContainsFunc(envVars, func(env corev1.EnvVar) bool { return env.Name == EnvIsMTXSEnabled && env.Value == "false" })
-}
-
 func getContainers(payload []byte, ctop *v1alpha1.CAPTenantOperation, derivedWorkload tentantOperationWorkload, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) []corev1.Container {
 	container := &corev1.Container{
 		Name:            workload.Name,
@@ -547,53 +532,32 @@ func getContainers(payload []byte, ctop *v1alpha1.CAPTenantOperation, derivedWor
 		Resources:       derivedWorkload.resources,
 		SecurityContext: derivedWorkload.securityContext,
 	}
-	if !isMTXSDisabled(derivedWorkload.env) {
-		var operation string
 
-		if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
-			operation = "subscribe"
-		} else if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeUpgrade {
-			operation = "upgrade"
-		} else { // deprovisioning
-			operation = "unsubscribe"
-		}
+	var operation string
 
-		appendCommand := false
-		if derivedWorkload.command != nil {
-			container.Command = derivedWorkload.command
-		} else {
-			container.Command = []string{"node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx", operation, ctop.Spec.TenantId}
-			appendCommand = true
-		}
-		if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
-			container.Env = append(container.Env, corev1.EnvVar{Name: EnvCAPOpSubscriptionPayload, ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: ctop.Annotations[AnnotationSubscriptionContextSecret]}, Key: SubscriptionContext}}})
-			if appendCommand {
-				container.Command = append(container.Command, "--body", `$(`+EnvCAPOpSubscriptionPayload+`)`)
-			}
-		}
-
-		return append([]corev1.Container{}, *container)
+	if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
+		operation = "subscribe"
+	} else if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeUpgrade {
+		operation = "upgrade"
+	} else { // deprovisioning
+		operation = "unsubscribe"
 	}
 
-	container.Command = []string{"/bin/sh", "-c"}
-	container.Args = []string{"node ./node_modules/@sap/cds/bin/cds run & nc -lv -s localhost -p 8080"}
-
-	return []corev1.Container{
-		{
-			Name:  "trigger", // TODO: get rid of this --> hopefully with mtxs cli where we start a single container image
-			Image: getMTXJobImage(),
-			Env: []corev1.EnvVar{
-				{Name: "WAIT_FOR_SIDECAR", Value: "false"},
-				{Name: "XSUAA_INSTANCE_NAME", Value: params.xsuaaInstanceName},
-				{Name: "MTX_SERVICE_URL", Value: "http://localhost:" + strconv.Itoa(defaultServerPort)},
-				{Name: "MTX_REQUEST_TYPE", Value: string(ctop.Spec.Operation)},
-				{Name: "MTX_TENANT_ID", Value: ctop.Spec.TenantId},
-				{Name: "MTX_REQUEST_PAYLOAD", Value: string(payload)},
-			},
-			EnvFrom: params.envFromVCAPSecret,
-		},
-		*container,
+	appendCommand := false
+	if derivedWorkload.command != nil {
+		container.Command = derivedWorkload.command
+	} else {
+		container.Command = []string{"node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx", operation, ctop.Spec.TenantId}
+		appendCommand = true
 	}
+	if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
+		container.Env = append(container.Env, corev1.EnvVar{Name: EnvCAPOpSubscriptionPayload, ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: ctop.Annotations[AnnotationSubscriptionContextSecret]}, Key: SubscriptionContext}}})
+		if appendCommand {
+			container.Command = append(container.Command, "--body", `$(`+EnvCAPOpSubscriptionPayload+`)`)
+		}
+	}
+
+	return append([]corev1.Container{}, *container)
 }
 
 func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentantOperationWorkload {
@@ -700,17 +664,6 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 
 	util.LogInfo("Creating job for custom tenant operation", string(TenantOperationProcessing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
 	return c.kubeClient.BatchV1().Jobs(ctop.Namespace).Create(ctx, job, metav1.CreateOptions{})
-}
-
-func getMTXJobImage() string {
-	mtxJobImageUri := os.Getenv(EnvMTXJobImage)
-	allowedUri, _ := regexp.MatchString(MTXJobImageAllowedPattern, mtxJobImageUri)
-	if !allowedUri {
-		klog.Warning("MTX Job Image URI '", mtxJobImageUri, "' not given in environment, or not allowed. Falling back to default.")
-		mtxJobImageUri = MTXJobImageDefault
-	}
-
-	return mtxJobImageUri
 }
 
 func getXSUAAInstanceName(consumedServiceInfos []v1alpha1.ServiceInfo, relatedResources *cros, kubeClient kubernetes.Interface) (string, error) {

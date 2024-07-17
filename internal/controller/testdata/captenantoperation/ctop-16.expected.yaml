@@ -84,25 +84,6 @@ spec:
     spec:
       containers:
         - env:
-            - name: WAIT_FOR_SIDECAR
-              value: "false"
-            - name: XSUAA_INSTANCE_NAME
-              value: cap-uaa
-            - name: MTX_SERVICE_URL
-              value: http://localhost:4004
-            - name: MTX_REQUEST_TYPE
-              value: deprovisioning
-            - name: MTX_TENANT_ID
-              value: tenant-id-for-provider
-            - name: MTX_REQUEST_PAYLOAD
-              value: "{}"
-          envFrom:
-            - secretRef:
-                name: test-cap-01-provider-abcd-mtx-gen
-                optional: true
-          image: ghcr.io/sap/cap-operator/mtx-job
-          name: trigger
-        - env:
             - name: CAPOP_APP_VERSION
               value: 5.6.7
             - name: CAPOP_TENANT_ID
@@ -111,17 +92,11 @@ spec:
               value: deprovisioning
             - name: CAPOP_TENANT_SUBDOMAIN
               value: my-provider
-            - name: "IS_MTXS_ENABLED" 
-              value: "false"
           envFrom:
             - secretRef:
                 name: test-cap-01-provider-abcd-mtx-gen
                 optional: true
-          command:
-            - "/bin/sh"
-            - "-c"
-          args:
-            - node ./node_modules/@sap/cds/bin/cds run & nc -lv -s localhost -p 8080
+          command: ["node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx", "unsubscribe", "tenant-id-for-provider"]
           image: docker.image.repo/srv/server:latest
           name: mtx
       imagePullSecrets:
