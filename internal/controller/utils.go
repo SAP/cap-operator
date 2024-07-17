@@ -188,22 +188,15 @@ func sha1Sum(source ...string) string {
 	return fmt.Sprintf("%x", sum)
 }
 
-func amendObjectMetadata(object *metav1.ObjectMeta, annotatedOldLabel string, hashLabel string, oldValue string, hashedValue string) (updated bool) {
-	// Check if old label exists, if so remove it
-	if _, ok := object.Labels[annotatedOldLabel]; ok {
-		// Should never happen
-		klog.InfoS("Unexpected label found", "old label", annotatedOldLabel, "labelvalue", oldValue, "namespace", object.Namespace, "resource name", object.Name)
-		delete(object.Labels, annotatedOldLabel)
-		updated = true
-	}
-	// Add hashed label as the new label with the hashed identifier value
+func amendObjectMetadata(object *metav1.ObjectMeta, annotation string, hashLabel string, annotationValue string, hashedValue string) (updated bool) {
+	// Add hashed label with the hashed identifier value
 	if _, ok := object.Labels[hashLabel]; !ok {
 		object.Labels[hashLabel] = hashedValue
 		updated = true
 	}
-	// Add old label as an annotation with the old value
-	if _, ok := object.Annotations[annotatedOldLabel]; !ok {
-		object.Annotations[annotatedOldLabel] = oldValue
+	// Add annotation with value
+	if _, ok := object.Annotations[annotation]; !ok {
+		object.Annotations[annotation] = annotationValue
 		updated = true
 	}
 	// return if something was updated

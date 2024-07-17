@@ -107,12 +107,6 @@ func main() {
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				klog.InfoS("Started leading: ", LeaseLockName, leaseLockId)
-
-				checkDone := make(chan bool, 1)
-				go checkHashedLabels(checkDone, coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient)
-				<-checkDone
-				klog.InfoS("check & update of hashed labels done")
-
 				c := controller.NewController(coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient)
 				go c.Start(ctx)
 			},
