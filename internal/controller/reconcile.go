@@ -133,6 +133,24 @@ type RouterDestination struct {
 	ProxyType            string `json:"proxyType,omitempty"`
 }
 
+type Steps string
+
+const (
+	ApplicationProcessing        Steps = "Application Processing"
+	ApplicationDeleting          Steps = "Application Deleting"
+	ApplicationVersionProcessing Steps = "ApplicationVersion Processing"
+	ApplicationVersionDeleting   Steps = "ApplicationVersion Deleting"
+	ApplicationVersionReady      Steps = "ApplicationVersion Ready"
+	TenantProcessing             Steps = "Tenant Processing"
+	TenantProvisioning           Steps = "Tenant Provisioning"
+	TenantDeprovisioning         Steps = "Tenant Deprovisioning"
+	TenantDeleting               Steps = "Tenant Deleting"
+	TenantUpgrading              Steps = "Tenant Upgrading"
+	TenantOperationProcessing    Steps = "TenantOperation Processing"
+	TenantOperationDeleting      Steps = "TenantOperation Deleting"
+	TenantOperationReady         Steps = "TenantOperation Ready"
+)
+
 func (c *Controller) Event(main runtime.Object, related runtime.Object, eventType, reason, action, message string) {
 	defer func() {
 		// do not let the routine dump due to event recording errors

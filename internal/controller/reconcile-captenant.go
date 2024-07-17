@@ -11,12 +11,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/klog/v2"
 )
 
 type IdentifiedCAPTenantOperations struct {
@@ -76,6 +76,12 @@ const (
 	EventActionUpgrade                   = "Upgrade"
 )
 
+var operationTypeMsgMap = map[v1alpha1.CAPTenantOperationType]string{
+	v1alpha1.CAPTenantOperationTypeProvisioning:   string(TenantProvisioning),
+	v1alpha1.CAPTenantOperationTypeUpgrade:        string(TenantUpgrading),
+	v1alpha1.CAPTenantOperationTypeDeprovisioning: string(TenantDeprovisioning),
+}
+
 // maps tenant operation types (and their status) to CAPTenant status changes
 var TenantOperationStatusMap = map[v1alpha1.CAPTenantOperationType]StatusInfo{
 	v1alpha1.CAPTenantOperationTypeProvisioning: {
@@ -131,11 +137,13 @@ func getTenantReconcileResultConsideringDeletion(cat *v1alpha1.CAPTenant, fallba
 
 var handleWaitingForTenantOperation = func(ctx context.Context, c *Controller, cat *v1alpha1.CAPTenant, target StateCondition, ctop *v1alpha1.CAPTenantOperation) (*ReconcileResult, error) {
 	// NOTE: not returning a requeue item is ok, as changes in CAPTenantOperation status will queue the item via the informer
+	util.LogInfo("waiting for CAPTenantOperation to complete", operationTypeMsgMap[ctop.Spec.Operation], cat, ctop, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 	cat.SetStatusWithReadyCondition(target.state, target.conditionStatus, target.conditionReason, fmt.Sprintf("waiting for %s %s.%s of type %s to complete", v1alpha1.CAPTenantOperationKind, ctop.Namespace, ctop.Name, ctop.Spec.Operation))
 	return NewReconcileResultWithResource(ResourceCAPTenant, cat.Name, cat.Namespace, 15*time.Second), nil // requeue while the tenant operation is being processed
 }
 
 var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *Controller, cat *v1alpha1.CAPTenant, target StateCondition, ctop *v1alpha1.CAPTenantOperation) (*ReconcileResult, error) {
+	util.LogInfo("CAPTenantOperation successfully completed", operationTypeMsgMap[ctop.Spec.Operation], cat, ctop, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 	message := fmt.Sprintf("%s %s.%s successfully completed", v1alpha1.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
 	c.Event(cat, ctop, corev1.EventTypeNormal, target.conditionReason, string(target.state), message)
 
@@ -148,7 +156,7 @@ var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *C
 		// Check if all Tenant DNSEntries are Ready
 		processing, err := c.checkTenantDNSEntries(ctx, cat)
 		if err != nil {
-			klog.ErrorS(err, "error with DNS Entries for CAPTenant", "namespace", cat.Namespace, "tenant", cat, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
+			util.LogError(err, "DNS Entries error", string(TenantProcessing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 			return nil, err
 		}
 		if processing {
@@ -177,8 +185,10 @@ var handleFailingTenantOperation = func(ctx context.Context, c *Controller, cat 
 	)
 	if ctop == nil {
 		message = fmt.Sprintf("could not identify %s for tenant state %s", v1alpha1.CAPTenantOperationKind, cat.Status.State)
+		util.LogInfo(message, string(TenantProcessing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 	} else {
 		message = fmt.Sprintf("%s %s.%s failed", v1alpha1.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
+		util.LogInfo("CAPTenantOperation failed", operationTypeMsgMap[ctop.Spec.Operation], cat, ctop, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		related = ctop
 	}
 
@@ -194,6 +204,7 @@ var removeTenantFinalizers = func(ctx context.Context, c *Controller, cat *v1alp
 
 	// remove known finalizer
 	if removeFinalizer(&cat.Finalizers, FinalizerCAPTenant) {
+		util.LogInfo("Removing Finalizer; finished deleting this tenant", string(TenantDeleting), cat, nil)
 		return c.updateCAPTenant(ctx, cat, false)
 	}
 	return nil, nil
@@ -222,7 +233,7 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, att
 	// Skip processing until the right version is set on the CAPTenant (via CAPApplication)
 	// This indirectly ensures that we do not create duplicate tenant operations for consumer tenant provisioning scenarios!
 	if cat.Spec.Version == "" {
-		klog.InfoS("Tenant without version detected, skip processing until version is set", "namespace", cat.Namespace, "tenant", cat.Name, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
+		util.LogInfo("Tenant without version detected, skip processing until version is set", string(TenantProcessing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		return requeue, nil
 	}
 
@@ -241,6 +252,9 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, att
 
 	if cat.DeletionTimestamp == nil && cat.Status.CurrentCAPApplicationVersionInstance != "" {
 		requeue, err = c.reconcileTenantNetworking(ctx, cat, cat.Status.CurrentCAPApplicationVersionInstance, nil)
+		if requeue == nil && err == nil {
+			util.LogInfo("Tenant processing completed", string(TenantProcessing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
+		}
 	}
 
 	return
@@ -303,7 +317,7 @@ func (c *Controller) handleTenantOperationsForCAPTenant(ctx context.Context, cat
 	// [1] wait for active operations to complete
 	if len(ops.active) > 0 {
 		if len(ops.active) > 1 {
-			klog.Warningf("identified multiple active CAPTenantOperations for %s %s.%s", v1alpha1.CAPTenantKind, cat.Namespace, cat.Name)
+			util.LogInfo("identified multiple active CAPTenantOperations", string(TenantProcessing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		}
 		ctop := findLatestCreatedTenantOperation(ops.active, CAPTenantOperationTypeSelectorAll)
 		targetInfo := TenantOperationStatusMap[ctop.Spec.Operation].processing
@@ -425,7 +439,7 @@ func (c *Controller) createCAPTenantOperation(ctx context.Context, cat *v1alpha1
 		},
 	}
 	addCAPTenantOperationLabels(ctop, cat) // NOTE: this is very important to do here as subsequent reconciliation of tenant will be inconsistent otherwise
-	klog.InfoS("Processing CAPTenant - Creating CAPTenantOperations", "name", cat.Name, "namespace", cat.Namespace, "operation", opType, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
+	util.LogInfo("Creating CAPTenantOperations", operationTypeMsgMap[opType], cat, ctop, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 	return c.crdClient.SmeV1alpha1().CAPTenantOperations(cat.Namespace).Create(ctx, ctop, metav1.CreateOptions{})
 }
 
@@ -542,11 +556,13 @@ func (c *Controller) getCAPApplicationVersionForTenantOperationType(ctx context.
 		if err != nil {
 			return nil, err
 		}
-		klog.V(2).InfoS("identified CAPApplicationVersion", "namespace", cav.Namespace, "name", cav.Name, "version", cav.Spec.Version, "operation", opType, "tenant name", cat.Name)
+		util.LogInfo("identified CAPApplicationVersion", operationTypeMsgMap[opType], cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		return cav, nil
 	case v1alpha1.CAPTenantOperationTypeDeprovisioning: // for deletion - use the current CAPApplicationVersion (from status)
 		if cat.Status.CurrentCAPApplicationVersionInstance == "" {
-			return nil, fmt.Errorf("cannot identify %s for %s %s.%s", v1alpha1.CAPApplicationVersionKind, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name)
+			err := fmt.Errorf("cannot identify %s for %s %s.%s", v1alpha1.CAPApplicationVersionKind, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name)
+			util.LogError(err, "cannot identify CAPApplicationVersion", string(TenantDeprovisioning), cat, nil, "tenantId", cat.Spec.TenantId)
+			return nil, err
 		}
 		cav, err := c.crdClient.SmeV1alpha1().CAPApplicationVersions(cat.Namespace).Get(ctx, cat.Status.CurrentCAPApplicationVersionInstance, metav1.GetOptions{})
 		if err != nil {
