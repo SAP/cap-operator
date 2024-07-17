@@ -37,8 +37,6 @@ spec:
         env:
           - name: foo
             value: bar
-          - name: "IS_MTXS_ENABLED" 
-            value: "false"
     - name: content-job
       consumedBTPServices:
         - cap-uaa

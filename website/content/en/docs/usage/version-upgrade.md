@@ -60,7 +60,7 @@ spec:
         type: Content
         image: app.some.repo.example.com/approuter/content:0.0.2
         backoffLimit: 1
-    - name: mtx-runner
+    - name: tenant-operation
       consumedBTPServices:
         - app-uaa
         - app-service-manager
@@ -85,7 +85,7 @@ spec:
             value: group_xyz@sap.com
   tenantOperations:
     upgrade:
-      - workloadName: mtx-runner
+      - workloadName: tenant-operation
       - workloadName: notify-upgrade
         continueOnFailure: true
 ```
@@ -108,7 +108,7 @@ spec:
   tenantId: aa2bae55d7b5-1279-456564-a7b0-aa2bae55d7b5
   operation: upgrade # possible values are provisioning / upgrade / deprovisioning
   steps:
-    - name: "mtx-runner"
+    - name: "tenant-operation"
       type: TenantOperation
     - name: "notify-upgrade"
       type: CustomTenantOperation

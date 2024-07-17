@@ -7,7 +7,6 @@ package controller
 
 import (
 	"context"
-	"os"
 	"testing"
 )
 
@@ -484,71 +483,6 @@ func TestProvisioningWithMTXSEnabledAndCustomCommand(t *testing.T) {
 			},
 		},
 	)
-}
-
-func TestGetMTXJobImage(t *testing.T) {
-	const (
-		jiraBLI = "(ERP4SMEPREPWORKAPPPLAT-1647)"
-	)
-
-	const (
-		imageAllowed     = "ghcr.io/sap/cap-operator/another-mtx-job"
-		imageNotAllowed1 = "unwanted.external.repositories.cloud/cap-operator/mtx-job"
-		imageNotAllowed2 = "ghcr.io/sapfake/cap-operator/mtx-job"
-		imageNotAllowed3 = "ghcrXio/sap/cap-operator/mtx-job"
-	)
-
-	tests := []struct {
-		id             string
-		setEnvironment string
-		expectedImage  string
-	}{
-		{
-			id:             "not given environment leads to default image", // which is a special case of 'not matching image pattern'
-			setEnvironment: "",
-			expectedImage:  MTXJobImageDefault,
-		},
-		{
-			id:             "not matching image pattern leads to default image, subdomain",
-			setEnvironment: imageNotAllowed1,
-			expectedImage:  MTXJobImageDefault,
-		},
-		{
-			id:             "not matching image pattern leads to default image, ensures .sap/",
-			setEnvironment: imageNotAllowed2,
-			expectedImage:  MTXJobImageDefault,
-		},
-		{
-			id:             "not matching image pattern leads to default image, ensures ghcr.io",
-			setEnvironment: imageNotAllowed3,
-			expectedImage:  MTXJobImageDefault,
-		},
-		{
-			id:             "matching image pattern is passing",
-			setEnvironment: imageAllowed,
-			expectedImage:  imageAllowed,
-		},
-	}
-
-	activeEnvironment := os.Getenv(EnvMTXJobImage)
-	defer func() {
-		os.Setenv(EnvMTXJobImage, activeEnvironment)
-	}()
-
-	for _, tt := range tests {
-		t.Run(tt.id+" "+jiraBLI, func(t *testing.T) {
-			if tt.setEnvironment == "" {
-				os.Unsetenv(EnvMTXJobImage)
-			} else {
-				os.Setenv(EnvMTXJobImage, tt.setEnvironment)
-			}
-
-			actualImage := getMTXJobImage()
-			if actualImage != tt.expectedImage {
-				t.Errorf("expected image '%q', got '%q", tt.expectedImage, actualImage)
-			}
-		})
-	}
 }
 
 func TestProvisioningWithResources(t *testing.T) {
