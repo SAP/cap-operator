@@ -7,7 +7,7 @@ description: >
   How to prepare the cluster before installing CAP Operator
 ---
 
-We recommend that you use a [Gardener](https://gardener.cloud/)-managed cluster to deploy CAP applications that are managed with CAP Operator.
+We recommend that you use a "[Gardener](https://gardener.cloud/)" managed cluster to deploy CAP applications that are managed with CAP Operator.
 
 The Kubernetes cluster must be set up with the following prerequisites before you install CAP Operator:
 ##### [Istio](https://istio.io/latest/docs/concepts/traffic-management/) (version >= 1.12)
@@ -24,6 +24,6 @@ These operators can be used for managing SAP BTP service instances and service b
 
 > Please note that service credentials added as Kubernetes Secrets to a namespace by these operators, support additional metadata. If you don't use this feature of these operators, use `secretKey: credentials` in the spec of these operators to ensure that the service credentials retain any JSON data as it is. **We recommend that you use `secretKey`, even when credential metadata is available to reduce the overhead of interpreting parsing multiple JSON attributes.**
 
-##### [Gardener certificate management](https://github.com/gardener/cert-management)
+##### ["Gardener" certificate management](https://github.com/gardener/cert-management)
 
-This component is available in clusters managed by Gardener and will be used to manage TLS certificates and issuers. Gardener manages encryption, issuing, and signing of certificates. Alternatively, you can use [cert-manager.io cert-manager](https://github.com/cert-manager/cert-manager).
+This component is available in clusters managed by "Gardener" and will be used to manage TLS certificates and issuers. "Gardener" manages encryption, issuing, and signing of certificates. Alternatively, you can use [cert-manager.io cert-manager](https://github.com/cert-manager/cert-manager).
