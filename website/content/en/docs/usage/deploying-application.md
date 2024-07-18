@@ -119,7 +119,7 @@ The controller component of CAP Operator reacts to these objects and creates fur
 - Deployment (and service) for the application server with credentials (from secrets) to access SAP BTP services injected as `VCAP_SERVICES` environment variable
 - Deployment (and service) for the approuter with destination mapping to the application server and subscription server (for the tenant provisioning route)
 - Job for the version content deployer
-- TLS certificates for the domains provided using either [Gardener cert-management](https://github.com/gardener/cert-management) or [cert-manager.io cert-manager](https://github.com/cert-manager/cert-manager)
+- TLS certificates for the domains provided using either ["Gardener" cert-management](https://github.com/gardener/cert-management) or [cert-manager.io cert-manager](https://github.com/cert-manager/cert-manager)
 - Istio gateway resource for the application domains
 
 > The content deployer is used to deploy content or configuration to SAP BTP services, before using them.
