@@ -187,8 +187,11 @@ func (c *Controller) processDeployments(ctx context.Context, ca *v1alpha1.CAPApp
 		return nil, err
 	}
 
-	// We do not want to wait until the deployments are actually "Ready", we only rely on Content Job completing successfully!
-	util.LogInfo("All deployments and services created successfully", string(ApplicationVersionReady), cav, nil)
+	// For now, we do not want to wait until the deployments are actually "Ready", we only rely on Content Job completing successfully!
+	if cav.Status.State == v1alpha1.CAPApplicationVersionStateProcessing {
+		// Only log if the state is still processing as cav might be reconciled again
+		util.LogInfo("All deployments and other resources created successfully", string(ApplicationVersionReady), cav, nil)
+	}
 	return nil, c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateReady, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "True", Reason: "CreatedDeployments"})
 }
 
@@ -901,7 +904,10 @@ func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alph
 	}
 
 	// All Jobs are executed
-	util.LogInfo("Content Job(s) Completed", string(ApplicationVersionProcessing), cav, nil)
+	if cav.Status.State != v1alpha1.CAPApplicationVersionStateReady {
+		// Only log this state if cav is not already in Ready state as the resource might be reconciled again
+		util.LogInfo("Content Job(s) Completed", string(ApplicationVersionProcessing), cav, nil)
+	}
 	return false, nil
 }
 
