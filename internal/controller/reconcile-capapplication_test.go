@@ -1128,3 +1128,24 @@ func TestAdditionalConditionsWithTenantDeletingUpgradeStrategyNever(t *testing.T
 		},
 	)
 }
+
+func TestController_handleCAPApplicationConsistent_versionUpgrade(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01"}},
+		TestData{
+			description: "Consistent state with a CAV upgrade; one tenant already in upgrading state",
+			initialResources: []string{
+				"testdata/capapplication/ca-31.initial.yaml",
+				"testdata/capapplication/cav-name-modified-ready.yaml",
+				"testdata/capapplication/cat-provider-no-finalizers-ready.yaml",
+				"testdata/capapplication/cat-consumer-upgrading.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplication/gateway.yaml",
+				"testdata/capapplication/istio-ingress-with-cert.yaml",
+				"testdata/capapplication/ca-dns.yaml",
+			},
+			expectedResources: "testdata/capapplication/ca-31.expected.yaml",
+		},
+	)
+}
