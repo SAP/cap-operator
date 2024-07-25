@@ -172,6 +172,9 @@ var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *C
 		return requeue, err
 	}
 
+	if cat.Status.State != v1alpha1.CAPTenantStateReady {
+		util.LogInfo(message, string(TenantReady), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
+	}
 	// the ObservedGeneration of the tenant should be updated here (when Ready)
 	cat.SetStatusWithReadyCondition(target.state, target.conditionStatus, target.conditionReason, message)
 	cat.SetStatusCAPApplicationVersion(ctop.Spec.CAPApplicationVersionInstance)

@@ -146,6 +146,7 @@ const (
 	TenantDeprovisioning         Steps = "Tenant Deprovisioning"
 	TenantDeleting               Steps = "Tenant Deleting"
 	TenantUpgrading              Steps = "Tenant Upgrading"
+	TenantReady                  Steps = "Tenant Ready"
 	TenantOperationProcessing    Steps = "TenantOperation Processing"
 	TenantOperationDeleting      Steps = "TenantOperation Deleting"
 	TenantOperationReady         Steps = "TenantOperation Ready"
