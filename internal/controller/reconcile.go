@@ -136,20 +136,12 @@ type RouterDestination struct {
 type Steps string
 
 const (
-	ApplicationProcessing        Steps = "Application Processing"
-	ApplicationDeleting          Steps = "Application Deleting"
-	ApplicationVersionProcessing Steps = "ApplicationVersion Processing"
-	ApplicationVersionDeleting   Steps = "ApplicationVersion Deleting"
-	ApplicationVersionReady      Steps = "ApplicationVersion Ready"
-	TenantProcessing             Steps = "Tenant Processing"
-	TenantProvisioning           Steps = "Tenant Provisioning"
-	TenantDeprovisioning         Steps = "Tenant Deprovisioning"
-	TenantDeleting               Steps = "Tenant Deleting"
-	TenantUpgrading              Steps = "Tenant Upgrading"
-	TenantReady                  Steps = "Tenant Ready"
-	TenantOperationProcessing    Steps = "TenantOperation Processing"
-	TenantOperationDeleting      Steps = "TenantOperation Deleting"
-	TenantOperationReady         Steps = "TenantOperation Ready"
+	Processing     Steps = "Processing"
+	Provisioning   Steps = "Provisioning"
+	Upgrading      Steps = "Upgrading"
+	Deprovisioning Steps = "Deprovisioning"
+	Deleting       Steps = "Deleting"
+	Ready          Steps = "Ready"
 )
 
 func (c *Controller) Event(main runtime.Object, related runtime.Object, eventType, reason, action, message string) {
