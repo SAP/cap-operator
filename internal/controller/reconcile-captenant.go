@@ -78,7 +78,7 @@ const (
 
 var operationTypeMsgMap = map[v1alpha1.CAPTenantOperationType]string{
 	v1alpha1.CAPTenantOperationTypeProvisioning:   string(Provisioning),
-	v1alpha1.CAPTenantOperationTypeUpgrade:        string(Deleting),
+	v1alpha1.CAPTenantOperationTypeUpgrade:        string(Upgrading),
 	v1alpha1.CAPTenantOperationTypeDeprovisioning: string(Deprovisioning),
 }
 
