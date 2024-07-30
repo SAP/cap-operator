@@ -690,11 +690,20 @@ func addCAPTenantOperationLabels(ctop *v1alpha1.CAPTenantOperation, cat *v1alpha
 		updated = true
 	}
 
+	// Check and add missing labels
+	if _, ok := ctop.Labels[LabelBTPApplicationIdentifierHash]; !ok {
+		// Add missing BTPApplicationIdentifierHash label
+		ctop.Labels[LabelBTPApplicationIdentifierHash] = cat.Labels[LabelBTPApplicationIdentifierHash]
+		updated = true
+	}
 	if _, ok := ctop.Labels[LabelTenantOperationType]; !ok {
+		// Add missing Tenant operation type label
 		ctop.Labels[LabelTenantOperationType] = string(ctop.Spec.Operation)
-		if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeUpgrade {
-			ctop.Labels[LabelCAVVersion] = cat.Spec.Version
-		}
+		updated = true
+	}
+	if _, ok := ctop.Labels[LabelCAVVersion]; !ok {
+		// Also update version label
+		ctop.Labels[LabelCAVVersion] = cat.Spec.Version
 		updated = true
 	}
 	return updated

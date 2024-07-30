@@ -426,11 +426,8 @@ func (c *Controller) createCAPTenantOperation(ctx context.Context, cat *v1alpha1
 	// create CAPTenantOperation
 	ctop := &v1alpha1.CAPTenantOperation{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:    cat.Namespace,
-			GenerateName: cat.Name + "-",
-			Labels: map[string]string{
-				LabelBTPApplicationIdentifierHash: cat.Labels[LabelBTPApplicationIdentifierHash],
-			},
+			Namespace:       cat.Namespace,
+			GenerateName:    cat.Name + "-",
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(cat, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind))},
 			Finalizers:      []string{FinalizerCAPTenantOperation},
 		},

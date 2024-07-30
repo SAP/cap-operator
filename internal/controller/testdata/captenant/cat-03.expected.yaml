@@ -49,6 +49,7 @@ metadata:
     sme.sap.com/owner-identifier: default.test-cap-01-consumer
   labels:
     sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/cav-version: 5.6.7
     sme.sap.com/owner-generation: "0"
     sme.sap.com/owner-identifier-hash: a9df2080f99fd77b1b2c7e4cee1e1bff69498511
     sme.sap.com/tenant-operation-type: provisioning
