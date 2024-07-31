@@ -158,6 +158,10 @@ func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1al
 			// Skip non relevant tenants
 			continue
 		}
+		if tenant.Status.State == v1alpha1.CAPTenantStateProvisioning || tenant.Status.State == v1alpha1.CAPTenantStateUpgrading || tenant.Status.State == v1alpha1.CAPTenantStateDeleting {
+			// Skip tenants that are not ready or not in processing or not in error
+			continue
+		}
 		// Assume we may have to update the tenant and prepare a copy
 		cat := tenant.DeepCopy()
 
