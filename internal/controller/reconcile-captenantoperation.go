@@ -195,7 +195,7 @@ func (c *Controller) updateCAPTenantOperation(ctx context.Context, ctop *v1alpha
 func (c *Controller) handleCAPTenantOperationDeletion(ctx context.Context, ctop *v1alpha1.CAPTenantOperation) (*ReconcileResult, error) {
 	// remove finalizer
 	if removeFinalizer(&ctop.Finalizers, FinalizerCAPTenantOperation) {
-		util.LogInfo("Removing Finalizer; finished deleting this tenant operation", string(TenantOperationDeleting), ctop, nil)
+		util.LogInfo("Removing finalizer; finished deleting this tenant operation", string(Deleting), ctop, nil, "tenantId", ctop.Spec.TenantId, "version", ctop.Labels[LabelCAVVersion])
 		return c.updateCAPTenantOperation(ctx, ctop, false)
 	}
 	return nil, nil
@@ -294,13 +294,13 @@ func (c *Controller) setCAPTenantOperationStatusFromJob(ctop *v1alpha1.CAPTenant
 	processStepCompletion := func() {
 		status.conditionReason = CAPTenantOperationConditionReasonStepCompleted
 
-		util.LogInfo("Tenant Operation "+status.conditionMessage, string(TenantOperationProcessing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
+		util.LogInfo("Tenant operation job "+job.Name+" completed", string(Processing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 
 		if isFinalStep {
 			status.state = v1alpha1.CAPTenantOperationStateCompleted
 			status.conditionStatus = metav1.ConditionTrue
 			ctop.SetStatusCurrentStep(nil, nil)
-			util.LogInfo("Completed Tenant Operation(s) successfully", string(TenantOperationReady), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
+			util.LogInfo("Completed all tenant operation job(s) successfully", string(Ready), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 		} else {
 			status.state = v1alpha1.CAPTenantOperationStateProcessing
 			status.conditionStatus = metav1.ConditionFalse
@@ -434,12 +434,12 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 		job, err = c.createCustomTenantOperationJob(ctx, ctop, workload, params)
 	}
 	if err != nil {
-		util.LogError(err, "Failed to create job for tenant operation", string(TenantOperationProcessing), ctop, nil, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
+		util.LogError(err, "Failed to create job for tenant operation", string(Processing), ctop, nil, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 		return
 	}
 
 	msg := fmt.Sprintf("step %v/%v : job %s.%s created", *ctop.Status.CurrentStep, len(ctop.Spec.Steps), job.Namespace, job.Name)
-	util.LogInfo(msg+" successfully", string(TenantOperationProcessing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
+	util.LogInfo("Tenant operation job "+job.Name+" created successfully", string(Processing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 	ctop.SetStatusWithReadyCondition(v1alpha1.CAPTenantOperationStateProcessing, metav1.ConditionFalse, CAPTenantOperationConditionReasonStepInitiated, msg)
 	ctop.SetStatusCurrentStep(ctop.Status.CurrentStep, &job.Name)
 	c.Event(ctop, job, corev1.EventTypeNormal, CAPTenantOperationConditionReasonStepInitiated, EventActionCreateJob, msg)
@@ -512,7 +512,7 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 		},
 	}
 
-	util.LogInfo("Creating job for tenant operation", string(TenantOperationProcessing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
+	util.LogInfo("Creating tenant operation job", string(Processing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 	return c.kubeClient.BatchV1().Jobs(ctop.Namespace).Create(ctx, job, metav1.CreateOptions{})
 }
 
@@ -662,7 +662,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 		},
 	}
 
-	util.LogInfo("Creating job for custom tenant operation", string(TenantOperationProcessing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, LabelBTPApplicationIdentifierHash, job.Labels[LabelBTPApplicationIdentifierHash])
+	util.LogInfo("Creating custom tenant operation job", string(Processing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 	return c.kubeClient.BatchV1().Jobs(ctop.Namespace).Create(ctx, job, metav1.CreateOptions{})
 }
 
@@ -690,11 +690,20 @@ func addCAPTenantOperationLabels(ctop *v1alpha1.CAPTenantOperation, cat *v1alpha
 		updated = true
 	}
 
+	// Check and add missing labels
+	if _, ok := ctop.Labels[LabelBTPApplicationIdentifierHash]; !ok {
+		// Add missing BTPApplicationIdentifierHash label
+		ctop.Labels[LabelBTPApplicationIdentifierHash] = cat.Labels[LabelBTPApplicationIdentifierHash]
+		updated = true
+	}
 	if _, ok := ctop.Labels[LabelTenantOperationType]; !ok {
+		// Add missing Tenant operation type label
 		ctop.Labels[LabelTenantOperationType] = string(ctop.Spec.Operation)
-		if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeUpgrade {
-			ctop.Labels[LabelCAVVersion] = cat.Spec.Version
-		}
+		updated = true
+	}
+	if _, ok := ctop.Labels[LabelCAVVersion]; !ok {
+		// Also update version label
+		ctop.Labels[LabelCAVVersion] = cat.Spec.Version
 		updated = true
 	}
 	return updated

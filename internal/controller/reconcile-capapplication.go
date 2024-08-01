@@ -119,7 +119,7 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 		return
 	}
 
-	// step 5 - check state of dependant resources
+	// step 5 - check state of dependent resources
 	if processing, err = c.checkPrimaryDomainResources(ctx, ca); err != nil || processing {
 		return
 	}
@@ -270,7 +270,7 @@ func (c *Controller) validateSecrets(ctx context.Context, ca *v1alpha1.CAPApplic
 	// waiting for secrets
 	message := fmt.Sprintf("waiting for secrets to get ready for %s %s.%s", v1alpha1.CAPApplicationKind, ca.Name, ca.Namespace)
 
-	util.LogInfo(message, string(ApplicationProcessing), ca, nil)
+	util.LogInfo("Waiting for secrets", string(Processing), ca, nil)
 	c.Event(ca, nil, corev1.EventTypeWarning, CAPApplicationEventMissingSecrets, EventActionProcessingSecrets, message)
 	ca.SetStatusWithReadyCondition(ca.Status.State, metav1.ConditionFalse, EventActionProcessingSecrets, message)
 	return true, nil
@@ -324,13 +324,13 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 			},
 		}, metav1.CreateOptions{})
 		if err != nil {
-			util.LogError(err, "Error creating tenant subscription context secret", string(ApplicationProcessing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
+			util.LogError(err, "Error creating tenant subscription context secret", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
 			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
 			return false, err
 		}
 
 		// Create provider tenant
-		util.LogInfo("Creating Provider tenant", string(ApplicationProcessing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
+		util.LogInfo("Creating provider tenant", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
 
 		if tenant, err = c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Create(
 			ctx, &v1alpha1.CAPTenant{
@@ -366,7 +366,7 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 			}
 			_, err = c.kubeClient.CoreV1().Secrets(tenant.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
 			if err != nil {
-				util.LogError(err, "Error updating tenant subscription context secret", string(ApplicationProcessing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
+				util.LogError(err, "Error updating tenant subscription context secret", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
 				ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
 				return false, err
 			}
@@ -382,7 +382,7 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 		}
 
 		msg := fmt.Sprintf("provider %v not ready for %v %v.%v; waiting for it to be ready", v1alpha1.CAPTenantKind, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
-		util.LogInfo(msg, string(ApplicationProcessing), ca, tenant, "tenantId", ca.Spec.Provider.TenantId)
+		util.LogInfo("Waiting for provider tenant to be ready", string(Processing), ca, tenant, "tenantId", ca.Spec.Provider.TenantId)
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, EventActionProviderTenantProcessing, msg)
 		return true, nil
 	}
@@ -393,34 +393,34 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alpha1.CAPApplication) (*ReconcileResult, error) {
 	var err error
 
-	util.LogInfo("Attempting to delete CAPApplication", string(ApplicationDeleting), ca, nil)
+	util.LogInfo("Attempting to delete application", string(Deleting), ca, nil)
 	if ca.Status.State != v1alpha1.CAPApplicationStateDeleting {
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateDeleting, metav1.ConditionFalse, "DeleteTriggered", "")
 		return NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0), nil
 	}
 
 	// TODO: cleanup domain resources via reconciliation
-	util.LogInfo("Removing Primary Domain Certificate", string(ApplicationDeleting), ca, nil)
+	util.LogInfo("Removing primary domain certificate", string(Deleting), ca, nil)
 	if err = c.deletePrimaryDomainCertificate(ctx, ca); err != nil && !k8sErrors.IsNotFound(err) {
 		return nil, err
 	}
 
 	// delete CAPTenants - return if found in this loop, to verify deletion
 	var tenantFound bool
-	util.LogInfo("Deleting Tenants", string(ApplicationDeleting), ca, nil)
+	util.LogInfo("Deleting dependent tenants", string(Deleting), ca, nil)
 	if tenantFound, err = c.deleteTenants(ctx, ca); tenantFound || err != nil {
-		util.LogInfo("Could not delete; tenants exists for this application", string(ApplicationDeleting), ca, nil)
+		util.LogError(err, "Could not delete dependent tenant", string(Deleting), ca, nil)
 		return nil, err
 	}
 
-	util.LogInfo("Cleaning up secrets", string(ApplicationDeleting), ca, nil)
+	util.LogInfo("Cleaning up secrets", string(Deleting), ca, nil)
 	if err = c.cleanupPreservedSecrets(ca.Spec.BTP.Services, ca.Namespace); err != nil && !k8sErrors.IsNotFound(err) {
 		return nil, err
 	}
 
 	// delete CAPApplication
 	if removeFinalizer(&ca.Finalizers, FinalizerCAPApplication) {
-		util.LogInfo("Removing Finalizer; finished deleting this application", string(ApplicationDeleting), ca, nil)
+		util.LogInfo("Removing Finalizer; finished deleting this application", string(Deleting), ca, nil)
 		return nil, c.updateCAPApplication(ctx, ca)
 	}
 

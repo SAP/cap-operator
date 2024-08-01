@@ -16,8 +16,8 @@ const (
 	Name          = "name"
 	Namespace     = "namespace"
 	Kind          = "kind"
-	DependantName = "dependantName"
-	DependantKind = "dependantKind"
+	DependentName = "dependentName"
+	DependentKind = "dependentKind"
 )
 
 const LabelBTPApplicationIdentifierHash = "sme.sap.com/btp-app-identifier-hash"
@@ -57,8 +57,8 @@ func extractEntityMeta(entity interface{}, isRoot bool, skipLabel bool) map[stri
 		}
 	} else {
 		args = map[string]string{
-			DependantName: objectMeta.GetName(),
-			DependantKind: kind,
+			DependentName: objectMeta.GetName(),
+			DependentKind: kind,
 		}
 	}
 

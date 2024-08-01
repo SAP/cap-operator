@@ -440,7 +440,7 @@ func TestCAV_DeletingWithReadyTenants(t *testing.T) {
 				"testdata/capapplicationversion/cav-ready-deleting.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-deleting.yaml",
-			expectError:       false, // cav is requeued until dependants are gone
+			expectError:       false, // cav is requeued until dependents are gone
 			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 		},
 	)
@@ -451,7 +451,7 @@ func TestCAV_DeletingWithUpgradingVersionTenants(t *testing.T) {
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
 		TestData{
-			description: "capapplication deleting with valid upgrading (version dependant) tenants",
+			description: "capapplication deleting with valid upgrading (version dependent) tenants",
 			initialResources: []string{
 				"testdata/common/capapplication.yaml",
 				"testdata/common/credential-secrets.yaml",
@@ -460,7 +460,7 @@ func TestCAV_DeletingWithUpgradingVersionTenants(t *testing.T) {
 				"testdata/capapplicationversion/cav-ready-deleting.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-deleting.yaml",
-			expectError:       false, // cav is requeued until dependants are gone
+			expectError:       false, // cav is requeued until dependents are gone
 			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 		},
 	)
