@@ -619,13 +619,13 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 	}()
 
 	if drModified, err = c.reconcileTenantDestinationRule(ctx, cat, cavName, ca); err != nil {
-		util.LogError(err, "Destination rule reconcilation failed", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
+		util.LogError(err, "Destination rule reconciliation failed", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		reason = CAPTenantEventDestinationRuleModificationFailed
 		return
 	}
 
 	if vsModified, err = c.reconcileTenantVirtualService(ctx, cat, cavName, ca); err != nil {
-		util.LogError(err, "Virtual service reconcilation failed", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
+		util.LogError(err, "Virtual service reconciliation failed", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		reason = CAPTenantEventVirtualServiceModificationFailed
 		return
 	}
