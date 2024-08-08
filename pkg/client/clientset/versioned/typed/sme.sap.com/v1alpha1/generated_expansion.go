@@ -14,3 +14,5 @@ type CAPApplicationVersionExpansion interface{}
 type CAPTenantExpansion interface{}
 
 type CAPTenantOperationExpansion interface{}
+
+type CAPTenantOutputExpansion interface{}
