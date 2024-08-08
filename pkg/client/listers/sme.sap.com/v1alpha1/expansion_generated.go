@@ -38,3 +38,11 @@ type CAPTenantOperationListerExpansion interface{}
 // CAPTenantOperationNamespaceListerExpansion allows custom methods to be added to
 // CAPTenantOperationNamespaceLister.
 type CAPTenantOperationNamespaceListerExpansion interface{}
+
+// CAPTenantOutputListerExpansion allows custom methods to be added to
+// CAPTenantOutputLister.
+type CAPTenantOutputListerExpansion interface{}
+
+// CAPTenantOutputNamespaceListerExpansion allows custom methods to be added to
+// CAPTenantOutputNamespaceLister.
+type CAPTenantOutputNamespaceListerExpansion interface{}

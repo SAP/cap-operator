@@ -46,13 +46,16 @@ const (
 	tenantId        = "012012012-1234-1234-123456"
 )
 
-func setup(ca *v1alpha1.CAPApplication, cat *v1alpha1.CAPTenant, client *http.Client) *SubscriptionHandler {
+func setup(ca *v1alpha1.CAPApplication, cat *v1alpha1.CAPTenant, ctout *v1alpha1.CAPTenantOutput, client *http.Client) *SubscriptionHandler {
 	crdObjects := []runtime.Object{}
 	if ca != nil {
 		crdObjects = append(crdObjects, ca)
 	}
 	if cat != nil {
 		crdObjects = append(crdObjects, cat)
+	}
+	if ctout != nil {
+		crdObjects = append(crdObjects, ctout)
 	}
 
 	subHandler := NewSubscriptionHandler(fake.NewSimpleClientset(crdObjects...), k8sfake.NewSimpleClientset(createSecrets()...))
@@ -221,7 +224,7 @@ func TestMain(m *testing.M) {
 func Test_IncorrectMethod(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPatch, RequestPath, strings.NewReader(`{"foo": "bar"}`))
-	subHandler := setup(nil, nil, nil)
+	subHandler := setup(nil, nil, nil, nil)
 	subHandler.HandleRequest(res, req)
 	if res.Code != http.StatusMethodNotAllowed {
 		t.Errorf("Expected status '%d', received '%d'", http.StatusMethodNotAllowed, res.Code)
@@ -251,6 +254,7 @@ func Test_provisioning(t *testing.T) {
 		invalidAdditionalData bool
 		withSecretKey         bool
 		existingTenant        bool
+		existingTenantOutput  bool
 		expectedStatusCode    int
 		expectedResponse      Result
 	}{
@@ -305,6 +309,19 @@ func Test_provisioning(t *testing.T) {
 			},
 		},
 		{
+			name:                 "Provisioning Request valid with additional data and existing tenant and existing tenant output",
+			method:               http.MethodPut,
+			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			createCROs:           true,
+			withAdditionalData:   true,
+			existingTenant:       true,
+			existingTenantOutput: true,
+			expectedStatusCode:   http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceCreated,
+			},
+		},
+		{
 			name:                  "Provisioning Request valid with invalid additional data and existing tenant",
 			method:                http.MethodPut,
 			body:                  `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
@@ -334,6 +351,7 @@ func Test_provisioning(t *testing.T) {
 		t.Run(testData.name, func(t *testing.T) {
 			var ca *v1alpha1.CAPApplication
 			var cat *v1alpha1.CAPTenant
+			var ctout *v1alpha1.CAPTenantOutput
 			if testData.createCROs {
 				ca = createCA()
 				if testData.withAdditionalData {
@@ -347,11 +365,14 @@ func Test_provisioning(t *testing.T) {
 			if testData.existingTenant {
 				cat = createCAT(testData.withAdditionalData)
 			}
+			if testData.existingTenantOutput {
+				ctout = &v1alpha1.CAPTenantOutput{ObjectMeta: v1.ObjectMeta{Name: caName + "-provider", Namespace: v1.NamespaceDefault, Labels: map[string]string{LabelTenantId: tenantId}}, Spec: v1alpha1.CAPTenantOutputSpec{SubscriptionCallbackData: "{\"foo3\":\"bar3\"}"}}
+			}
 			client, tokenString, err := SetupValidTokenAndIssuerForSubscriptionTests("appname!b14")
 			if err != nil {
 				t.Fatal(err.Error())
 			}
-			subHandler := setup(ca, cat, client)
+			subHandler := setup(ca, cat, ctout, client)
 
 			res := httptest.NewRecorder()
 			req := httptest.NewRequest(testData.method, RequestPath, strings.NewReader(testData.body))
@@ -446,7 +467,7 @@ func Test_deprovisioning(t *testing.T) {
 			if err != nil {
 				t.Fatal(err.Error())
 			}
-			subHandler := setup(ca, cat, client)
+			subHandler := setup(ca, cat, nil, client)
 
 			res := httptest.NewRecorder()
 			req := httptest.NewRequest(testData.method, RequestPath, strings.NewReader(testData.body))
@@ -614,7 +635,7 @@ func TestAsyncCallback(t *testing.T) {
 		saasData.CredentialType = p.useCredentialType
 		t.Run(p.testName, func(t *testing.T) {
 			client := createCallbackTestServer(context.TODO(), t, &p)
-			subHandler := setup(nil, nil, client)
+			subHandler := setup(nil, nil, nil, client)
 			subHandler.handleAsyncCallback(
 				ctx,
 				saasData,
@@ -631,7 +652,7 @@ func TestAsyncCallback(t *testing.T) {
 func TestCheckTenantStatusContextCancellationAsyncTimeout(t *testing.T) {
 	execTestsWithBLI(t, "Check Tenant Status Context Cancellation AsyncTimeout", []string{"ERP4SMEPREPWORKAPPPLAT-2240"}, func(t *testing.T) {
 		// test context cancellation (like deadline)
-		subHandler := setup(nil, nil, nil)
+		subHandler := setup(nil, nil, nil, nil)
 		notify := make(chan bool)
 		go func() {
 			r := subHandler.checkCAPTenantStatus(context.Background(), "default", "test-cat", true, "4000")
@@ -654,7 +675,7 @@ func TestCheckTenantStatusContextCancellationAsyncTimeout(t *testing.T) {
 func TestCheckTenantStatusTenantReady(t *testing.T) {
 	// test context cancellation (like deadline)
 	cat := createCAT(true)
-	subHandler := setup(nil, cat, nil)
+	subHandler := setup(nil, cat, nil, nil)
 	r := subHandler.checkCAPTenantStatus(context.TODO(), cat.Namespace, cat.Name, true, "")
 
 	if r != true {
@@ -666,7 +687,7 @@ func TestCheckTenantStatusWithCallbacktimeout(t *testing.T) {
 	execTestsWithBLI(t, "Check Tenant Status With Callback timeout", []string{"ERP4SMEPREPWORKAPPPLAT-2240"}, func(t *testing.T) {
 		// test context cancellation (like deadline)
 		cat := createCAT(false)
-		subHandler := setup(nil, cat, nil)
+		subHandler := setup(nil, cat, nil, nil)
 		r := subHandler.checkCAPTenantStatus(context.TODO(), cat.Namespace, cat.Name, true, "4000")
 
 		if r != false {
@@ -680,7 +701,7 @@ func TestMultiXSUAA(t *testing.T) {
 		// CA without "sme.sap.com/primary-xsuaa" annotation
 		ca := createCA()
 
-		subHandler := setup(ca, nil, nil)
+		subHandler := setup(ca, nil, nil, nil)
 		uaaCreds := subHandler.getXSUAADetails(ca, "Test")
 
 		if uaaCreds.AuthUrl != "https://app-domain.auth.service.local" {

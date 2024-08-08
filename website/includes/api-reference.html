@@ -14,6 +14,8 @@ Resource Types:
 <a href="#sme.sap.com/v1alpha1.CAPTenant">CAPTenant</a>
 </li><li>
 <a href="#sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput</a>
 </li></ul>
 <h3 id="sme.sap.com/v1alpha1.CAPApplication">CAPApplication
 </h3>
@@ -550,6 +552,79 @@ CAPTenantOperationStatus
 </td>
 <td>
 <p>CAPTenantOperation status</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput
+</h3>
+<div>
+<p>CAPTenantOutput is the schema for captenantoutputs API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>CAPTenantOutput</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOutputSpec">
+CAPTenantOutputSpec
+</a>
+</em>
+</td>
+<td>
+<p>CAPTenantOutputData spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>subscriptionCallbackData</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</table>
 </td>
 </tr>
 </tbody>
@@ -1294,6 +1369,33 @@ bool
 <td><p>Upgrade tenant</p>
 </td>
 </tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOutputSpec">CAPTenantOutputSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>subscriptionCallbackData</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.CAPTenantSpec">CAPTenantSpec
 </h3>
@@ -2374,5 +2476,5 @@ JobDetails
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>bf6ae8c</code>.
+on git commit <code>22e4ca7</code>.
 </em></p>

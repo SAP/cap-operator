@@ -54,6 +54,7 @@ import (
 
 var gvrKindMap map[string]string = map[string]string{
 	"dnsentries.dns.gardener.cloud/v1alpha1":      "DNSEntry",
+	"captenantoutputs.sme.sap.com/v1alpha1":       "CAPTenantOutput",
 	"captenantoperations.sme.sap.com/v1alpha1":    "CAPTenantOperation",
 	"captenants.sme.sap.com/v1alpha1":             "CAPTenant",
 	"capapplications.sme.sap.com/v1alpha1":        "CAPApplication",
