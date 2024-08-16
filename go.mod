@@ -4,7 +4,7 @@ go 1.23.0
 
 require (
 	github.com/MicahParks/keyfunc/v2 v2.1.0
-	github.com/cert-manager/cert-manager v1.15.2
+	github.com/cert-manager/cert-manager v1.15.3
 	github.com/gardener/cert-management v0.15.0
 	github.com/gardener/external-dns-management v0.20.1
 	github.com/go-logr/logr v1.4.2
