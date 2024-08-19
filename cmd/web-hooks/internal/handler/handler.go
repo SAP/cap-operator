@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -575,7 +575,7 @@ func (wh *WebhookHandler) Validate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	klog.Infof("incoming admission review for: %s", admissionReview.Request.Kind.Kind)
+	klog.InfoS("incoming admission review", "kind", admissionReview.Request.Kind.Kind)
 
 	validation := validAdmissionReviewObj()
 
@@ -643,14 +643,14 @@ func prepareResponse(w http.ResponseWriter, admissionReview *admissionv1.Admissi
 	}
 	finalizedAdmissionReview.APIVersion = admissionReview.APIVersion
 
+	message := ValidationMessage
 	if !validation.allowed {
 		finalizedAdmissionReview.Response.Result = &metav1.Status{
 			Message: validation.message,
 		}
-		klog.Info(admissionReview.Request.Kind.Kind + " " + string(admissionReview.Request.Operation) + " " + InvalidationMessage)
-	} else {
-		klog.Info(admissionReview.Request.Kind.Kind + " " + string(admissionReview.Request.Operation) + " " + ValidationMessage)
+		message = InvalidationMessage
 	}
+	klog.InfoS(message, "kind", admissionReview.Request.Kind.Kind, "operation", string(admissionReview.Request.Operation))
 
 	if bytes, err := json.Marshal(&finalizedAdmissionReview); err != nil {
 		httpError(w, http.StatusInternalServerError, fmt.Errorf("%s %w", AdmissionError, err))
@@ -661,7 +661,7 @@ func prepareResponse(w http.ResponseWriter, admissionReview *admissionv1.Admissi
 }
 
 func httpError(w http.ResponseWriter, code int, err error) {
-	klog.Error(err)
+	klog.ErrorS(err, err.Error())
 	http.Error(w, err.Error(), code)
 }
 

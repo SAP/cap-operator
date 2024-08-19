@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -33,6 +33,7 @@ const (
 )
 
 func main() {
+	klog.SetLogger(util.GetLogger())
 	config := util.GetConfig()
 	if config == nil {
 		klog.Fatal("Config not found")
@@ -80,7 +81,7 @@ func main() {
 	signal.Notify(leaseCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-leaseCh
-		klog.Info("Interrupt received, shutting down operator context")
+		klog.InfoS("Interrupt received, shutting down operator context")
 		cancel()
 	}()
 
@@ -105,25 +106,19 @@ func main() {
 		ReleaseOnCancel: true,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
-				klog.Infof("Started leading: %s - %s", LeaseLockName, leaseLockId)
-
-				checkDone := make(chan bool, 1)
-				go checkHashedLabels(checkDone, coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient)
-				<-checkDone
-				klog.Info("check & update of hashed labels done")
-
+				klog.InfoS("Started leading: ", LeaseLockName, leaseLockId)
 				c := controller.NewController(coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient)
 				go c.Start(ctx)
 			},
 			OnStoppedLeading: func() {
-				klog.Infof("Stopped leading: %s - %s", LeaseLockName, leaseLockId)
+				klog.InfoS("Stopped leading: ", LeaseLockName, leaseLockId)
 				os.Exit(0)
 			},
 			OnNewLeader: func(id string) {
 				if id == leaseLockId {
 					return
 				}
-				klog.Infof("Leader exists: %s", id)
+				klog.InfoS("Leader exists: ", LeaseLockName, id)
 			},
 		},
 	})

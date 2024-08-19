@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -9,7 +9,7 @@ package v1alpha1
 
 import (
 	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
 // CAPApplicationVersionStatusApplyConfiguration represents an declarative configuration of the CAPApplicationVersionStatus type for use
@@ -37,9 +37,12 @@ func (b *CAPApplicationVersionStatusApplyConfiguration) WithObservedGeneration(v
 // WithConditions adds the given value to the Conditions field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Conditions field.
-func (b *CAPApplicationVersionStatusApplyConfiguration) WithConditions(values ...v1.Condition) *CAPApplicationVersionStatusApplyConfiguration {
+func (b *CAPApplicationVersionStatusApplyConfiguration) WithConditions(values ...*v1.ConditionApplyConfiguration) *CAPApplicationVersionStatusApplyConfiguration {
 	for i := range values {
-		b.Conditions = append(b.Conditions, values[i])
+		if values[i] == nil {
+			panic("nil value passed to WithConditions")
+		}
+		b.Conditions = append(b.Conditions, *values[i])
 	}
 	return b
 }

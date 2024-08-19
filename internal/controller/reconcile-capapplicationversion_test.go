@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -440,7 +440,7 @@ func TestCAV_DeletingWithReadyTenants(t *testing.T) {
 				"testdata/capapplicationversion/cav-ready-deleting.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-deleting.yaml",
-			expectError:       false, // cav is requeued until dependants are gone
+			expectError:       false, // cav is requeued until dependents are gone
 			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 		},
 	)
@@ -451,7 +451,7 @@ func TestCAV_DeletingWithUpgradingVersionTenants(t *testing.T) {
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
 		TestData{
-			description: "capapplication deleting with valid upgrading (version dependant) tenants",
+			description: "capapplication deleting with valid upgrading (version dependent) tenants",
 			initialResources: []string{
 				"testdata/common/capapplication.yaml",
 				"testdata/common/credential-secrets.yaml",
@@ -460,7 +460,7 @@ func TestCAV_DeletingWithUpgradingVersionTenants(t *testing.T) {
 				"testdata/capapplicationversion/cav-ready-deleting.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-deleting.yaml",
-			expectError:       false, // cav is requeued until dependants are gone
+			expectError:       false, // cav is requeued until dependents are gone
 			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 		},
 	)
@@ -720,6 +720,46 @@ func TestCAV_Node_PriorityClass_Names(t *testing.T) {
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-node-prio.yaml",
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-3294", // More workload configuration enhancements
+			},
+		},
+	)
+}
+
+func TestCAV_Volumes_and_ServiceAccountName(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with volumes and serviceAccountName",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/content-job-completed.yaml",
+				"testdata/capapplicationversion/cav-vol.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-vol.yaml",
+			backlogItems: []string{
+				"ERP4SMEPREPWORKAPPPLAT-6370", // More workload configuration enhancements
+			},
+		},
+	)
+}
+
+func TestCAV_InitContainers(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with initContainers",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/content-job-completed.yaml",
+				"testdata/capapplicationversion/cav-init.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-init.yaml",
+			backlogItems: []string{
+				"ERP4SMEPREPWORKAPPPLAT-7450", //initContainers
 			},
 		},
 	)

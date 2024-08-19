@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -10,21 +10,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	"golang.org/x/exp/slices"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog/v2"
 )
 
 type ProvisioningPayload struct {
@@ -38,10 +34,14 @@ type UpgradePayload struct {
 }
 
 type tentantOperationWorkload struct {
+	initContainers            []corev1.Container
 	image                     string
 	imagePullPolicy           corev1.PullPolicy
 	command                   []string
 	env                       []corev1.EnvVar
+	volumeMounts              []corev1.VolumeMount
+	volumes                   []corev1.Volume
+	serviceAccountName        string
 	resources                 corev1.ResourceRequirements
 	securityContext           *corev1.SecurityContext
 	podSecurityContext        *corev1.PodSecurityContext
@@ -57,13 +57,6 @@ type tentantOperationWorkload struct {
 
 const (
 	CAPTenantOperationEventInvalidReference = "InvalidReference"
-)
-
-const (
-	EnvMTXJobImage            = "MTX_JOB_IMAGE"
-	MTXJobImageAllowedPattern = "^ghcr\\.io/sap/cap-operator"
-	MTXJobImageDefault        = "ghcr.io/sap/cap-operator/mtx-job"
-	EnvIsMTXSEnabled          = "IS_MTXS_ENABLED"
 )
 
 type cros struct {
@@ -159,6 +152,11 @@ func (c *Controller) prepareCAPTenantOperation(ctop *v1alpha1.CAPTenantOperation
 		update = true
 	}
 
+	// copy over the subscription context secret from tenant if any
+	if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning && cat.Annotations[AnnotationSubscriptionContextSecret] != "" {
+		ctop.Annotations[AnnotationSubscriptionContextSecret] = cat.Annotations[AnnotationSubscriptionContextSecret]
+	}
+
 	if ctop.DeletionTimestamp == nil {
 		// set finalizers if not added
 		if ctop.Finalizers == nil {
@@ -196,8 +194,8 @@ func (c *Controller) updateCAPTenantOperation(ctx context.Context, ctop *v1alpha
 
 func (c *Controller) handleCAPTenantOperationDeletion(ctx context.Context, ctop *v1alpha1.CAPTenantOperation) (*ReconcileResult, error) {
 	// remove finalizer
-	update := removeFinalizer(&ctop.Finalizers, FinalizerCAPTenantOperation)
-	if update {
+	if removeFinalizer(&ctop.Finalizers, FinalizerCAPTenantOperation) {
+		util.LogInfo("Removing finalizer; finished deleting this tenant operation", string(Deleting), ctop, nil, "tenantId", ctop.Spec.TenantId, "version", ctop.Labels[LabelCAVVersion])
 		return c.updateCAPTenantOperation(ctx, ctop, false)
 	}
 	return nil, nil
@@ -295,10 +293,14 @@ func (c *Controller) setCAPTenantOperationStatusFromJob(ctop *v1alpha1.CAPTenant
 
 	processStepCompletion := func() {
 		status.conditionReason = CAPTenantOperationConditionReasonStepCompleted
+
+		util.LogInfo("Tenant operation job "+job.Name+" completed", string(Processing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
+
 		if isFinalStep {
 			status.state = v1alpha1.CAPTenantOperationStateCompleted
 			status.conditionStatus = metav1.ConditionTrue
 			ctop.SetStatusCurrentStep(nil, nil)
+			util.LogInfo("Completed all tenant operation job(s) successfully", string(Ready), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 		} else {
 			status.state = v1alpha1.CAPTenantOperationStateProcessing
 			status.conditionStatus = metav1.ConditionFalse
@@ -432,10 +434,12 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 		job, err = c.createCustomTenantOperationJob(ctx, ctop, workload, params)
 	}
 	if err != nil {
+		util.LogError(err, "Failed to create job for tenant operation", string(Processing), ctop, nil, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 		return
 	}
 
 	msg := fmt.Sprintf("step %v/%v : job %s.%s created", *ctop.Status.CurrentStep, len(ctop.Spec.Steps), job.Namespace, job.Name)
+	util.LogInfo("Tenant operation job "+job.Name+" created successfully", string(Processing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 	ctop.SetStatusWithReadyCondition(v1alpha1.CAPTenantOperationStateProcessing, metav1.ConditionFalse, CAPTenantOperationConditionReasonStepInitiated, msg)
 	ctop.SetStatusCurrentStep(ctop.Status.CurrentStep, &job.Name)
 	c.Event(ctop, job, corev1.EventTypeNormal, CAPTenantOperationConditionReasonStepInitiated, EventActionCreateJob, msg)
@@ -493,6 +497,9 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 					RestartPolicy:             corev1.RestartPolicyNever,
 					ImagePullSecrets:          params.imagePullSecrets,
 					Containers:                getContainers(payload, ctop, derivedWorkload, workload, params),
+					InitContainers:            derivedWorkload.initContainers,
+					Volumes:                   derivedWorkload.volumes,
+					ServiceAccountName:        derivedWorkload.serviceAccountName,
 					SecurityContext:           derivedWorkload.podSecurityContext,
 					NodeSelector:              derivedWorkload.nodeSelector,
 					NodeName:                  derivedWorkload.nodeName,
@@ -505,82 +512,65 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 		},
 	}
 
+	util.LogInfo("Creating tenant operation job", string(Processing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 	return c.kubeClient.BatchV1().Jobs(ctop.Namespace).Create(ctx, job, metav1.CreateOptions{})
 }
 
-func isMTXSDisabled(envVars []corev1.EnvVar) bool {
-	return slices.ContainsFunc(envVars, func(env corev1.EnvVar) bool { return env.Name == EnvIsMTXSEnabled && env.Value == "false" })
-}
-
 func getContainers(payload []byte, ctop *v1alpha1.CAPTenantOperation, derivedWorkload tentantOperationWorkload, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) []corev1.Container {
-	if !isMTXSDisabled(derivedWorkload.env) {
-		var operation string
-		container := &corev1.Container{
-			Name:            workload.Name,
-			Image:           derivedWorkload.image,
-			ImagePullPolicy: derivedWorkload.imagePullPolicy,
-			Env: append([]corev1.EnvVar{
-				{Name: EnvCAPOpAppVersion, Value: params.version}, {Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId}, {Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)}, {Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
-			}, derivedWorkload.env...),
-			EnvFrom:         params.envFromVCAPSecret,
-			Resources:       derivedWorkload.resources,
-			SecurityContext: derivedWorkload.securityContext,
-		}
-
-		if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
-			operation = "subscribe"
-		} else if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeUpgrade {
-			operation = "upgrade"
-		} else { // deprovisioning
-			operation = "unsubscribe"
-		}
-
-		if derivedWorkload.command != nil {
-			container.Command = derivedWorkload.command
-		} else {
-			container.Command = []string{"node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx", operation, ctop.Spec.TenantId}
-		}
-
-		return append([]corev1.Container{}, *container)
+	container := &corev1.Container{
+		Name:            workload.Name,
+		Image:           derivedWorkload.image,
+		ImagePullPolicy: derivedWorkload.imagePullPolicy,
+		Env: append([]corev1.EnvVar{
+			{Name: EnvCAPOpAppVersion, Value: params.version},
+			{Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId},
+			{Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)},
+			{Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
+		}, derivedWorkload.env...),
+		EnvFrom:         params.envFromVCAPSecret,
+		VolumeMounts:    derivedWorkload.volumeMounts,
+		Resources:       derivedWorkload.resources,
+		SecurityContext: derivedWorkload.securityContext,
 	}
 
-	return []corev1.Container{
-		{
-			Name:  "trigger", // TODO: get rid of this --> hopefully with mtxs cli where we start a single container image
-			Image: getMTXJobImage(),
-			Env: []corev1.EnvVar{
-				{Name: "WAIT_FOR_SIDECAR", Value: "false"},
-				{Name: "XSUAA_INSTANCE_NAME", Value: params.xsuaaInstanceName},
-				{Name: "MTX_SERVICE_URL", Value: "http://localhost:" + strconv.Itoa(defaultServerPort)},
-				{Name: "MTX_REQUEST_TYPE", Value: string(ctop.Spec.Operation)},
-				{Name: "MTX_TENANT_ID", Value: ctop.Spec.TenantId},
-				{Name: "MTX_REQUEST_PAYLOAD", Value: string(payload)},
-			},
-			EnvFrom: params.envFromVCAPSecret,
-		},
-		{
-			Name:            workload.Name,
-			Image:           derivedWorkload.image,
-			ImagePullPolicy: derivedWorkload.imagePullPolicy,
-			Env: append([]corev1.EnvVar{
-				{Name: EnvCAPOpAppVersion, Value: params.version}, {Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId}, {Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)}, {Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
-			}, derivedWorkload.env...),
-			EnvFrom:         params.envFromVCAPSecret,
-			Resources:       derivedWorkload.resources,
-			SecurityContext: derivedWorkload.securityContext,
-			Command:         []string{"/bin/sh", "-c"},
-			Args:            []string{"node ./node_modules/@sap/cds/bin/cds run & nc -lv -s localhost -p 8080"},
-		},
+	var operation string
+
+	if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
+		operation = "subscribe"
+	} else if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeUpgrade {
+		operation = "upgrade"
+	} else { // deprovisioning
+		operation = "unsubscribe"
 	}
+
+	appendCommand := false
+	if derivedWorkload.command != nil {
+		container.Command = derivedWorkload.command
+	} else {
+		container.Command = []string{"node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx", operation, ctop.Spec.TenantId}
+		appendCommand = true
+	}
+	if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
+		container.Env = append(container.Env, corev1.EnvVar{Name: EnvCAPOpSubscriptionPayload, ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: ctop.Annotations[AnnotationSubscriptionContextSecret]}, Key: SubscriptionContext}}})
+		if appendCommand {
+			container.Command = append(container.Command, "--body", `$(`+EnvCAPOpSubscriptionPayload+`)`)
+		}
+	}
+
+	return append([]corev1.Container{}, *container)
 }
 
 func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentantOperationWorkload {
 	result := tentantOperationWorkload{}
 	if workload.JobDefinition == nil {
 		// this must be a reference to CAP workload
+		result.initContainers = workload.DeploymentDefinition.InitContainers
 		result.image = workload.DeploymentDefinition.Image
 		result.imagePullPolicy = workload.DeploymentDefinition.ImagePullPolicy
 		result.env = workload.DeploymentDefinition.Env
+		result.volumeMounts = workload.DeploymentDefinition.VolumeMounts
+		result.volumes = workload.DeploymentDefinition.Volumes
+		result.serviceAccountName = workload.DeploymentDefinition.ServiceAccountName
 		result.resources = workload.DeploymentDefinition.Resources
 		result.backoffLimit = &backoffLimitValue
 		result.ttlSecondsAfterFinished = &tTLSecondsAfterFinishedValue
@@ -594,10 +584,14 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 		result.tolerations = workload.DeploymentDefinition.Tolerations
 	} else {
 		// use job definition
+		result.initContainers = workload.JobDefinition.InitContainers
 		result.image = workload.JobDefinition.Image
 		result.imagePullPolicy = workload.JobDefinition.ImagePullPolicy
 		result.command = workload.JobDefinition.Command
 		result.env = workload.JobDefinition.Env
+		result.volumeMounts = workload.JobDefinition.VolumeMounts
+		result.volumes = workload.JobDefinition.Volumes
+		result.serviceAccountName = workload.JobDefinition.ServiceAccountName
 		result.resources = workload.JobDefinition.Resources
 		result.securityContext = workload.JobDefinition.SecurityContext
 		result.podSecurityContext = workload.JobDefinition.PodSecurityContext
@@ -638,6 +632,8 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 				Spec: corev1.PodSpec{
 					RestartPolicy:             corev1.RestartPolicyNever,
 					SecurityContext:           workload.JobDefinition.PodSecurityContext,
+					Volumes:                   workload.JobDefinition.Volumes,
+					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,
 					NodeSelector:              workload.JobDefinition.NodeSelector,
 					NodeName:                  workload.JobDefinition.NodeName,
 					PriorityClassName:         workload.JobDefinition.PriorityClassName,
@@ -654,28 +650,20 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 								{Name: EnvCAPOpAppVersion, Value: params.version}, {Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId}, {Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)}, {Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
 							}, workload.JobDefinition.Env...),
 							EnvFrom:         params.envFromVCAPSecret,
+							VolumeMounts:    workload.JobDefinition.VolumeMounts,
 							Command:         workload.JobDefinition.Command,
 							Resources:       workload.JobDefinition.Resources,
 							SecurityContext: workload.JobDefinition.SecurityContext,
 						},
 					},
+					InitContainers: workload.JobDefinition.InitContainers,
 				},
 			},
 		},
 	}
 
+	util.LogInfo("Creating custom tenant operation job", string(Processing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 	return c.kubeClient.BatchV1().Jobs(ctop.Namespace).Create(ctx, job, metav1.CreateOptions{})
-}
-
-func getMTXJobImage() string {
-	mtxJobImageUri := os.Getenv(EnvMTXJobImage)
-	allowedUri, _ := regexp.MatchString(MTXJobImageAllowedPattern, mtxJobImageUri)
-	if !allowedUri {
-		klog.Warning("MTX Job Image URI '", mtxJobImageUri, "' not given in environment, or not allowed. Falling back to default.")
-		mtxJobImageUri = MTXJobImageDefault
-	}
-
-	return mtxJobImageUri
 }
 
 func getXSUAAInstanceName(consumedServiceInfos []v1alpha1.ServiceInfo, relatedResources *cros, kubeClient kubernetes.Interface) (string, error) {
@@ -702,11 +690,20 @@ func addCAPTenantOperationLabels(ctop *v1alpha1.CAPTenantOperation, cat *v1alpha
 		updated = true
 	}
 
+	// Check and add missing labels
+	if _, ok := ctop.Labels[LabelBTPApplicationIdentifierHash]; !ok {
+		// Add missing BTPApplicationIdentifierHash label
+		ctop.Labels[LabelBTPApplicationIdentifierHash] = cat.Labels[LabelBTPApplicationIdentifierHash]
+		updated = true
+	}
 	if _, ok := ctop.Labels[LabelTenantOperationType]; !ok {
+		// Add missing Tenant operation type label
 		ctop.Labels[LabelTenantOperationType] = string(ctop.Spec.Operation)
-		if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeUpgrade {
-			ctop.Labels[LabelCAVVersion] = cat.Spec.Version
-		}
+		updated = true
+	}
+	if _, ok := ctop.Labels[LabelCAVVersion]; !ok {
+		// Also update version label
+		ctop.Labels[LabelCAVVersion] = cat.Spec.Version
 		updated = true
 	}
 	return updated

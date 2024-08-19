@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -37,10 +37,10 @@ func GetConfig() *rest.Config {
 			klog.Fatal("Error: ", err)
 			return nil
 		} else {
-			klog.Info("Found config file in: ", clientConfig.ConfigAccess().GetDefaultFilename())
+			klog.InfoS("Found config", "file", clientConfig.ConfigAccess().GetDefaultFilename())
 		}
 	} else {
-		klog.Info("Found config in cluster")
+		klog.InfoS("Found config in cluster")
 	}
 
 	return config

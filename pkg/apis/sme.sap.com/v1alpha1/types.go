@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -92,7 +92,7 @@ type CAPApplicationSpec struct {
 type ApplicationDomains struct {
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
 	// +kubebuilder:validation:MaxLength=62
-	// Primary application domain will be used to generate a wildcard TLS certificate. In SAP Gardener managed clusters this is (usually) a subdomain of the cluster domain
+	// Primary application domain will be used to generate a wildcard TLS certificate. In project "Gardener" managed clusters this is (usually) a subdomain of the cluster domain
 	Primary string `json:"primary"`
 	// Customer specific domains to serve application endpoints (optional)
 	Secondary []string `json:"secondary,omitempty"`
@@ -298,6 +298,12 @@ type CommonDetails struct {
 	Command []string `json:"command,omitempty"`
 	// Environment Config for the Container
 	Env []corev1.EnvVar `json:"env,omitempty"`
+	// Volume Configuration for the Pod
+	Volumes []corev1.Volume `json:"volumes,omitempty"`
+	// Volume Mount Configuration for the Container
+	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
+	// Name of the ServiceAccount to use to run the Pod
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// Resources
 	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
 	// SecurityContext for the Container
@@ -316,6 +322,8 @@ type CommonDetails struct {
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 	// The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+	// List of containers executed before the main container is started
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 }
 
 // Configuration of Service Ports for the deployment

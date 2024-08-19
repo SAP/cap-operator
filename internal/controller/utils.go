@@ -1,11 +1,12 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
 package controller
 
 import (
+	"context"
 	"crypto/sha1"
 	"crypto/sha256"
 	"fmt"
@@ -20,6 +21,8 @@ import (
 	"k8s.io/klog/v2"
 )
 
+const recoveredPanic = "RecoveredPanic"
+
 const (
 	certManagerGardener      = "gardener"
 	certManagerCertManagerIO = "cert-manager.io"
@@ -30,6 +33,7 @@ const (
 const (
 	certManagerEnv = "CERT_MANAGER"
 	dnsManagerEnv  = "DNS_MANAGER"
+	dnsTargetEnv   = "DNS_TARGET"
 )
 
 type ownerInfo struct {
@@ -135,7 +139,7 @@ func certificateManager() string {
 		if env == certManagerGardener || env == certManagerCertManagerIO {
 			mgr = env
 		} else {
-			klog.Error("Error parsing certificate manager environment variable: invalid value")
+			klog.ErrorS(nil, "Error parsing certificate manager environment variable: invalid value")
 		}
 	}
 	return mgr
@@ -148,10 +152,20 @@ func dnsManager() string {
 		if env == dnsManagerGardener || env == dnsManagerKubernetes {
 			mgr = env
 		} else {
-			klog.Error("Error parsing DNS manager environment variable: invalid value")
+			klog.ErrorS(nil, "Error parsing DNS manager environment variable: invalid value")
 		}
 	}
 	return mgr
+}
+
+func envDNSTarget() string {
+	target := ""
+	env := os.Getenv(dnsTargetEnv)
+	if env != "" {
+		// convert to lower case
+		target = strings.ToLower(env)
+	}
+	return target
 }
 
 func updateResourceAnnotation(object *metav1.ObjectMeta, hash string) {
@@ -174,22 +188,15 @@ func sha1Sum(source ...string) string {
 	return fmt.Sprintf("%x", sum)
 }
 
-func amendObjectMetadata(object *metav1.ObjectMeta, annotatedOldLabel string, hashLabel string, oldValue string, hashedValue string) (updated bool) {
-	// Check if old label exists, if so remove it
-	if _, ok := object.Labels[annotatedOldLabel]; ok {
-		// Should never happen
-		klog.Infof("Unexpected label %s=%s found for resource %s.%s", annotatedOldLabel, oldValue, object.Namespace, object.Name)
-		delete(object.Labels, annotatedOldLabel)
-		updated = true
-	}
-	// Add hashed label as the new label with the hashed identifier value
+func amendObjectMetadata(object *metav1.ObjectMeta, annotation string, hashLabel string, annotationValue string, hashedValue string) (updated bool) {
+	// Add hashed label with the hashed identifier value
 	if _, ok := object.Labels[hashLabel]; !ok {
 		object.Labels[hashLabel] = hashedValue
 		updated = true
 	}
-	// Add old label as an annotation with the old value
-	if _, ok := object.Annotations[annotatedOldLabel]; !ok {
-		object.Annotations[annotatedOldLabel] = oldValue
+	// Add annotation with value
+	if _, ok := object.Annotations[annotation]; !ok {
+		object.Annotations[annotation] = annotationValue
 		updated = true
 	}
 	// return if something was updated
@@ -220,4 +227,39 @@ func updateLabelAnnotationMetadata(object *metav1.ObjectMeta, appMetadata *appMe
 	}
 
 	return updated
+}
+
+func (c *Controller) setCAStatusError(ctx context.Context, itemKey NamespacedResourceKey, err error) {
+	cached, _ := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister().CAPApplications(itemKey.Namespace).Get(itemKey.Name)
+	ca := cached.DeepCopy()
+	ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, recoveredPanic, err.Error())
+	c.crdClient.SmeV1alpha1().CAPApplications(itemKey.Namespace).UpdateStatus(ctx, ca, metav1.UpdateOptions{})
+}
+
+func (c *Controller) setCAVStatusError(ctx context.Context, itemKey NamespacedResourceKey, err error) {
+	cached, _ := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(itemKey.Namespace).Get(itemKey.Name)
+	cav := cached.DeepCopy()
+	cav.SetStatusWithReadyCondition(v1alpha1.CAPApplicationVersionStateError, metav1.ConditionFalse, recoveredPanic, err.Error())
+	c.crdClient.SmeV1alpha1().CAPApplicationVersions(itemKey.Namespace).UpdateStatus(ctx, cav, metav1.UpdateOptions{})
+}
+
+func (c *Controller) setCATStatusError(ctx context.Context, itemKey NamespacedResourceKey, err error) {
+	cached, _ := c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(itemKey.Namespace).Get(itemKey.Name)
+	cat := cached.DeepCopy()
+	var state v1alpha1.CAPTenantState
+	// Determine error state based on current tenant state
+	if cat.Status.State == v1alpha1.CAPTenantStateUpgrading {
+		state = v1alpha1.CAPTenantStateUpgradeError
+	} else {
+		state = v1alpha1.CAPTenantStateProvisioningError
+	}
+	cat.SetStatusWithReadyCondition(state, metav1.ConditionFalse, recoveredPanic, err.Error())
+	c.crdClient.SmeV1alpha1().CAPTenants(itemKey.Namespace).UpdateStatus(ctx, cat, metav1.UpdateOptions{})
+}
+
+func (c *Controller) setCTOPStatusError(ctx context.Context, itemKey NamespacedResourceKey, err error) {
+	cached, _ := c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Lister().CAPTenantOperations(itemKey.Namespace).Get(itemKey.Name)
+	ctop := cached.DeepCopy()
+	ctop.SetStatusWithReadyCondition(v1alpha1.CAPTenantOperationStateFailed, metav1.ConditionFalse, recoveredPanic, err.Error())
+	c.crdClient.SmeV1alpha1().CAPTenantOperations(itemKey.Namespace).UpdateStatus(ctx, ctop, metav1.UpdateOptions{})
 }

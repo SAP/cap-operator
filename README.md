@@ -6,7 +6,7 @@
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/7803/badge)](https://www.bestpractices.dev/projects/7803)
 [![REUSE status](https://api.reuse.software/badge/github.com/SAP/cap-operator)](https://api.reuse.software/info/github.com/SAP/cap-operator)
 
-CAP Operator manages the lifecycle operations involved in running multi-tenant CAP applications on Kubernetes clusters, primarily SAP Gardener managed clusters.
+CAP Operator manages the lifecycle operations involved in running multi-tenant CAP applications on Kubernetes clusters, primarily project "Gardener" managed clusters.
 
 #### Documentation
 Visit the [Documentation](https://sap.github.io/cap-operator/docs) to find out how to install and use the CAP Operator
@@ -28,4 +28,4 @@ We as members, contributors, and leaders pledge to make participation in our com
 
 ## Licensing
 
-Copyright 2023 SAP SE or an SAP affiliate company and cap-operator contributors. Please see our [LICENSE](LICENSE) for copyright and license information. Detailed information including third-party components and their licensing/copyright information is available [via the REUSE tool](https://api.reuse.software/info/github.com/SAP/cap-operator).
+Copyright 2024 SAP SE or an SAP affiliate company and cap-operator contributors. Please see our [LICENSE](LICENSE) for copyright and license information. Detailed information including third-party components and their licensing/copyright information is available [via the REUSE tool](https://api.reuse.software/info/github.com/SAP/cap-operator).

@@ -8,10 +8,13 @@ metadata:
     - sme.sap.com/captenantoperation
   annotations:
     sme.sap.com/owner-identifier: default.test-cap-01-provider
+    sme.sap.com/subscription-context-secret: test-cap-01-gen
   labels:
     sme.sap.com/tenant-operation-type: provisioning
     sme.sap.com/owner-generation: "0"
     sme.sap.com/owner-identifier-hash: db1f1fd7eaeb0e6407c741b7e4b2540044bcc4ec
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/cav-version: "5.6.7"
   ownerReferences:
     - apiVersion: sme.sap.com/v1alpha1
       blockOwnerDeletion: true
@@ -96,6 +99,11 @@ spec:
               value: provisioning
             - name: CAPOP_TENANT_SUBDOMAIN
               value: my-provider
+            - name: CAPOP_SUBSCRIPTION_PAYLOAD
+              valueFrom:
+                secretKeyRef:
+                  name: test-cap-01-gen
+                  key: subscriptionContext
           envFrom:
             - secretRef:
                 name: test-cap-01-provider-abcd-mtx-gen

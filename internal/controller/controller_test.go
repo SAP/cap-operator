@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -278,7 +278,7 @@ func TestController_processQueueItem(t *testing.T) {
 				if res < 1 {
 					t.Error("Unexpected result", expectedRes, "; expected to contain", tt.errorString)
 				} else {
-					klog.Info("Error res", expectedRes, " expected result: ", tt.errorString)
+					klog.InfoS("Expected error occurred", "result", expectedRes, "expected result", tt.errorString)
 				}
 			} else {
 				if tt.expectRequeue {
@@ -290,4 +290,124 @@ func TestController_processQueueItem(t *testing.T) {
 			cancel()
 		})
 	}
+}
+
+func TestController_recoverFromPanic(t *testing.T) {
+	var resourceName = "test-res"
+	var catType = "provider"
+	tests := []struct {
+		name              string
+		resource          int
+		resourceName      string
+		resourceNamespace string
+		expectPanic       bool
+		catUpgrading      bool
+	}{
+		{
+			name:              "Test Controller recoverFromPanic - no panic in CAPApplication",
+			resource:          ResourceCAPApplication,
+			resourceName:      resourceName,
+			resourceNamespace: metav1.NamespaceDefault,
+			expectPanic:       false,
+		},
+		{
+			name:              "Test Controller recoverFromPanic - panic in CAPApplication",
+			resource:          ResourceCAPApplication,
+			resourceName:      resourceName,
+			resourceNamespace: metav1.NamespaceDefault,
+			expectPanic:       true,
+		},
+		{
+			name:              "Test Controller recoverFromPanic - panic in CAPApplicationVersion",
+			resource:          ResourceCAPApplicationVersion,
+			resourceName:      resourceName,
+			resourceNamespace: metav1.NamespaceDefault,
+			expectPanic:       true,
+		},
+		{
+			name:              "Test Controller recoverFromPanic - panic in provisioning CAPTenant",
+			resource:          ResourceCAPTenant,
+			resourceName:      resourceName + "-" + catType,
+			resourceNamespace: metav1.NamespaceDefault,
+			expectPanic:       true,
+		},
+		{
+			name:              "Test Controller recoverFromPanic - panic in upgrading CAPTenant",
+			resource:          ResourceCAPTenant,
+			resourceName:      resourceName + "-" + catType,
+			resourceNamespace: metav1.NamespaceDefault,
+			catUpgrading:      true,
+			expectPanic:       true,
+		},
+		{
+			name:              "Test Controller recoverFromPanic - panic in CAPTenantOperation",
+			resource:          ResourceCAPTenantOperation,
+			resourceName:      resourceName,
+			resourceNamespace: metav1.NamespaceDefault,
+			expectPanic:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var (
+				ca   *v1alpha1.CAPApplication
+				cav  *v1alpha1.CAPApplicationVersion
+				cat  *v1alpha1.CAPTenant
+				ctop *v1alpha1.CAPTenantOperation
+			)
+
+			ca = createCaCRO(tt.resourceName, true)
+			cav = createCavCRO(tt.resourceName, "", "0.0.1")
+			cat = createCatCRO(resourceName, catType, true)
+			if tt.catUpgrading {
+				cat.Status.State = v1alpha1.CAPTenantStateUpgrading
+			} else {
+				cat.Status.State = v1alpha1.CAPTenantStateProvisioning
+			}
+			ctop = &v1alpha1.CAPTenantOperation{
+				ObjectMeta: metav1.ObjectMeta{Name: tt.resourceName, Namespace: tt.resourceNamespace},
+				Spec:       v1alpha1.CAPTenantOperationSpec{},
+				Status: v1alpha1.CAPTenantOperationStatus{
+					GenericStatus: v1alpha1.GenericStatus{},
+					State:         "",
+				},
+			}
+
+			c := getTestController(testResources{cas: []*v1alpha1.CAPApplication{ca}, cavs: []*v1alpha1.CAPApplicationVersion{cav}, cats: []*v1alpha1.CAPTenant{cat}, ctops: []*v1alpha1.CAPTenantOperation{ctop}, preventStart: true})
+			dummyKubeInformerFactory := &dummyInformerFactoryType{c.kubeInformerFactory, tt.resourceNamespace, nil}
+
+			testC := &Controller{
+				kubeClient:                  c.kubeClient,
+				crdClient:                   c.crdClient,
+				istioClient:                 c.istioClient,
+				gardenerCertificateClient:   c.gardenerCertificateClient,
+				gardenerDNSClient:           c.gardenerDNSClient,
+				kubeInformerFactory:         dummyKubeInformerFactory,
+				crdInformerFactory:          c.crdInformerFactory,
+				istioInformerFactory:        c.istioInformerFactory,
+				gardenerCertInformerFactory: c.gardenerCertInformerFactory,
+				gardenerDNSInformerFactory:  c.gardenerDNSInformerFactory,
+				queues:                      c.queues,
+			}
+
+			// Create a background context that gets cancelled once the test run completes
+			ctx, cancel := context.WithCancel(context.Background())
+
+			item := QueueItem{Key: tt.resource, ResourceKey: NamespacedResourceKey{Namespace: tt.resourceNamespace, Name: tt.resourceName}}
+
+			q := c.queues[tt.resource]
+
+			defer testC.recoverFromPanic(ctx, item, q)
+
+			defer cancel()
+
+			if tt.expectPanic {
+				panic("Simulate some panic during reconcile")
+			}
+
+			// There is no need to check for results in this test as in case of errros the panic raised above will not be reovered!
+		})
+	}
+
 }

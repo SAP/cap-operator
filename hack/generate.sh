@@ -37,29 +37,16 @@ echo "PWD: ${PWD}"
 echo "CODEGEN_PKG: ${CODEGEN_PKG}"
 echo "GEN_PKG_PATH: ${GEN_PKG_PATH}"
 
-rm -rf "${PWD}"/tmp
-mkdir -p "${PWD}"/tmp/"${GEN_PKG_PATH}"
-
-ln -s "${PWD}"/pkg/apis "${PWD}"/tmp/"${GEN_PKG_PATH}"/apis
-
 source "${CODEGEN_PKG}/kube_codegen.sh"
 
 kube::codegen::gen_helpers \
-  --input-pkg-root "${GEN_PKG_PATH}"/apis \
-  --output-base "${PWD}"/tmp \
-  --boilerplate ./hack/LICENSE_BOILERPLATE.txt
+  --boilerplate ./hack/LICENSE_BOILERPLATE.txt \
+  ./pkg/apis
 
 kube::codegen::gen_client \
   --with-watch \
   --with-applyconfig \
-  --input-pkg-root "${GEN_PKG_PATH}"/apis \
-  --output-pkg-root "${GEN_PKG_PATH}"/client \
-  --output-base "${PWD}"/tmp \
-  --boilerplate ./hack/LICENSE_BOILERPLATE.txt
-
-echo "Moving generated code from ${PWD}/tmp/${GEN_PKG_PATH}/client to ${PWD}/pkg"
-rm -rf "${PWD}"/pkg/client
-mv "${PWD}"/tmp/"${GEN_PKG_PATH}"/client "${PWD}"/pkg
-
-echo "Done.. removing local /tmp dir"
-rm -rf "${PWD}"/tmp
+  --output-dir "./pkg/client" \
+  --output-pkg "${GEN_PKG_PATH}"/client \
+  --boilerplate ./hack/LICENSE_BOILERPLATE.txt \
+  ./pkg/apis

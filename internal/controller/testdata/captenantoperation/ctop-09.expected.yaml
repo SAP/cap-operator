@@ -12,6 +12,7 @@ metadata:
     sme.sap.com/tenant-operation-type: upgrade
     sme.sap.com/owner-generation: "0"
     sme.sap.com/owner-identifier-hash: db1f1fd7eaeb0e6407c741b7e4b2540044bcc4ec
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
     sme.sap.com/cav-version: 8.9.10
   ownerReferences:
     - apiVersion: sme.sap.com/v1alpha1
@@ -91,25 +92,6 @@ spec:
     spec:
       containers:
         - env:
-            - name: WAIT_FOR_SIDECAR
-              value: "false"
-            - name: XSUAA_INSTANCE_NAME
-              value: cap-uaa
-            - name: MTX_SERVICE_URL
-              value: http://localhost:4004
-            - name: MTX_REQUEST_TYPE
-              value: upgrade
-            - name: MTX_TENANT_ID
-              value: tenant-id-for-provider
-            - name: MTX_REQUEST_PAYLOAD
-              value: '{"tenants":["tenant-id-for-provider"],"autoUndeploy":true}'
-          envFrom:
-            - secretRef:
-                name: test-cap-01-provider-abcd-ten-op-gen
-                optional: true
-          image: ghcr.io/sap/cap-operator/mtx-job
-          name: trigger
-        - env:
             - name: CAPOP_APP_VERSION
               value: 8.9.10
             - name: CAPOP_TENANT_ID
@@ -120,17 +102,11 @@ spec:
               value: my-provider
             - name: flow
               value: glow
-            - name: "IS_MTXS_ENABLED" 
-              value: "false"
           envFrom:
             - secretRef:
                 name: test-cap-01-provider-abcd-ten-op-gen
                 optional: true
-          command:
-            - "/bin/sh"
-            - "-c"
-          args:
-            - node ./node_modules/@sap/cds/bin/cds run & nc -lv -s localhost -p 8080
+          command: ["node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx", "upgrade", "tenant-id-for-provider"]
           image: docker.image.repo/srv/server:latest
           name: ten-op
       imagePullSecrets:

@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -24,7 +24,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/klog/v2"
 )
 
 const (
@@ -86,7 +85,7 @@ func (c *Controller) updateCAPApplicationVersionStatus(ctx context.Context, cav 
 		*cav = *cavUpdated
 	}
 	if statusErr != nil {
-		klog.Errorf("could not update status of %s %s.%s: %v", v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name, statusErr.Error())
+		util.LogError(statusErr, "Could not update status of application version", string(Processing), cav, nil, "version", cav.Spec.Version)
 	}
 
 	return statusErr
@@ -106,9 +105,9 @@ func (c *Controller) handleCAPApplicationVersion(ctx context.Context, cav *v1alp
 
 	// Check for valid secrets
 	err := c.checkSecretsExist(ca.Spec.BTP.Services, ca.Namespace)
-
 	if err != nil {
 		// Requeue after 10s to check if secrets exist
+		util.LogInfo("Missing secrets; check again if the required secrets exists after 10 seconds", string(Processing), cav, nil, "version", cav.Spec.Version)
 		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second), c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "WaitingForSecrets"})
 	}
 
@@ -179,7 +178,6 @@ func (c *Controller) processDeployments(ctx context.Context, ca *v1alpha1.CAPApp
 		return nil, err
 	}
 
-	// TODO: Checks for issues with Deployment(s)!
 	// Check for status of contentWorkloads
 	processing, err := c.checkContentWorkloadStatus(ctx, cav)
 	if processing {
@@ -189,7 +187,11 @@ func (c *Controller) processDeployments(ctx context.Context, ca *v1alpha1.CAPApp
 		return nil, err
 	}
 
-	// TODO: wait until the deployments are actually "Ready"!
+	// For now, we do not want to wait until the deployments are actually "Ready", we only rely on Content Job completing successfully!
+	if cav.Status.State == v1alpha1.CAPApplicationVersionStateProcessing {
+		// Only log if the state is still processing as cav might be reconciled again
+		util.LogInfo("All deployments and other resources created successfully", string(Ready), cav, nil, "version", cav.Spec.Version)
+	}
 	return nil, c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateReady, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "True", Reason: "CreatedDeployments"})
 }
 
@@ -254,6 +256,9 @@ func (c *Controller) handleContentDeployJob(ca *v1alpha1.CAPApplication, cav *v1
 
 		if err == nil {
 			contentDeployJob, err = c.kubeClient.BatchV1().Jobs(cav.Namespace).Create(context.TODO(), newContentDeploymentJob(ca, cav, workload, ownerRef, vcapSecretName), metav1.CreateOptions{})
+			if err == nil {
+				util.LogInfo("Content job created successfully", string(Processing), cav, contentDeployJob, "version", cav.Spec.Version)
+			}
 		}
 	}
 
@@ -270,9 +275,13 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 		AnnotationIstioSidecarInject: "false",
 	})
 
+	contentJobName := getContentJobName(workload.Name, cav)
+
+	util.LogInfo("Creating content job", string(Processing), cav, nil, "contentJobName", contentJobName, "version", cav.Spec.Version)
+
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        getContentJobName(workload.Name, cav),
+			Name:        contentJobName,
 			Namespace:   cav.Namespace,
 			Annotations: workload.Annotations,
 			OwnerReferences: []metav1.OwnerReference{
@@ -298,11 +307,15 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 								{Name: EnvCAPOpAppVersion, Value: cav.Spec.Version},
 							}, workload.JobDefinition.Env...),
 							EnvFrom:         getEnvFrom(vcapSecretName),
+							VolumeMounts:    workload.JobDefinition.VolumeMounts,
 							Resources:       workload.JobDefinition.Resources,
 							SecurityContext: workload.JobDefinition.SecurityContext,
 						},
 					},
+					InitContainers:            workload.JobDefinition.InitContainers,
 					SecurityContext:           workload.JobDefinition.PodSecurityContext,
+					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,
+					Volumes:                   workload.JobDefinition.Volumes,
 					ImagePullSecrets:          convertToLocalObjectReferences(cav.Spec.RegistrySecrets),
 					RestartPolicy:             corev1.RestartPolicyOnFailure,
 					NodeSelector:              workload.JobDefinition.NodeSelector,
@@ -364,6 +377,9 @@ func (c *Controller) updateServices(ca *v1alpha1.CAPApplication, cav *v1alpha1.C
 		// If the resource doesn't exist, we'll create it
 		if k8sErrors.IsNotFound(err) {
 			service, err = c.kubeClient.CoreV1().Services(cav.Namespace).Create(context.TODO(), newService(ca, cav, workloadServicePortInfo), metav1.CreateOptions{})
+			if err == nil {
+				util.LogInfo("Service created successfully", string(Processing), cav, service, "version", cav.Spec.Version)
+			}
 		}
 
 		err = doChecks(err, service, cav, workloadServicePortInfo.WorkloadName+ServiceSuffix)
@@ -389,6 +405,8 @@ func newService(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion
 	annotations := copyMaps(workload.Annotations, getAnnotations(ca, cav, true))
 
 	labels := copyMaps(workload.Labels, getLabels(ca, cav, CategoryService, workloadServicePortInfo.DeploymentType, workloadServicePortInfo.WorkloadName+ServiceSuffix, true))
+
+	util.LogInfo("Creating service", string(Processing), cav, nil, "serviceName", workloadServicePortInfo.WorkloadName+ServiceSuffix, "version", cav.Spec.Version)
 
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -451,6 +469,7 @@ func (c *Controller) createNetworkPolicy(name string, spec networkingv1.NetworkP
 	networkPolicy, err := c.kubeClient.NetworkingV1().NetworkPolicies(cav.Namespace).Get(context.TODO(), name, metav1.GetOptions{})
 	// If the resource doesn't exist, we'll create it
 	if k8sErrors.IsNotFound(err) {
+		util.LogInfo("Creating network policy", string(Processing), cav, nil, "networkPolicyName", name, "version", cav.Spec.Version)
 		networkPolicy, err = c.kubeClient.NetworkingV1().NetworkPolicies(cav.Namespace).Create(context.TODO(), &networkingv1.NetworkPolicy{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
@@ -461,6 +480,9 @@ func (c *Controller) createNetworkPolicy(name string, spec networkingv1.NetworkP
 			},
 			Spec: spec,
 		}, metav1.CreateOptions{})
+		if err == nil {
+			util.LogInfo("Network policy created successfully", string(Processing), cav, networkPolicy, "version", cav.Spec.Version)
+		}
 	}
 	return doChecks(err, networkPolicy, cav, "NetworkPolicy")
 }
@@ -546,6 +568,9 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 
 		if err == nil {
 			workloadDeployment, err = c.kubeClient.AppsV1().Deployments(cav.Namespace).Create(context.TODO(), newDeployment(ca, cav, workload, ownerRef, vcapSecretName), metav1.CreateOptions{})
+			if err == nil {
+				util.LogInfo("Deployment created successfully", string(Processing), cav, workloadDeployment, "version", cav.Spec.Version)
+			}
 		}
 	}
 
@@ -570,6 +595,8 @@ func createDeployment(params *DeploymentParameters) *appsv1.Deployment {
 	annotations := copyMaps(params.WorkloadDetails.Annotations, getAnnotations(params.CA, params.CAV, true))
 	labels := copyMaps(params.WorkloadDetails.Labels, getLabels(params.CA, params.CAV, CategoryWorkload, string(params.WorkloadDetails.DeploymentDefinition.Type), workloadName, true))
 
+	util.LogInfo("Creating deployment", string(Processing), params.CAV, nil, "deploymentName", workloadName, "version", params.CAV.Spec.Version)
+
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      workloadName,
@@ -592,7 +619,10 @@ func createDeployment(params *DeploymentParameters) *appsv1.Deployment {
 				},
 				Spec: corev1.PodSpec{
 					ImagePullSecrets:          convertToLocalObjectReferences(params.CAV.Spec.RegistrySecrets),
+					InitContainers:            params.WorkloadDetails.DeploymentDefinition.InitContainers,
 					Containers:                getContainer(params),
+					ServiceAccountName:        params.WorkloadDetails.DeploymentDefinition.ServiceAccountName,
+					Volumes:                   params.WorkloadDetails.DeploymentDefinition.Volumes,
 					SecurityContext:           params.WorkloadDetails.DeploymentDefinition.PodSecurityContext,
 					NodeSelector:              params.WorkloadDetails.DeploymentDefinition.NodeSelector,
 					NodeName:                  params.WorkloadDetails.DeploymentDefinition.NodeName,
@@ -614,6 +644,7 @@ func getContainer(params *DeploymentParameters) []corev1.Container {
 		Command:         params.WorkloadDetails.DeploymentDefinition.Command,
 		Env:             getEnv(params),
 		EnvFrom:         getEnvFrom(params.VCAPSecretName),
+		VolumeMounts:    params.WorkloadDetails.DeploymentDefinition.VolumeMounts,
 		LivenessProbe:   params.WorkloadDetails.DeploymentDefinition.LivenessProbe,
 		ReadinessProbe:  params.WorkloadDetails.DeploymentDefinition.ReadinessProbe,
 		Resources:       params.WorkloadDetails.DeploymentDefinition.Resources,
@@ -796,6 +827,7 @@ func doChecks(err error, obj metav1.Object, cav *v1alpha1.CAPApplicationVersion,
 	// attempt processing again later. This could have been caused by a
 	// temporary network failure, or any other transient reason.
 	if err != nil {
+		util.LogError(err, "Error during application version processing", string(Processing), cav, obj, "resource", res, "version", cav.Spec.Version)
 		return err
 	}
 
@@ -866,11 +898,16 @@ func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alph
 
 		// If the job is still running, set processing to true
 		if !cav.CheckFinishedJobs(job) {
+			util.LogInfo("Waiting for content job(s) to complete", string(Processing), cav, nil, util.DependentName, job, util.DependentKind, "Job", "version", cav.Spec.Version)
 			return true, nil
 		}
 	}
 
 	// All Jobs are executed
+	if cav.Status.State != v1alpha1.CAPApplicationVersionStateReady {
+		// Only log this state if cav is not already in Ready state as the resource might be reconciled again
+		util.LogInfo("Content job(s) completed", string(Processing), cav, nil, "version", cav.Spec.Version)
+	}
 	return false, nil
 }
 
@@ -894,6 +931,7 @@ func (c *Controller) getRelevantTenantsForCAV(cav *v1alpha1.CAPApplicationVersio
 
 func (c *Controller) deleteCAPApplicationVersion(ctx context.Context, cav *v1alpha1.CAPApplicationVersion) (*ReconcileResult, error) {
 	// Update State if it is not set yet
+	util.LogInfo("Deleting application version", string(Deleting), cav, nil, "version", cav.Spec.Version)
 	if cav.Status.State != v1alpha1.CAPApplicationVersionStateDeleting {
 		var deleteCondition metav1.Condition
 		if len(cav.Status.Conditions) > 0 {
@@ -914,8 +952,10 @@ func (c *Controller) deleteCAPApplicationVersion(ctx context.Context, cav *v1alp
 	// Check if tenants exists
 	if len(tenants) > 0 {
 		// Requeue after 10s to check if all tenants are gone
+		util.LogInfo("Could not delete; tenants exists in this version", string(Deleting), cav, nil, "version", cav.Spec.Version)
 		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second), nil
 	} else if removeFinalizer(&cav.Finalizers, FinalizerCAPApplicationVersion) { // All tenants are gone --> remove finalizer and process deletion
+		util.LogInfo("Removing finalizer; finished deleting this version", string(Deleting), cav, nil, "version", cav.Spec.Version)
 		return nil, c.updateCAPApplicationVersion(ctx, cav)
 	}
 

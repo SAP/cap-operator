@@ -10,6 +10,7 @@
 | affinity | object | `{}` | Default affinity settings (can be overwritten on component level) |
 | tolerations | list | `[]` | Default tolerations (can be overwritten on component level) |
 | priorityClassName | string | `""` | Default priority class (can be overwritten on component level) |
+| topologySpreadConstraints | list | `[]` | Default topology spread constraints (can be overwritten on component level) |
 | controller.replicas | int | `1` | Replicas |
 | controller.image.repository | string | `"ghcr.io/sap/cap-operator/controller"` | Image repository |
 | controller.image.tag | string | `""` | Image tag |
@@ -20,11 +21,13 @@
 | controller.affinity | object | `{}` | Affinity settings |
 | controller.tolerations | list | `[]` | Tolerations |
 | controller.priorityClassName | string | `""` | Priority class |
+| controller.topologySpreadConstraints | list | `[]` | Topology spread constraints |
 | controller.securityContext | object | `{}` | Security context |
 | controller.resources.limits.memory | string | `"500Mi"` | Memory limit |
 | controller.resources.limits.cpu | float | `0.2` | CPU limit |
 | controller.resources.requests.memory | string | `"50Mi"` | Memory request |
 | controller.resources.requests.cpu | float | `0.02` | CPU request |
+| controller.dnsTarget | string | `""` | The dns target mentioned on the public ingress gateway service used in the cluster |
 | subscriptionServer.replicas | int | `1` | Replicas |
 | subscriptionServer.image.repository | string | `"ghcr.io/sap/cap-operator/server"` | Image repository |
 | subscriptionServer.image.tag | string | `""` | Image tag |
@@ -35,6 +38,7 @@
 | subscriptionServer.affinity | object | `{}` | Affinity settings |
 | subscriptionServer.tolerations | list | `[]` | Tolerations |
 | subscriptionServer.priorityClassName | string | `""` | Priority class |
+| subscriptionServer.topologySpreadConstraints | list | `[]` | Topology spread constraints |
 | subscriptionServer.securityContext | object | `{}` | Security context |
 | subscriptionServer.resources.limits.memory | string | `"200Mi"` | Memory limit |
 | subscriptionServer.resources.limits.cpu | float | `0.1` | CPU limit |
@@ -56,6 +60,7 @@
 | webhook.affinity | object | `{}` | Affinity settings |
 | webhook.tolerations | list | `[]` | Tolerations |
 | webhook.priorityClassName | string | `""` | Priority class |
+| webhook.topologySpreadConstraints | list | `[]` | Topology spread constraints |
 | webhook.securityContext | object | `{}` | Security context |
 | webhook.resources.limits.memory | string | `"200Mi"` | Memory limit |
 | webhook.resources.limits.cpu | float | `0.1` | CPU limit |

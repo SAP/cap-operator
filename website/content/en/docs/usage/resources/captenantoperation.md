@@ -22,9 +22,9 @@ spec:
   operation: upgrade
   steps:
     - continueOnFailure: true
-      name: mtx-runner
+      name: tenant-operation
       type: CustomTenantOperation
-    - name: mtx-runner
+    - name: tenant-operation
       type: TenantOperation
     - name: create-test-data
       type: CustomTenantOperation

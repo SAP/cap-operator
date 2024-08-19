@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -436,6 +436,7 @@ func TestDeletion_Case7(t *testing.T) {
 			initialResources: []string{
 				"testdata/capapplication/ca-19.initial.yaml",
 				"testdata/capapplication/istio-ingress-with-cert.yaml",
+				"testdata/common/credential-secrets.yaml",
 			},
 			expectedResources: "testdata/capapplication/ca-19.expected.yaml",
 		},
@@ -1124,6 +1125,27 @@ func TestAdditionalConditionsWithTenantDeletingUpgradeStrategyNever(t *testing.T
 			},
 			expectedResources: "testdata/capapplication/ca-45.expected.yaml", // expect - AllTenantsReady is "False"
 			backlogItems:      []string{"ERP4SMEPREPWORKAPPPLAT-2881"},
+		},
+	)
+}
+
+func TestController_handleCAPApplicationConsistent_versionUpgrade(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01"}},
+		TestData{
+			description: "Consistent state with a CAV upgrade; one tenant already in upgrading state",
+			initialResources: []string{
+				"testdata/capapplication/ca-31.initial.yaml",
+				"testdata/capapplication/cav-name-modified-ready.yaml",
+				"testdata/capapplication/cat-provider-no-finalizers-ready.yaml",
+				"testdata/capapplication/cat-consumer-upgrading.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplication/gateway.yaml",
+				"testdata/capapplication/istio-ingress-with-cert.yaml",
+				"testdata/capapplication/ca-dns.yaml",
+			},
+			expectedResources: "testdata/capapplication/ca-31.expected.yaml",
 		},
 	)
 }

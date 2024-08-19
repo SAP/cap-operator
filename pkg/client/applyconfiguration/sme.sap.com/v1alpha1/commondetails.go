@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -18,6 +18,9 @@ type CommonDetailsApplyConfiguration struct {
 	ImagePullPolicy           *v1.PullPolicy                `json:"imagePullPolicy,omitempty"`
 	Command                   []string                      `json:"command,omitempty"`
 	Env                       []v1.EnvVar                   `json:"env,omitempty"`
+	Volumes                   []v1.Volume                   `json:"volumes,omitempty"`
+	VolumeMounts              []v1.VolumeMount              `json:"volumeMounts,omitempty"`
+	ServiceAccountName        *string                       `json:"serviceAccountName,omitempty"`
 	Resources                 *v1.ResourceRequirements      `json:"resources,omitempty"`
 	SecurityContext           *v1.SecurityContext           `json:"securityContext,omitempty"`
 	PodSecurityContext        *v1.PodSecurityContext        `json:"podSecurityContext,omitempty"`
@@ -27,6 +30,7 @@ type CommonDetailsApplyConfiguration struct {
 	Affinity                  *v1.Affinity                  `json:"affinity,omitempty"`
 	Tolerations               []v1.Toleration               `json:"tolerations,omitempty"`
 	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+	InitContainers            []v1.Container                `json:"initContainers,omitempty"`
 }
 
 // CommonDetailsApplyConfiguration constructs an declarative configuration of the CommonDetails type for use with
@@ -68,6 +72,34 @@ func (b *CommonDetailsApplyConfiguration) WithEnv(values ...v1.EnvVar) *CommonDe
 	for i := range values {
 		b.Env = append(b.Env, values[i])
 	}
+	return b
+}
+
+// WithVolumes adds the given value to the Volumes field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Volumes field.
+func (b *CommonDetailsApplyConfiguration) WithVolumes(values ...v1.Volume) *CommonDetailsApplyConfiguration {
+	for i := range values {
+		b.Volumes = append(b.Volumes, values[i])
+	}
+	return b
+}
+
+// WithVolumeMounts adds the given value to the VolumeMounts field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the VolumeMounts field.
+func (b *CommonDetailsApplyConfiguration) WithVolumeMounts(values ...v1.VolumeMount) *CommonDetailsApplyConfiguration {
+	for i := range values {
+		b.VolumeMounts = append(b.VolumeMounts, values[i])
+	}
+	return b
+}
+
+// WithServiceAccountName sets the ServiceAccountName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ServiceAccountName field is set to the value of the last call.
+func (b *CommonDetailsApplyConfiguration) WithServiceAccountName(value string) *CommonDetailsApplyConfiguration {
+	b.ServiceAccountName = &value
 	return b
 }
 
@@ -149,6 +181,16 @@ func (b *CommonDetailsApplyConfiguration) WithTolerations(values ...v1.Toleratio
 func (b *CommonDetailsApplyConfiguration) WithTopologySpreadConstraints(values ...v1.TopologySpreadConstraint) *CommonDetailsApplyConfiguration {
 	for i := range values {
 		b.TopologySpreadConstraints = append(b.TopologySpreadConstraints, values[i])
+	}
+	return b
+}
+
+// WithInitContainers adds the given value to the InitContainers field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the InitContainers field.
+func (b *CommonDetailsApplyConfiguration) WithInitContainers(values ...v1.Container) *CommonDetailsApplyConfiguration {
+	for i := range values {
+		b.InitContainers = append(b.InitContainers, values[i])
 	}
 	return b
 }

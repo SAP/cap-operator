@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2023 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -15,7 +15,7 @@ import (
 	"golang.org/x/mod/semver"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,31 +24,33 @@ import (
 )
 
 const (
-	LabelOwnerIdentifierHash           = "sme.sap.com/owner-identifier-hash"
-	LabelOwnerGeneration               = "sme.sap.com/owner-generation"
-	LabelWorkloadName                  = "sme.sap.com/workload-name"
-	LabelWorkloadType                  = "sme.sap.com/workload-type"
-	LabelResourceCategory              = "sme.sap.com/category"
-	LabelBTPApplicationIdentifierHash  = "sme.sap.com/btp-app-identifier-hash"
-	LabelTenantType                    = "sme.sap.com/tenant-type"
-	LabelTenantId                      = "sme.sap.com/btp-tenant-id"
-	LabelTenantOperationType           = "sme.sap.com/tenant-operation-type"
-	LabelTenantOperationStep           = "sme.sap.com/tenant-operation-step"
-	LabelCAVVersion                    = "sme.sap.com/cav-version"
-	LabelRelevantDNSTarget             = "sme.sap.com/relevant-dns-target-hash"
-	LabelDisableKarydia                = "x4.sap.com/disable-karydia"
-	AnnotationOwnerIdentifier          = "sme.sap.com/owner-identifier"
-	AnnotationBTPApplicationIdentifier = "sme.sap.com/btp-app-identifier"
-	AnnotationResourceHash             = "sme.sap.com/resource-hash"
-	AnnotationControllerClass          = "sme.sap.com/controller-class"
-	AnnotationIstioSidecarInject       = "sidecar.istio.io/inject"
-	AnnotationGardenerDNSTarget        = "dns.gardener.cloud/dnsnames"
-	AnnotationKubernetesDNSTarget      = "external-dns.alpha.kubernetes.io/hostname"
-	FinalizerCAPApplication            = "sme.sap.com/capapplication"
-	FinalizerCAPApplicationVersion     = "sme.sap.com/capapplicationversion"
-	FinalizerCAPTenant                 = "sme.sap.com/captenant"
-	FinalizerCAPTenantOperation        = "sme.sap.com/captenantoperation"
-	GardenerDNSClassIdentifier         = "dns.gardener.cloud/class"
+	LabelOwnerIdentifierHash            = "sme.sap.com/owner-identifier-hash"
+	LabelOwnerGeneration                = "sme.sap.com/owner-generation"
+	LabelWorkloadName                   = "sme.sap.com/workload-name"
+	LabelWorkloadType                   = "sme.sap.com/workload-type"
+	LabelResourceCategory               = "sme.sap.com/category"
+	LabelBTPApplicationIdentifierHash   = "sme.sap.com/btp-app-identifier-hash"
+	LabelTenantType                     = "sme.sap.com/tenant-type"
+	LabelTenantId                       = "sme.sap.com/btp-tenant-id"
+	LabelTenantOperationType            = "sme.sap.com/tenant-operation-type"
+	LabelTenantOperationStep            = "sme.sap.com/tenant-operation-step"
+	LabelCAVVersion                     = "sme.sap.com/cav-version"
+	LabelRelevantDNSTarget              = "sme.sap.com/relevant-dns-target-hash"
+	LabelDisableKarydia                 = "x4.sap.com/disable-karydia"
+	AnnotationOwnerIdentifier           = "sme.sap.com/owner-identifier"
+	AnnotationBTPApplicationIdentifier  = "sme.sap.com/btp-app-identifier"
+	AnnotationResourceHash              = "sme.sap.com/resource-hash"
+	AnnotationControllerClass           = "sme.sap.com/controller-class"
+	AnnotationIstioSidecarInject        = "sidecar.istio.io/inject"
+	AnnotationGardenerDNSTarget         = "dns.gardener.cloud/dnsnames"
+	AnnotationKubernetesDNSTarget       = "external-dns.alpha.kubernetes.io/hostname"
+	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
+	AnnotationProviderSubAccountId      = "sme.sap.com/provider-sub-account-id"
+	FinalizerCAPApplication             = "sme.sap.com/capapplication"
+	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
+	FinalizerCAPTenant                  = "sme.sap.com/captenant"
+	FinalizerCAPTenantOperation         = "sme.sap.com/captenantoperation"
+	GardenerDNSClassIdentifier          = "dns.gardener.cloud/class"
 )
 
 const (
@@ -69,15 +71,16 @@ const (
 	ConsumerTenantType = "consumer"
 )
 
-// Use same name as default cookie from approuter used for session stickiness
-const HttpCookieName = "JSESSIONID"
+// Use a different name for sticky cookie than the one from approuter (JSESSIONID) used for session handling
+const RouterHttpCookieName = "CAPOP_ROUTER_STICKY"
 
 const (
-	EnvCAPOpAppVersion      = "CAPOP_APP_VERSION"
-	EnvCAPOpTenantID        = "CAPOP_TENANT_ID"
-	EnvCAPOpTenantSubDomain = "CAPOP_TENANT_SUBDOMAIN"
-	EnvCAPOpTenantOperation = "CAPOP_TENANT_OPERATION"
-	EnvVCAPServices         = "VCAP_SERVICES"
+	EnvCAPOpAppVersion          = "CAPOP_APP_VERSION"
+	EnvCAPOpTenantID            = "CAPOP_TENANT_ID"
+	EnvCAPOpTenantSubDomain     = "CAPOP_TENANT_SUBDOMAIN"
+	EnvCAPOpTenantOperation     = "CAPOP_TENANT_OPERATION"
+	EnvCAPOpSubscriptionPayload = "CAPOP_SUBSCRIPTION_PAYLOAD"
+	EnvVCAPServices             = "VCAP_SERVICES"
 )
 
 type JobState string
@@ -108,7 +111,8 @@ type destinationInfo struct {
 }
 
 const (
-	ServiceSuffix = "-svc"
+	ServiceSuffix       = "-svc"
+	SubscriptionContext = "subscriptionContext"
 )
 
 var restrictedEnvNames = map[string]struct{}{
@@ -129,11 +133,22 @@ type RouterDestination struct {
 	ProxyType            string `json:"proxyType,omitempty"`
 }
 
+type Steps string
+
+const (
+	Processing     Steps = "Processing"
+	Provisioning   Steps = "Provisioning"
+	Upgrading      Steps = "Upgrading"
+	Deprovisioning Steps = "Deprovisioning"
+	Deleting       Steps = "Deleting"
+	Ready          Steps = "Ready"
+)
+
 func (c *Controller) Event(main runtime.Object, related runtime.Object, eventType, reason, action, message string) {
 	defer func() {
 		// do not let the routine dump due to event recording errors
 		if r := recover(); r != nil {
-			klog.Error("error when recording event: ", r)
+			klog.ErrorS(nil, "error when recording event", "recovered error", r)
 		}
 	}()
 	c.eventRecorder.Eventf(main, related, eventType, reason, action, message)
@@ -269,10 +284,51 @@ func (c *Controller) checkSecretsExist(serviceInfos []v1alpha1.ServiceInfo, name
 	return err
 }
 
+func (c *Controller) checkAndPreserveSecrets(serviceInfos []v1alpha1.ServiceInfo, namespace string) error {
+	var err error
+	var secret *corev1.Secret
+	secretLister := c.kubeInformerFactory.Core().V1().Secrets().Lister()
+
+	for _, service := range serviceInfos {
+		secretName := service.Secret
+		if secret, err = secretLister.Secrets(namespace).Get(secretName); err != nil {
+			break
+		}
+		// Add finalizer to preserve Secret from being deleted accidentally
+		if addFinalizer(&secret.Finalizers, FinalizerCAPApplication) {
+			if _, err = c.kubeClient.CoreV1().Secrets(namespace).Update(context.TODO(), secret, metav1.UpdateOptions{}); err != nil {
+				break
+			}
+		}
+	}
+	return err
+}
+
+func (c *Controller) cleanupPreservedSecrets(serviceInfos []v1alpha1.ServiceInfo, namespace string) error {
+	var err error
+	var secret *corev1.Secret
+	secretLister := c.kubeInformerFactory.Core().V1().Secrets().Lister()
+
+	for _, service := range serviceInfos {
+		secretName := service.Secret
+		// Check if a secret exists
+		if secret, err = secretLister.Secrets(namespace).Get(secretName); err != nil && !k8sErrors.IsNotFound(err) {
+			break
+		}
+		// Remove finalizer from preserved Secret (if one exists) to allow it to be cleaned up if needed
+		if secret != nil && removeFinalizer(&secret.Finalizers, FinalizerCAPApplication) {
+			if _, err = c.kubeClient.CoreV1().Secrets(namespace).Update(context.TODO(), secret, metav1.UpdateOptions{}); err != nil {
+				break
+			}
+		}
+	}
+	return err
+}
+
 // This method is called to handle NotFound error at the beginning of reconciliation to skip requeue on errors due to deletion of resource
 func handleOperatorResourceErrors(err error) error {
 	// Handle NotFound errors (object was most likely deleted)
-	if errors.IsNotFound(err) {
+	if k8sErrors.IsNotFound(err) {
 		return nil // No error, to skips requeue of the resource
 	}
 	return err

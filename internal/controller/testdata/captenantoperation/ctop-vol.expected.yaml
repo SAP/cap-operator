@@ -1,0 +1,175 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPTenantOperation
+metadata:
+  name: test-cap-01-provider-abcd
+  namespace: default
+  generation: 1
+  finalizers:
+    - sme.sap.com/captenantoperation
+  annotations:
+    sme.sap.com/owner-identifier: default.test-cap-01-provider
+    sme.sap.com/subscription-context-secret: test-cap-01-gen
+  labels:
+    sme.sap.com/tenant-operation-type: provisioning
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: db1f1fd7eaeb0e6407c741b7e4b2540044bcc4ec
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/cav-version: "5.6.7"
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPTenant
+      name: test-cap-01-provider
+spec:
+  tenantId: tenant-id-for-provider
+  subDomain: my-provider
+  operation: provisioning
+  capApplicationVersionInstance: test-cap-01-cav-v1
+  steps:
+    - name: mtx
+      type: TenantOperation
+status:
+  state: Processing
+  observedGeneration: 1
+  conditions:
+    - type: Ready
+      status: "False"
+      observedGeneration: 1
+      reason: StepInitiated
+      message: "step 1/1 : job default.test-cap-01-provider-mtx-gen created"
+  currentStep: 1
+  activeJob: "test-cap-01-provider-mtx-gen"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    sidecar.istio.io/inject: "false"
+    sme.sap.com/owner-identifier: default.test-cap-01-provider-abcd
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+  labels:
+    sme.sap.com/tenant-operation-step: "1"
+    sme.sap.com/tenant-operation-type: provisioning
+    sme.sap.com/owner-generation: "1"
+    sme.sap.com/owner-identifier-hash: ce6bb3ae0b5ebbd0116259415ccac00bff0dc431
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    app: test-cap-01
+    sme.sap.com/category: "Workload"
+    sme.sap.com/workload-name: "mtx"
+    sme.sap.com/workload-type: "TenantOperation"
+  generateName: test-cap-01-provider-mtx-
+  name: test-cap-01-provider-mtx-gen
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPTenantOperation
+      name: test-cap-01-provider-abcd
+spec:
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+        sme.sap.com/owner-identifier: default.test-cap-01-provider-abcd
+        sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+      labels:
+        sme.sap.com/tenant-operation-step: "1"
+        sme.sap.com/tenant-operation-type: provisioning
+        sme.sap.com/owner-generation: "1"
+        sme.sap.com/owner-identifier-hash: ce6bb3ae0b5ebbd0116259415ccac00bff0dc431
+        sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+        app: test-cap-01
+        sme.sap.com/category: "Workload"
+        sme.sap.com/workload-name: "mtx"
+        sme.sap.com/workload-type: "TenantOperation"
+    spec:
+      containers:
+        - env:
+            - name: CAPOP_APP_VERSION
+              value: 5.6.7
+            - name: CAPOP_TENANT_ID
+              value: tenant-id-for-provider
+            - name: CAPOP_TENANT_OPERATION
+              value: provisioning
+            - name: CAPOP_TENANT_SUBDOMAIN
+              value: my-provider
+            - name: CAPOP_SUBSCRIPTION_PAYLOAD
+              valueFrom:
+                secretKeyRef:
+                  name: test-cap-01-gen
+                  key: subscriptionContext
+          envFrom:
+            - secretRef:
+                name: test-cap-01-provider-abcd-mtx-gen
+                optional: true
+          volumeMounts:
+            - mountPath: /cache
+              name: cache-vol
+          command:
+            - node
+            - ./node_modules/@sap/cds-mtxs/bin/cds-mtx
+            - subscribe
+            - tenant-id-for-provider
+            - --body
+            - $(CAPOP_SUBSCRIPTION_PAYLOAD)
+          resources:
+            limits:
+              cpu: 200m
+              memory: 200Mi
+            requests:
+              cpu: 20m
+              memory: 20Mi
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 2000
+          image: docker.image.repo/srv/server:latest
+          name: mtx
+      nodeSelector:
+        disktype: ssd
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: topology.kubernetes.io/zone
+                    operator: In
+                    values:
+                      - antarctica-east1
+                      - antarctica-west1
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: another-node-label-key
+                    operator: In
+                    values:
+                      - another-node-label-value
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: someZone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              foo: bar
+          matchLabelKeys:
+            - dummy-test-1.27
+      tolerations:
+        - key: "test"
+          operator: "Equal"
+          value: "foo"
+          effect: "NoExecute"
+          tolerationSeconds: 300
+        - key: "never-exec"
+          operator: "Equal"
+          value: "noexec"
+          effect: "NoExecute"
+      imagePullSecrets:
+        - name: regcred
+      volumes:
+        - name: cache-vol
+          emptyDir:
+            sizeLimit: 500Mi
+      serviceAccountName: custom-op-sa
+      restartPolicy: Never
