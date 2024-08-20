@@ -177,8 +177,20 @@ spec:
           - name: init-container
             image: docker.image.repo/init-container:latest
             env:
-              - name: INIT_CONTAINER_ENV
-                value: "init-container-env"
+            - name: INIT_CONTAINER_ENV
+              value: "init-container-env"
+            - name: CAPOP_APP_VERSION
+              value: 5.6.7
+            - name: CAPOP_TENANT_ID
+              value: tenant-id-for-provider
+            - name: CAPOP_TENANT_OPERATION
+              value: provisioning
+            - name: CAPOP_TENANT_SUBDOMAIN
+              value: my-provider
+            envFrom:
+              - secretRef:
+                  name: test-cap-01-provider-abcd-mtx-gen
+                  optional: true
             resources:
               limits:
                 cpu: 100m
@@ -196,6 +208,18 @@ spec:
             env:
               - name: LOG_CONTAINER_ENV
                 value: "log-container-env"
+              - name: CAPOP_APP_VERSION
+                value: 5.6.7
+              - name: CAPOP_TENANT_ID
+                value: tenant-id-for-provider
+              - name: CAPOP_TENANT_OPERATION
+                value: provisioning
+              - name: CAPOP_TENANT_SUBDOMAIN
+                value: my-provider
+            envFrom:
+              - secretRef:
+                  name: test-cap-01-provider-abcd-mtx-gen
+                  optional: true
             resources:
               limits:
                 cpu: 100m

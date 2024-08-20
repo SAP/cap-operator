@@ -173,6 +173,18 @@ spec:
             env:
               - name: INIT_CONTAINER_ENV
                 value: "init-container-env"
+              - name: CAPOP_APP_VERSION
+                value: 8.9.10
+              - name: CAPOP_TENANT_ID
+                value: tenant-id-for-provider
+              - name: CAPOP_TENANT_OPERATION
+                value: upgrade
+              - name: CAPOP_TENANT_SUBDOMAIN
+                value: my-provider
+            envFrom:
+              - secretRef:
+                  name: test-cap-01-provider-abcd-custom-say-gen
+                  optional: true
             resources:
               limits:
                 cpu: 100m
@@ -190,6 +202,18 @@ spec:
             env:
               - name: LOG_CONTAINER_ENV
                 value: "log-container-env"
+              - name: CAPOP_APP_VERSION
+                value: 8.9.10
+              - name: CAPOP_TENANT_ID
+                value: tenant-id-for-provider
+              - name: CAPOP_TENANT_OPERATION
+                value: upgrade
+              - name: CAPOP_TENANT_SUBDOMAIN
+                value: my-provider
+            envFrom:
+              - secretRef:
+                  name: test-cap-01-provider-abcd-custom-say-gen
+                  optional: true
             resources:
               limits:
                 cpu: 100m

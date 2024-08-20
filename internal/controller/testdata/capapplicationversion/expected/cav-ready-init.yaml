@@ -326,6 +326,12 @@ spec:
           env:
             - name: INIT_CONTAINER_ENV
               value: "init-container-env"
+            - name: CAPOP_APP_VERSION
+              value: "1.2.3"
+          envFrom:
+            - secretRef:
+                name: test-cap-01-cav-v1-app-router-gen
+                optional: true
           resources:
             limits:
               cpu: 100m
@@ -343,6 +349,12 @@ spec:
           env:
             - name: LOG_CONTAINER_ENV
               value: "log-container-env"
+            - name: CAPOP_APP_VERSION
+              value: "1.2.3"
+          envFrom:
+            - secretRef:
+                name: test-cap-01-cav-v1-app-router-gen
+                optional: true
           resources:
             limits:
               cpu: 100m

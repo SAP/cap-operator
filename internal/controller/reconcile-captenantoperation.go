@@ -416,12 +416,12 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 	})
 
 	params := &jobCreateParams{
-		namePrefix:        relatedResources.CAPTenant.Name + "-" + workload.Name + "-",
-		labels:            labels,
-		annotations:       annotations,
-		envFromVCAPSecret: getEnvFrom(vcapSecretName),
-		imagePullSecrets:  convertToLocalObjectReferences(relatedResources.CAPApplicationVersion.Spec.RegistrySecrets),
-		version:           relatedResources.CAPApplicationVersion.Spec.Version,
+		namePrefix:       relatedResources.CAPTenant.Name + "-" + workload.Name + "-",
+		labels:           labels,
+		annotations:      annotations,
+		vcapSecretName:   vcapSecretName,
+		imagePullSecrets: convertToLocalObjectReferences(relatedResources.CAPApplicationVersion.Spec.RegistrySecrets),
+		version:          relatedResources.CAPApplicationVersion.Spec.Version,
 	}
 
 	var job *batchv1.Job
@@ -451,7 +451,7 @@ type jobCreateParams struct {
 	namePrefix        string
 	labels            map[string]string
 	annotations       map[string]string
-	envFromVCAPSecret []corev1.EnvFromSource
+	vcapSecretName    string
 	imagePullSecrets  []corev1.LocalObjectReference
 	version           string
 	xsuaaInstanceName string
@@ -497,7 +497,7 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 					RestartPolicy:             corev1.RestartPolicyNever,
 					ImagePullSecrets:          params.imagePullSecrets,
 					Containers:                getContainers(payload, ctop, derivedWorkload, workload, params),
-					InitContainers:            derivedWorkload.initContainers,
+					InitContainers:            *updateInitContainers(derivedWorkload.initContainers, getCTOPEnv(params.version, ctop), params.vcapSecretName),
 					Volumes:                   derivedWorkload.volumes,
 					ServiceAccountName:        derivedWorkload.serviceAccountName,
 					SecurityContext:           derivedWorkload.podSecurityContext,
@@ -521,13 +521,8 @@ func getContainers(payload []byte, ctop *v1alpha1.CAPTenantOperation, derivedWor
 		Name:            workload.Name,
 		Image:           derivedWorkload.image,
 		ImagePullPolicy: derivedWorkload.imagePullPolicy,
-		Env: append([]corev1.EnvVar{
-			{Name: EnvCAPOpAppVersion, Value: params.version},
-			{Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId},
-			{Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)},
-			{Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
-		}, derivedWorkload.env...),
-		EnvFrom:         params.envFromVCAPSecret,
+		Env:             append(getCTOPEnv(params.version, ctop), derivedWorkload.env...),
+		EnvFrom:         getEnvFrom(params.vcapSecretName),
 		VolumeMounts:    derivedWorkload.volumeMounts,
 		Resources:       derivedWorkload.resources,
 		SecurityContext: derivedWorkload.securityContext,
@@ -646,17 +641,15 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 							Name:            workload.Name,
 							Image:           workload.JobDefinition.Image,
 							ImagePullPolicy: workload.JobDefinition.ImagePullPolicy,
-							Env: append([]corev1.EnvVar{
-								{Name: EnvCAPOpAppVersion, Value: params.version}, {Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId}, {Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)}, {Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
-							}, workload.JobDefinition.Env...),
-							EnvFrom:         params.envFromVCAPSecret,
+							Env:             append(getCTOPEnv(params.version, ctop), workload.JobDefinition.Env...),
+							EnvFrom:         getEnvFrom(params.vcapSecretName),
 							VolumeMounts:    workload.JobDefinition.VolumeMounts,
 							Command:         workload.JobDefinition.Command,
 							Resources:       workload.JobDefinition.Resources,
 							SecurityContext: workload.JobDefinition.SecurityContext,
 						},
 					},
-					InitContainers: workload.JobDefinition.InitContainers,
+					InitContainers: *updateInitContainers(workload.JobDefinition.InitContainers, getCTOPEnv(params.version, ctop), params.vcapSecretName),
 				},
 			},
 		},
@@ -707,4 +700,10 @@ func addCAPTenantOperationLabels(ctop *v1alpha1.CAPTenantOperation, cat *v1alpha
 		updated = true
 	}
 	return updated
+}
+
+func getCTOPEnv(version string, ctop *v1alpha1.CAPTenantOperation) []corev1.EnvVar {
+	return []corev1.EnvVar{
+		{Name: EnvCAPOpAppVersion, Value: version}, {Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId}, {Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)}, {Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
+	}
 }

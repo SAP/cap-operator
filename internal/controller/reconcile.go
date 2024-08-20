@@ -574,3 +574,17 @@ func copyMaps(originalMap map[string]string, additionalMap map[string]string) ma
 	}
 	return newMap
 }
+
+func updateInitContainers(initContainers []corev1.Container, additionalEnv []corev1.EnvVar, vcapSecretName string) *[]corev1.Container {
+	var updatedInitContainers []corev1.Container
+	if len(initContainers) > 0 {
+		updatedInitContainers = []corev1.Container{}
+		for _, container := range initContainers {
+			updatedContainer := container.DeepCopy()
+			updatedContainer.Env = append(updatedContainer.Env, additionalEnv...)
+			updatedContainer.EnvFrom = getEnvFrom(vcapSecretName)
+			updatedInitContainers = append(updatedInitContainers, *updatedContainer)
+		}
+	}
+	return &updatedInitContainers
+}
