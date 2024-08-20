@@ -312,7 +312,9 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 							SecurityContext: workload.JobDefinition.SecurityContext,
 						},
 					},
-					InitContainers:            workload.JobDefinition.InitContainers,
+					InitContainers: *updateInitContainers(workload.JobDefinition.InitContainers, []corev1.EnvVar{
+						{Name: EnvCAPOpAppVersion, Value: cav.Spec.Version},
+					}, vcapSecretName),
 					SecurityContext:           workload.JobDefinition.PodSecurityContext,
 					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,
 					Volumes:                   workload.JobDefinition.Volumes,
@@ -618,8 +620,10 @@ func createDeployment(params *DeploymentParameters) *appsv1.Deployment {
 					Labels:      labels,
 				},
 				Spec: corev1.PodSpec{
-					ImagePullSecrets:          convertToLocalObjectReferences(params.CAV.Spec.RegistrySecrets),
-					InitContainers:            params.WorkloadDetails.DeploymentDefinition.InitContainers,
+					ImagePullSecrets: convertToLocalObjectReferences(params.CAV.Spec.RegistrySecrets),
+					InitContainers: *updateInitContainers(params.WorkloadDetails.DeploymentDefinition.InitContainers, []corev1.EnvVar{
+						{Name: EnvCAPOpAppVersion, Value: params.CAV.Spec.Version},
+					}, params.VCAPSecretName),
 					Containers:                getContainer(params),
 					ServiceAccountName:        params.WorkloadDetails.DeploymentDefinition.ServiceAccountName,
 					Volumes:                   params.WorkloadDetails.DeploymentDefinition.Volumes,
