@@ -29,6 +29,8 @@ func main() {
 
 	http.HandleFunc("/provision/", util.InstrumentHttpHandler(subHandler.HandleSaaSRequest, subsctiptionHandlerMetricPrefix, subscriptionHandlerDesc))
 	http.HandleFunc("/sms/provision/", util.InstrumentHttpHandler(subHandler.HandleSMSRequest, subsctiptionHandlerMetricPrefix+"_sms", subscriptionHandlerDesc))
+	// TODO: instrument this route too
+	http.HandleFunc("/dependencies/{providerSubaccountId}/{appName}/", subHandler.HandleGetDependenciesRequest)
 
 	// Initialize/start metrics server
 	util.InitMetricsServer()
