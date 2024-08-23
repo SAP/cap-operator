@@ -163,7 +163,21 @@ type ServiceInfo struct {
 	Secret string `json:"secret"`
 	// Type of service
 	Class string `json:"class"`
+	// SubscriptionDependency may be used to specify whether this service should be part of getDependencies call from subscripton service (e.g. saas-registry)
+	SubscriptionDependency *SubscriptionDependency `json:"subscriptionDependency,omitempty"`
 }
+
+// +kubebuilder:validation:Enum=Auto;Always;Never
+type SubscriptionDependency string
+
+const (
+	// Automatically determine if the service needs to be returned in getDependencies call
+	SubscriptionDependencyAuto SubscriptionDependency = "Auto"
+	// Always return the service in getDependencies call
+	SubscriptionDependencyAlways SubscriptionDependency = "Always"
+	// Never return the service in getDependencies call
+	SubscriptionDependencyNever SubscriptionDependency = "Never"
+)
 
 // Custom resource status
 type GenericStatus struct {

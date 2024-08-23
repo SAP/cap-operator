@@ -211,3 +211,10 @@ func (cdom *ClusterDomain) GetStatusReadyConditionMessage() string {
 	}
 	return ""
 }
+
+func (serviceInfo ServiceInfo) GetSubscriptionDependency() SubscriptionDependency {
+	if serviceInfo.SubscriptionDependency == nil {
+		return SubscriptionDependencyAuto
+	}
+	return *serviceInfo.SubscriptionDependency
+}
