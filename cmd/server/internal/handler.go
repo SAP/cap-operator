@@ -70,6 +70,7 @@ const (
 	Step                 = "step"
 	TenantProvisioning   = "Tenant Provisioning"
 	TenantDeprovisioning = "Tenant Deprovisioning"
+	GetDependencies      = "Get Dependencies"
 )
 
 type Result struct {
@@ -91,6 +92,12 @@ type CallbackResponse struct {
 }
 type OAuthResponse struct {
 	AccessToken string `json:"access_token"`
+}
+
+type GetDependenciesAuthError struct{}
+
+func (err *GetDependenciesAuthError) Error() string {
+	return "Not authorized"
 }
 
 func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
@@ -604,6 +611,136 @@ func (s *SubscriptionHandler) HandleRequest(w http.ResponseWriter, req *http.Req
 	w.Write(res)
 }
 
+func checkXsAppNameInUaaCredentials(credential map[string]interface{}) bool {
+	return credential["uaa"] != nil && credential["uaa"].(map[string]interface{})["xsappname"] != nil && credential["uaa"].(map[string]interface{})["xsappname"].(string) != ""
+}
+
+func checkXsAppNameInCredentials(credential map[string]interface{}) bool {
+	return credential["xsappname"] != nil && credential["xsappname"].(string) != ""
+}
+
+func checkSaasRegistryAppNameInCredentials(credential map[string]interface{}) bool {
+	return credential["saasregistryappname"] != nil && credential["saasregistryappname"].(string) != ""
+}
+
+func checkSaasRegistryEnabled(credential map[string]interface{}) bool {
+	return credential["saasregistryenabled"] != nil && credential["saasregistryenabled"].(bool)
+}
+
+func (s *SubscriptionHandler) getServiceDependencies(capApp *v1alpha1.CAPApplication, service v1alpha1.ServiceInfo) map[string]interface{} {
+	var credentials map[string]interface{}
+
+	serviceSecretCred, err := s.KubeClienset.CoreV1().Secrets(capApp.Namespace).Get(context.TODO(), service.Secret, metav1.GetOptions{})
+	if err != nil {
+		util.LogError(err, "Service secret read failed", GetDependencies, capApp, nil, "secretName", service.Secret)
+		return nil
+	}
+
+	if err = json.Unmarshal(serviceSecretCred.Data["credentials"], &credentials); err != nil {
+		util.LogError(err, "Could not read xsuaa secret with key credentials", GetDependencies, capApp, nil, "secretName", service.Secret)
+		return nil
+	}
+
+	if service.Class == "destination" || service.Class == "connectivity" {
+		if checkXsAppNameInCredentials(credentials) {
+			return map[string]interface{}{
+				"appId":   credentials["xsappname"].(string),
+				"appName": service.Class,
+			}
+		} else if checkXsAppNameInUaaCredentials(credentials) {
+			return map[string]interface{}{
+				"appId":   credentials["uaa"].(map[string]interface{})["xsappname"].(string),
+				"appName": service.Class,
+			}
+		}
+	} else if checkSaasRegistryAppNameInCredentials(credentials) && checkXsAppNameInUaaCredentials(credentials) {
+		return map[string]interface{}{
+			"appId":   credentials["uaa"].(map[string]interface{})["xsappname"].(string),
+			"appName": credentials["saasregistryappname"].(string),
+		}
+	} else if checkSaasRegistryEnabled(credentials) {
+		if checkXsAppNameInCredentials(credentials) {
+			return map[string]interface{}{
+				"xsappname": credentials["xsappname"].(string),
+			}
+		} else if checkXsAppNameInUaaCredentials(credentials) {
+			return map[string]interface{}{
+				"xsappname": credentials["uaa"].(map[string]interface{})["xsappname"].(string),
+			}
+		}
+	}
+	return nil
+}
+
+func (s *SubscriptionHandler) getDependencies(req *http.Request) ([]byte, error) {
+	var dependenciesArray []map[string]interface{}
+
+	// Read the cap application by assuming sme.sap.com/btp-app-identifier is passed in the URL in
+	// the format dependencies/global-account-id/app-name?tenantId=
+	uriWithOutParam := strings.Split(req.RequestURI, "?")[0]
+	btpAppIdentifier := strings.Split(uriWithOutParam, "/")
+
+	util.LogInfo("Get dependencies endpoint called", GetDependencies, nil, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
+
+	ca, err := s.checkCAPApp(btpAppIdentifier[len(btpAppIdentifier)-2], btpAppIdentifier[len(btpAppIdentifier)-1])
+	if err != nil {
+		util.LogError(err, "Get dependencies call failed", GetDependencies, nil, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
+		return nil, err
+	}
+
+	// fetch SaaS Registry and XSUAA information
+	saasData, uaaData := s.getServiceDetails(ca, GetDependencies)
+	if saasData == nil || uaaData == nil {
+		util.LogError(err, "Cannot read saas registry and xsuaa information", GetDependencies, nil, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
+		return nil, err
+	}
+
+	// validate token
+	if err = s.checkAuthorization(req.Header.Get("Authorization"), saasData, uaaData, GetDependencies); err != nil {
+		util.LogError(err, "Check authorization failed", GetDependencies, nil, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
+		return nil, &GetDependenciesAuthError{}
+	}
+
+	for _, service := range ca.Spec.BTP.Services {
+		if serviceDependency := s.getServiceDependencies(ca, service); serviceDependency != nil {
+			dependenciesArray = append(dependenciesArray, serviceDependency)
+		}
+	}
+
+	if len(dependenciesArray) == 0 {
+		util.LogInfo("No dependencies found", GetDependencies, ca, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
+		return nil, nil
+	}
+
+	dependencies, err := json.Marshal(dependenciesArray)
+	if err != nil {
+		util.LogError(err, "Json marshal of dependencies failed", GetDependencies, ca, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
+		return nil, err
+	}
+
+	util.LogInfo("Dependencies returned", GetDependencies, ca, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1], "dependencies", dependencies)
+
+	return dependencies, nil
+}
+
+func (s *SubscriptionHandler) HandleGetDependenciesRequest(w http.ResponseWriter, req *http.Request) {
+	switch req.Method {
+	case http.MethodGet:
+		dependencies, err := s.getDependencies(req)
+		if err != nil {
+			if _, ok := err.(*GetDependenciesAuthError); ok {
+				w.WriteHeader(http.StatusUnauthorized)
+			} else {
+				w.WriteHeader(http.StatusBadRequest)
+			}
+		} else {
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(dependencies)
+		}
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
 func NewSubscriptionHandler(clientset versioned.Interface, kubeClienset kubernetes.Interface) *SubscriptionHandler {
 	return &SubscriptionHandler{Clientset: clientset, KubeClienset: kubeClienset, httpClientGenerator: &httpClientGeneratorImpl{}}
 }
