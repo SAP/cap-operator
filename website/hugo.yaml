@@ -41,7 +41,7 @@ permalinks:
 imaging:
   resampleFilter: "CatmullRom"
   quality: 90
-  anchor: "smart"
+  anchor: "Smart"
 
 # Language configuration
 languages:
@@ -62,7 +62,7 @@ markup:
     # See a complete list of available styles at https://xyproto.github.io/splash/docs/all.html
     style: "nord"
     # Uncomment if you want your chosen highlight style used for code blocks without a specified language
-    guessSyntax: "true"
+    guessSyntax: true
     codeFences: true
 
 # Everything below this are Site Params
