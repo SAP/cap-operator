@@ -95,6 +95,16 @@ spec:
               value: provisioning
             - name: CAPOP_TENANT_SUBDOMAIN
               value: my-provider
+            - name: CAPOP_TENANT_TYPE
+              value: provider
+            - name: CAPOP_APP_NAME
+              value: test-cap-01
+            - name: CAPOP_GLOBAL_ACCOUNT_ID
+              value: btp-glo-acc-id
+            - name: CAPOP_PROVIDER_TENANT_ID
+              value: tenant-id-for-provider
+            - name: CAPOP_PROVIDER_SUBDOMAIN
+              value: my-provider
             - name: CAPOP_SUBSCRIPTION_PAYLOAD
               valueFrom:
                 secretKeyRef:
