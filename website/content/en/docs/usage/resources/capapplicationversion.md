@@ -70,7 +70,7 @@ The `type` of the deployment is important to indicate how the operator handles t
 - `Router` to indicate a version of [AppRouter](https://www.npmjs.com/package/@sap/approuter). Only one workload of this type can be used.
 - `Additional` to indicate supporting components that can be deployed along with the CAP application server.
 
-You can define optional attributes such as `replicas`, `env`, `resources`, `probes`, `securityContext`, and `ports` to configure the deployment.
+You can define optional attributes such as `replicas`, `env`, `resources`, `probes`, `securityContext`, `initContainers` and `ports` to configure the deployment.
 
 #### Port configuration
 
@@ -345,3 +345,5 @@ spec:
 > - [Job API reference](../../../reference/#sme.sap.com/v1alpha1.JobDetails) for job-specific configuration
 >
 > The supported configurations is kept minimal intentionally to keep the overall API simple by considering commonly used configurations.
+
+Note: For `initContainers` nearly the same environment variables as the main container are made available including VCAP_SERVICES environment.

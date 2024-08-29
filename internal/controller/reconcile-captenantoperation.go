@@ -7,8 +7,6 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -20,7 +18,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/kubernetes"
 )
 
 type ProvisioningPayload struct {
@@ -416,19 +413,21 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 	})
 
 	params := &jobCreateParams{
-		namePrefix:       relatedResources.CAPTenant.Name + "-" + workload.Name + "-",
-		labels:           labels,
-		annotations:      annotations,
-		vcapSecretName:   vcapSecretName,
-		imagePullSecrets: convertToLocalObjectReferences(relatedResources.CAPApplicationVersion.Spec.RegistrySecrets),
-		version:          relatedResources.CAPApplicationVersion.Spec.Version,
+		namePrefix:        relatedResources.CAPTenant.Name + "-" + workload.Name + "-",
+		labels:            labels,
+		annotations:       annotations,
+		vcapSecretName:    vcapSecretName,
+		imagePullSecrets:  convertToLocalObjectReferences(relatedResources.CAPApplicationVersion.Spec.RegistrySecrets),
+		version:           relatedResources.CAPApplicationVersion.Spec.Version,
+		appName:           relatedResources.CAPApplication.Spec.BTPAppName,
+		globalAccountId:   relatedResources.CAPApplication.Spec.GlobalAccountId,
+		providerTenantId:  relatedResources.CAPApplication.Spec.Provider.TenantId,
+		providerSubdomain: relatedResources.CAPApplication.Spec.Provider.SubDomain,
+		tenantType:        relatedResources.CAPTenant.Labels[LabelTenantType],
 	}
 
 	var job *batchv1.Job
 	if ctop.Spec.Steps[*ctop.Status.CurrentStep-1].Type == v1alpha1.JobTenantOperation {
-		if params.xsuaaInstanceName, err = getXSUAAInstanceName(consumedServiceInfos, relatedResources, c.kubeClient); err != nil {
-			return
-		}
 		job, err = c.createTenantOperationJob(ctx, ctop, workload, params)
 	} else { // custom tenant operation
 		job, err = c.createCustomTenantOperationJob(ctx, ctop, workload, params)
@@ -454,26 +453,14 @@ type jobCreateParams struct {
 	vcapSecretName    string
 	imagePullSecrets  []corev1.LocalObjectReference
 	version           string
-	xsuaaInstanceName string
+	appName           string
+	globalAccountId   string
+	providerTenantId  string
+	providerSubdomain string
+	tenantType        string
 }
 
 func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {
-	// prepare payload request
-	var (
-		payload []byte
-		err     error
-	)
-	if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
-		payload, err = json.Marshal(ProvisioningPayload{SubscribedSubdomain: ctop.Spec.SubDomain, EventType: "CREATE"})
-	} else if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeUpgrade {
-		payload, err = json.Marshal(UpgradePayload{Tenants: []string{ctop.Spec.TenantId}, AutoUnDeploy: true})
-	} else { // deprovisioning
-		payload, err = json.Marshal(struct{}{})
-	}
-	if err != nil {
-		return nil, err
-	}
-
 	derivedWorkload := deriveWorkloadForTenantOperation(workload)
 
 	// create job for tenant operation (provisioning / upgrade / deprovisioning)
@@ -496,8 +483,8 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 				Spec: corev1.PodSpec{
 					RestartPolicy:             corev1.RestartPolicyNever,
 					ImagePullSecrets:          params.imagePullSecrets,
-					Containers:                getContainers(payload, ctop, derivedWorkload, workload, params),
-					InitContainers:            *updateInitContainers(derivedWorkload.initContainers, getCTOPEnv(params.version, ctop), params.vcapSecretName),
+					Containers:                getContainers(ctop, derivedWorkload, workload, params),
+					InitContainers:            *updateInitContainers(derivedWorkload.initContainers, getCTOPEnv(params, ctop), params.vcapSecretName),
 					Volumes:                   derivedWorkload.volumes,
 					ServiceAccountName:        derivedWorkload.serviceAccountName,
 					SecurityContext:           derivedWorkload.podSecurityContext,
@@ -516,12 +503,12 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 	return c.kubeClient.BatchV1().Jobs(ctop.Namespace).Create(ctx, job, metav1.CreateOptions{})
 }
 
-func getContainers(payload []byte, ctop *v1alpha1.CAPTenantOperation, derivedWorkload tentantOperationWorkload, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) []corev1.Container {
+func getContainers(ctop *v1alpha1.CAPTenantOperation, derivedWorkload tentantOperationWorkload, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) []corev1.Container {
 	container := &corev1.Container{
 		Name:            workload.Name,
 		Image:           derivedWorkload.image,
 		ImagePullPolicy: derivedWorkload.imagePullPolicy,
-		Env:             append(getCTOPEnv(params.version, ctop), derivedWorkload.env...),
+		Env:             append(getCTOPEnv(params, ctop), derivedWorkload.env...),
 		EnvFrom:         getEnvFrom(params.vcapSecretName),
 		VolumeMounts:    derivedWorkload.volumeMounts,
 		Resources:       derivedWorkload.resources,
@@ -641,7 +628,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 							Name:            workload.Name,
 							Image:           workload.JobDefinition.Image,
 							ImagePullPolicy: workload.JobDefinition.ImagePullPolicy,
-							Env:             append(getCTOPEnv(params.version, ctop), workload.JobDefinition.Env...),
+							Env:             append(getCTOPEnv(params, ctop), workload.JobDefinition.Env...),
 							EnvFrom:         getEnvFrom(params.vcapSecretName),
 							VolumeMounts:    workload.JobDefinition.VolumeMounts,
 							Command:         workload.JobDefinition.Command,
@@ -649,7 +636,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 							SecurityContext: workload.JobDefinition.SecurityContext,
 						},
 					},
-					InitContainers: *updateInitContainers(workload.JobDefinition.InitContainers, getCTOPEnv(params.version, ctop), params.vcapSecretName),
+					InitContainers: *updateInitContainers(workload.JobDefinition.InitContainers, getCTOPEnv(params, ctop), params.vcapSecretName),
 				},
 			},
 		},
@@ -657,18 +644,6 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 
 	util.LogInfo("Creating custom tenant operation job", string(Processing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 	return c.kubeClient.BatchV1().Jobs(ctop.Namespace).Create(ctx, job, metav1.CreateOptions{})
-}
-
-func getXSUAAInstanceName(consumedServiceInfos []v1alpha1.ServiceInfo, relatedResources *cros, kubeClient kubernetes.Interface) (string, error) {
-	info := util.GetXSUAAInfo(consumedServiceInfos, relatedResources.CAPApplication)
-	if info.Secret == "" {
-		return "", errors.New("missing XSUAA service information")
-	}
-	entry, err := util.CreateVCAPEntryFromSecret(info, relatedResources.CAPApplication.Namespace, kubeClient)
-	if err != nil {
-		return "", err
-	}
-	return entry["name"].(string), nil
 }
 
 func addCAPTenantOperationLabels(ctop *v1alpha1.CAPTenantOperation, cat *v1alpha1.CAPTenant) (updated bool) {
@@ -702,8 +677,16 @@ func addCAPTenantOperationLabels(ctop *v1alpha1.CAPTenantOperation, cat *v1alpha
 	return updated
 }
 
-func getCTOPEnv(version string, ctop *v1alpha1.CAPTenantOperation) []corev1.EnvVar {
+func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation) []corev1.EnvVar {
 	return []corev1.EnvVar{
-		{Name: EnvCAPOpAppVersion, Value: version}, {Name: EnvCAPOpTenantID, Value: ctop.Spec.TenantId}, {Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)}, {Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
+		{Name: EnvCAPOpAppVersion, Value: params.version},
+		{Name: EnvCAPOpTenantId, Value: ctop.Spec.TenantId},
+		{Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)},
+		{Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
+		{Name: EnvCAPOpTenantType, Value: params.tenantType},
+		{Name: EnvCAPOpAppName, Value: params.appName},
+		{Name: EnvCAPOpGlobalAccountId, Value: params.globalAccountId},
+		{Name: EnvCAPOpProviderTenantId, Value: params.providerTenantId},
+		{Name: EnvCAPOpProviderSubDomain, Value: params.providerSubdomain},
 	}
 }

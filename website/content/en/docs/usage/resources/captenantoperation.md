@@ -42,3 +42,10 @@ The operation is completed by executing a series of steps (jobs) which are speci
 - `CAPOP_TENANT_ID`: Tenant identifier of the tenant for which the operation is executed
 - `CAPOP_TENANT_OPERATION`: The type of operation - `provisioning`, `deprovisioning`, or `upgrade`
 - `CAPOP_TENANT_SUBDOMAIN`: Subdomain (from subaccount) belonging to the tenant for which the operation is executed
+- `CAPOP_TENANT_TYPE`: The type of tenant - `provider` or `consumer`
+- `CAPOP_APP_NAME`: The BTP App Name from the corresponding `CAPApplication` configuration
+- `CAPOP_GLOBAL_ACCOUNT_ID`: The Global Account Identifier from the corresponding `CAPApplication` configuration
+- `CAPOP_PROVIDER_TENANT_ID`: The provider tenant identifier from the corresponding `CAPApplication` configuration
+- `CAPOP_PROVIDER_SUBDOMAIN`: The provider tenant subdomain from the corresponding `CAPApplication` configuration
+
+Note that all of the above environment variables are also made available on the corresponding `initContainers` (along with other relevant `VCAP_SERVICES` credentials)
