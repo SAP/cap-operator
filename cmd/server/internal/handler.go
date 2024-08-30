@@ -641,7 +641,7 @@ func (s *SubscriptionHandler) getServiceDependencies(capApp *v1alpha1.CAPApplica
 		return nil
 	}
 
-	if service.Class == "destination" || service.Class == "connectivity" {
+	if service.Class == "destination" || service.Class == "connectivity" || (service.Class == "auditlog" && credentials["plan"] == "oauth2") {
 		if checkXsAppNameInCredentials(credentials) {
 			return map[string]interface{}{
 				"appId":   credentials["xsappname"].(string),
