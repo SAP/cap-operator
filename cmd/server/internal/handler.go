@@ -680,11 +680,17 @@ func (s *SubscriptionHandler) getDependencies(req *http.Request) ([]byte, error)
 	uriWithOutParam := strings.Split(req.RequestURI, "?")[0]
 	btpAppIdentifier := strings.Split(uriWithOutParam, "/")
 
-	util.LogInfo("Get dependencies endpoint called", GetDependencies, nil, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
+	if len(btpAppIdentifier) < 6 {
+		err := errors.New("Wrong get dependencies request URI")
+		util.LogError(err, "Wrong get dependencies request URI", GetDependencies, "InvalidURI", nil, "uri", req.RequestURI)
+		return nil, err
+	}
+
+	util.LogInfo("Get dependencies endpoint called", GetDependencies, "GetDependencies", nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
 
 	ca, err := s.checkCAPApp(btpAppIdentifier[len(btpAppIdentifier)-2], btpAppIdentifier[len(btpAppIdentifier)-1])
 	if err != nil {
-		util.LogError(err, "Get dependencies call failed", GetDependencies, nil, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
+		util.LogError(err, "CAP Application resource not found", GetDependencies, nil, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
 		return nil, err
 	}
 
@@ -697,7 +703,7 @@ func (s *SubscriptionHandler) getDependencies(req *http.Request) ([]byte, error)
 
 	// validate token
 	if err = s.checkAuthorization(req.Header.Get("Authorization"), saasData, uaaData, GetDependencies); err != nil {
-		util.LogError(err, "Check authorization failed", GetDependencies, nil, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
+		util.LogError(err, "Authorization check failed", GetDependencies, "checkAuthorization", nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
 		return nil, &GetDependenciesAuthError{}
 	}
 
