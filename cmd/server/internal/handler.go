@@ -56,6 +56,7 @@ const InvalidRequestMethod = "invalid request method"
 const AuthorizationCheckFailed = "authorization check failed"
 const BearerPrefix = "Bearer "
 const BasicPrefix = "Basic "
+const ContentType = "Content-Type"
 
 const (
 	CallbackSucceeded              = "SUCCEEDED"
@@ -518,7 +519,7 @@ func prepareTokenRequest(ctx context.Context, saasData *util.SaasRegistryCredent
 	if err != nil {
 		return nil, err
 	}
-	tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	tokenReq.Header.Set(ContentType, "application/x-www-form-urlencoded")
 	if saasData.CredentialType != "x509" {
 		tokenReq.Header.Set("Authorization", BasicPrefix+base64.StdEncoding.EncodeToString([]byte(saasData.ClientId+":"+saasData.ClientSecret)))
 	}
@@ -566,7 +567,7 @@ func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, saasData 
 			AdditionalOutput: additionalOutput,
 		})
 		callbackReq, _ := http.NewRequestWithContext(ctx, http.MethodPut, saasData.SaasManagerUrl+asyncCallbackPath, bytes.NewBuffer(payload))
-		callbackReq.Header.Set("Content-Type", "application/json")
+		callbackReq.Header.Set(ContentType, "application/json")
 		callbackReq.Header.Set("Authorization", BearerPrefix+oAuthType.AccessToken)
 
 		client := s.httpClientGenerator.NewHTTPClient()
@@ -740,7 +741,7 @@ func (s *SubscriptionHandler) HandleGetDependenciesRequest(w http.ResponseWriter
 				w.WriteHeader(http.StatusBadRequest)
 			}
 		} else {
-			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set(ContentType, "application/json")
 			w.Write(dependencies)
 		}
 	default:
