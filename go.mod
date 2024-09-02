@@ -6,7 +6,7 @@ require (
 	github.com/MicahParks/keyfunc/v2 v2.1.0
 	github.com/cert-manager/cert-manager v1.15.3
 	github.com/gardener/cert-management v0.15.0
-	github.com/gardener/external-dns-management v0.21.0
+	github.com/gardener/external-dns-management v0.21.1
 	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/zapr v1.3.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
