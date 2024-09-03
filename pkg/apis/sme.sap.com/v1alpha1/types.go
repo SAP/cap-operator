@@ -83,7 +83,7 @@ type CAPApplicationSpec struct {
 	// SAP BTP Global Account Identifier where services are entitles for the current application
 	GlobalAccountId string `json:"globalAccountId"`
 	// Short name for the application (similar to BTP XSAPPNAME)
-	// +kubebuilder:validation:Pattern=^[a-zA-Z0-9_-]+$
+	// +kubebuilder:validation:Pattern=^[a-z0-9_-]+$
 	BTPAppName string `json:"btpAppName"`
 	// Provider subaccount where application services are created
 	Provider BTPTenantIdentification `json:"provider"`
