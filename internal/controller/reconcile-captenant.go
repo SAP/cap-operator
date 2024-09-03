@@ -423,6 +423,12 @@ func (c *Controller) createCAPTenantOperation(ctx context.Context, cat *v1alpha1
 		return nil, err
 	}
 
+	// Cleanup all cap tenant ourputs for this tenant
+	err = c.cleanUpTenantOutputs(ctx, cat)
+	if err != nil {
+		return nil, err
+	}
+
 	// create CAPTenantOperation
 	ctop := &v1alpha1.CAPTenantOperation{
 		ObjectMeta: metav1.ObjectMeta{
@@ -441,6 +447,21 @@ func (c *Controller) createCAPTenantOperation(ctx context.Context, cat *v1alpha1
 	addCAPTenantOperationLabels(ctop, cat) // NOTE: this is very important to do here as subsequent reconciliation of tenant will be inconsistent otherwise
 	util.LogInfo("Creating tenant operation", operationTypeMsgMap[opType], cat, ctop, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 	return c.crdClient.SmeV1alpha1().CAPTenantOperations(cat.Namespace).Create(ctx, ctop, metav1.CreateOptions{})
+}
+
+func (c *Controller) cleanUpTenantOutputs(ctx context.Context, cat *v1alpha1.CAPTenant) error {
+	// delete all tenant outputs for this tenant
+	selector, err := labels.ValidatedSelectorFromSet(map[string]string{
+		LabelTenantId: cat.Spec.TenantId,
+	})
+	if err != nil {
+		return err
+	}
+	err = c.crdClient.SmeV1alpha1().CAPTenantOutputs(cat.Namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return fmt.Errorf("deletion of cap tenant outputs failed: %s", err.Error())
+	}
+	return nil
 }
 
 func deriveStepsForTenantOperation(cav *v1alpha1.CAPApplicationVersion, opType v1alpha1.CAPTenantOperationType) (steps []v1alpha1.CAPTenantOperationStep, err error) {

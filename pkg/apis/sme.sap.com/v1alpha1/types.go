@@ -21,6 +21,8 @@ const (
 	CAPTenantResource             = "captenants"
 	CAPTenantOperationKind        = "CAPTenantOperation"
 	CAPTenantOperationResource    = "captenantoperations"
+	CAPTenantOutputKind           = "CAPTenantOutput"
+	CAPTenantOutputResource       = "captenantouputs"
 )
 
 // +kubebuilder:resource:shortName=ca
@@ -533,3 +535,30 @@ const (
 	// Upgrade tenant
 	CAPTenantOperationTypeUpgrade CAPTenantOperationType = "upgrade"
 )
+
+// +kubebuilder:resource:shortName=ctout
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// CAPTenantOutput is the schema for captenantoutputs API
+type CAPTenantOutput struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	// CAPTenantOutputData spec
+	Spec CAPTenantOutputSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// CAPTenantOutputList contains a list of CAPTenantOutput
+type CAPTenantOutputList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []CAPTenantOutput `json:"items"`
+}
+
+type CAPTenantOutputSpec struct {
+	// +kubebuilder:validation:nullable
+	SubscriptionCallbackData string `json:"subscriptionCallbackData,omitempty"`
+}

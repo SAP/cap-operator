@@ -92,6 +92,7 @@ type CallbackResponse struct {
 	SubscriptionUrl  string          `json:"subscriptionUrl"`
 	AdditionalOutput *map[string]any `json:"additionalOutput,omitempty"`
 }
+
 type OAuthResponse struct {
 	AccessToken string `json:"access_token"`
 }
@@ -100,6 +101,11 @@ type GetDependenciesAuthError struct{}
 
 func (err *GetDependenciesAuthError) Error() string {
 	return "Not authorized"
+}
+
+type tenantInfo struct {
+	tenantId        string
+	tenantSubDomain string
 }
 
 func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
@@ -190,7 +196,8 @@ func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
 
 	// TODO: consider retrying tenant creation if it is in Error state
 	if tenant != nil {
-		s.initializeCallback(tenant.Name, ca, saasData, req, reqType["subscribedSubdomain"].(string), true)
+		tenantIn := tenantInfo{tenantId: reqType["subscribedTenantId"].(string), tenantSubDomain: reqType["subscribedSubdomain"].(string)}
+		s.initializeCallback(tenant.Name, ca, saasData, req, tenantIn, true)
 	}
 
 	// Tenant created/exists
@@ -286,8 +293,8 @@ func (s *SubscriptionHandler) DeleteTenant(req *http.Request) *Result {
 			return &Result{Tenant: nil, Message: err.Error()}
 		}
 	}
-
-	s.initializeCallback(tenantName, ca, saasData, req, reqType["subscribedSubdomain"].(string), false)
+	tenantIn := tenantInfo{tenantId: reqType["subscribedTenantId"].(string), tenantSubDomain: reqType["subscribedSubdomain"].(string)}
+	s.initializeCallback(tenantName, ca, saasData, req, tenantIn, false)
 
 	return &Result{Tenant: tenant, Message: ResourceDeleted}
 }
@@ -330,12 +337,12 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 	return nil
 }
 
-func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1.CAPApplication, saasData *util.SaasRegistryCredentials, req *http.Request, tenantSubDomain string, isProvisioning bool) {
+func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1.CAPApplication, saasData *util.SaasRegistryCredentials, req *http.Request, tenantIn tenantInfo, isProvisioning bool) {
 	subscriptionDomain := ca.Annotations[AnnotationSubscriptionDomain]
 	if subscriptionDomain == "" {
 		subscriptionDomain = ca.Spec.Domains.Primary
 	}
-	appUrl := "https://" + tenantSubDomain + "." + subscriptionDomain
+	appUrl := "https://" + tenantIn.tenantSubDomain + "." + subscriptionDomain
 	asyncCallbackPath := req.Header.Get("STATUS_CALLBACK")
 	util.LogInfo("Callback initialized", TenantProvisioning, ca, nil, "subscription URL", appUrl, "async callback path", asyncCallbackPath, "tenantName", tenantName)
 
@@ -365,6 +372,11 @@ func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1
 					additionalOutput = nil
 				}
 			}
+			// Add tenant data to the additional output if it exists
+			err := s.enrichAdditionalOutput(ca.Namespace, tenantIn.tenantId, additionalOutput)
+			if err != nil {
+				util.LogError(err, "Error updating tenant data", step, ca, nil, "tenantId", tenantIn.tenantId)
+			}
 		} else {
 			additionalOutput = nil
 		}
@@ -372,6 +384,34 @@ func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1
 	}()
 
 	util.LogInfo("Waiting for async saas callback after checks...", step, ca, nil, "tenantName", tenantName)
+}
+
+func (s *SubscriptionHandler) enrichAdditionalOutput(namespace string, tenantId string, additionalOutput *map[string]any) error {
+	labelSelector, err := labels.ValidatedSelectorFromSet(map[string]string{
+		LabelTenantId: tenantId,
+	})
+	if err != nil {
+		return err
+	}
+
+	tenantDataList, err := s.Clientset.SmeV1alpha1().CAPTenantOutputs(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
+	if err != nil {
+		return err
+	}
+
+	for _, tenantData := range tenantDataList.Items {
+		// Update relevant data from each CAPTenantOutput to saas callback additional output
+		tenantDataOutput := &map[string]any{}
+		err = json.Unmarshal([]byte(tenantData.Spec.SubscriptionCallbackData), tenantDataOutput)
+		if err != nil {
+			return err
+		}
+		// merge tenant data output into additional output
+		for k, v := range *tenantDataOutput {
+			(*additionalOutput)[k] = v
+		}
+	}
+	return nil
 }
 
 func (s *SubscriptionHandler) checkCAPTenantStatus(ctx context.Context, tenantNamespace string, tenantName string, provisioning bool, callbackTimeoutMs string) bool {

@@ -76,9 +76,14 @@ const RouterHttpCookieName = "CAPOP_ROUTER_STICKY"
 
 const (
 	EnvCAPOpAppVersion          = "CAPOP_APP_VERSION"
-	EnvCAPOpTenantID            = "CAPOP_TENANT_ID"
+	EnvCAPOpTenantId            = "CAPOP_TENANT_ID"
 	EnvCAPOpTenantSubDomain     = "CAPOP_TENANT_SUBDOMAIN"
 	EnvCAPOpTenantOperation     = "CAPOP_TENANT_OPERATION"
+	EnvCAPOpTenantType          = "CAPOP_TENANT_TYPE"
+	EnvCAPOpAppName             = "CAPOP_APP_NAME"
+	EnvCAPOpGlobalAccountId     = "CAPOP_GLOBAL_ACCOUNT_ID"
+	EnvCAPOpProviderTenantId    = "CAPOP_PROVIDER_TENANT_ID"
+	EnvCAPOpProviderSubDomain   = "CAPOP_PROVIDER_SUBDOMAIN"
 	EnvCAPOpSubscriptionPayload = "CAPOP_SUBSCRIPTION_PAYLOAD"
 	EnvVCAPServices             = "VCAP_SERVICES"
 )
