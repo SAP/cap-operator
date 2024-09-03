@@ -835,7 +835,7 @@ func TestGetDependencies(t *testing.T) {
 			if err != nil {
 				t.Fatal(err.Error())
 			}
-			subHandler := setup(ca, nil, client)
+			subHandler := setup(ca, nil, nil, client)
 
 			res := httptest.NewRecorder()
 			var req *http.Request
