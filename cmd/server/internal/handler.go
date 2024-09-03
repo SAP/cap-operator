@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -679,14 +680,14 @@ func (s *SubscriptionHandler) getDependencies(req *http.Request) ([]byte, error)
 	// Read the cap application by assuming sme.sap.com/btp-app-identifier is passed in the URL in
 	// the format dependencies/global-account-id/app-name?tenantId=
 	uriWithOutParam := strings.Split(req.RequestURI, "?")[0]
-	btpAppIdentifier := strings.Split(uriWithOutParam, "/")
-
-	if len(btpAppIdentifier) < 6 {
-		err := errors.New("Wrong get dependencies request URI")
+	re := regexp.MustCompile(`^/dependencies/.*\/.*`)
+	if !re.MatchString(uriWithOutParam) {
+		err := errors.New("wrong get dependencies request uri")
 		util.LogError(err, "Wrong get dependencies request URI", GetDependencies, "InvalidURI", nil, "uri", req.RequestURI)
 		return nil, err
 	}
 
+	btpAppIdentifier := strings.Split(uriWithOutParam, "/")
 	util.LogInfo("Get dependencies endpoint called", GetDependencies, "GetDependencies", nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
 
 	ca, err := s.checkCAPApp(btpAppIdentifier[len(btpAppIdentifier)-2], btpAppIdentifier[len(btpAppIdentifier)-1])
@@ -725,7 +726,7 @@ func (s *SubscriptionHandler) getDependencies(req *http.Request) ([]byte, error)
 		return nil, err
 	}
 
-	util.LogInfo("Dependencies returned", GetDependencies, ca, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1], "dependencies", dependencies)
+	util.LogInfo("Dependencies returned", GetDependencies, ca, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1], "dependencies", string(dependencies))
 
 	return dependencies, nil
 }

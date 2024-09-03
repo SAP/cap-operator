@@ -22,7 +22,7 @@ func main() {
 	klog.SetLogger(util.GetLogger())
 	subHandler := getSubscriptionHandler()
 	http.HandleFunc("/provision/", subHandler.HandleRequest)
-	http.HandleFunc("/callback/v1.0/dependencies/", subHandler.HandleGetDependenciesRequest)
+	http.HandleFunc("/dependencies/", subHandler.HandleGetDependenciesRequest)
 
 	// Default port
 	port := "4000"

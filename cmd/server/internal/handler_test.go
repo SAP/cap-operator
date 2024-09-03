@@ -821,7 +821,7 @@ func TestGetDependencies(t *testing.T) {
 			if testData.invalidURI == true {
 				req = httptest.NewRequest(testData.method, "/callback/dependencies/"+globalAccountId+"/"+appName, nil)
 			} else {
-				req = httptest.NewRequest(testData.method, "/callback/v1.0/dependencies/"+globalAccountId+"/"+appName, nil)
+				req = httptest.NewRequest(testData.method, "/dependencies/"+globalAccountId+"/"+appName, nil)
 			}
 
 			if testData.invalidToken == true {
