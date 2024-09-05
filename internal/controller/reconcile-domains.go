@@ -17,6 +17,7 @@ import (
 	certManagermetav1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	certv1alpha1 "github.com/gardener/cert-management/pkg/apis/cert/v1alpha1"
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -26,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/klog/v2"
 )
 
 // TODO: ignore duplicates reconciliation calls for same dnsTarget, Finalizers... and a whole lot more!
@@ -52,6 +52,7 @@ const (
 func (c *Controller) handleDomains(ctx context.Context, ca *v1alpha1.CAPApplication) (*ReconcileResult, error) {
 	domains, err := json.Marshal(ca.Spec.Domains)
 	if err != nil {
+		util.LogError(err, "Error occurred while encoding domains to json", string(Processing), ca, nil)
 		return nil, fmt.Errorf("error occurred while encoding domains to json: %w", err)
 	}
 	domainsHash := sha256Sum(string(domains))
@@ -110,6 +111,7 @@ func (c *Controller) handlePrimaryDomainGateway(ctx context.Context, ca *v1alpha
 
 	// create gateway
 	if errors.IsNotFound(err) {
+		util.LogInfo("Creating gateway for primary domain", string(Processing), ca, nil, "gatewayName", gwName)
 		_, err = c.istioClient.NetworkingV1beta1().Gateways(namespace).Create(
 			ctx, &istionwv1beta1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
@@ -135,6 +137,7 @@ func (c *Controller) handlePrimaryDomainGateway(ctx context.Context, ca *v1alpha
 		updateResourceAnnotation(&gw.ObjectMeta, hash)
 
 		// Trigger the actual update on the resource
+		util.LogInfo("Updating gateway for primary domain", string(Processing), ca, gw)
 		_, err = c.istioClient.NetworkingV1beta1().Gateways(namespace).Update(ctx, gw, metav1.UpdateOptions{})
 	}
 
@@ -156,7 +159,7 @@ func (c *Controller) handlePrimaryDomainCertificate(ctx context.Context, ca *v1a
 		gardenerCertSpec := getGardenerCertificateSpec(commonName, secretName)
 		if errors.IsNotFound(err) {
 			// create certificate
-			klog.InfoS("Processing Domains - Creating gardener certificates", "caName", ca.Name, "namespace", ca.Namespace, "certificateName", certName, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+			util.LogInfo("Creating gardener certificates for primary domain", string(Processing), ca, nil, "certificateName", certName)
 			_, err = c.gardenerCertificateClient.CertV1alpha1().Certificates(istioNamespace).Create(
 				ctx, &certv1alpha1.Certificate{
 					ObjectMeta: metav1.ObjectMeta{
@@ -183,6 +186,7 @@ func (c *Controller) handlePrimaryDomainCertificate(ctx context.Context, ca *v1a
 			updateResourceAnnotation(&gardenerCert.ObjectMeta, hash)
 
 			// Trigger the actual update on the resource
+			util.LogInfo("Updating gardener certificates for primary domain", string(Processing), ca, gardenerCert)
 			_, err = c.gardenerCertificateClient.CertV1alpha1().Certificates(istioNamespace).Update(ctx, gardenerCert, metav1.UpdateOptions{})
 		}
 
@@ -193,7 +197,7 @@ func (c *Controller) handlePrimaryDomainCertificate(ctx context.Context, ca *v1a
 
 		if errors.IsNotFound(err) {
 			// create certificate
-			klog.InfoS("Processing Domains - Creating certManager certificates", "caName", ca.Name, "namespace", ca.Namespace, "certificateName", certName, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+			util.LogInfo("Creating cert-manager certificates for primary domain", string(Processing), ca, nil, "certificateName", certName)
 			_, err = c.certManagerCertificateClient.CertmanagerV1().Certificates(istioNamespace).Create(
 				ctx, &certManagerv1.Certificate{
 					ObjectMeta: metav1.ObjectMeta{
@@ -220,6 +224,7 @@ func (c *Controller) handlePrimaryDomainCertificate(ctx context.Context, ca *v1a
 			updateResourceAnnotation(&certManagerCert.ObjectMeta, hash)
 
 			// Trigger the actual update on the resource
+			util.LogInfo("Updating cert-manager certificates for primary domain", string(Processing), ca, certManagerCert)
 			_, err = c.certManagerCertificateClient.CertmanagerV1().Certificates(istioNamespace).Update(ctx, certManagerCert, metav1.UpdateOptions{})
 		}
 	}
@@ -245,7 +250,7 @@ func (c *Controller) handlePrimaryDomainDNSEntry(ctx context.Context, ca *v1alph
 
 		if errors.IsNotFound(err) {
 			// create DNSEntry
-			klog.InfoS("Processing CAPApplication - Creating DNSEntry", "name", ca.Name, "namespace", ca.Namespace, "dnsEntryName", dnsEntryName, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+			util.LogInfo("Creating dns entry for primary domain", string(Processing), ca, nil, "dnsEntryName", dnsEntryName)
 			_, err = c.gardenerDNSClient.DnsV1alpha1().DNSEntries(namespace).Create(
 				ctx, &dnsv1alpha1.DNSEntry{
 					ObjectMeta: metav1.ObjectMeta{
@@ -272,6 +277,7 @@ func (c *Controller) handlePrimaryDomainDNSEntry(ctx context.Context, ca *v1alph
 			updateResourceAnnotation(&dnsEntry.ObjectMeta, hash)
 
 			// Trigger the actual update on the resource
+			util.LogInfo("Updating dns entry for primary domain", string(Processing), ca, dnsEntry)
 			_, err = c.gardenerDNSClient.DnsV1alpha1().DNSEntries(namespace).Update(ctx, dnsEntry, metav1.UpdateOptions{})
 		}
 		return err
@@ -296,12 +302,14 @@ func (c *Controller) checkPrimaryDomainResources(ctx context.Context, ca *v1alph
 	var istioIngressGatewayInfo *ingressGatewayInfo
 	istioIngressGatewayInfo, err = c.getIngressGatewayInfo(ctx, ca)
 	if err != nil {
+		util.LogError(err, "", string(Processing), ca, nil)
 		return false, err
 	}
 
 	certName := getResourceName(ca.Spec.BTPAppName, CertificateSuffix)
 	// check for certificate status
 	if processing, err := c.checkCertificateStatus(ctx, ca, istioIngressGatewayInfo.Namespace, certName); err != nil || processing {
+		util.LogError(err, "", string(Processing), ca, nil, "certificateName", certName)
 		return processing, err
 	}
 
@@ -315,9 +323,11 @@ func (c *Controller) checkPrimaryDomainResources(ctx context.Context, ca *v1alph
 
 		// check for ready state
 		if dnsEntry.Status.State == dnsv1alpha1.STATE_ERROR {
-			return false, fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name, *dnsEntry.Status.Message)
+			err := fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name, *dnsEntry.Status.Message)
+			util.LogError(err, "", string(Processing), ca, dnsEntry)
+			return false, err
 		} else if dnsEntry.Status.State != dnsv1alpha1.STATE_READY {
-			klog.InfoS("Resource not ready", "kind", dnsv1alpha1.DNSEntryKind, "state", dnsEntry.Status.State, v1alpha1.CAPApplicationKind, ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+			util.LogInfo("DNS entry resource not ready for primary domain", string(Processing), ca, dnsEntry)
 			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, "DomainResourcesProcessing", "")
 			return true, nil
 		}
@@ -398,7 +408,7 @@ func (c *Controller) checkCertificateStatus(ctx context.Context, ca *v1alpha1.CA
 		if certificate.Status.State == certv1alpha1.StateError {
 			return false, fmt.Errorf(formatResourceStateErr, certv1alpha1.CertificateKind, certv1alpha1.StateError, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name, *certificate.Status.Message)
 		} else if certificate.Status.State != certv1alpha1.StateReady {
-			klog.InfoS("Resource not ready", "kind", certv1alpha1.CertificateKind, "state", certificate.Status.State, v1alpha1.CAPApplicationKind, ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+			util.LogInfo("Gardener certificate resource not ready for primary domain", string(Processing), ca, certificate)
 			return true, nil
 		}
 	case certManagerCertManagerIO:
@@ -412,7 +422,7 @@ func (c *Controller) checkCertificateStatus(ctx context.Context, ca *v1alpha1.CA
 		readyCond := getCertManagerReadyCondition(certificate)
 		// check for ready state
 		if readyCond == nil || readyCond.Status == certManagermetav1.ConditionUnknown {
-			klog.InfoS("Resource not ready", "kind", certv1alpha1.CertificateKind, "state", "unknown", v1alpha1.CAPApplicationKind, ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+			util.LogInfo("cert-manager certificate resource not ready for primary domain", string(Processing), ca, certificate)
 			return true, nil
 		} else if readyCond.Status == certManagermetav1.ConditionFalse {
 			return false, fmt.Errorf(formatResourceStateErr, certManagerv1.CertificateKind, "not ready", v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name, readyCond.Message)
@@ -529,6 +539,7 @@ func (c *Controller) reconcileTenantDNSEntries(ctx context.Context, cat *v1alpha
 	// Create DNS Entries
 	for index, domain := range ca.Spec.Domains.Secondary {
 		dnsEntryName := cat.Name + strconv.Itoa(index)
+		util.LogInfo("Creating dns entry for secondary domain", string(Processing), cat, nil, "dnsEntryName", dnsEntryName, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		_, err = c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ca.Namespace).Create(
 			ctx, &dnsv1alpha1.DNSEntry{
 				ObjectMeta: metav1.ObjectMeta{
@@ -569,7 +580,7 @@ func (c *Controller) checkTenantDNSEntries(ctx context.Context, cat *v1alpha1.CA
 		}
 
 		if len(dnsEntries.Items) == 0 {
-			return false, fmt.Errorf("could not find dnsentries for %s %s.%s", v1alpha1.CAPTenantKind, cat.Namespace, cat.Name)
+			return false, fmt.Errorf("could not find DNSEntry for %s %s.%s", v1alpha1.CAPTenantKind, cat.Namespace, cat.Name)
 		}
 
 		for _, dnsEntry := range dnsEntries.Items {
@@ -577,7 +588,7 @@ func (c *Controller) checkTenantDNSEntries(ctx context.Context, cat *v1alpha1.CA
 			if dnsEntry.Status.State == dnsv1alpha1.STATE_ERROR {
 				return false, fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name, *dnsEntry.Status.Message)
 			} else if dnsEntry.Status.State != dnsv1alpha1.STATE_READY {
-				klog.InfoS("Resource not ready", "kind", dnsv1alpha1.DNSEntryKind, "state", dnsEntry.Status.State, v1alpha1.CAPTenantKind, cat.Name, "namespace", cat.Namespace, LabelBTPApplicationIdentifierHash, cat.Labels[LabelBTPApplicationIdentifierHash])
+				util.LogInfo("DNS entry resource not ready", string(Processing), cat, dnsEntry, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 				return true, nil
 			}
 		}
@@ -608,16 +619,19 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 	}()
 
 	if drModified, err = c.reconcileTenantDestinationRule(ctx, cat.Name, cat, cavName, ca); err != nil {
+    util.LogError(err, "Destination rule reconciliation failed", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		reason = CAPTenantEventDestinationRuleModificationFailed
 		return
 	}
 
 	if prevCAVDrModified, err = c.reconcileTenantDestinationRulePrevCav(ctx, cat, ca); err != nil {
+		util.LogError(err, "Destination rule reconciliation failed for previous cav", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		reason = CAPTenantEventDestinationRuleModificationFailed
 		return
 	}
 
 	if vsModified, err = c.reconcileTenantVirtualService(ctx, cat, cavName, ca); err != nil {
+		util.LogError(err, "Virtual service reconciliation failed", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		reason = CAPTenantEventVirtualServiceModificationFailed
 		return
 	}
@@ -683,12 +697,15 @@ func (c *Controller) reconcileTenantDestinationRule(ctx context.Context, drName 
 	}
 
 	if update, err = c.getUpdatedTenantDestinationRuleObject(ctx, cat, dr, cavName); err != nil {
+		util.LogError(err, "", string(Processing), cat, dr, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		return
 	}
 
 	if create {
+		util.LogInfo("Creating destination rule", string(Processing), cat, dr, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		_, err = c.istioClient.NetworkingV1beta1().DestinationRules(cat.Namespace).Create(ctx, dr, metav1.CreateOptions{})
 	} else if update {
+		util.LogInfo("Updating destination rule", string(Processing), cat, dr, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		_, err = c.istioClient.NetworkingV1beta1().DestinationRules(cat.Namespace).Update(ctx, dr, metav1.UpdateOptions{})
 	}
 
@@ -763,12 +780,15 @@ func (c *Controller) reconcileTenantVirtualService(ctx context.Context, cat *v1a
 	}
 
 	if update, err = c.getUpdatedTenantVirtualServiceObject(ctx, cat, vs, cavName, ca); err != nil {
+		util.LogError(err, "", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId)
 		return
 	}
 
 	if create {
+		util.LogInfo("Creating virtual service", string(Processing), cat, vs, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		_, err = c.istioClient.NetworkingV1beta1().VirtualServices(cat.Namespace).Create(ctx, vs, metav1.CreateOptions{})
 	} else if update {
+		util.LogInfo("Updating virtual service", string(Processing), cat, vs, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		_, err = c.istioClient.NetworkingV1beta1().VirtualServices(cat.Namespace).Update(ctx, vs, metav1.UpdateOptions{})
 	}
 

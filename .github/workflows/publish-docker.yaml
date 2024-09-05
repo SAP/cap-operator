@@ -18,7 +18,7 @@ jobs:
     name: Publish Docker image
     strategy:
       matrix:
-        workload: ["controller", "server", "web-hooks", "mtx-job"]
+        workload: ["controller", "server", "web-hooks"]
     runs-on: ubuntu-22.04
     permissions:
       contents: read

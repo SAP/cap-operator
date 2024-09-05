@@ -11,12 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/klog/v2"
 )
 
 const (
@@ -119,7 +119,7 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 		return
 	}
 
-	// step 5 - check state of dependant resources
+	// step 5 - check state of dependent resources
 	if processing, err = c.checkPrimaryDomainResources(ctx, ca); err != nil || processing {
 		return
 	}
@@ -156,6 +156,10 @@ func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1al
 	for _, tenant := range tenants {
 		if tenant.Spec.VersionUpgradeStrategy == v1alpha1.VersionUpgradeStrategyTypeNever {
 			// Skip non relevant tenants
+			continue
+		}
+		if tenant.Status.State == v1alpha1.CAPTenantStateProvisioning || tenant.Status.State == v1alpha1.CAPTenantStateUpgrading || tenant.Status.State == v1alpha1.CAPTenantStateDeleting {
+			// Skip tenants that are not ready or not in processing or not in error
 			continue
 		}
 		// Assume we may have to update the tenant and prepare a copy
@@ -265,7 +269,8 @@ func (c *Controller) validateSecrets(ctx context.Context, ca *v1alpha1.CAPApplic
 
 	// waiting for secrets
 	message := fmt.Sprintf("waiting for secrets to get ready for %s %s.%s", v1alpha1.CAPApplicationKind, ca.Name, ca.Namespace)
-	klog.V(2).InfoS(message)
+
+	util.LogInfo("Waiting for secrets", string(Processing), ca, nil)
 	c.Event(ca, nil, corev1.EventTypeWarning, CAPApplicationEventMissingSecrets, EventActionProcessingSecrets, message)
 	ca.SetStatusWithReadyCondition(ca.Status.State, metav1.ConditionFalse, EventActionProcessingSecrets, message)
 	return true, nil
@@ -299,7 +304,7 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 		if providerSubAccountId == "" {
 			providerSubAccountId = ca.Spec.Provider.TenantId
 		}
-		secret, _ := c.kubeClient.CoreV1().Secrets(ca.Namespace).Create(context.TODO(), &corev1.Secret{
+		secret, err := c.kubeClient.CoreV1().Secrets(ca.Namespace).Create(context.TODO(), &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: providerTenantName + "-",
 				Namespace:    ca.Namespace,
@@ -318,9 +323,14 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 				}`,
 			},
 		}, metav1.CreateOptions{})
+		if err != nil {
+			util.LogError(err, "Error creating tenant subscription context secret", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
+			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
+			return false, err
+		}
 
 		// Create provider tenant
-		klog.InfoS("Processing CAPApplication - Creating Provider tenant", "name", ca.Name, "namespace", ca.Namespace, "tenantId", ca.Spec.Provider.TenantId, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+		util.LogInfo("Creating provider tenant", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
 
 		if tenant, err = c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Create(
 			ctx, &v1alpha1.CAPTenant{
@@ -356,6 +366,7 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 			}
 			_, err = c.kubeClient.CoreV1().Secrets(tenant.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
 			if err != nil {
+				util.LogError(err, "Error updating tenant subscription context secret", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
 				ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
 				return false, err
 			}
@@ -371,7 +382,7 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 		}
 
 		msg := fmt.Sprintf("provider %v not ready for %v %v.%v; waiting for it to be ready", v1alpha1.CAPTenantKind, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
-		klog.InfoS(msg, "provider tenant", tenant.Name, v1alpha1.CAPApplicationKind, ca, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+		util.LogInfo("Waiting for provider tenant to be ready", string(Processing), ca, tenant, "tenantId", ca.Spec.Provider.TenantId)
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, EventActionProviderTenantProcessing, msg)
 		return true, nil
 	}
@@ -382,32 +393,34 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alpha1.CAPApplication) (*ReconcileResult, error) {
 	var err error
 
-	klog.InfoS("Deleting CAPApplication", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+	util.LogInfo("Attempting to delete application", string(Deleting), ca, nil)
 	if ca.Status.State != v1alpha1.CAPApplicationStateDeleting {
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateDeleting, metav1.ConditionFalse, "DeleteTriggered", "")
 		return NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0), nil
 	}
 
 	// TODO: cleanup domain resources via reconciliation
-	klog.InfoS("Deleting CAPApplication - Primary Domain Certificate", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+	util.LogInfo("Removing primary domain certificate", string(Deleting), ca, nil)
 	if err = c.deletePrimaryDomainCertificate(ctx, ca); err != nil && !k8sErrors.IsNotFound(err) {
 		return nil, err
 	}
 
 	// delete CAPTenants - return if found in this loop, to verify deletion
 	var tenantFound bool
-	klog.InfoS("Deleting CAPApplication - CAPTenants", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+	util.LogInfo("Deleting dependent tenants", string(Deleting), ca, nil)
 	if tenantFound, err = c.deleteTenants(ctx, ca); tenantFound || err != nil {
+		util.LogError(err, "Could not delete dependent tenant", string(Deleting), ca, nil)
 		return nil, err
 	}
 
-	klog.InfoS("Deleting CAPApplication - Secrets", "name", ca.Name, "namespace", ca.Namespace, LabelBTPApplicationIdentifierHash, sha256Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName))
+	util.LogInfo("Cleaning up secrets", string(Deleting), ca, nil)
 	if err = c.cleanupPreservedSecrets(ca.Spec.BTP.Services, ca.Namespace); err != nil && !k8sErrors.IsNotFound(err) {
 		return nil, err
 	}
 
 	// delete CAPApplication
 	if removeFinalizer(&ca.Finalizers, FinalizerCAPApplication) {
+		util.LogInfo("Removing Finalizer; finished deleting this application", string(Deleting), ca, nil)
 		return nil, c.updateCAPApplication(ctx, ca)
 	}
 

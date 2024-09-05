@@ -9,11 +9,11 @@ description: >
 
 **Usage of @sap/cds-mtxs library for multitenancy**
 
-> By default, CAP Operator utilizes the `@sap/cds-mtxs` library. However, you can disable this by setting the IS_MTXS_ENABLED environment variable to "false" in the TenantOperation workload, in which case the old `@sap/cds-mtx` library-based wrapper job will be used instead. As mentioned in the documentation for SAP Cloud Application Programming Model, [`@sap/cds-mtx` is no longer supported with CDS 7](https://cap.cloud.sap/docs/releases/jun23#migration-from-old-mtx). The multitenancy and extensibility tool job component will be removed once support for older CDS version ends.
+> The CAP Operator utilizes the `@sap/cds-mtxs` library. Prior to version 0.7.0 one could disable this by setting the IS_MTXS_ENABLED environment variable to "false" in the TenantOperation workload, in which case the old `@sap/cds-mtx` library-based wrapper job was used instead. However, this is no longer supported and is removed as support for older CDS version (v6) has ended.
 
 CAP Operator supports the usage of `@sap/cds-mtxs` (which replaces the former `@sap/cds-mtx` library) from the SAP Cloud Application Programming Model by default.
 
-This enables us to get rid of our [wrapper implementation](../concepts/operator-components/mtx-job/) and instead use built-in (into `@sap/cds-mtxs`) CLI-based handling for tenant operations during provisioning, deprovisioning, and upgrading tenants.
+This enables us to use built-in (into `@sap/cds-mtxs`) CLI-based handling for tenant operations during provisioning, deprovisioning, and upgrading tenants.
 
 As of now, for the usage of this new library, you (depending on your k8s cluster hardening setup) need to add additional `securityContext` for the `TenantOperation` and also `CAP` workloads as shown in the sample below. 
 

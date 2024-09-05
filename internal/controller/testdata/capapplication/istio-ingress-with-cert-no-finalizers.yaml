@@ -50,8 +50,6 @@ metadata:
   namespace: istio-system
   annotations:
     sme.sap.com/btp-app-identifier: default.test-cap-01
-  annotations:
-    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
   labels:
     sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
 spec:

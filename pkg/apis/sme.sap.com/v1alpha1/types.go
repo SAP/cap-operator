@@ -21,6 +21,8 @@ const (
 	CAPTenantResource             = "captenants"
 	CAPTenantOperationKind        = "CAPTenantOperation"
 	CAPTenantOperationResource    = "captenantoperations"
+	CAPTenantOutputKind           = "CAPTenantOutput"
+	CAPTenantOutputResource       = "captenantouputs"
 )
 
 // +kubebuilder:resource:shortName=ca
@@ -92,7 +94,7 @@ type CAPApplicationSpec struct {
 type ApplicationDomains struct {
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
 	// +kubebuilder:validation:MaxLength=62
-	// Primary application domain will be used to generate a wildcard TLS certificate. In SAP Gardener managed clusters this is (usually) a subdomain of the cluster domain
+	// Primary application domain will be used to generate a wildcard TLS certificate. In project "Gardener" managed clusters this is (usually) a subdomain of the cluster domain
 	Primary string `json:"primary"`
 	// Customer specific domains to serve application endpoints (optional)
 	Secondary []string `json:"secondary,omitempty"`
@@ -322,6 +324,8 @@ type CommonDetails struct {
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 	// The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+	// List of containers executed before the main container is started
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 }
 
 // Configuration of Service Ports for the deployment
@@ -530,3 +534,30 @@ const (
 	// Upgrade tenant
 	CAPTenantOperationTypeUpgrade CAPTenantOperationType = "upgrade"
 )
+
+// +kubebuilder:resource:shortName=ctout
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// CAPTenantOutput is the schema for captenantoutputs API
+type CAPTenantOutput struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	// CAPTenantOutputData spec
+	Spec CAPTenantOutputSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// CAPTenantOutputList contains a list of CAPTenantOutput
+type CAPTenantOutputList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []CAPTenantOutput `json:"items"`
+}
+
+type CAPTenantOutputSpec struct {
+	// +kubebuilder:validation:nullable
+	SubscriptionCallbackData string `json:"subscriptionCallbackData,omitempty"`
+}

@@ -46,6 +46,10 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.CAPTenantOperationStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantOperationStep"):
 		return &smesapcomv1alpha1.CAPTenantOperationStepApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantOutput"):
+		return &smesapcomv1alpha1.CAPTenantOutputApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantOutputSpec"):
+		return &smesapcomv1alpha1.CAPTenantOutputSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantSpec"):
 		return &smesapcomv1alpha1.CAPTenantSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantStatus"):

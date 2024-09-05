@@ -49,9 +49,6 @@ spec:
       jobDefinition:
         type: "TenantOperation"
         image: docker.image.repo/srv/server:latest
-        env:
-        - name: IS_MTXS_ENABLED
-          value: "false"
     - name: app-router
       consumedBTPServices:
         - cap-uaa

@@ -8,7 +8,7 @@ description: >
 ---
 
 An important lifecycle aspect of operating multi-tenant CAP applications is the tenant upgrade process. With CAP Operator, these tenant upgrades can be fully automated by providing a new instance of the `capapplicationversions.sme.sap.com` custom resource.
-As you've already seen during the [initial deployment]({{< ref "/deploying-application.md" >}}), the `CAPApplicationVersion` resource describes the different components (workloads) of an application version that includes the container image to be used and the services consumed by each component.
+As you've already seen during the [initial deployment](./deploying-application.md), the `CAPApplicationVersion` resource describes the different components (workloads) of an application version that includes the container image to be used and the services consumed by each component.
 To upgrade the application, provide a new `CAPApplicationVersion` with the relevant `image` for each component and use a newer (higher) semantic version in the `version` field. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
 
 ```yaml
@@ -60,7 +60,7 @@ spec:
         type: Content
         image: app.some.repo.example.com/approuter/content:0.0.2
         backoffLimit: 1
-    - name: mtx-runner
+    - name: tenant-operation
       consumedBTPServices:
         - app-uaa
         - app-service-manager
@@ -85,12 +85,12 @@ spec:
             value: group_xyz@sap.com
   tenantOperations:
     upgrade:
-      - workloadName: mtx-runner
+      - workloadName: tenant-operation
       - workloadName: notify-upgrade
         continueOnFailure: true
 ```
 
-Note that in this version (compared to version "1" used for the [initial deployment]({{< ref "/deploying-application.md" >}})), new workloads of type `TenantOperation` and `CustomTenantOperation` have been added.
+Note that in this version (compared to version "1" used for the [initial deployment](./deploying-application.md)), new workloads of type `TenantOperation` and `CustomTenantOperation` have been added.
 
 The controller component of CAP Operator reacts to the new `CAPApplicationVersion` resource and triggers another deployment for the application server, router and triggers the content deployment job. Once the new `CAPApplicationVersion` is `Ready`, **the controller proceeds to automatically upgrade all relevant tenants** i.e. by updating the `version` attribute on the `CAPTenant` resources.
 
@@ -108,7 +108,7 @@ spec:
   tenantId: aa2bae55d7b5-1279-456564-a7b0-aa2bae55d7b5
   operation: upgrade # possible values are provisioning / upgrade / deprovisioning
   steps:
-    - name: "mtx-runner"
+    - name: "tenant-operation"
       type: TenantOperation
     - name: "notify-upgrade"
       type: CustomTenantOperation

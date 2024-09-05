@@ -41,7 +41,7 @@ permalinks:
 imaging:
   resampleFilter: "CatmullRom"
   quality: 90
-  anchor: "smart"
+  anchor: "Smart"
 
 # Language configuration
 languages:
@@ -62,7 +62,7 @@ markup:
     # See a complete list of available styles at https://xyproto.github.io/splash/docs/all.html
     style: "nord"
     # Uncomment if you want your chosen highlight style used for code blocks without a specified language
-    guessSyntax: "true"
+    guessSyntax: true
     codeFences: true
 
 # Everything below this are Site Params
@@ -109,9 +109,6 @@ params:
   # or specify a new value if you want to reference another branch in your GitHub links
   github_branch: "main"
 
-  # Enable Algolia DocSearch
-  algolia_docsearch: false
-
   # Enable Lunr.js offline search
   offlineSearch: true
 
@@ -119,8 +116,8 @@ params:
   ui:
     #  Set to true to disable breadcrumb navigation.
     breadcrumb_disable: false
-    # Set to true to disable the About link in the site footer
-    footer_about_disable: false
+    # Set to false to disable the About link in the site footer
+    footer_about_enable: true
     # Set to false if you don't want to display a logo (/assets/icons/logo.svg) in the top navbar
     navbar_logo: false
     # Set to true if you don't want the top navbar to be translucent when over a `block/cover`, like on the homepage.
@@ -162,6 +159,9 @@ params:
 
 # Add docsy as hugo module
 module:
+  hugoVersion:
+    extended: true
+    min: 0.110.0
   imports:
-    - path: "github.com/google/docsy"
-    - path: "github.com/google/docsy/dependencies"
+    - path: github.com/google/docsy
+      disable: false

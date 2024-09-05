@@ -14,6 +14,8 @@ Resource Types:
 <a href="#sme.sap.com/v1alpha1.CAPTenant">CAPTenant</a>
 </li><li>
 <a href="#sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput</a>
 </li></ul>
 <h3 id="sme.sap.com/v1alpha1.CAPApplication">CAPApplication
 </h3>
@@ -554,6 +556,79 @@ CAPTenantOperationStatus
 </tr>
 </tbody>
 </table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput
+</h3>
+<div>
+<p>CAPTenantOutput is the schema for captenantoutputs API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>CAPTenantOutput</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOutputSpec">
+CAPTenantOutputSpec
+</a>
+</em>
+</td>
+<td>
+<p>CAPTenantOutputData spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>subscriptionCallbackData</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="sme.sap.com/v1alpha1.ApplicationDomains">ApplicationDomains
 </h3>
 <p>
@@ -578,7 +653,7 @@ string
 </em>
 </td>
 <td>
-<p>Primary application domain will be used to generate a wildcard TLS certificate. In SAP Gardener managed clusters this is (usually) a subdomain of the cluster domain</p>
+<p>Primary application domain will be used to generate a wildcard TLS certificate. In project &ldquo;Gardener&rdquo; managed clusters this is (usually) a subdomain of the cluster domain</p>
 </td>
 </tr>
 <tr>
@@ -1295,6 +1370,33 @@ bool
 </td>
 </tr></tbody>
 </table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOutputSpec">CAPTenantOutputSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>subscriptionCallbackData</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="sme.sap.com/v1alpha1.CAPTenantSpec">CAPTenantSpec
 </h3>
 <p>
@@ -1688,6 +1790,19 @@ Kubernetes core/v1.Affinity
 </td>
 <td>
 <p>The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints">https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>initContainers</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Container">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<p>List of containers executed before the main container is started</p>
 </td>
 </tr>
 </tbody>
@@ -2361,5 +2476,5 @@ JobDetails
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>932af34</code>.
+on git commit <code>22e4ca7</code>.
 </em></p>

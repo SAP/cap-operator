@@ -76,9 +76,14 @@ const RouterHttpCookieName = "CAPOP_ROUTER_STICKY"
 
 const (
 	EnvCAPOpAppVersion          = "CAPOP_APP_VERSION"
-	EnvCAPOpTenantID            = "CAPOP_TENANT_ID"
+	EnvCAPOpTenantId            = "CAPOP_TENANT_ID"
 	EnvCAPOpTenantSubDomain     = "CAPOP_TENANT_SUBDOMAIN"
 	EnvCAPOpTenantOperation     = "CAPOP_TENANT_OPERATION"
+	EnvCAPOpTenantType          = "CAPOP_TENANT_TYPE"
+	EnvCAPOpAppName             = "CAPOP_APP_NAME"
+	EnvCAPOpGlobalAccountId     = "CAPOP_GLOBAL_ACCOUNT_ID"
+	EnvCAPOpProviderTenantId    = "CAPOP_PROVIDER_TENANT_ID"
+	EnvCAPOpProviderSubDomain   = "CAPOP_PROVIDER_SUBDOMAIN"
 	EnvCAPOpSubscriptionPayload = "CAPOP_SUBSCRIPTION_PAYLOAD"
 	EnvVCAPServices             = "VCAP_SERVICES"
 )
@@ -132,6 +137,17 @@ type RouterDestination struct {
 	SetXForwardedHeaders bool   `json:"setXForwardedHeaders,omitempty"`
 	ProxyType            string `json:"proxyType,omitempty"`
 }
+
+type Steps string
+
+const (
+	Processing     Steps = "Processing"
+	Provisioning   Steps = "Provisioning"
+	Upgrading      Steps = "Upgrading"
+	Deprovisioning Steps = "Deprovisioning"
+	Deleting       Steps = "Deleting"
+	Ready          Steps = "Ready"
+)
 
 func (c *Controller) Event(main runtime.Object, related runtime.Object, eventType, reason, action, message string) {
 	defer func() {
@@ -562,4 +578,18 @@ func copyMaps(originalMap map[string]string, additionalMap map[string]string) ma
 		newMap[key] = value
 	}
 	return newMap
+}
+
+func updateInitContainers(initContainers []corev1.Container, additionalEnv []corev1.EnvVar, vcapSecretName string) *[]corev1.Container {
+	var updatedInitContainers []corev1.Container
+	if len(initContainers) > 0 {
+		updatedInitContainers = []corev1.Container{}
+		for _, container := range initContainers {
+			updatedContainer := container.DeepCopy()
+			updatedContainer.Env = append(updatedContainer.Env, additionalEnv...)
+			updatedContainer.EnvFrom = getEnvFrom(vcapSecretName)
+			updatedInitContainers = append(updatedInitContainers, *updatedContainer)
+		}
+	}
+	return &updatedInitContainers
 }

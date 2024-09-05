@@ -21,7 +21,7 @@ Other services (not listed here) may also be used depending on the requirement (
 
 ##### SAP Authorization and Trust Management Service
 
-The parameter `oauth2-configuration.redirect-uris` must include the domain used by the application. If the application is hosted in a Gardener (Canary)-managed cluster, the entry will have the form `https://*<application-specific-prefix>.<cluster-id>.<gardener-project-id>.shoot.url.k8s.example.com/**`.
+The parameter `oauth2-configuration.redirect-uris` must include the domain used by the application. For instance, if the application is hosted in a "Gardener"  managed cluster, the entry may have the form `https://*<application-specific-prefix>.<cluster-id>.<gardener-project-id>.shoot.url.k8s.example.com/**`.
 
 Scope required to make asynchronous tenant subscription operations need to be included. Additionally, check the [CAP Multitenancy](https://cap.cloud.sap/docs/java/multitenancy#xsuaa-mt-configuration) documentation for additional scopes which are required.
 
