@@ -653,7 +653,7 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 
 func (c *Controller) reconcileTenantDestinationRulePrevCav(ctx context.Context, cat *v1alpha1.CAPTenant, ca *v1alpha1.CAPApplication) (modified bool, err error) {
 
-	if !(len(cat.Status.PreviousCAPApplicationVersions) > 0) {
+	if len(cat.Status.PreviousCAPApplicationVersions) == 0 {
 		return false, nil
 	}
 
