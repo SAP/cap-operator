@@ -12,7 +12,7 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// CAPTenantOperationStatusApplyConfiguration represents an declarative configuration of the CAPTenantOperationStatus type for use
+// CAPTenantOperationStatusApplyConfiguration represents a declarative configuration of the CAPTenantOperationStatus type for use
 // with apply.
 type CAPTenantOperationStatusApplyConfiguration struct {
 	GenericStatusApplyConfiguration `json:",inline"`
@@ -21,7 +21,7 @@ type CAPTenantOperationStatusApplyConfiguration struct {
 	ActiveJob                       *string                                    `json:"activeJob,omitempty"`
 }
 
-// CAPTenantOperationStatusApplyConfiguration constructs an declarative configuration of the CAPTenantOperationStatus type for use with
+// CAPTenantOperationStatusApplyConfiguration constructs a declarative configuration of the CAPTenantOperationStatus type for use with
 // apply.
 func CAPTenantOperationStatus() *CAPTenantOperationStatusApplyConfiguration {
 	return &CAPTenantOperationStatusApplyConfiguration{}

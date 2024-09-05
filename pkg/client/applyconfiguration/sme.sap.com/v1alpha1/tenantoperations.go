@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package v1alpha1
 
-// TenantOperationsApplyConfiguration represents an declarative configuration of the TenantOperations type for use
+// TenantOperationsApplyConfiguration represents a declarative configuration of the TenantOperations type for use
 // with apply.
 type TenantOperationsApplyConfiguration struct {
 	Provisioning   []TenantOperationWorkloadReferenceApplyConfiguration `json:"provisioning,omitempty"`
@@ -15,7 +15,7 @@ type TenantOperationsApplyConfiguration struct {
 	Deprovisioning []TenantOperationWorkloadReferenceApplyConfiguration `json:"deprovisioning,omitempty"`
 }
 
-// TenantOperationsApplyConfiguration constructs an declarative configuration of the TenantOperations type for use with
+// TenantOperationsApplyConfiguration constructs a declarative configuration of the TenantOperations type for use with
 // apply.
 func TenantOperations() *TenantOperationsApplyConfiguration {
 	return &TenantOperationsApplyConfiguration{}

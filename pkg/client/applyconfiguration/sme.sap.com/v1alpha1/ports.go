@@ -11,7 +11,7 @@ import (
 	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 )
 
-// PortsApplyConfiguration represents an declarative configuration of the Ports type for use
+// PortsApplyConfiguration represents a declarative configuration of the Ports type for use
 // with apply.
 type PortsApplyConfiguration struct {
 	AppProtocol           *string                         `json:"appProtocol,omitempty"`
@@ -21,7 +21,7 @@ type PortsApplyConfiguration struct {
 	RouterDestinationName *string                         `json:"routerDestinationName,omitempty"`
 }
 
-// PortsApplyConfiguration constructs an declarative configuration of the Ports type for use with
+// PortsApplyConfiguration constructs a declarative configuration of the Ports type for use with
 // apply.
 func Ports() *PortsApplyConfiguration {
 	return &PortsApplyConfiguration{}

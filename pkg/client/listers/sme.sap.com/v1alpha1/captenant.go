@@ -9,8 +9,8 @@ package v1alpha1
 
 import (
 	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -27,25 +27,17 @@ type CAPTenantLister interface {
 
 // cAPTenantLister implements the CAPTenantLister interface.
 type cAPTenantLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1alpha1.CAPTenant]
 }
 
 // NewCAPTenantLister returns a new CAPTenantLister.
 func NewCAPTenantLister(indexer cache.Indexer) CAPTenantLister {
-	return &cAPTenantLister{indexer: indexer}
-}
-
-// List lists all CAPTenants in the indexer.
-func (s *cAPTenantLister) List(selector labels.Selector) (ret []*v1alpha1.CAPTenant, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.CAPTenant))
-	})
-	return ret, err
+	return &cAPTenantLister{listers.New[*v1alpha1.CAPTenant](indexer, v1alpha1.Resource("captenant"))}
 }
 
 // CAPTenants returns an object that can list and get CAPTenants.
 func (s *cAPTenantLister) CAPTenants(namespace string) CAPTenantNamespaceLister {
-	return cAPTenantNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return cAPTenantNamespaceLister{listers.NewNamespaced[*v1alpha1.CAPTenant](s.ResourceIndexer, namespace)}
 }
 
 // CAPTenantNamespaceLister helps list and get CAPTenants.
@@ -63,26 +55,5 @@ type CAPTenantNamespaceLister interface {
 // cAPTenantNamespaceLister implements the CAPTenantNamespaceLister
 // interface.
 type cAPTenantNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all CAPTenants in the indexer for a given namespace.
-func (s cAPTenantNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.CAPTenant, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.CAPTenant))
-	})
-	return ret, err
-}
-
-// Get retrieves the CAPTenant from the indexer for a given namespace and name.
-func (s cAPTenantNamespaceLister) Get(name string) (*v1alpha1.CAPTenant, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("captenant"), name)
-	}
-	return obj.(*v1alpha1.CAPTenant), nil
+	listers.ResourceIndexer[*v1alpha1.CAPTenant]
 }
