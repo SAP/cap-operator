@@ -7,14 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 
 package v1alpha1
 
-// TenantOperationWorkloadReferenceApplyConfiguration represents an declarative configuration of the TenantOperationWorkloadReference type for use
+// TenantOperationWorkloadReferenceApplyConfiguration represents a declarative configuration of the TenantOperationWorkloadReference type for use
 // with apply.
 type TenantOperationWorkloadReferenceApplyConfiguration struct {
 	WorkloadName      *string `json:"workloadName,omitempty"`
 	ContinueOnFailure *bool   `json:"continueOnFailure,omitempty"`
 }
 
-// TenantOperationWorkloadReferenceApplyConfiguration constructs an declarative configuration of the TenantOperationWorkloadReference type for use with
+// TenantOperationWorkloadReferenceApplyConfiguration constructs a declarative configuration of the TenantOperationWorkloadReference type for use with
 // apply.
 func TenantOperationWorkloadReference() *TenantOperationWorkloadReferenceApplyConfiguration {
 	return &TenantOperationWorkloadReferenceApplyConfiguration{}

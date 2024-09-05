@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package v1alpha1
 
-// ServiceInfoApplyConfiguration represents an declarative configuration of the ServiceInfo type for use
+// ServiceInfoApplyConfiguration represents a declarative configuration of the ServiceInfo type for use
 // with apply.
 type ServiceInfoApplyConfiguration struct {
 	Name   *string `json:"name,omitempty"`
@@ -15,7 +15,7 @@ type ServiceInfoApplyConfiguration struct {
 	Class  *string `json:"class,omitempty"`
 }
 
-// ServiceInfoApplyConfiguration constructs an declarative configuration of the ServiceInfo type for use with
+// ServiceInfoApplyConfiguration constructs a declarative configuration of the ServiceInfo type for use with
 // apply.
 func ServiceInfo() *ServiceInfoApplyConfiguration {
 	return &ServiceInfoApplyConfiguration{}

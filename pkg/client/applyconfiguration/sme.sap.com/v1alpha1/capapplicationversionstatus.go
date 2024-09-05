@@ -12,7 +12,7 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// CAPApplicationVersionStatusApplyConfiguration represents an declarative configuration of the CAPApplicationVersionStatus type for use
+// CAPApplicationVersionStatusApplyConfiguration represents a declarative configuration of the CAPApplicationVersionStatus type for use
 // with apply.
 type CAPApplicationVersionStatusApplyConfiguration struct {
 	GenericStatusApplyConfiguration `json:",inline"`
@@ -20,7 +20,7 @@ type CAPApplicationVersionStatusApplyConfiguration struct {
 	FinishedJobs                    []string                                      `json:"finishedJobs,omitempty"`
 }
 
-// CAPApplicationVersionStatusApplyConfiguration constructs an declarative configuration of the CAPApplicationVersionStatus type for use with
+// CAPApplicationVersionStatusApplyConfiguration constructs a declarative configuration of the CAPApplicationVersionStatus type for use with
 // apply.
 func CAPApplicationVersionStatus() *CAPApplicationVersionStatusApplyConfiguration {
 	return &CAPApplicationVersionStatusApplyConfiguration{}

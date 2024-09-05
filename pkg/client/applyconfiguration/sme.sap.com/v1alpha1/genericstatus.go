@@ -11,14 +11,14 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// GenericStatusApplyConfiguration represents an declarative configuration of the GenericStatus type for use
+// GenericStatusApplyConfiguration represents a declarative configuration of the GenericStatus type for use
 // with apply.
 type GenericStatusApplyConfiguration struct {
 	ObservedGeneration *int64                           `json:"observedGeneration,omitempty"`
 	Conditions         []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
 }
 
-// GenericStatusApplyConfiguration constructs an declarative configuration of the GenericStatus type for use with
+// GenericStatusApplyConfiguration constructs a declarative configuration of the GenericStatus type for use with
 // apply.
 func GenericStatus() *GenericStatusApplyConfiguration {
 	return &GenericStatusApplyConfiguration{}
