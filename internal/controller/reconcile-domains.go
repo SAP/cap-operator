@@ -32,6 +32,7 @@ import (
 // TODO: ignore duplicates reconciliation calls for same dnsTarget, Finalizers... and a whole lot more!
 
 const PrimaryDnsSuffix = "primary-dns"
+const AnnotationLogoutEndpoint = "sme.sap.com/app-logout-endpoint"
 
 const (
 	CAPOperator              = "CAPOperator"
@@ -619,7 +620,7 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 	}()
 
 	if drModified, err = c.reconcileTenantDestinationRule(ctx, cat.Name, cat, cavName, ca); err != nil {
-    util.LogError(err, "Destination rule reconciliation failed", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
+		util.LogError(err, "Destination rule reconciliation failed", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		reason = CAPTenantEventDestinationRuleModificationFailed
 		return
 	}
@@ -652,7 +653,7 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 
 func (c *Controller) reconcileTenantDestinationRulePrevCav(ctx context.Context, cat *v1alpha1.CAPTenant, ca *v1alpha1.CAPApplication) (modified bool, err error) {
 
-	if !(cat.Status.PreviousCAPApplicationVersions != nil && len(cat.Status.PreviousCAPApplicationVersions) > 0) {
+	if !(len(cat.Status.PreviousCAPApplicationVersions) > 0) {
 		return false, nil
 	}
 
@@ -842,14 +843,15 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 func (c *Controller) getVirtualServiceHTTPRoutes(caNamespace string, cat *v1alpha1.CAPTenant, currentCAVName string) ([]*networkingv1beta1.HTTPRoute, error) {
 
 	var prevCAVDestination *networkingv1beta1.Destination
-	var err error
+	var prevCAV *v1alpha1.CAPApplicationVersion
+	var err, prevCAVGetErr error
 	var prevCAVName string
 	httpRoute := []*networkingv1beta1.HTTPRoute{}
 
-	if cat.Status.PreviousCAPApplicationVersions != nil && len(cat.Status.PreviousCAPApplicationVersions) > 0 {
+	if len(cat.Status.PreviousCAPApplicationVersions) > 0 {
 		prevCAVName = cat.Status.PreviousCAPApplicationVersions[len(cat.Status.PreviousCAPApplicationVersions)-1]
-		_, cavGetErr := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(prevCAVName)
-		if !errors.IsNotFound(cavGetErr) {
+		prevCAV, prevCAVGetErr = c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(prevCAVName)
+		if !errors.IsNotFound(prevCAVGetErr) {
 			prevCAVDestination, err = c.getVirtualServiceHTTPRouteDestination(caNamespace, cat.Namespace, prevCAVName)
 			if err != nil {
 				return httpRoute, err
@@ -864,9 +866,10 @@ func (c *Controller) getVirtualServiceHTTPRoutes(caNamespace string, cat *v1alph
 
 	// add logoff/logout route
 	if prevCAVDestination != nil {
-		httpRoute = append(httpRoute, addVirtualServiceLogOffHTTPRoute(prevCAVName, prevCAVDestination))
+		httpRoute = append(httpRoute, addVirtualServiceLogOffHTTPRoute(prevCAVName, prevCAV.Annotations[AnnotationLogoutEndpoint], prevCAVDestination))
 	}
-	httpRoute = append(httpRoute, addVirtualServiceLogOffHTTPRoute(currentCAVName, currentCAVDestination))
+	currentCAV, _ := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(currentCAVName)
+	httpRoute = append(httpRoute, addVirtualServiceLogOffHTTPRoute(currentCAVName, currentCAV.Annotations[AnnotationLogoutEndpoint], currentCAVDestination))
 
 	// add cookie route
 	if prevCAVDestination != nil {
@@ -892,8 +895,8 @@ func (c *Controller) getVirtualServiceHTTPRoutes(caNamespace string, cat *v1alph
 	return httpRoute, nil
 }
 
-func addVirtualServiceLogOffHTTPRoute(cavName string, cavRouteDestination *networkingv1beta1.Destination) *networkingv1beta1.HTTPRoute {
-	return &networkingv1beta1.HTTPRoute{
+func addVirtualServiceLogOffHTTPRoute(cavName string, logoutEndpoint string, cavRouteDestination *networkingv1beta1.Destination) *networkingv1beta1.HTTPRoute {
+	httpRoute := &networkingv1beta1.HTTPRoute{
 		Match: []*networkingv1beta1.HTTPMatchRequest{{
 			Headers: map[string]*networkingv1beta1.StringMatch{
 				"Cookie": {
@@ -920,6 +923,16 @@ func addVirtualServiceLogOffHTTPRoute(cavName string, cavRouteDestination *netwo
 			Weight: 100,
 		}},
 	}
+
+	if logoutEndpoint != "" {
+		httpRoute.Match[0].Uri = &networkingv1beta1.StringMatch{
+			MatchType: &networkingv1beta1.StringMatch_Regex{
+				Regex: "^|.*(" + logoutEndpoint + ").*",
+			},
+		}
+	}
+
+	return httpRoute
 }
 
 func addVirtualServiceCookieHTTPRoute(cavName string, cavRouteDestination *networkingv1beta1.Destination) *networkingv1beta1.HTTPRoute {
