@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 
 	"github.com/google/go-cmp/cmp"
@@ -257,10 +258,20 @@ func checkWorkloadContentJob(cavObjNew *ResponseCav) validateResource {
 }
 
 func validateWorkloads(cavObjNew *ResponseCav) validateResource {
+	//  regex pattern for workload name - based on RFC 1123 label
+	regex, _ := regexp.Compile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
+
 	// Check: Workload name should be unique
 	//		  Only one workload deployment of type CAP, router and content is allowed
 	uniqueWorkloadNameCountMap := make(map[string]int)
 	for _, workload := range cavObjNew.Spec.Workloads {
+
+		if !regex.MatchString(workload.Name) {
+			return validateResource{
+				allowed: false,
+				message: fmt.Sprintf("%s %s Invalid workload name: %s; regex used for validation is `^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`", InvalidationMessage, cavObjNew.Kind, workload.Name),
+			}
+		}
 
 		if workloadTypeValidate := checkWorkloadType(&workload); !workloadTypeValidate.allowed {
 			return workloadTypeValidate

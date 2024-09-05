@@ -782,6 +782,7 @@ func TestCavInvalidity(t *testing.T) {
 		multipleContentJobsWithNoOrder     bool
 		missingContentJobinContentJobs     bool
 		invalidJobinContentJobs            bool
+		invalidWorkloadName                bool
 		backlogItems                       []string
 	}{
 		{
@@ -1145,6 +1146,8 @@ func TestCavInvalidity(t *testing.T) {
 					},
 				})
 				crd.Spec.ContentJobs = append(crd.Spec.ContentJobs, "content", "content-2", "dummy")
+			} else if test.invalidWorkloadName == true {
+				crd.Spec.Workloads[0].Name = "WrongWorkloadName"
 			}
 
 			rawBytes, _ := json.Marshal(crd)
@@ -1202,6 +1205,8 @@ func TestCavInvalidity(t *testing.T) {
 				errorMessage = fmt.Sprintf("%s %s content job content-2 is not specified as part of ContentJobs", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.invalidJobinContentJobs == true {
 				errorMessage = fmt.Sprintf("%s %s job dummy specified as part of ContentJobs is not a valid content job", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.invalidWorkloadName == true {
+				errorMessage = fmt.Sprintf("%s %s Invalid workload name: %s; regex used for validation is `^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, "WrongWorkloadName")
 			}
 
 			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
