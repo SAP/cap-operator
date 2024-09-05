@@ -69,7 +69,7 @@ spec:
     - content-job-2
 status:
   conditions:
-    - reason: CreatedDeployments
+    - reason: WorkloadsReady
       status: "True"
       observedGeneration: 1
       type: Ready
