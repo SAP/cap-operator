@@ -875,6 +875,11 @@ func TestCavInvalidity(t *testing.T) {
 			invalidJobinContentJobs: true,
 			backlogItems:            []string{"ERP4SMEPREPWORKAPPPLAT-4351"},
 		},
+		{
+			operation:           admissionv1.Create,
+			invalidWorkloadName: true,
+			backlogItems:        []string{},
+		},
 	}
 	for _, test := range tests {
 		nameParts := []string{"Testing CAPApplicationversion invalidity for operation " + string(test.operation) + "; "}
