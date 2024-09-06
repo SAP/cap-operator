@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"golang.org/x/exp/slices"
@@ -20,10 +21,14 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apiextensions-apiserver/pkg/apihelpers"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -31,8 +36,9 @@ const (
 )
 
 const (
-	CategoryWorkload = "Workload"
-	CategoryService  = "Service"
+	CategoryWorkload       = "Workload"
+	CategoryService        = "Service"
+	CategoryServiceMonitor = "ServiceMonitor"
 )
 
 const (
@@ -397,7 +403,9 @@ func (c *Controller) updateServices(ca *v1alpha1.CAPApplication, cav *v1alpha1.C
 			return err
 		}
 	}
-	return nil
+
+	// attempt to reconcile service monitors
+	return c.updateServiceMonitors(context.TODO(), ca, cav, workloadServicePortInfos)
 }
 
 // newService creates a new Service for a CAV resource. It also sets the appropriate OwnerReferences.
@@ -436,6 +444,104 @@ func newService(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion
 }
 
 // #endregion Service
+
+// #region ServiceMonitor
+func (c *Controller) checkServiceMonitorCapability(ctx context.Context) error {
+	crdName := "servicemonitors.monitoring.coreos.com"
+	crd, err := c.apiExtClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, v1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("could not get custom resource definition %s: %v", crdName, err)
+	}
+	requiredVersion := "v1"
+	if !apihelpers.HasVersionServed(crd, requiredVersion) {
+		return fmt.Errorf("version %s of custom resource %s is not served", requiredVersion, crdName)
+	}
+	if !apihelpers.IsCRDConditionTrue(crd, apiextv1.Established) {
+		return fmt.Errorf("custom resource %s condition %s not true", crdName, apiextv1.Established)
+	}
+	return nil
+}
+
+func (c *Controller) updateServiceMonitors(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workloadServicePortInfos []servicePortInfo) error {
+	if err := c.checkServiceMonitorCapability(ctx); err != nil {
+		klog.ErrorS(err, "could not confirm availability of service monitor resource; service monitors will not be reconciled")
+		return nil
+	}
+
+	for i := range cav.Spec.Workloads {
+		wl := cav.Spec.Workloads[i]
+		if wl.DeploymentDefinition == nil || wl.DeploymentDefinition.Monitoring == nil || wl.DeploymentDefinition.Monitoring.ScrapeConfig == nil {
+			continue // do not reconcile service monitors
+		}
+
+		var wlPortInfos *servicePortInfo
+		for j := range workloadServicePortInfos {
+			item := workloadServicePortInfos[j]
+			if item.WorkloadName == getWorkloadName(cav.Name, wl.Name) {
+				wlPortInfos = &item
+				break
+			}
+		}
+		if wlPortInfos == nil {
+			return fmt.Errorf("could not identify workload port information for workload %s in version %s", wl.Name, cav.Name)
+		}
+
+		portVerified := false
+		for j := range wlPortInfos.Ports {
+			if wlPortInfos.Ports[j].Name == wl.DeploymentDefinition.Monitoring.ScrapeConfig.WorkloadPort {
+				portVerified = true
+				break
+			}
+		}
+		if !portVerified {
+			return fmt.Errorf("invalid port reference in workload %s monitoring config of version %s", wl.Name, cav.Name)
+		}
+
+		sm, err := c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Get(ctx, wlPortInfos.WorkloadName+ServiceSuffix, v1.GetOptions{})
+		if err != nil {
+			if k8sErrors.IsNotFound(err) {
+				sm, err = c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Create(ctx, newServiceMonitor(ca, cav, &wl, wlPortInfos), v1.CreateOptions{})
+				if err == nil {
+					util.LogInfo("ServiceMonitor created successfully", string(Processing), cav, sm, "version", cav.Spec.Version)
+				}
+			}
+		}
+		err = doChecks(err, sm, cav, wlPortInfos.WorkloadName+ServiceSuffix)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func newServiceMonitor(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, wl *v1alpha1.WorkloadDetails, wlPortInfos *servicePortInfo) *monv1.ServiceMonitor {
+	config := wl.DeploymentDefinition.Monitoring.ScrapeConfig
+	return &monv1.ServiceMonitor{
+		ObjectMeta: v1.ObjectMeta{
+			Name:        wlPortInfos.WorkloadName + ServiceSuffix,
+			Namespace:   cav.Namespace,
+			Labels:      copyMaps(wl.Labels, getLabels(ca, cav, CategoryServiceMonitor, string(wl.DeploymentDefinition.Type), wlPortInfos.WorkloadName+ServiceSuffix, true)),
+			Annotations: copyMaps(wl.Annotations, getAnnotations(ca, cav, true)),
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind)),
+			},
+		},
+		Spec: monv1.ServiceMonitorSpec{
+			Endpoints: []monv1.Endpoint{{
+				Port:          config.WorkloadPort,
+				Interval:      monv1.Duration(config.ScrapeInterval),
+				ScrapeTimeout: monv1.Duration(config.Timeout),
+				Path:          config.Path,
+			}},
+			Selector: v1.LabelSelector{
+				MatchLabels: copyMaps(wl.Labels, getLabels(ca, cav, CategoryService, wlPortInfos.DeploymentType, wlPortInfos.WorkloadName+ServiceSuffix, false)),
+			},
+		},
+	}
+}
+
+// #endregion ServiceMonitor
 
 // #region NetworkPolicy
 func (c *Controller) updateNetworkPolicies(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) error {
@@ -601,7 +707,7 @@ func newDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVers
 }
 
 func createDeployment(params *DeploymentParameters) *appsv1.Deployment {
-	workloadName := params.CAV.Name + "-" + strings.ToLower(params.WorkloadDetails.Name)
+	workloadName := getWorkloadName(params.CAV.Name, params.WorkloadDetails.Name)
 	annotations := copyMaps(params.WorkloadDetails.Annotations, getAnnotations(params.CA, params.CAV, true))
 	labels := copyMaps(params.WorkloadDetails.Labels, getLabels(params.CA, params.CAV, CategoryWorkload, string(params.WorkloadDetails.DeploymentDefinition.Type), workloadName, true))
 

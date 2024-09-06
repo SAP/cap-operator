@@ -30,6 +30,9 @@ import (
 	gardenerdnsscheme "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/scheme"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	promopFake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
+	promopScheme "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/scheme"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	copfake "github.com/sap/cap-operator/pkg/client/clientset/versioned/fake"
 	smeScheme "github.com/sap/cap-operator/pkg/client/clientset/versioned/scheme"
@@ -42,6 +45,9 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextFake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
+	apiExtScheme "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -210,6 +216,8 @@ func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAc
 	gardenerdnsscheme.AddToScheme(scheme.Scheme)
 	istioscheme.AddToScheme(scheme.Scheme)
 	certManagerScheme.AddToScheme(scheme.Scheme)
+	apiExtScheme.AddToScheme(scheme.Scheme)
+	promopScheme.AddToScheme(scheme.Scheme)
 
 	coreClient := k8sfake.NewSimpleClientset()
 	copClient := copfake.NewSimpleClientset()
@@ -217,6 +225,8 @@ func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAc
 	gardenerCertClient := gardenercertfake.NewSimpleClientset()
 	gardenerDNSClient := gardenerdnsfake.NewSimpleClientset()
 	certManagerClient := certManagerFake.NewSimpleClientset()
+	apiExtClient := apiextFake.NewSimpleClientset()
+	promopClient := promopFake.NewSimpleClientset()
 
 	copClient.PrependReactor("create", "*", generateNameCreateHandler)
 	copClient.PrependReactor("update", "*", removeStatusTimestampHandler)
@@ -239,7 +249,7 @@ func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAc
 	gardenerCertClient.PrependReactor("*", "*", getErrorReactorWithResources(t, items))
 	gardenerCertClient.PrependReactor("delete-collection", "*", getDeleteCollectionHandler(t, gardenerDNSClient))
 
-	c := NewController(coreClient, copClient, istioClient, gardenerCertClient, certManagerClient, gardenerDNSClient)
+	c := NewController(coreClient, copClient, istioClient, gardenerCertClient, certManagerClient, gardenerDNSClient, apiExtClient, promopClient)
 	c.eventRecorder = events.NewFakeRecorder(10)
 	return c
 }
@@ -408,22 +418,16 @@ func processTestData(t *testing.T, c *Controller, data TestData, dataType TestDa
 
 	var processFile = func(file string) {
 		defer wg.Done()
-		i, err := os.ReadFile(file)
+
+		resources, err := readYAMLResourcesFromFile(file)
 		if err != nil {
 			t.Error(err.Error())
 		}
-
-		fileContents := string(i)
-		splits := strings.Split(fileContents, "---")
-		for _, part := range splits {
-			if part == "\n" || part == "" {
-				continue
-			}
-
+		for i := range resources {
 			if dataType == TestDataTypeInitial {
-				err = addInitialObjectToStore(t, []byte(part), c)
+				err = addInitialObjectToStore(resources[i], c)
 			} else {
-				err = compareExpectedWithStore(t, []byte(part), c)
+				err = compareExpectedWithStore(t, resources[i], c)
 			}
 			if err != nil {
 				t.Error(err.Error())
@@ -438,7 +442,25 @@ func processTestData(t *testing.T, c *Controller, data TestData, dataType TestDa
 	wg.Wait()
 }
 
-func addInitialObjectToStore(t *testing.T, resource []byte, c *Controller) error {
+func readYAMLResourcesFromFile(file string) ([][]byte, error) {
+	i, err := os.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	resources := [][]byte{}
+	fileContents := string(i)
+	splits := strings.Split(fileContents, "---")
+	for _, part := range splits {
+		if part == "\n" || part == "" {
+			continue
+		}
+		resources = append(resources, []byte(part))
+	}
+	return resources, nil
+}
+
+func addInitialObjectToStore(resource []byte, c *Controller) error {
 	decoder := scheme.Codecs.UniversalDeserializer().Decode
 	obj, _, err := decoder(resource, nil, nil)
 	if err != nil {
@@ -533,6 +555,18 @@ func addInitialObjectToStore(t *testing.T, resource []byte, c *Controller) error
 		case *v1alpha1.CAPTenantOperation:
 			err = c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Informer().GetIndexer().Add(obj)
 		}
+	case *apiextv1.CustomResourceDefinition:
+		fakeClient, ok := c.apiExtClient.(*apiextFake.Clientset)
+		if !ok {
+			return fmt.Errorf("controller is not using a fake clientset")
+		}
+		fakeClient.Tracker().Add(obj)
+	case *monv1.ServiceMonitor:
+		fakeClient, ok := c.promClient.(*promopFake.Clientset)
+		if !ok {
+			return fmt.Errorf("controller is not using a fake clientset")
+		}
+		fakeClient.Tracker().Add(obj)
 	default:
 		return fmt.Errorf("unknown object type")
 	}
@@ -592,6 +626,9 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 		case *v1alpha1.CAPTenantOperation:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("captenantoperations"), mo.GetNamespace(), mo.GetName())
 		}
+	case *monv1.ServiceMonitor:
+		fakeClient := c.promClient.(*promopFake.Clientset)
+		actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("servicemonitors"), mo.GetNamespace(), mo.GetName())
 	default:
 		return fmt.Errorf("unknown expected object type")
 	}
