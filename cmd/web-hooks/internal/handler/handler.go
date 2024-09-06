@@ -544,26 +544,28 @@ func (wh *WebhookHandler) validateCAPTenant(w http.ResponseWriter, admissionRevi
 func (wh *WebhookHandler) validateCAPTenantOutput(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview) validateResource {
 	ctoutObjNew := ResponseCtout{}
 
-	if admissionReview.Request.Operation == admissionv1.Create {
-		if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &ctoutObjNew, v1alpha1.CAPTenantOutputKind); !validatedResource.allowed {
-			return validatedResource
-		}
+	if admissionReview.Request.Operation == admissionv1.Delete {
+		return validAdmissionReviewObj()
+	}
 
-		if _, exists := ctoutObjNew.Labels[LabelTenantId]; !exists {
+	if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &ctoutObjNew, v1alpha1.CAPTenantOutputKind); !validatedResource.allowed {
+		return validatedResource
+	}
+
+	if _, exists := ctoutObjNew.Labels[LabelTenantId]; !exists {
+		return validateResource{
+			allowed: false,
+			message: fmt.Sprintf("%s %s label %s missing on CAP tenant output %s", InvalidationMessage, v1alpha1.CAPTenantOutputKind, LabelTenantId, ctoutObjNew.Name),
+		}
+	} else {
+		labelSelector, _ := labels.ValidatedSelectorFromSet(map[string]string{
+			LabelTenantId: ctoutObjNew.Labels[LabelTenantId],
+		})
+		ctList, err := wh.CrdClient.SmeV1alpha1().CAPTenants(ctoutObjNew.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
+		if err != nil || len(ctList.Items) == 0 {
 			return validateResource{
 				allowed: false,
-				message: fmt.Sprintf("%s %s label %s missing on CAP tenant output %s", InvalidationMessage, v1alpha1.CAPTenantOutputKind, LabelTenantId, ctoutObjNew.Name),
-			}
-		} else {
-			labelSelector, _ := labels.ValidatedSelectorFromSet(map[string]string{
-				LabelTenantId: ctoutObjNew.Labels[LabelTenantId],
-			})
-			ctList, err := wh.CrdClient.SmeV1alpha1().CAPTenants(ctoutObjNew.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
-			if err != nil || len(ctList.Items) == 0 {
-				return validateResource{
-					allowed: false,
-					message: fmt.Sprintf("%s %s label %s on CAP tenant output %s does not contain a valid tenant ID", InvalidationMessage, v1alpha1.CAPTenantOutputKind, LabelTenantId, ctoutObjNew.Name),
-				}
+				message: fmt.Sprintf("%s %s label %s on CAP tenant output %s does not contain a valid tenant ID", InvalidationMessage, v1alpha1.CAPTenantOutputKind, LabelTenantId, ctoutObjNew.Name),
 			}
 		}
 	}

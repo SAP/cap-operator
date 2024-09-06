@@ -1234,6 +1234,14 @@ func TestCtoutInvalidity(t *testing.T) {
 			operation:    admissionv1.Create,
 			labelPresent: false,
 		},
+		{
+			operation:    admissionv1.Update,
+			labelPresent: true,
+		},
+		{
+			operation:    admissionv1.Update,
+			labelPresent: false,
+		},
 	}
 	for _, test := range tests {
 		t.Run("Testing CAPTenantOutput invalidity for operation "+string(test.operation), func(t *testing.T) {
