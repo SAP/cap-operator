@@ -90,7 +90,7 @@ parameters:
   appName: <short-application-name>
   appUrls:
     callbackTimeoutMillis: 300000 # <-- used to fail subscription process when no response is received
-    getDependencies: https://<provider-subaccount-subdomain>.<cap-app-name>.cluster-x.my-project.shoot.url.k8s.example.com/callback/v1.0/dependencies # <-- handled by the application
+    getDependencies: https://<cap-operator-subscription-server-domain>/dependencies/<globalAccountId>/<btpAppName> # the /getDependencies route is forwarded directly to CAP Operator (Subscription Server) and must be specified as such
     onSubscription: https://<cap-operator-subscription-server-domain>/provision/tenants/{tenantId} # <-- the /provision route is forwarded directly to CAP Operator (Subscription Server) and must be specified as such
     onSubscriptionAsync: true
     onUnSubscriptionAsync: true
