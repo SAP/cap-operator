@@ -1,0 +1,38 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  annotations:
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+    sme.sap.com/owner-identifier: default.test-cap-01-cav-v1
+  labels:
+    app: test-cap-01
+    sme.sap.com/category: ServiceMonitor
+    sme.sap.com/workload-name: test-cap-01-cav-v1-app-router-svc
+    sme.sap.com/workload-type: Router
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/cav-version: "5.6.7"
+    sme.sap.com/owner-generation: "1"
+    sme.sap.com/owner-identifier-hash: e95e0682f33a657e75e1fc435972d19bd407ba3b
+  name: test-cap-01-cav-v1-app-router-svc
+  namespace: default
+  ownerReferences:
+  - apiVersion: sme.sap.com/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: CAPApplicationVersion
+    name: test-cap-01-cav-v1
+    uid: 5e64489b-7346-4984-8617-e8c37338b3d8
+spec:
+  endpoints:
+  - interval: 10s
+    path: /metrics
+    port: metrics-port
+  namespaceSelector: {}
+  selector:
+    matchLabels:
+      app: test-cap-01
+      sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+      sme.sap.com/category: Service
+      sme.sap.com/cav-version: "5.6.7"
+      sme.sap.com/workload-name: test-cap-01-cav-v1-app-router-svc
+      sme.sap.com/workload-type: Router

@@ -1375,6 +1375,57 @@ spec:
                               format: int32
                               type: integer
                           type: object
+                        monitoring:
+                          properties:
+                            deletionRules:
+                              oneOf:
+                              - required:
+                                - metrics
+                              - required:
+                                - expression
+                              properties:
+                                expression:
+                                  type: string
+                                metrics:
+                                  items:
+                                    properties:
+                                      calculationPeriod:
+                                        pattern: ^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
+                                        type: string
+                                      name:
+                                        type: string
+                                      thresholdValue:
+                                        format: double
+                                        type: string
+                                      type:
+                                        enum:
+                                        - Gauge
+                                        - Counter
+                                        type: string
+                                    required:
+                                    - calculationPeriod
+                                    - name
+                                    - thresholdValue
+                                    - type
+                                    type: object
+                                  type: array
+                              type: object
+                            scrapeConfig:
+                              properties:
+                                interval:
+                                  pattern: ^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
+                                  type: string
+                                path:
+                                  type: string
+                                port:
+                                  type: string
+                                scrapeTimeout:
+                                  pattern: ^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$
+                                  type: string
+                              required:
+                              - port
+                              type: object
+                          type: object
                         nodeName:
                           type: string
                         nodeSelector:

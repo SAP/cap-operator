@@ -59,12 +59,18 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.CAPTenantStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CommonDetails"):
 		return &smesapcomv1alpha1.CommonDetailsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DeletionRules"):
+		return &smesapcomv1alpha1.DeletionRulesApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DeploymentDetails"):
 		return &smesapcomv1alpha1.DeploymentDetailsApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("GenericStatus"):
 		return &smesapcomv1alpha1.GenericStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("JobDetails"):
 		return &smesapcomv1alpha1.JobDetailsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("MetricRule"):
+		return &smesapcomv1alpha1.MetricRuleApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("MonitoringConfig"):
+		return &smesapcomv1alpha1.MonitoringConfigApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("NameValue"):
 		return &smesapcomv1alpha1.NameValueApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Ports"):
@@ -77,6 +83,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.TenantOperationWorkloadReferenceApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("WorkloadDetails"):
 		return &smesapcomv1alpha1.WorkloadDetailsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("WorkloadMonitoring"):
+		return &smesapcomv1alpha1.WorkloadMonitoringApplyConfiguration{}
 
 	}
 	return nil
