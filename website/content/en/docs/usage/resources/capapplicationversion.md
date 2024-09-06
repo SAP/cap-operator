@@ -346,4 +346,4 @@ spec:
 >
 > The supported configurations is kept minimal intentionally to keep the overall API simple by considering commonly used configurations.
 
-Note: For `initContainers` nearly the same environment variables as the main container are made available including VCAP_SERVICES environment.
+> Note: For `initContainers` nearly the same environment variables as the main container are made available including VCAP_SERVICES environment.
