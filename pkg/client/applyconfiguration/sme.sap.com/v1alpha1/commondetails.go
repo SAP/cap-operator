@@ -11,7 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-// CommonDetailsApplyConfiguration represents an declarative configuration of the CommonDetails type for use
+// CommonDetailsApplyConfiguration represents a declarative configuration of the CommonDetails type for use
 // with apply.
 type CommonDetailsApplyConfiguration struct {
 	Image                     *string                       `json:"image,omitempty"`
@@ -33,7 +33,7 @@ type CommonDetailsApplyConfiguration struct {
 	InitContainers            []v1.Container                `json:"initContainers,omitempty"`
 }
 
-// CommonDetailsApplyConfiguration constructs an declarative configuration of the CommonDetails type for use with
+// CommonDetailsApplyConfiguration constructs a declarative configuration of the CommonDetails type for use with
 // apply.
 func CommonDetails() *CommonDetailsApplyConfiguration {
 	return &CommonDetailsApplyConfiguration{}

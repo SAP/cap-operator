@@ -69,7 +69,7 @@ spec:
     - content-job-2
 status:
   conditions:
-    - reason: ReadyForProcessing
+    - reason: WaitingForWorkloads
       status: "False"
       observedGeneration: 1
       type: Ready

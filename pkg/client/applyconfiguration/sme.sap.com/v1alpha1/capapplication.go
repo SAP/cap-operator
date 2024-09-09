@@ -13,7 +13,7 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// CAPApplicationApplyConfiguration represents an declarative configuration of the CAPApplication type for use
+// CAPApplicationApplyConfiguration represents a declarative configuration of the CAPApplication type for use
 // with apply.
 type CAPApplicationApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
@@ -22,7 +22,7 @@ type CAPApplicationApplyConfiguration struct {
 	Status                           *CAPApplicationStatusApplyConfiguration `json:"status,omitempty"`
 }
 
-// CAPApplication constructs an declarative configuration of the CAPApplication type for use with
+// CAPApplication constructs a declarative configuration of the CAPApplication type for use with
 // apply.
 func CAPApplication(name, namespace string) *CAPApplicationApplyConfiguration {
 	b := &CAPApplicationApplyConfiguration{}
@@ -205,4 +205,10 @@ func (b *CAPApplicationApplyConfiguration) WithSpec(value *CAPApplicationSpecApp
 func (b *CAPApplicationApplyConfiguration) WithStatus(value *CAPApplicationStatusApplyConfiguration) *CAPApplicationApplyConfiguration {
 	b.Status = value
 	return b
+}
+
+// GetName retrieves the value of the Name field in the declarative configuration.
+func (b *CAPApplicationApplyConfiguration) GetName() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.Name
 }

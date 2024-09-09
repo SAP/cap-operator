@@ -7,14 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 
 package v1alpha1
 
-// NameValueApplyConfiguration represents an declarative configuration of the NameValue type for use
+// NameValueApplyConfiguration represents a declarative configuration of the NameValue type for use
 // with apply.
 type NameValueApplyConfiguration struct {
 	Name  *string `json:"name,omitempty"`
 	Value *string `json:"value,omitempty"`
 }
 
-// NameValueApplyConfiguration constructs an declarative configuration of the NameValue type for use with
+// NameValueApplyConfiguration constructs a declarative configuration of the NameValue type for use with
 // apply.
 func NameValue() *NameValueApplyConfiguration {
 	return &NameValueApplyConfiguration{}

@@ -12,7 +12,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-// DeploymentDetailsApplyConfiguration represents an declarative configuration of the DeploymentDetails type for use
+// DeploymentDetailsApplyConfiguration represents a declarative configuration of the DeploymentDetails type for use
 // with apply.
 type DeploymentDetailsApplyConfiguration struct {
 	CommonDetailsApplyConfiguration `json:",inline"`
@@ -23,7 +23,7 @@ type DeploymentDetailsApplyConfiguration struct {
 	ReadinessProbe                  *v1.Probe                         `json:"readinessProbe,omitempty"`
 }
 
-// DeploymentDetailsApplyConfiguration constructs an declarative configuration of the DeploymentDetails type for use with
+// DeploymentDetailsApplyConfiguration constructs a declarative configuration of the DeploymentDetails type for use with
 // apply.
 func DeploymentDetails() *DeploymentDetailsApplyConfiguration {
 	return &DeploymentDetailsApplyConfiguration{}

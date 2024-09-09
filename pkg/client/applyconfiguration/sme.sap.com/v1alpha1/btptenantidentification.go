@@ -7,14 +7,14 @@ SPDX-License-Identifier: Apache-2.0
 
 package v1alpha1
 
-// BTPTenantIdentificationApplyConfiguration represents an declarative configuration of the BTPTenantIdentification type for use
+// BTPTenantIdentificationApplyConfiguration represents a declarative configuration of the BTPTenantIdentification type for use
 // with apply.
 type BTPTenantIdentificationApplyConfiguration struct {
 	SubDomain *string `json:"subDomain,omitempty"`
 	TenantId  *string `json:"tenantId,omitempty"`
 }
 
-// BTPTenantIdentificationApplyConfiguration constructs an declarative configuration of the BTPTenantIdentification type for use with
+// BTPTenantIdentificationApplyConfiguration constructs a declarative configuration of the BTPTenantIdentification type for use with
 // apply.
 func BTPTenantIdentification() *BTPTenantIdentificationApplyConfiguration {
 	return &BTPTenantIdentificationApplyConfiguration{}

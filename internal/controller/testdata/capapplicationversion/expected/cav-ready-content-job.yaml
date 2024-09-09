@@ -60,11 +60,11 @@ spec:
         type: TenantOperation
 status:
   conditions:
-    - reason: CreatedDeployments
+    - reason: WaitingForWorkloads
       observedGeneration: 1
-      status: "True"
+      status: "False"
       type: Ready
   observedGeneration: 1
   finishedJobs:
     - "test-cap-01-cav-v1-content"
-  state: Ready
+  state: Processing

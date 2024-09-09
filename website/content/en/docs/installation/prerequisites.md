@@ -16,11 +16,11 @@ Istio service mesh is used for HTTP traffic management. CAP Operator creates Ist
 
 > It's required that you determine the public ingress Gateway subdomain and the overall shoot domain for the system and specify them in the [chart values](../../installation/helm-install/#values)
 
-##### [cf-service-operator](https://sap.github.io/cf-service-operator/docs/) or [sap-btp-service-operator](https://github.com/SAP/sap-btp-service-operator)
+##### [sap-btp-service-operator](https://github.com/SAP/sap-btp-service-operator) or [cf-service-operator](https://sap.github.io/cf-service-operator/docs/)
 
 These operators can be used for managing SAP BTP service instances and service bindings from within the Kubernetes cluster.
 
-> As some SAP BTP services are not available for Kubernetes platforms, we recommended that you use [cf-service-operator](https://sap.github.io/cf-service-operator/), which creates the services for a Cloud Foundry space and inserts the required access credentials as Secrets into the Kubernetes cluster.
+> If some SAP BTP services are not available for Kubernetes platforms, you may use [cf-service-operator](https://sap.github.io/cf-service-operator/), which creates the services for a Cloud Foundry space and inserts the required access credentials as Secrets into the Kubernetes cluster.
 
 > Please note that service credentials added as Kubernetes Secrets to a namespace by these operators, support additional metadata. If you don't use this feature of these operators, use `secretKey: credentials` in the spec of these operators to ensure that the service credentials retain any JSON data as it is. **We recommend that you use `secretKey`, even when credential metadata is available to reduce the overhead of interpreting parsing multiple JSON attributes.**
 
