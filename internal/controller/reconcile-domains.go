@@ -660,7 +660,9 @@ func (c *Controller) reconcileTenantDestinationRulePrevCav(ctx context.Context, 
 	prevCAV := cat.Status.PreviousCAPApplicationVersions[len(cat.Status.PreviousCAPApplicationVersions)-1]
 	_, cavGetErr := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(prevCAV)
 	if !errors.IsNotFound(cavGetErr) {
-		return c.reconcileTenantDestinationRule(ctx, cat.Name+"-"+prevCAV, cat, prevCAV, ca)
+		if _, err := c.reconcileTenantDestinationRule(ctx, cat.Name+"-"+prevCAV, cat, prevCAV, ca); err != nil {
+			return false, err
+		}
 	}
 
 	// delete the destination rule for the second last CAV
