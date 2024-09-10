@@ -117,4 +117,4 @@ spec:
 
 The `CAPTenantOperation` creates jobs for each of the steps involved and executes them sequentially until all the jobs are finished or one of them fails. The `CAPTenant` is notified about the result and updates its state accordingly.
 
-A successful completion of the `CAPTenantOperation` will cause the `VirtualService` managed by the `CAPTenant` to be modified to route HTTP traffic to the deployments of the newer `CAPApplicationVersion`. Once all tenants have been upgraded, the outdated `CAPApplicationVersion` can be deleted.
+Upon successful completion of the `CAPTenantOperation`, the `VirtualService` managed by the `CAPTenant` will be updated to route HTTP traffic to the deployments of the newer CAPApplicationVersion for all new sessions. Existing user sessions will continue to run on the previous version until those sessions terminate. Once they do, users will be directed to the new deployments. Once all tenants have been upgraded and there is no longer any traffic or activity on the old deployments, the outdated `CAPApplicationVersion` can be deleted.
