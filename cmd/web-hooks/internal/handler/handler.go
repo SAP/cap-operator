@@ -274,10 +274,19 @@ func validateWorkloads(cavObjNew *ResponseCav) validateResource {
 	uniqueWorkloadNameCountMap := make(map[string]int)
 	for _, workload := range cavObjNew.Spec.Workloads {
 
+		// check workload name matches the regex pattern
 		if !regex.MatchString(workload.Name) {
 			return validateResource{
 				allowed: false,
 				message: fmt.Sprintf("%s %s Invalid workload name: %s", InvalidationMessage, cavObjNew.Kind, workload.Name),
+			}
+		}
+
+		// Allowed length for service name is 63 characters
+		if len(cavObjNew.Name+"-"+workload.Name+"-svc") > 63 {
+			return validateResource{
+				allowed: false,
+				message: fmt.Sprintf("%s %s Derived service name: %s for workload %s will exceed 63 character limit. Adjust CAPApplicationVerion resource name or the workload name accordingly", InvalidationMessage, cavObjNew.Kind, cavObjNew.Name+"-"+workload.Name+"-svc", workload.Name),
 			}
 		}
 

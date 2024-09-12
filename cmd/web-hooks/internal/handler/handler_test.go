@@ -783,6 +783,7 @@ func TestCavInvalidity(t *testing.T) {
 		missingContentJobinContentJobs     bool
 		invalidJobinContentJobs            bool
 		invalidWorkloadName                bool
+		longWorkloadName                   bool
 		backlogItems                       []string
 	}{
 		{
@@ -879,6 +880,11 @@ func TestCavInvalidity(t *testing.T) {
 			operation:           admissionv1.Create,
 			invalidWorkloadName: true,
 			backlogItems:        []string{},
+		},
+		{
+			operation:        admissionv1.Create,
+			longWorkloadName: true,
+			backlogItems:     []string{},
 		},
 	}
 	for _, test := range tests {
@@ -1153,6 +1159,8 @@ func TestCavInvalidity(t *testing.T) {
 				crd.Spec.ContentJobs = append(crd.Spec.ContentJobs, "content", "content-2", "dummy")
 			} else if test.invalidWorkloadName == true {
 				crd.Spec.Workloads[0].Name = "WrongWorkloadName"
+			} else if test.longWorkloadName == true {
+				crd.Spec.Workloads[0].Name = "extralongworkloadnamecontainingmorethan64characters"
 			}
 
 			rawBytes, _ := json.Marshal(crd)
@@ -1212,6 +1220,8 @@ func TestCavInvalidity(t *testing.T) {
 				errorMessage = fmt.Sprintf("%s %s job dummy specified as part of ContentJobs is not a valid content job", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.invalidWorkloadName == true {
 				errorMessage = fmt.Sprintf("%s %s Invalid workload name: %s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, "WrongWorkloadName")
+			} else if test.longWorkloadName == true {
+				errorMessage = fmt.Sprintf("%s %s Derived service name: %s for workload %s will exceed 63 character limit. Adjust CAPApplicationVerion resource name or the workload name accordingly", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Name+"-"+"extralongworkloadnamecontainingmorethan64characters"+"-svc", "extralongworkloadnamecontainingmorethan64characters")
 			}
 
 			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
