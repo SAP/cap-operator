@@ -52,10 +52,6 @@ type monitoringEnv struct {
 	evaluationInterval      time.Duration
 }
 
-/**************************************************************************************
- * Version cleanup evaluation
- **************************************************************************************/
-
 func parseMonitoringEnv() *monitoringEnv {
 	promAdd := strings.TrimSpace(os.Getenv(EnvPrometheusAddress))
 	if promAdd == "" {
