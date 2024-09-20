@@ -69,7 +69,7 @@ This informs the CAP Operator that workload `backend` is supplying two metrics w
   |Execute PromQL expression `sum(rate(total_http_requests{job="cav-demo-app-1-backend-svc",namespace="demo"}[2h]))` to get the evaluated value|
   |Check whether evaluated value <= 0.00005 (the specified `thresholdValue`)|
 
-{{% alert title="Note" color="info" %}}
+{{% alert title="Prometheus Metrics Data" color="light" %}}
 - Prometheus stores metric data as multiple time series by label set. The number of time series created from a single metric depends on the possible combination of labels. The label `job` represents the source of the metric and (within Kubernetes) is the service representing the workload.
 - CAP Operator does not support Prometheus metric types other than `Gauge` and `Counter`. Lean more about metric types [here](https://prometheus.io/docs/concepts/metric_types/).
 {{% /alert %}}
@@ -102,4 +102,50 @@ This variant can be useful when:
 
 ### Scrape Configuration
 
-[Prometheus Operator](https://prometheus-operator.dev/docs/getting-started/introduction/) is a popular Kubernetes operator for managing Prometheus and related monitoring components. 
+[Prometheus Operator](https://prometheus-operator.dev/docs/getting-started/introduction/) is a popular Kubernetes operator for managing Prometheus and related monitoring components. A common way to setup scrape targets for a Prometheus instance is by creating the [`ServiceMonitor`](https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.ServiceMonitor) resource which specifies which `Services` (and ports) that should be scraped for collecting application metrics.
+
+{{% alert title="Prerequisite" color="info" %}}
+The `scrapeConfig` feature of a workload is usable only when the [`ServiceMonitor`](https://prometheus-operator.dev/docs/api-reference/api/#monitoring.coreos.com/v1.ServiceMonitor) Custom Resource is available on the Kubernetes cluster.
+{{% /alert %}}
+
+The CAP Operator provides an easy way to create `Service Monitors` which target the `Services` created for version workloads. The following sample shows how to configure this.
+```yaml
+kind: CAPApplicationVersion
+metadata:
+  namespace: demo
+  name: cav-demo-app-1
+spec:
+  workloads:
+    - name: backend
+      deploymentDefinition:
+        ports:
+          - appProtocol: http
+            name: metrics-port
+            networkPolicy: Cluster
+            port: 9000
+        monitoring:
+          deletionRules:
+            expression: scalar(sum(avg_over_time(current_sessions{job="cav-demo-app-1-backend-svc",namespace="demo"}[2h]))) <= bool 5
+          scrapeConfig:
+            interval: 15s
+            path: /metrics
+            port: metrics-port
+```
+
+With this configuration the CAP Operator will create a `ServiceMonitor` which targets the workload `Service`. The `scrapeConfig.port` should match the name of one of the ports specified on the workload.
+
+{{% alert title="Use Case" color="secondary" %}}
+The workload `scrapeConfig` aims to support a minimal configuration, creating a `ServiceMonitor` which supports the most common use case (i.e. scraping the workload service via. a defined workload port). To use complex configurations in `ServiceMonitors`, they should be created separately. If the `scrapeConfig` of a version workload is empty, the CAP Operator will not attempt to create the related `ServiceMonitor`. 
+{{% /alert %}}
+
+## Evaluating `CAPApplicationVersions` for cleanup
+
+At specified intervals (dictated by controller environment variable `METRICS_EVAL_INTERVAL`), the CAP Operator selects versions which are candidates for evaluation.
+- Only versions for `CAPApplications` where annotation `sme.sap.com/enable-cleanup-monitoring` is set are considered.
+- All versions (`spec.version`) higher than the highest version with `Ready` status are not considered for evaluation. If there is no version with status `Ready`, no versions are considered.
+- All versions linked to a `CAPTenant` are excluded from evaluation. This includes versions where the following fields of a `CAPTenant` point to the version:
+  - `status.currentCAPApplicationVersionInstance` - current version of the tenant.
+  - `spec.version` - the version to which a tenant is upgrading.
+
+Workloads from the identified versions are then evaluated based on the defined `deletionRules`. Workloads without `deletionRules` are automatically eligible for cleanup. All workloads (with type deployment) of a version must satisfy the evaluation criteria for the version to be deleted.
+
