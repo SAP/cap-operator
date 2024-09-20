@@ -28,7 +28,6 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/klog/v2"
 )
 
 const (
@@ -464,7 +463,7 @@ func (c *Controller) checkServiceMonitorCapability(ctx context.Context) error {
 
 func (c *Controller) updateServiceMonitors(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workloadServicePortInfos []servicePortInfo) error {
 	if err := c.checkServiceMonitorCapability(ctx); err != nil {
-		klog.ErrorS(err, "could not confirm availability of service monitor resource; service monitors will not be reconciled")
+		util.LogWarning(err, "could not confirm availability of service monitor resource; service monitors will not be created")
 		return nil
 	}
 
