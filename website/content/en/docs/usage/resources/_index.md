@@ -1,7 +1,7 @@
 ---
 title: "Resources"
 linkTitle: "Resources"
-weight: 50
+weight: 60
 type: "docs"
 description: >
   Detailed configuration of resources managed by CAP Operator
