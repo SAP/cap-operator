@@ -6,6 +6,11 @@ enableRobotsTXT: true
 # Will give values to .Lastmod etc.
 enableGitInfo: true
 
+pygmentsCodeFences: true
+pygmentsUseClasses: false
+pygmentsUseClassic: false
+pygmentsStyle: tango
+
 # Language settings
 contentDir: "content/en"
 defaultContentLanguage: "en"
@@ -41,7 +46,7 @@ permalinks:
 imaging:
   resampleFilter: "CatmullRom"
   quality: 90
-  anchor: "Smart"
+  anchor: Smart
 
 # Language configuration
 languages:
@@ -56,14 +61,13 @@ languages:
 
 markup:
   goldmark:
+    parser:
+      attribute:
+        block: true
     renderer:
       unsafe: true
   highlight:
-    # See a complete list of available styles at https://xyproto.github.io/splash/docs/all.html
-    style: "nord"
-    # Uncomment if you want your chosen highlight style used for code blocks without a specified language
-    guessSyntax: true
-    codeFences: true
+    noClasses: false # Required for dark-mode
 
 # Everything below this are Site Params
 
@@ -112,8 +116,11 @@ params:
   # Enable Lunr.js offline search
   offlineSearch: true
 
+  prism_syntax_highlighting: false
+
   # User interface configuration
   ui:
+    showLightDarkModeMenu: true
     #  Set to true to disable breadcrumb navigation.
     breadcrumb_disable: false
     # Set to false to disable the About link in the site footer

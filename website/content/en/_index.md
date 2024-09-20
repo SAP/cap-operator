@@ -7,10 +7,10 @@ description: A Kubernetes operator for managing the lifecycle of multi-tenant SA
 {{% blocks/cover title="Welcome to CAP Operator" image_anchor="top" height="full" color="primary" %}}
 <div class="mx-auto">
 	<span class="font-weight-bold">A Kubernetes operator for managing the lifecycle of multi-tenant CAP applications</span><br><br><br>
-	<a class="btn btn-lg btn-primary me-3 mb-4" href="docs/">
+	<a class="btn btn-lg btn-outline-light me-3 mb-4 rounded-pill" href="docs/">
 		Learn more <i class="fas fa-arrow-alt-circle-right ms-2"></i>
 	</a>
-	<a class="btn btn-lg btn-secondary me-3 mb-4" href="https://github.com/sap/cap-operator">
+	<a class="btn btn-lg btn-outline-light me-3 mb-4 rounded-pill" href="https://github.com/sap/cap-operator">
 		Go to the source repository <i class="fab fa-github ms-2 "></i>
 	</a>
  	<br><br><br><p class="lead mt-5">
