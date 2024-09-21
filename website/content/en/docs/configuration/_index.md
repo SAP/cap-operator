@@ -1,7 +1,7 @@
 ---
 title: "Configuration"
 linkTitle: "Configuration"
-weight: 30
+weight: 50
 type: "docs"
 tags: ["setup"]
 description: >
