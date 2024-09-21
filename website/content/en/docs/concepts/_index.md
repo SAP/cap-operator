@@ -1,7 +1,7 @@
 ---
 title: "Concepts"
 linkTitle: "Concepts"
-weight: 10
+weight: 20
 type: "docs"
 description: >
   Motivation and overview of components
