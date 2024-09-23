@@ -1,7 +1,7 @@
 ---
 title: "Installation"
 linkTitle: "Installation"
-weight: 40
+weight: 30
 type: "docs"
 description: >
   How to install CAP Operator in a Kubernetes cluster
