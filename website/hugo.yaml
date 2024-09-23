@@ -6,11 +6,6 @@ enableRobotsTXT: true
 # Will give values to .Lastmod etc.
 enableGitInfo: true
 
-pygmentsCodeFences: true
-pygmentsUseClasses: false
-pygmentsUseClassic: false
-pygmentsStyle: tango
-
 # Language settings
 contentDir: "content/en"
 defaultContentLanguage: "en"
