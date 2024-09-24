@@ -7,13 +7,13 @@ description: >
 ---
 
 {{% cardpane %}}
-  {{% card header="Sep 2024" %}}
+  {{% card header="Q3 2024" %}}
   Define monitoring configuration on version workloads which allow outdated versions to be automatically cleaned up based on usage. Learn more about [Version Monitoring](./usage/version-monitoring.md).
   {{% /card %}}
-  {{% card header="Sep 2024" %}}
+  {{% card header="Q3 2024" %}}
   New Custom Resource `CAPTenantOutput` can be used to record subscription related data from tenant operations. [Learn more](./usage/resources/captenantoutput.md).
   {{% /card %}}
-  {{% card header="Jan - Jun 2024" %}}
+  {{% card header="Q2 2024" %}}
   `CAPApplicationVersion` now supports configuration of `initContainers`, `volumes`, `serviceAccountName`, [scheduling related configurations](https://kubernetes.io/docs/concepts/scheduling-eviction/) etc. on workloads.
   {{% /card %}}
 {{% /cardpane %}}
