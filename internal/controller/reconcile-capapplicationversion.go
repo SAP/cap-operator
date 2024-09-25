@@ -1,4 +1,4 @@
-/*
+/**
 SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
@@ -25,7 +25,6 @@ import (
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -447,7 +446,7 @@ func newService(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion
 // #region ServiceMonitor
 func (c *Controller) checkServiceMonitorCapability(ctx context.Context) error {
 	crdName := "servicemonitors.monitoring.coreos.com"
-	crd, err := c.apiExtClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, v1.GetOptions{})
+	crd, err := c.apiExtClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("could not get custom resource definition %s: %v", crdName, err)
 	}
@@ -496,12 +495,12 @@ func (c *Controller) updateServiceMonitors(ctx context.Context, ca *v1alpha1.CAP
 			return fmt.Errorf("invalid port reference in workload %s monitoring config of version %s", wl.Name, cav.Name)
 		}
 
-		sm, err := c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Get(ctx, wlPortInfos.WorkloadName+ServiceSuffix, v1.GetOptions{})
+		sm, err := c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Get(ctx, wlPortInfos.WorkloadName+ServiceSuffix, metav1.GetOptions{})
 		if err != nil {
 			if k8sErrors.IsNotFound(err) {
-				sm, err = c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Create(ctx, newServiceMonitor(ca, cav, &wl, wlPortInfos), v1.CreateOptions{})
+				sm, err = c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Create(ctx, newServiceMonitor(ca, cav, &wl, wlPortInfos), metav1.CreateOptions{})
 				if err == nil {
-					util.LogInfo("ServiceMonitor created successfully", string(Processing), cav, sm, "version", cav.Spec.Version)
+					util.LogInfo("Service monitor created successfully", string(Processing), cav, sm, "version", cav.Spec.Version)
 				}
 			}
 		}
@@ -517,7 +516,7 @@ func (c *Controller) updateServiceMonitors(ctx context.Context, ca *v1alpha1.CAP
 func newServiceMonitor(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, wl *v1alpha1.WorkloadDetails, wlPortInfos *servicePortInfo) *monv1.ServiceMonitor {
 	config := wl.DeploymentDefinition.Monitoring.ScrapeConfig
 	return &monv1.ServiceMonitor{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:        wlPortInfos.WorkloadName + ServiceSuffix,
 			Namespace:   cav.Namespace,
 			Labels:      copyMaps(wl.Labels, getLabels(ca, cav, CategoryServiceMonitor, string(wl.DeploymentDefinition.Type), wlPortInfos.WorkloadName+ServiceSuffix, true)),
@@ -533,7 +532,7 @@ func newServiceMonitor(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplication
 				ScrapeTimeout: monv1.Duration(config.Timeout),
 				Path:          config.Path,
 			}},
-			Selector: v1.LabelSelector{
+			Selector: metav1.LabelSelector{
 				MatchLabels: copyMaps(wl.Labels, getLabels(ca, cav, CategoryService, wlPortInfos.DeploymentType, wlPortInfos.WorkloadName+ServiceSuffix, false)),
 			},
 		},
