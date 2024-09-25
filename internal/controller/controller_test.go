@@ -88,6 +88,8 @@ func TestController_processQueue(t *testing.T) {
 				istioClient:                 c.istioClient,
 				gardenerCertificateClient:   c.gardenerCertificateClient,
 				gardenerDNSClient:           c.gardenerDNSClient,
+				apiExtClient:                c.apiExtClient,
+				promClient:                  c.promClient,
 				kubeInformerFactory:         dummyKubeInformerFactory,
 				crdInformerFactory:          c.crdInformerFactory,
 				istioInformerFactory:        c.istioInformerFactory,

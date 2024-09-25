@@ -62,6 +62,11 @@ deploymentDefinition:
       routerDestinationName: cap-server-url
     - name: tech-port
       port: 4005
+  monitoring:
+    scrapeConfig:
+      port: tech--port
+    deletionRules:
+      expression: scalar(sum(avg_over_time(current_sessions{job="cav-cap-app-v1-cap-backend-svc",namespace="cap-ns"}[2h]))) <= bool 5
 ```
 
 The `type` of the deployment is important to indicate how the operator handles this workload (for example, injection of `destinations` to be used by the approuter). Valid values are:
@@ -84,6 +89,14 @@ The port configurations aren't mandatory and can be omitted. This would mean tha
 - For workload of type `Router`, the port `5000` will be exposed in the service. This service will be used as the target for HTTP traffic reaching the application domain (domains are specified within the `CAPApplication` resource).
 
 > NOTE: If multiple ports are configured for a workload of type `Router`, the first available port will be used to target external traffic to the application domain.
+
+#### Monitoring configuration
+
+For each _workload of type deployment_ in a `CAPApplicationVersion`, it is possible to define:
+1. Deletion rules: A criteria based on metrics which when satisfied signifies that the workload can be removed
+2. Scrape configuration: Configuration which defines how metrics are scraped from the workload service.
+
+Details of how to configure workload monitoring can be found [here](../version-monitoring.md#configure-capapplicationversion).
 
 ### Workloads with `jobDefinition`
 
@@ -211,6 +224,11 @@ spec:
           - name: tech-port
             port: 4005
             appProtocol: grpc
+        monitoring:
+          scrapeConfig:
+            port: tech--port
+          deletionRules:
+            expression: scalar(sum(avg_over_time(current_sessions{job="cav-cap-app-v1-cap-backend-svc",namespace="cap-ns"}[2h]))) <= bool 5
         livenessProbe:
           failureThreshold: 3
           httpGet:

@@ -107,3 +107,7 @@ func LogError(error error, msg string, step string, entity interface{}, child in
 	overallArgs := logArgs(step, entity, child, args...)
 	klog.ErrorS(error, msg, overallArgs...)
 }
+
+func LogWarning(args ...interface{}) {
+	klog.Warning(args...)
+}

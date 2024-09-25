@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
@@ -46,6 +47,7 @@ const (
 	AnnotationKubernetesDNSTarget       = "external-dns.alpha.kubernetes.io/hostname"
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
 	AnnotationProviderSubAccountId      = "sme.sap.com/provider-sub-account-id"
+	AnnotationEnableCleanupMonitoring   = "sme.sap.com/enable-cleanup-monitoring"
 	FinalizerCAPApplication             = "sme.sap.com/capapplication"
 	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
 	FinalizerCAPTenant                  = "sme.sap.com/captenant"
@@ -547,7 +549,7 @@ func updateWorkloadPortInfo(cavName string, workloadName string, deploymentType 
 
 	if len(servicePorts) > 0 {
 		workloadPortInfo = &servicePortInfo{
-			WorkloadName:   cavName + "-" + workloadName,
+			WorkloadName:   getWorkloadName(cavName, workloadName),
 			DeploymentType: string(deploymentType),
 			Ports:          servicePorts,
 			Destinations:   destinationDetails,
@@ -592,4 +594,8 @@ func updateInitContainers(initContainers []corev1.Container, additionalEnv []cor
 		}
 	}
 	return &updatedInitContainers
+}
+
+func getWorkloadName(cavName, workloadName string) string {
+	return fmt.Sprintf("%s-%s", cavName, strings.ToLower(workloadName))
 }
