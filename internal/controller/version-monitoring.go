@@ -274,36 +274,7 @@ func (c *Controller) evaluateVersionForCleanup(ctx context.Context, item Namespa
 	cleanup := true
 	for i := range cav.Spec.Workloads {
 		wl := cav.Spec.Workloads[i]
-		workloadEvaluation := true
-		if wl.DeploymentDefinition != nil && wl.DeploymentDefinition.Monitoring != nil && wl.DeploymentDefinition.Monitoring.DeletionRules != nil {
-			if wl.DeploymentDefinition.Monitoring.DeletionRules.ScalarExpression != nil { // evaluate provided expression
-				expr := strings.TrimSpace(*wl.DeploymentDefinition.Monitoring.DeletionRules.ScalarExpression)
-				if expr == "" {
-					workloadEvaluation = false
-				} else {
-					isRelevantForCleanup, err := evaluateExpression(ctx, expr, promapi)
-					if err != nil || !isRelevantForCleanup {
-						if err != nil {
-							klog.ErrorS(err, "could not evaluate PromQL expression for workload", "workload", wl.Name, "version", cav.Name)
-						}
-						workloadEvaluation = false
-					}
-				}
-			} else {
-				for j := range wl.DeploymentDefinition.Monitoring.DeletionRules.Metrics {
-					rule := wl.DeploymentDefinition.Monitoring.DeletionRules.Metrics[j]
-					isRelevantForCleanup, err := evaluateMetric(ctx, &rule, fmt.Sprintf("%s%s", getWorkloadName(cav.Name, wl.Name), ServiceSuffix), cav.Namespace, promapi)
-					if err != nil || !isRelevantForCleanup {
-						if err != nil {
-							klog.ErrorS(err, "could not evaluate metric for workload", "workload", wl.Name, "version", cav.Name)
-						}
-						workloadEvaluation = false
-						break
-					}
-				}
-			}
-		}
-		if !workloadEvaluation {
+		if workloadEvaluation := evaluateWorkloadForCleanup(ctx, item, &wl, promapi); !workloadEvaluation {
 			cleanup = false
 			break
 		}
@@ -321,6 +292,35 @@ func (c *Controller) evaluateVersionForCleanup(ctx context.Context, item Namespa
 	return nil
 }
 
+func evaluateWorkloadForCleanup(ctx context.Context, cav NamespacedResourceKey, wl *v1alpha1.WorkloadDetails, promapi promv1.API) bool {
+	if wl.DeploymentDefinition == nil || wl.DeploymentDefinition.Monitoring == nil || wl.DeploymentDefinition.Monitoring.DeletionRules == nil {
+		return true // if there are no rules - the workload is automatically eligible for cleanup
+	}
+
+	if wl.DeploymentDefinition.Monitoring.DeletionRules.ScalarExpression != nil { // evaluate provided expression
+		isRelevantForCleanup, err := evaluateExpression(ctx, *wl.DeploymentDefinition.Monitoring.DeletionRules.ScalarExpression, promapi)
+		if err != nil {
+			klog.ErrorS(err, "could not evaluate PromQL expression for workload", "workload", wl.Name, "version", cav.Name)
+			return false
+		}
+		return isRelevantForCleanup
+	}
+
+	// evaluate rules based on metric type
+	for j := range wl.DeploymentDefinition.Monitoring.DeletionRules.Metrics {
+		rule := wl.DeploymentDefinition.Monitoring.DeletionRules.Metrics[j]
+		isRelevantForCleanup, err := evaluateMetric(ctx, &rule, fmt.Sprintf("%s%s", getWorkloadName(cav.Name, wl.Name), ServiceSuffix), cav.Namespace, promapi)
+		if err != nil {
+			klog.ErrorS(err, "could not evaluate metric for workload", "workload", wl.Name, "version", cav.Name)
+			return false
+		}
+		if !isRelevantForCleanup {
+			return false
+		}
+	}
+	return true
+}
+
 func executePromQL(ctx context.Context, promapi promv1.API, query string) (prommodel.Value, error) {
 	// klog.InfoS("executing prometheus query", "query", query)
 	result, warnings, err := promapi.Query(ctx, query, time.Now())
@@ -335,7 +335,12 @@ func executePromQL(ctx context.Context, promapi promv1.API, query string) (promm
 	return result, nil
 }
 
-func evaluateExpression(ctx context.Context, expr string, promapi promv1.API) (bool, error) {
+func evaluateExpression(ctx context.Context, rawExpr string, promapi promv1.API) (bool, error) {
+	expr := strings.TrimSpace(rawExpr)
+	if expr == "" {
+		return false, fmt.Errorf("encountered empty expression")
+	}
+
 	result, err := executePromQL(ctx, promapi, expr)
 	if err != nil {
 		return false, err

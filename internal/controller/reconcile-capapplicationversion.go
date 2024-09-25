@@ -466,32 +466,27 @@ func (c *Controller) updateServiceMonitors(ctx context.Context, ca *v1alpha1.CAP
 		return nil
 	}
 
+	isWorkloadPort := func(wlPorts []corev1.ServicePort, scrapePort string) bool {
+		for j := range wlPorts {
+			if wlPorts[j].Name == scrapePort {
+				return true
+			}
+		}
+		return false
+	}
+
 	for i := range cav.Spec.Workloads {
 		wl := cav.Spec.Workloads[i]
 		if wl.DeploymentDefinition == nil || wl.DeploymentDefinition.Monitoring == nil || wl.DeploymentDefinition.Monitoring.ScrapeConfig == nil {
 			continue // do not reconcile service monitors
 		}
 
-		var wlPortInfos *servicePortInfo
-		for j := range workloadServicePortInfos {
-			item := workloadServicePortInfos[j]
-			if item.WorkloadName == getWorkloadName(cav.Name, wl.Name) {
-				wlPortInfos = &item
-				break
-			}
-		}
+		wlPortInfos := getServicePortInfoByWorkloadName(workloadServicePortInfos, cav.Name, wl.Name)
 		if wlPortInfos == nil {
 			return fmt.Errorf("could not identify workload port information for workload %s in version %s", wl.Name, cav.Name)
 		}
 
-		portVerified := false
-		for j := range wlPortInfos.Ports {
-			if wlPortInfos.Ports[j].Name == wl.DeploymentDefinition.Monitoring.ScrapeConfig.WorkloadPort {
-				portVerified = true
-				break
-			}
-		}
-		if !portVerified {
+		if portVerified := isWorkloadPort(wlPortInfos.Ports, wl.DeploymentDefinition.Monitoring.ScrapeConfig.WorkloadPort); !portVerified {
 			return fmt.Errorf("invalid port reference in workload %s monitoring config of version %s", wl.Name, cav.Name)
 		}
 
