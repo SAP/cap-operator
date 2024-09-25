@@ -560,6 +560,16 @@ func updateWorkloadPortInfo(cavName string, workloadName string, deploymentType 
 	return workloadPortInfo
 }
 
+func getServicePortInfoByWorkloadName(items []servicePortInfo, cavName string, workloadName string) *servicePortInfo {
+	for i := range items {
+		current := items[i]
+		if current.WorkloadName == getWorkloadName(cavName, workloadName) {
+			return &current
+		}
+	}
+	return nil
+}
+
 func (c *Controller) getRouterServicePortInfo(cavName string, namespace string) (*servicePortInfo, error) {
 	cav, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(namespace).Get(cavName)
 	if err != nil {
