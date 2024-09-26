@@ -13,7 +13,7 @@ import (
 	metav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// CAPTenantStatusApplyConfiguration represents an declarative configuration of the CAPTenantStatus type for use
+// CAPTenantStatusApplyConfiguration represents a declarative configuration of the CAPTenantStatus type for use
 // with apply.
 type CAPTenantStatusApplyConfiguration struct {
 	GenericStatusApplyConfiguration      `json:",inline"`
@@ -23,7 +23,7 @@ type CAPTenantStatusApplyConfiguration struct {
 	LastFullReconciliationTime           *v1.Time                          `json:"lastFullReconciliationTime,omitempty"`
 }
 
-// CAPTenantStatusApplyConfiguration constructs an declarative configuration of the CAPTenantStatus type for use with
+// CAPTenantStatusApplyConfiguration constructs a declarative configuration of the CAPTenantStatus type for use with
 // apply.
 func CAPTenantStatus() *CAPTenantStatusApplyConfiguration {
 	return &CAPTenantStatusApplyConfiguration{}

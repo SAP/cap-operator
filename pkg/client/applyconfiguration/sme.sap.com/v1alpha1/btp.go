@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 
 package v1alpha1
 
-// BTPApplyConfiguration represents an declarative configuration of the BTP type for use
+// BTPApplyConfiguration represents a declarative configuration of the BTP type for use
 // with apply.
 type BTPApplyConfiguration struct {
 	Services []ServiceInfoApplyConfiguration `json:"services,omitempty"`
 }
 
-// BTPApplyConfiguration constructs an declarative configuration of the BTP type for use with
+// BTPApplyConfiguration constructs a declarative configuration of the BTP type for use with
 // apply.
 func BTP() *BTPApplyConfiguration {
 	return &BTPApplyConfiguration{}

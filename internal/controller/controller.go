@@ -33,6 +33,9 @@ import (
 	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
+
+	promop "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+	apiext "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 )
 
 type Controller struct {
@@ -42,6 +45,8 @@ type Controller struct {
 	gardenerCertificateClient    gardenerCert.Interface
 	certManagerCertificateClient certManager.Interface
 	gardenerDNSClient            gardenerDNS.Interface
+	apiExtClient                 apiext.Interface
+	promClient                   promop.Interface
 	kubeInformerFactory          informers.SharedInformerFactory
 	crdInformerFactory           crdInformers.SharedInformerFactory
 	istioInformerFactory         istioInformers.SharedInformerFactory
@@ -53,7 +58,7 @@ type Controller struct {
 	eventRecorder                events.EventRecorder
 }
 
-func NewController(client kubernetes.Interface, crdClient versioned.Interface, istioClient istio.Interface, gardenerCertificateClient gardenerCert.Interface, certManagerCertificateClient certManager.Interface, gardenerDNSClient gardenerDNS.Interface) *Controller {
+func NewController(client kubernetes.Interface, crdClient versioned.Interface, istioClient istio.Interface, gardenerCertificateClient gardenerCert.Interface, certManagerCertificateClient certManager.Interface, gardenerDNSClient gardenerDNS.Interface, apiExtClient apiext.Interface, promClient promop.Interface) *Controller {
 	queues := map[int]workqueue.RateLimitingInterface{
 		ResourceCAPApplication:        workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 		ResourceCAPApplicationVersion: workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
@@ -101,6 +106,8 @@ func NewController(client kubernetes.Interface, crdClient versioned.Interface, i
 		gardenerCertificateClient:    gardenerCertificateClient,
 		certManagerCertificateClient: certManagerCertificateClient,
 		gardenerDNSClient:            gardenerDNSClient,
+		apiExtClient:                 apiExtClient,
+		promClient:                   promClient,
 		kubeInformerFactory:          kubeInformerFactory,
 		crdInformerFactory:           crdInformerFactory,
 		istioInformerFactory:         istioInformerFactory,
@@ -179,6 +186,13 @@ func (c *Controller) Start(ctx context.Context) {
 			qCancel() // cancel context to inform other workers
 		}(k)
 	}
+
+	// start version cleanup routines
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		c.startVersionCleanup(qCxt)
+	}()
 
 	// wait for workers
 	wg.Wait()

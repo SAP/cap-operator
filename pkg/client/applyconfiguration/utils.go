@@ -9,8 +9,11 @@ package applyconfiguration
 
 import (
 	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	internal "github.com/sap/cap-operator/pkg/client/applyconfiguration/internal"
 	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha1"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
+	testing "k8s.io/client-go/testing"
 )
 
 // ForKind returns an apply configuration type for the given GroupVersionKind, or nil if no
@@ -56,12 +59,18 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.CAPTenantStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CommonDetails"):
 		return &smesapcomv1alpha1.CommonDetailsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DeletionRules"):
+		return &smesapcomv1alpha1.DeletionRulesApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DeploymentDetails"):
 		return &smesapcomv1alpha1.DeploymentDetailsApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("GenericStatus"):
 		return &smesapcomv1alpha1.GenericStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("JobDetails"):
 		return &smesapcomv1alpha1.JobDetailsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("MetricRule"):
+		return &smesapcomv1alpha1.MetricRuleApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("MonitoringConfig"):
+		return &smesapcomv1alpha1.MonitoringConfigApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("NameValue"):
 		return &smesapcomv1alpha1.NameValueApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Ports"):
@@ -74,7 +83,13 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.TenantOperationWorkloadReferenceApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("WorkloadDetails"):
 		return &smesapcomv1alpha1.WorkloadDetailsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("WorkloadMonitoring"):
+		return &smesapcomv1alpha1.WorkloadMonitoringApplyConfiguration{}
 
 	}
 	return nil
+}
+
+func NewTypeConverter(scheme *runtime.Scheme) *testing.TypeConverter {
+	return &testing.TypeConverter{Scheme: scheme, TypeResolver: internal.Parser()}
 }

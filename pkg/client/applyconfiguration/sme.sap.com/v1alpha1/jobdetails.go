@@ -12,7 +12,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-// JobDetailsApplyConfiguration represents an declarative configuration of the JobDetails type for use
+// JobDetailsApplyConfiguration represents a declarative configuration of the JobDetails type for use
 // with apply.
 type JobDetailsApplyConfiguration struct {
 	CommonDetailsApplyConfiguration `json:",inline"`
@@ -21,7 +21,7 @@ type JobDetailsApplyConfiguration struct {
 	TTLSecondsAfterFinished         *int32                     `json:"ttlSecondsAfterFinished,omitempty"`
 }
 
-// JobDetailsApplyConfiguration constructs an declarative configuration of the JobDetails type for use with
+// JobDetailsApplyConfiguration constructs a declarative configuration of the JobDetails type for use with
 // apply.
 func JobDetails() *JobDetailsApplyConfiguration {
 	return &JobDetailsApplyConfiguration{}

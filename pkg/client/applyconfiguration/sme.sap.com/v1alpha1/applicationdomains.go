@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package v1alpha1
 
-// ApplicationDomainsApplyConfiguration represents an declarative configuration of the ApplicationDomains type for use
+// ApplicationDomainsApplyConfiguration represents a declarative configuration of the ApplicationDomains type for use
 // with apply.
 type ApplicationDomainsApplyConfiguration struct {
 	Primary                   *string                       `json:"primary,omitempty"`
@@ -16,7 +16,7 @@ type ApplicationDomainsApplyConfiguration struct {
 	IstioIngressGatewayLabels []NameValueApplyConfiguration `json:"istioIngressGatewayLabels,omitempty"`
 }
 
-// ApplicationDomainsApplyConfiguration constructs an declarative configuration of the ApplicationDomains type for use with
+// ApplicationDomainsApplyConfiguration constructs a declarative configuration of the ApplicationDomains type for use with
 // apply.
 func ApplicationDomains() *ApplicationDomainsApplyConfiguration {
 	return &ApplicationDomainsApplyConfiguration{}

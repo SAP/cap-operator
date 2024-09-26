@@ -54,7 +54,7 @@ spec:
         type: TenantOperation
 status:
   conditions:
-    - reason: CreatedDeployments
+    - reason: WorkloadsReady
       observedGeneration: 1
       status: "True"
       type: Ready

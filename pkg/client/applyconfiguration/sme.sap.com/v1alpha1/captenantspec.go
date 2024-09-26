@@ -11,7 +11,7 @@ import (
 	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 )
 
-// CAPTenantSpecApplyConfiguration represents an declarative configuration of the CAPTenantSpec type for use
+// CAPTenantSpecApplyConfiguration represents a declarative configuration of the CAPTenantSpec type for use
 // with apply.
 type CAPTenantSpecApplyConfiguration struct {
 	CAPApplicationInstance                    *string `json:"capApplicationInstance,omitempty"`
@@ -20,7 +20,7 @@ type CAPTenantSpecApplyConfiguration struct {
 	VersionUpgradeStrategy                    *smesapcomv1alpha1.VersionUpgradeStrategyType `json:"versionUpgradeStrategy,omitempty"`
 }
 
-// CAPTenantSpecApplyConfiguration constructs an declarative configuration of the CAPTenantSpec type for use with
+// CAPTenantSpecApplyConfiguration constructs a declarative configuration of the CAPTenantSpec type for use with
 // apply.
 func CAPTenantSpec() *CAPTenantSpecApplyConfiguration {
 	return &CAPTenantSpecApplyConfiguration{}

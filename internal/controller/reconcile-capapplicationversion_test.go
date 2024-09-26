@@ -7,6 +7,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"testing"
 )
 
@@ -119,7 +120,7 @@ func TestCAV_ContentJobMissing(t *testing.T) {
 				"testdata/common/credential-secrets.yaml",
 				"testdata/capapplicationversion/cav-processing.yaml",
 			},
-			expectedResources: "testdata/capapplicationversion/expected/cav-processing.yaml",
+			expectedResources: "testdata/capapplicationversion/expected/cav-waiting.yaml",
 			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 		},
 	)
@@ -137,7 +138,7 @@ func TestCAV_ContentJobPending(t *testing.T) {
 				"testdata/capapplicationversion/cav-processing.yaml",
 				"testdata/capapplicationversion/content-job-pending.yaml",
 			},
-			expectedResources: "testdata/capapplicationversion/expected/cav-processing.yaml",
+			expectedResources: "testdata/capapplicationversion/expected/cav-waiting.yaml",
 			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 		},
 	)
@@ -192,6 +193,7 @@ func TestCAV_ContentJobCompletedFromProcessing(t *testing.T) {
 				"testdata/capapplicationversion/content-job-completed.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-content-job.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 		},
 	)
 }
@@ -268,6 +270,7 @@ func TestCAV_WithNoContentJob(t *testing.T) {
 				"testdata/common/capapplication.yaml",
 				"testdata/common/credential-secrets.yaml",
 				"testdata/capapplicationversion/cav-processing-with-no-content-job.yaml",
+				"testdata/capapplicationversion/deployments-ready.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-with-no-content-job.yaml",
 			backlogItems: []string{
@@ -290,6 +293,7 @@ func TestCAV_ContentJobCompletedExisting(t *testing.T) {
 				"testdata/capapplicationversion/content-job-completed.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-content-job.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 		},
 	)
 }
@@ -316,7 +320,7 @@ func TestCAV_WithRouterDestinationsEnv(t *testing.T) {
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
 		TestData{
-			description: "capapplication version with invalid router env config",
+			description: "capapplication version with merged router env config",
 			initialResources: []string{
 				"testdata/common/capapplication.yaml",
 				"testdata/common/credential-secrets.yaml",
@@ -324,6 +328,7 @@ func TestCAV_WithRouterDestinationsEnv(t *testing.T) {
 				"testdata/capapplicationversion/cav-merged-destinations-router.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-merged-destinations-router.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-3386", // merge existing `destinations` operator workload configuration by just overwriting the URL!
 			},
@@ -378,6 +383,7 @@ func TestCAV_ValidEnvConfigOverall(t *testing.T) {
 				"testdata/capapplicationversion/cav-valid-env-config.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-valid-env-config.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-2048", // Overall the generic workloads should run fine with this change
 				"ERP4SMEPREPWORKAPPPLAT-3226", // imagePullPolicy
@@ -399,6 +405,7 @@ func TestCAV_CustomLabels(t *testing.T) {
 				"testdata/capapplicationversion/cav-custom-labels.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-custom-labels-config.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-2187", // Custom labels also tested here
 			},
@@ -419,6 +426,7 @@ func TestCAV_CustomDestinationConfig(t *testing.T) {
 				"testdata/capapplicationversion/cav-custom-destination-config.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-custom-destination-config.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-1843",
 			},
@@ -514,6 +522,7 @@ func TestCAV_ProbesResources(t *testing.T) {
 				"testdata/capapplicationversion/cav-probes-and-resources.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-probes-and-resources.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-2237", // Probes and resources should be applied to deployments and jobs
 			},
@@ -534,6 +543,7 @@ func TestCAV_AppNetworkPolicy(t *testing.T) {
 				"testdata/capapplicationversion/cav-probes-and-resources.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-app-netpol.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-2638", // Default network policy w/o cluster type ports
 				"ERP4SMEPREPWORKAPPPLAT-2707", //No N/w policies exist
@@ -556,6 +566,7 @@ func TestCAV_ClusterPortNetworkPolicy(t *testing.T) {
 				"testdata/capapplicationversion/cav-cluster-netpol-port.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-cluster-netpol-port.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-2638", // Network policy for cluster-wide "tech" ports
 				"ERP4SMEPREPWORKAPPPLAT-2707", // No fallback cluster network policy
@@ -578,6 +589,7 @@ func TestCAV_SecurityContext(t *testing.T) {
 				"testdata/capapplicationversion/cav-security-context.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-security-context.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-2573", // Security Context for containers
 			},
@@ -598,6 +610,7 @@ func TestCAV_PodSecurityContext(t *testing.T) {
 				"testdata/capapplicationversion/cav-pod-security-context.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-pod-security-context.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-2573", // Security Context for containers
 			},
@@ -618,6 +631,7 @@ func TestCAV_Annotations(t *testing.T) {
 				"testdata/capapplicationversion/cav-annotations.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-annotations.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-2885", // Annotations supported
 			},
@@ -638,6 +652,7 @@ func TestCAV_NodeSelector(t *testing.T) {
 				"testdata/capapplicationversion/cav-node-selector.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-node-selector.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-3294", // More workload configuration enhancements
 			},
@@ -658,6 +673,7 @@ func TestCAV_Affinity(t *testing.T) {
 				"testdata/capapplicationversion/cav-affinity.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-affinity.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-3294", // More workload configuration enhancements
 			},
@@ -678,6 +694,7 @@ func TestCAV_TopologySpreadConstraints(t *testing.T) {
 				"testdata/capapplicationversion/cav-topology.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-topology.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-3294", // More workload configuration enhancements
 			},
@@ -698,6 +715,7 @@ func TestCAV_Tolerations(t *testing.T) {
 				"testdata/capapplicationversion/cav-toleration.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-toleration.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-3294", // More workload configuration enhancements
 			},
@@ -718,6 +736,7 @@ func TestCAV_Node_PriorityClass_Names(t *testing.T) {
 				"testdata/capapplicationversion/cav-node-prio.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-node-prio.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-3294", // More workload configuration enhancements
 			},
@@ -738,6 +757,7 @@ func TestCAV_Volumes_and_ServiceAccountName(t *testing.T) {
 				"testdata/capapplicationversion/cav-vol.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-vol.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-6370", // More workload configuration enhancements
 			},
@@ -758,9 +778,71 @@ func TestCAV_InitContainers(t *testing.T) {
 				"testdata/capapplicationversion/cav-init.yaml",
 			},
 			expectedResources: "testdata/capapplicationversion/expected/cav-ready-init.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
 			backlogItems: []string{
 				"ERP4SMEPREPWORKAPPPLAT-7450", //initContainers
 			},
 		},
 	)
+}
+
+func TestCAV_DeploymentFailure(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with failed deployment",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/cav-processing-with-no-content-job.yaml",
+				"testdata/capapplicationversion/deployments-failure.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-error-deployment-failure.yaml",
+			expectError:       true,
+		},
+	)
+}
+
+func TestCAV_ServiceMonitorCreation(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version - service monitor creation",
+			initialResources: []string{
+				"testdata/common/crd-servicemonitors.yaml",
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/version-monitoring/cav-v1-deletion-rules-processing.yaml",
+				"testdata/capapplicationversion/deployments-ready.yaml",
+				"testdata/capapplicationversion/content-job-completed.yaml",
+			},
+			expectedResources: "testdata/version-monitoring/servicemonitors-cav-v1.yaml",
+			backlogItems:      []string{},
+		},
+	)
+}
+
+func TestCAV_InvalidMonitoringConfig(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version - service monitor creation",
+			initialResources: []string{
+				"testdata/common/crd-servicemonitors.yaml",
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/version-monitoring/cav-v1-monitoring-port-missing.yaml",
+				"testdata/capapplicationversion/deployments-ready.yaml",
+				"testdata/capapplicationversion/content-job-completed.yaml",
+			},
+			expectError:  true,
+			backlogItems: []string{},
+		},
+	)
+	if err == nil || err.Error() != fmt.Sprintf("invalid port reference in workload %s monitoring config of version %s", "app-router", "test-cap-01-cav-v1") {
+
+	}
 }

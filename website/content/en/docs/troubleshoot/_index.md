@@ -78,6 +78,6 @@ For instance, when deleting a `CAPApplication` CRO, any existing tenants would b
 The provider `CAPTenant` resource can't be deleted before deleting a consistent `CAPApplication`.
 _NOTE_: CAP operator needs the `secrets` from service instances/bindings to exist for the entire lifecycle of the 
 SAP Cloud Application Programming Model application. Removing the service instances/bindings i.e. the secrets from the cluster while the CAP application related CROs still exist would cause leftover resources in cluster (and perhaps the db). Recovering from such inconsistent states might not even be possible.
-Such a situation can easily arise when using `helm` delete/uninstall as the order of deletion of resouces is not configurable. We recommend tht you do this with care.
+Such a situation can easily arise when using `helm` delete/uninstall as the order of deletion of resouces is not configurable. We recommend that you do this with care.
 It's important that you ensure that the secrets from service instance/bindings aren't deleted before any 
 SAP Cloud Application Programming Model application that consumes those secrets is completely removed.

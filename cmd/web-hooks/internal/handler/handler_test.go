@@ -782,6 +782,8 @@ func TestCavInvalidity(t *testing.T) {
 		multipleContentJobsWithNoOrder     bool
 		missingContentJobinContentJobs     bool
 		invalidJobinContentJobs            bool
+		invalidWorkloadName                bool
+		longWorkloadName                   bool
 		backlogItems                       []string
 	}{
 		{
@@ -873,6 +875,16 @@ func TestCavInvalidity(t *testing.T) {
 			operation:               admissionv1.Create,
 			invalidJobinContentJobs: true,
 			backlogItems:            []string{"ERP4SMEPREPWORKAPPPLAT-4351"},
+		},
+		{
+			operation:           admissionv1.Create,
+			invalidWorkloadName: true,
+			backlogItems:        []string{},
+		},
+		{
+			operation:        admissionv1.Create,
+			longWorkloadName: true,
+			backlogItems:     []string{},
 		},
 	}
 	for _, test := range tests {
@@ -1145,6 +1157,10 @@ func TestCavInvalidity(t *testing.T) {
 					},
 				})
 				crd.Spec.ContentJobs = append(crd.Spec.ContentJobs, "content", "content-2", "dummy")
+			} else if test.invalidWorkloadName == true {
+				crd.Spec.Workloads[0].Name = "WrongWorkloadName"
+			} else if test.longWorkloadName == true {
+				crd.Spec.Workloads[0].Name = "extralongworkloadnamecontainingmorethan64characters"
 			}
 
 			rawBytes, _ := json.Marshal(crd)
@@ -1202,10 +1218,96 @@ func TestCavInvalidity(t *testing.T) {
 				errorMessage = fmt.Sprintf("%s %s content job content-2 is not specified as part of ContentJobs", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.invalidJobinContentJobs == true {
 				errorMessage = fmt.Sprintf("%s %s job dummy specified as part of ContentJobs is not a valid content job", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.invalidWorkloadName == true {
+				errorMessage = fmt.Sprintf("%s %s Invalid workload name: %s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, "WrongWorkloadName")
+			} else if test.longWorkloadName == true {
+				errorMessage = fmt.Sprintf("%s %s Derived service name: %s for workload %s will exceed 63 character limit. Adjust CAPApplicationVerion resource name or the workload name accordingly", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Name+"-"+"extralongworkloadnamecontainingmorethan64characters"+"-svc", "extralongworkloadnamecontainingmorethan64characters")
 			}
 
 			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
 				t.Fatal("validation response error")
+			}
+		})
+	}
+}
+
+func TestCtoutInvalidity(t *testing.T) {
+	tests := []struct {
+		operation    admissionv1.Operation
+		labelPresent bool
+	}{
+		{
+			operation:    admissionv1.Create,
+			labelPresent: true,
+		},
+		{
+			operation:    admissionv1.Create,
+			labelPresent: false,
+		},
+		{
+			operation:    admissionv1.Update,
+			labelPresent: true,
+		},
+		{
+			operation:    admissionv1.Update,
+			labelPresent: false,
+		},
+	}
+	for _, test := range tests {
+		t.Run("Testing CAPTenantOutput invalidity for operation "+string(test.operation), func(t *testing.T) {
+			var crdObjects []runtime.Object
+
+			wh := &WebhookHandler{
+				CrdClient: fakeCrdClient.NewSimpleClientset(crdObjects...),
+			}
+
+			ctout := &ResponseCtout{
+				Metadata: Metadata{
+					Name:      "some-ctout",
+					Namespace: metav1.NamespaceDefault,
+					Labels:    map[string]string{},
+				},
+				Spec: &v1alpha1.CAPTenantOutputSpec{
+					SubscriptionCallbackData: `{"supportUsers":[{"name":"user_t1", "email":"usert1@foo.com"},{"name":"user_t2", "email":"usert2@foo.com"}]}`,
+				},
+				Kind: v1alpha1.CAPApplicationVersionKind,
+			}
+
+			if test.labelPresent {
+				ctout.Labels[LabelTenantId] = "some-tenant-id"
+			}
+
+			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.CAPTenantOutputKind, ctout.Name, noUpdate)
+			if err != nil {
+				t.Fatal("admission review error")
+			}
+
+			rawBytes, _ := json.Marshal(ctout)
+			admissionReview.Request.Object.Raw = rawBytes
+			bytesRequest, err := json.Marshal(admissionReview)
+			if err != nil {
+				t.Fatal("marshal error")
+			}
+			request := httptest.NewRequest(http.MethodGet, "/validate", bytes.NewBuffer(bytesRequest))
+			recorder := httptest.NewRecorder()
+
+			wh.Validate(recorder, request)
+
+			admissionReviewRes := admissionv1.AdmissionReview{}
+			bytes, err := io.ReadAll(recorder.Body)
+			if err != nil {
+				t.Fatal("io read error")
+			}
+			universalDeserializer.Decode(bytes, nil, &admissionReviewRes)
+
+			if test.labelPresent {
+				if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != fmt.Sprintf("%s %s label %s on CAP tenant output %s does not contain a valid tenant ID", InvalidationMessage, v1alpha1.CAPTenantOutputKind, LabelTenantId, "some-ctout") {
+					t.Fatal("validation response error")
+				}
+			} else {
+				if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != fmt.Sprintf("%s %s label %s missing on CAP tenant output %s", InvalidationMessage, v1alpha1.CAPTenantOutputKind, LabelTenantId, "some-ctout") {
+					t.Fatal("validation response error")
+				}
 			}
 		})
 	}

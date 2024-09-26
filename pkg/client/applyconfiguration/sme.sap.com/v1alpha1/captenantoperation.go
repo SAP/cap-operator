@@ -13,7 +13,7 @@ import (
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// CAPTenantOperationApplyConfiguration represents an declarative configuration of the CAPTenantOperation type for use
+// CAPTenantOperationApplyConfiguration represents a declarative configuration of the CAPTenantOperation type for use
 // with apply.
 type CAPTenantOperationApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
@@ -22,7 +22,7 @@ type CAPTenantOperationApplyConfiguration struct {
 	Status                           *CAPTenantOperationStatusApplyConfiguration `json:"status,omitempty"`
 }
 
-// CAPTenantOperation constructs an declarative configuration of the CAPTenantOperation type for use with
+// CAPTenantOperation constructs a declarative configuration of the CAPTenantOperation type for use with
 // apply.
 func CAPTenantOperation(name, namespace string) *CAPTenantOperationApplyConfiguration {
 	b := &CAPTenantOperationApplyConfiguration{}
@@ -205,4 +205,10 @@ func (b *CAPTenantOperationApplyConfiguration) WithSpec(value *CAPTenantOperatio
 func (b *CAPTenantOperationApplyConfiguration) WithStatus(value *CAPTenantOperationStatusApplyConfiguration) *CAPTenantOperationApplyConfiguration {
 	b.Status = value
 	return b
+}
+
+// GetName retrieves the value of the Name field in the declarative configuration.
+func (b *CAPTenantOperationApplyConfiguration) GetName() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.Name
 }

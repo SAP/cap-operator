@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"golang.org/x/exp/slices"
@@ -20,6 +21,8 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apiextensions-apiserver/pkg/apihelpers"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -31,8 +34,9 @@ const (
 )
 
 const (
-	CategoryWorkload = "Workload"
-	CategoryService  = "Service"
+	CategoryWorkload       = "Workload"
+	CategoryService        = "Service"
+	CategoryServiceMonitor = "ServiceMonitor"
 )
 
 const (
@@ -59,7 +63,7 @@ func (c *Controller) reconcileCAPApplicationVersion(ctx context.Context, item Qu
 	cav := cached.DeepCopy()
 
 	// prepare owner refs, labels, finalizers
-	if update, err := c.prepareCAPApplicationVersion(ctx, cav); err != nil {
+	if update, err := c.prepareCAPApplicationVersion(cav); err != nil {
 		return nil, err
 	} else if update {
 		err := c.updateCAPApplicationVersion(ctx, cav)
@@ -115,7 +119,7 @@ func (c *Controller) handleCAPApplicationVersion(ctx context.Context, cav *v1alp
 	var statusErr error
 	switch cav.Status.State {
 	case "":
-		statusErr = c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ReadyForProcessing"})
+		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 0), c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ReadyForProcessing"})
 	case v1alpha1.CAPApplicationVersionStateError:
 		var errorCondition metav1.Condition
 		if len(cav.Status.Conditions) > 0 {
@@ -130,12 +134,13 @@ func (c *Controller) handleCAPApplicationVersion(ctx context.Context, cav *v1alp
 		return nil, statusErr
 	}
 
-	return c.processDeployments(ctx, ca, cav)
+	return c.processWorkloads(ctx, ca, cav)
 }
 
-func (c *Controller) processDeployments(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (*ReconcileResult, error) {
-	// TODO: handle create/update of individual deployments/jobs (so far these are just created and never updated, as we expect secrets don't change!)
+func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (*ReconcileResult, error) {
+	// We do not update individual deployments/jobs (so far these are just created, as we expect secrets don't change!)
 
+	overallDeployments := []*appsv1.Deployment{}
 	// Handle Content job
 	err := c.handleContentDeployJob(ca, cav)
 	if err != nil {
@@ -144,18 +149,20 @@ func (c *Controller) processDeployments(ctx context.Context, ca *v1alpha1.CAPApp
 	}
 
 	// Create AppRouter Deployment
-	err = c.updateApprouterDeployment(ca, cav)
+	approuterDeployment, err := c.updateApprouterDeployment(ca, cav)
 	if err != nil {
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInAppRouterDeployment", Message: err.Error()})
 		return nil, err
 	}
+	overallDeployments = append(overallDeployments, approuterDeployment)
 
 	// Create Server Deployment
-	err = c.updateServerDeployment(ca, cav)
+	serverDeployments, err := c.updateServerDeployment(ca, cav)
 	if err != nil {
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInServerDeployment", Message: err.Error()})
 		return nil, err
 	}
+	overallDeployments = append(overallDeployments, serverDeployments...)
 
 	// Create All Services
 	err = c.updateServices(ca, cav)
@@ -165,11 +172,12 @@ func (c *Controller) processDeployments(ctx context.Context, ca *v1alpha1.CAPApp
 	}
 
 	// Create Additional Deployments
-	err = c.updateAdditionalDeployment(ca, cav)
+	additionalDeployments, err := c.updateAdditionalDeployment(ca, cav)
 	if err != nil {
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInJobWorkerDeployment", Message: err.Error()})
 		return nil, err
 	}
+	overallDeployments = append(overallDeployments, additionalDeployments...)
 
 	// Create NetworkPolicy
 	err = c.updateNetworkPolicies(ca, cav)
@@ -178,21 +186,22 @@ func (c *Controller) processDeployments(ctx context.Context, ca *v1alpha1.CAPApp
 		return nil, err
 	}
 
-	// Check for status of contentWorkloads
-	processing, err := c.checkContentWorkloadStatus(ctx, cav)
+	// Check for status of all workloads
+	processing, err := c.checkOverallWorkloadStatus(ctx, overallDeployments, cav)
 	if processing {
-		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 0), nil
+		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "WaitingForWorkloads"})
+		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second), nil
 	} else if err != nil {
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInWorkloadStatus", Message: err.Error()})
 		return nil, err
 	}
 
-	// For now, we do not want to wait until the deployments are actually "Ready", we only rely on Content Job completing successfully!
+	// We now wait until all the deployments are actually "Ready", apart from relying on Content Job completing successfully!
 	if cav.Status.State == v1alpha1.CAPApplicationVersionStateProcessing {
 		// Only log if the state is still processing as cav might be reconciled again
 		util.LogInfo("All deployments and other resources created successfully", string(Ready), cav, nil, "version", cav.Spec.Version)
 	}
-	return nil, c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateReady, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "True", Reason: "CreatedDeployments"})
+	return nil, c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateReady, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "True", Reason: "WorkloadsReady"})
 }
 
 func getContentJobName(contentJobWorkloadName string, cav *v1alpha1.CAPApplicationVersion) string {
@@ -255,7 +264,7 @@ func (c *Controller) handleContentDeployJob(ca *v1alpha1.CAPApplication, cav *v1
 		vcapSecretName, err = createVCAPSecret(jobName, cav.Namespace, ownerRef, consumedServiceInfos, c.kubeClient)
 
 		if err == nil {
-			contentDeployJob, err = c.kubeClient.BatchV1().Jobs(cav.Namespace).Create(context.TODO(), newContentDeploymentJob(ca, cav, workload, ownerRef, vcapSecretName), metav1.CreateOptions{})
+			contentDeployJob, err = c.kubeClient.BatchV1().Jobs(cav.Namespace).Create(context.TODO(), newContentDeploymentJob(cav, workload, ownerRef, vcapSecretName), metav1.CreateOptions{})
 			if err == nil {
 				util.LogInfo("Content job created successfully", string(Processing), cav, contentDeployJob, "version", cav.Spec.Version)
 			}
@@ -266,7 +275,7 @@ func (c *Controller) handleContentDeployJob(ca *v1alpha1.CAPApplication, cav *v1
 }
 
 // newContentDeploymentJob creates a Content Deployment Job for the CAV resource. It also sets the appropriate OwnerReferences.
-func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails, ownerRef metav1.OwnerReference, vcapSecretName string) *batchv1.Job {
+func newContentDeploymentJob(cav *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails, ownerRef metav1.OwnerReference, vcapSecretName string) *batchv1.Job {
 	labels := copyMaps(workload.Labels, map[string]string{
 		LabelDisableKarydia: "true",
 	})
@@ -335,40 +344,43 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 //#endregion
 
 // #region Server
-func (c *Controller) updateServerDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) error {
-	serverWorkloads := getDeployments(v1alpha1.DeploymentCAP, cav)
-	for _, serverWorkload := range serverWorkloads {
-		err := c.updateDeployment(ca, cav, &serverWorkload)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+func (c *Controller) updateServerDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) ([]*appsv1.Deployment, error) {
+	return c.updateDeployments(v1alpha1.DeploymentCAP, ca, cav)
 }
 
 //#endregion
 
 // #region AppRouter
-func (c *Controller) updateApprouterDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) error {
+func (c *Controller) updateApprouterDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (*appsv1.Deployment, error) {
 	routerWorkload := getRelevantDeployment(v1alpha1.DeploymentRouter, cav)
 	return c.updateDeployment(ca, cav, routerWorkload)
 }
 
 //#endregion
 
-// #region JobWorker
-func (c *Controller) updateAdditionalDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) error {
-	additionalWorkloads := getDeployments(v1alpha1.DeploymentAdditional, cav)
-	for _, workload := range additionalWorkloads {
-		err := c.updateDeployment(ca, cav, &workload)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+// #region Additional Deployments
+func (c *Controller) updateAdditionalDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) ([]*appsv1.Deployment, error) {
+	return c.updateDeployments(v1alpha1.DeploymentAdditional, ca, cav)
 }
 
 //#endregion
+
+// #region update deployments
+func (c *Controller) updateDeployments(deploymentType v1alpha1.DeploymentType, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) ([]*appsv1.Deployment, error) {
+	configuredDeployments := getDeployments(deploymentType, cav)
+	actualDeployments := []*appsv1.Deployment{}
+	for _, workload := range configuredDeployments {
+		deployment, err := c.updateDeployment(ca, cav, &workload)
+		if err != nil {
+			return nil, err
+		}
+		actualDeployments = append(actualDeployments, deployment)
+
+	}
+	return actualDeployments, nil
+}
+
+// #endregion
 
 // #region Service
 func (c *Controller) updateServices(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) error {
@@ -389,7 +401,9 @@ func (c *Controller) updateServices(ca *v1alpha1.CAPApplication, cav *v1alpha1.C
 			return err
 		}
 	}
-	return nil
+
+	// attempt to reconcile service monitors
+	return c.updateServiceMonitors(context.TODO(), ca, cav, workloadServicePortInfos)
 }
 
 // newService creates a new Service for a CAV resource. It also sets the appropriate OwnerReferences.
@@ -428,6 +442,99 @@ func newService(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion
 }
 
 // #endregion Service
+
+// #region ServiceMonitor
+func (c *Controller) checkServiceMonitorCapability(ctx context.Context) error {
+	crdName := "servicemonitors.monitoring.coreos.com"
+	crd, err := c.apiExtClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("could not get custom resource definition %s: %v", crdName, err)
+	}
+	requiredVersion := "v1"
+	if !apihelpers.HasVersionServed(crd, requiredVersion) {
+		return fmt.Errorf("version %s of custom resource %s is not served", requiredVersion, crdName)
+	}
+	if !apihelpers.IsCRDConditionTrue(crd, apiextv1.Established) {
+		return fmt.Errorf("custom resource %s condition %s not true", crdName, apiextv1.Established)
+	}
+	return nil
+}
+
+func (c *Controller) updateServiceMonitors(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workloadServicePortInfos []servicePortInfo) error {
+	if err := c.checkServiceMonitorCapability(ctx); err != nil {
+		util.LogWarning(err, "could not confirm availability of service monitor resource; service monitors will not be created")
+		return nil
+	}
+
+	isWorkloadPort := func(wlPorts []corev1.ServicePort, scrapePort string) bool {
+		for j := range wlPorts {
+			if wlPorts[j].Name == scrapePort {
+				return true
+			}
+		}
+		return false
+	}
+
+	for i := range cav.Spec.Workloads {
+		wl := cav.Spec.Workloads[i]
+		if wl.DeploymentDefinition == nil || wl.DeploymentDefinition.Monitoring == nil || wl.DeploymentDefinition.Monitoring.ScrapeConfig == nil {
+			continue // do not reconcile service monitors
+		}
+
+		wlPortInfos := getServicePortInfoByWorkloadName(workloadServicePortInfos, cav.Name, wl.Name)
+		if wlPortInfos == nil {
+			return fmt.Errorf("could not identify workload port information for workload %s in version %s", wl.Name, cav.Name)
+		}
+
+		if portVerified := isWorkloadPort(wlPortInfos.Ports, wl.DeploymentDefinition.Monitoring.ScrapeConfig.WorkloadPort); !portVerified {
+			return fmt.Errorf("invalid port reference in workload %s monitoring config of version %s", wl.Name, cav.Name)
+		}
+
+		sm, err := c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Get(ctx, wlPortInfos.WorkloadName+ServiceSuffix, metav1.GetOptions{})
+		if err != nil {
+			if k8sErrors.IsNotFound(err) {
+				sm, err = c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Create(ctx, newServiceMonitor(ca, cav, &wl, wlPortInfos), metav1.CreateOptions{})
+				if err == nil {
+					util.LogInfo("Service monitor created successfully", string(Processing), cav, sm, "version", cav.Spec.Version)
+				}
+			}
+		}
+		err = doChecks(err, sm, cav, wlPortInfos.WorkloadName+ServiceSuffix)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func newServiceMonitor(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, wl *v1alpha1.WorkloadDetails, wlPortInfos *servicePortInfo) *monv1.ServiceMonitor {
+	config := wl.DeploymentDefinition.Monitoring.ScrapeConfig
+	return &monv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        wlPortInfos.WorkloadName + ServiceSuffix,
+			Namespace:   cav.Namespace,
+			Labels:      copyMaps(wl.Labels, getLabels(ca, cav, CategoryServiceMonitor, string(wl.DeploymentDefinition.Type), wlPortInfos.WorkloadName+ServiceSuffix, true)),
+			Annotations: copyMaps(wl.Annotations, getAnnotations(ca, cav, true)),
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind)),
+			},
+		},
+		Spec: monv1.ServiceMonitorSpec{
+			Endpoints: []monv1.Endpoint{{
+				Port:          config.WorkloadPort,
+				Interval:      monv1.Duration(config.ScrapeInterval),
+				ScrapeTimeout: monv1.Duration(config.Timeout),
+				Path:          config.Path,
+			}},
+			Selector: metav1.LabelSelector{
+				MatchLabels: copyMaps(wl.Labels, getLabels(ca, cav, CategoryService, wlPortInfos.DeploymentType, wlPortInfos.WorkloadName+ServiceSuffix, false)),
+			},
+		},
+	}
+}
+
+// #endregion ServiceMonitor
 
 // #region NetworkPolicy
 func (c *Controller) updateNetworkPolicies(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) error {
@@ -548,9 +655,9 @@ func getPortSpecificNetworkPolicySpec(workloadServicePortInfo servicePortInfo, c
 
 // #region Deployments
 
-func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails) error {
+func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails) (*appsv1.Deployment, error) {
 	if res := validateEnv(workload.DeploymentDefinition.Env, restrictedEnvNames); res != "" {
-		return errorEnv(workload.Name, res)
+		return nil, errorEnv(workload.Name, res)
 	}
 
 	var vcapSecretName string
@@ -576,7 +683,7 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 		}
 	}
 
-	return doChecks(err, workloadDeployment, cav, workload.Name)
+	return workloadDeployment, doChecks(err, workloadDeployment, cav, workload.Name)
 }
 
 // newDeployment creates a new generic Deployment for a CAV resource based on the type. It also sets the appropriate OwnerReferences.
@@ -593,7 +700,7 @@ func newDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVers
 }
 
 func createDeployment(params *DeploymentParameters) *appsv1.Deployment {
-	workloadName := params.CAV.Name + "-" + strings.ToLower(params.WorkloadDetails.Name)
+	workloadName := getWorkloadName(params.CAV.Name, params.WorkloadDetails.Name)
 	annotations := copyMaps(params.WorkloadDetails.Annotations, getAnnotations(params.CA, params.CAV, true))
 	labels := copyMaps(params.WorkloadDetails.Labels, getLabels(params.CA, params.CAV, CategoryWorkload, string(params.WorkloadDetails.DeploymentDefinition.Type), workloadName, true))
 
@@ -738,7 +845,7 @@ func getEnvFrom(vcapServiceName string) []corev1.EnvFromSource {
 	}
 }
 
-func (c *Controller) prepareCAPApplicationVersion(ctx context.Context, cav *v1alpha1.CAPApplicationVersion) (update bool, err error) {
+func (c *Controller) prepareCAPApplicationVersion(cav *v1alpha1.CAPApplicationVersion) (update bool, err error) {
 	// Do nothing when object is deleted
 	if cav.DeletionTimestamp != nil {
 		return false, nil
@@ -912,6 +1019,42 @@ func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alph
 		// Only log this state if cav is not already in Ready state as the resource might be reconciled again
 		util.LogInfo("Content job(s) completed", string(Processing), cav, nil, "version", cav.Spec.Version)
 	}
+	return false, nil
+}
+
+func (c *Controller) checkOverallWorkloadStatus(ctx context.Context, overallDeployments []*appsv1.Deployment, cav *v1alpha1.CAPApplicationVersion) (bool, error) {
+	// First check if the content jobs are completed
+	processing, err := c.checkContentWorkloadStatus(ctx, cav)
+	if processing || err != nil {
+		return processing, err
+	}
+
+	// Check if all deployments are ready
+	for _, deployment := range overallDeployments {
+		// Check if the deployment is available
+		deploymentAvailable := false
+		for _, condition := range deployment.Status.Conditions {
+			if condition.Type == appsv1.DeploymentAvailable && condition.Status == corev1.ConditionTrue {
+				// if the deployment is available, break and check the next deployment
+				deploymentAvailable = true
+				break
+			} else if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
+				return false, fmt.Errorf("%s", condition.Message)
+			}
+		}
+		if !deploymentAvailable {
+			// Still processing
+			util.LogInfo("Waiting for deployment(s) to be available", string(Processing), cav, deployment, "version", cav.Spec.Version)
+			return true, nil
+		}
+	}
+
+	// All Jobs and Deployment are Ready
+	if cav.Status.State != v1alpha1.CAPApplicationVersionStateReady {
+		// Only log this state if cav is not already in Ready state as the resource might be reconciled again
+		util.LogInfo("All workloads ready", string(Processing), cav, nil, "version", cav.Spec.Version)
+	}
+	// All workloads are available
 	return false, nil
 }
 

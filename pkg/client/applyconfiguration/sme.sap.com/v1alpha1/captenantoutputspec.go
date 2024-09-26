@@ -7,13 +7,13 @@ SPDX-License-Identifier: Apache-2.0
 
 package v1alpha1
 
-// CAPTenantOutputSpecApplyConfiguration represents an declarative configuration of the CAPTenantOutputSpec type for use
+// CAPTenantOutputSpecApplyConfiguration represents a declarative configuration of the CAPTenantOutputSpec type for use
 // with apply.
 type CAPTenantOutputSpecApplyConfiguration struct {
 	SubscriptionCallbackData *string `json:"subscriptionCallbackData,omitempty"`
 }
 
-// CAPTenantOutputSpecApplyConfiguration constructs an declarative configuration of the CAPTenantOutputSpec type for use with
+// CAPTenantOutputSpecApplyConfiguration constructs a declarative configuration of the CAPTenantOutputSpec type for use with
 // apply.
 func CAPTenantOutputSpec() *CAPTenantOutputSpecApplyConfiguration {
 	return &CAPTenantOutputSpecApplyConfiguration{}
