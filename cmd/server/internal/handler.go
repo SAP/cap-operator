@@ -717,8 +717,8 @@ func (s *SubscriptionHandler) getServiceDependencies(capApp *v1alpha1.CAPApplica
 func (s *SubscriptionHandler) getDependencies(req *http.Request) ([]byte, error) {
 	var dependenciesArray []map[string]interface{}
 
-	// Read the cap application by assuming sme.sap.com/btp-app-identifier is passed in the URL in
-	// the format dependencies/global-account-id/app-name?tenantId=
+	// Read the cap application by using the global-account-id & app-name passed in the URI
+	// URI format - /dependencies/global-account-id/app-name?tenantId=
 	uriWithOutParam := strings.Split(req.RequestURI, "?")[0]
 	re := regexp.MustCompile(`^/dependencies/.*\/.*`)
 	if !re.MatchString(uriWithOutParam) {
