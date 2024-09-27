@@ -840,9 +840,12 @@ func TestGetDependencies(t *testing.T) {
 			res := httptest.NewRecorder()
 			var req *http.Request
 			if testData.invalidURI == true {
-				req = httptest.NewRequest(testData.method, "/callback/dependencies/"+globalAccountId+"/"+appName, nil)
+				req = httptest.NewRequest(testData.method, "/callback/dependencies/globalAccountId/{appName}", nil)
+				req.SetPathValue("appName", appName)
 			} else {
-				req = httptest.NewRequest(testData.method, "/dependencies/"+globalAccountId+"/"+appName, nil)
+				req = httptest.NewRequest(testData.method, "/dependencies/{globalAccountId}/{appName}", nil)
+				req.SetPathValue("globalAccountId", globalAccountId)
+				req.SetPathValue("appName", appName)
 			}
 
 			if testData.invalidToken == true {

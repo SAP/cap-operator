@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -719,33 +718,32 @@ func (s *SubscriptionHandler) getDependencies(req *http.Request) ([]byte, error)
 
 	// Read the cap application by using the global-account-id & app-name passed in the URI
 	// URI format - /dependencies/global-account-id/app-name?tenantId=
-	uriWithOutParam := strings.Split(req.RequestURI, "?")[0]
-	re := regexp.MustCompile(`^/dependencies/.*\/.*`)
-	if !re.MatchString(uriWithOutParam) {
-		err := errors.New("wrong get dependencies request uri")
-		util.LogError(err, "Wrong get dependencies request URI", GetDependencies, "InvalidURI", nil, "uri", req.RequestURI)
+	globalAccountId := req.PathValue("globalAccountId")
+	appName := req.PathValue("appName")
+	if globalAccountId == "" || appName == "" {
+		err := errors.New("wrong get dependencies request uri - globalAccountId or appName not found")
+		util.LogError(err, "Wrong get dependencies request URI - globalAccountId or appName not found", GetDependencies, "InvalidURI", nil, "uri", req.RequestURI)
 		return nil, err
 	}
 
-	btpAppIdentifier := strings.Split(uriWithOutParam, "/")
-	util.LogInfo("Get dependencies endpoint called", GetDependencies, "GetDependencies", nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
+	util.LogInfo("Get dependencies endpoint called", GetDependencies, "GetDependencies", nil, "globalAccountId", globalAccountId, "btpAppName", appName)
 
-	ca, err := s.checkCAPApp(btpAppIdentifier[len(btpAppIdentifier)-2], btpAppIdentifier[len(btpAppIdentifier)-1])
+	ca, err := s.checkCAPApp(globalAccountId, appName)
 	if err != nil {
-		util.LogError(err, "CAP Application resource not found", GetDependencies, nil, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
+		util.LogError(err, "CAP Application resource not found", GetDependencies, nil, nil, "globalAccountId", globalAccountId, "btpAppName", appName)
 		return nil, err
 	}
 
 	// fetch SaaS Registry and XSUAA information
 	saasData, uaaData := s.getServiceDetails(ca, GetDependencies)
 	if saasData == nil || uaaData == nil {
-		util.LogError(err, "Cannot read saas registry and xsuaa information", GetDependencies, nil, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
+		util.LogError(err, "Cannot read saas registry and xsuaa information", GetDependencies, nil, nil, "globalAccountId", globalAccountId, "btpAppName", appName)
 		return nil, err
 	}
 
 	// validate token
 	if err = s.checkAuthorization(req.Header.Get("Authorization"), saasData, uaaData, GetDependencies); err != nil {
-		util.LogError(err, "Authorization check failed", GetDependencies, "checkAuthorization", nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
+		util.LogError(err, "Authorization check failed", GetDependencies, "checkAuthorization", nil, "globalAccountId", globalAccountId, "btpAppName", appName)
 		return nil, &GetDependenciesAuthError{}
 	}
 
@@ -756,17 +754,17 @@ func (s *SubscriptionHandler) getDependencies(req *http.Request) ([]byte, error)
 	}
 
 	if len(dependenciesArray) == 0 {
-		util.LogInfo("No dependencies found", GetDependencies, ca, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
+		util.LogInfo("No dependencies found", GetDependencies, ca, nil, "globalAccountId", globalAccountId, "btpAppName", appName)
 		return nil, nil
 	}
 
 	dependencies, err := json.Marshal(dependenciesArray)
 	if err != nil {
-		util.LogError(err, "Json marshal of dependencies failed", GetDependencies, ca, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1])
+		util.LogError(err, "Json marshal of dependencies failed", GetDependencies, ca, nil, "globalAccountId", globalAccountId, "btpAppName", appName)
 		return nil, err
 	}
 
-	util.LogInfo("Dependencies returned", GetDependencies, ca, nil, "globalAccountId", btpAppIdentifier[len(btpAppIdentifier)-2], "btpAppName", btpAppIdentifier[len(btpAppIdentifier)-1], "dependencies", string(dependencies))
+	util.LogInfo("Dependencies returned", GetDependencies, ca, nil, "globalAccountId", globalAccountId, "btpAppName", appName, "dependencies", string(dependencies))
 
 	return dependencies, nil
 }
