@@ -230,7 +230,7 @@ func TestController_processQueueItem(t *testing.T) {
 
 			c := getTestController(testResources{cas: []*v1alpha1.CAPApplication{ca}, cats: []*v1alpha1.CAPTenant{cat}, preventStart: true})
 			if tt.resource == 9 || tt.resource == 99 {
-				c.queues[tt.resource] = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+				c.queues[tt.resource] = workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{})
 			}
 
 			dummyKubeInformerFactory := &dummyInformerFactoryType{c.kubeInformerFactory, tt.resourceNamespace, nil}
@@ -263,10 +263,8 @@ func TestController_processQueueItem(t *testing.T) {
 				cancel()
 				expectedRes = testC.processQueueItem(ctx, tt.resource)
 			} else {
-				if tt.resource < 4 || tt.resource == 9 {
+				if tt.resource < 4 || tt.resource == 9 || tt.resource == 99 {
 					q.Add(item)
-				} else if tt.resource == 99 {
-					q.Add(tt.resource)
 				}
 				expectedRes = testC.processQueueItem(context.TODO(), tt.resource)
 			}
