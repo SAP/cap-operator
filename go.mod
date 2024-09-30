@@ -13,8 +13,8 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v2 v2.1.1
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.77.0
-	github.com/prometheus-operator/prometheus-operator/pkg/client v0.77.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.77.1
+	github.com/prometheus-operator/prometheus-operator/pkg/client v0.77.1
 	github.com/prometheus/client_golang v1.20.4
 	github.com/prometheus/common v0.59.1
 	go.uber.org/zap v1.27.0
