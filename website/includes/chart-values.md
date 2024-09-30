@@ -11,11 +11,15 @@
 | tolerations | list | `[]` | Default tolerations (can be overwritten on component level) |
 | priorityClassName | string | `""` | Default priority class (can be overwritten on component level) |
 | topologySpreadConstraints | list | `[]` | Default topology spread constraints (can be overwritten on component level) |
+| podLabels | object | `{}` | Additional pod labels for all components |
+| podAnnotations | object | `{}` | Additional pod annotations for all components |
 | controller.replicas | int | `1` | Replicas |
 | controller.image.repository | string | `"ghcr.io/sap/cap-operator/controller"` | Image repository |
 | controller.image.tag | string | `""` | Image tag |
 | controller.image.pullPolicy | string | `""` | Image pull policy |
 | controller.imagePullSecrets | list | `[]` | Image pull secrets |
+| controller.podLabels | object | `{}` | Additional labels for controller pods |
+| controller.podAnnotations | object | `{}` | Additional annotations for controller pods |
 | controller.podSecurityContext | object | `{}` | Pod security content |
 | controller.nodeSelector | object | `{}` | Node selector |
 | controller.affinity | object | `{}` | Affinity settings |
@@ -38,6 +42,8 @@
 | subscriptionServer.image.tag | string | `""` | Image tag |
 | subscriptionServer.image.pullPolicy | string | `""` | Image pull policy |
 | subscriptionServer.imagePullSecrets | list | `[]` | Image pull secrets |
+| subscriptionServer.podLabels | object | `{}` | Additional labels for subscription server pods |
+| subscriptionServer.podAnnotations | object | `{}` | Additional annotations for subscription server pods |
 | subscriptionServer.podSecurityContext | object | `{}` | Pod security content |
 | subscriptionServer.nodeSelector | object | `{}` | Node selector |
 | subscriptionServer.affinity | object | `{}` | Affinity settings |
@@ -62,6 +68,8 @@
 | webhook.image.tag | string | `""` | Image tag |
 | webhook.image.pullPolicy | string | `""` | Image pull policy |
 | webhook.imagePullSecrets | list | `[]` | Image pull secrets |
+| webhook.podLabels | object | `{}` | Additional labels for validating webhook pods |
+| webhook.podAnnotations | object | `{}` | Additional annotations for validating webhook pods |
 | webhook.podSecurityContext | object | `{}` | Pod security content |
 | webhook.nodeSelector | object | `{}` | Node selector |
 | webhook.affinity | object | `{}` | Affinity settings |
