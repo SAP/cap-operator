@@ -192,6 +192,7 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "WaitingForWorkloads"})
 		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second), nil
 	} else if err != nil {
+		util.LogError(err, "Workload(s) in error status", string(Error), cav, nil, "version", cav.Spec.Version)
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInWorkloadStatus", Message: err.Error()})
 		return nil, err
 	}
@@ -998,6 +999,7 @@ func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alph
 
 		numOfFinishedJobsBeforeUpd := len(cav.Status.FinishedJobs)
 		if err := checkAndUpdateJobStatusFinishedJobs(contentDeployJob, cav); err != nil {
+			util.LogError(err, "Error in content job", string(Processing), cav, contentDeployJob, "version", cav.Spec.Version)
 			return false, err
 		}
 
@@ -1039,7 +1041,10 @@ func (c *Controller) checkOverallWorkloadStatus(ctx context.Context, overallDepl
 				deploymentAvailable = true
 				break
 			} else if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
-				return false, fmt.Errorf("%s", condition.Message)
+				// if the deployment has replica failure, return error
+				err := fmt.Errorf("%s", condition.Message)
+				util.LogError(err, "Error in deployment", string(Processing), cav, deployment, "version", cav.Spec.Version)
+				return false, err
 			}
 		}
 		if !deploymentAvailable {

@@ -149,6 +149,7 @@ const (
 	Deprovisioning Steps = "Deprovisioning"
 	Deleting       Steps = "Deleting"
 	Ready          Steps = "Ready"
+	Error          Steps = "Error"
 )
 
 func (c *Controller) Event(main runtime.Object, related runtime.Object, eventType, reason, action, message string) {
