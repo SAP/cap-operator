@@ -50,6 +50,7 @@ const (
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
 	AnnotationProviderSubAccountId      = "sme.sap.com/provider-sub-account-id"
 	AnnotationEnableCleanupMonitoring   = "sme.sap.com/enable-cleanup-monitoring"
+	AnnotationUseVolumeMount            = "sme.sap.com/use-volume-mount"
 	FinalizerCAPApplication             = "sme.sap.com/capapplication"
 	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
 	FinalizerCAPTenant                  = "sme.sap.com/captenant"
@@ -57,9 +58,7 @@ const (
 	GardenerDNSClassIdentifier          = "dns.gardener.cloud/class"
 )
 
-const (
-	CDSVolMountPrefix = "/etc/secrets/cds"
-)
+var defaultServiceBindingRootEnv = corev1.EnvVar{Name: "SERVICE_BINDING_ROOT", Value: "/etc/secrets"}
 
 const (
 	CertificateSuffix     = "certificate"
@@ -94,7 +93,6 @@ const (
 	EnvCAPOpProviderSubDomain   = "CAPOP_PROVIDER_SUBDOMAIN"
 	EnvCAPOpSubscriptionPayload = "CAPOP_SUBSCRIPTION_PAYLOAD"
 	EnvVCAPServices             = "VCAP_SERVICES"
-	EnvUseVolumeMounts          = "USE_VOLUME_MOUNTS"
 )
 
 type JobState string
@@ -600,14 +598,14 @@ func copyMaps(originalMap map[string]string, additionalMap map[string]string) ma
 	return newMap
 }
 
-func updateInitContainers(initContainers []corev1.Container, additionalEnv []corev1.EnvVar, vcapSecretName string) *[]corev1.Container {
+func updateInitContainers(initContainers []corev1.Container, additionalEnv []corev1.EnvVar, EnvFrom []corev1.EnvFromSource) *[]corev1.Container {
 	var updatedInitContainers []corev1.Container
 	if len(initContainers) > 0 {
 		updatedInitContainers = []corev1.Container{}
 		for _, container := range initContainers {
 			updatedContainer := container.DeepCopy()
 			updatedContainer.Env = append(updatedContainer.Env, additionalEnv...)
-			updatedContainer.EnvFrom = getEnvFrom(vcapSecretName)
+			updatedContainer.EnvFrom = EnvFrom
 			updatedInitContainers = append(updatedInitContainers, *updatedContainer)
 		}
 	}
@@ -620,18 +618,8 @@ func getWorkloadName(cavName, workloadName string) string {
 
 func getVolumeMounts(serviceInfos []v1alpha1.ServiceInfo) []corev1.VolumeMount {
 	volumeMounts := []corev1.VolumeMount{}
-
 	for _, serviceInfo := range serviceInfos {
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: serviceInfo.Name, MountPath: path.Join("/etc/secrets/sapcp", serviceInfo.Class, serviceInfo.Name), ReadOnly: true})
-	}
-	return volumeMounts
-}
-
-func getCAPVolumeMounts(serviceInfos []v1alpha1.ServiceInfo, mountPrefix string) []corev1.VolumeMount {
-	volumeMounts := []corev1.VolumeMount{}
-
-	for _, serviceInfo := range serviceInfos {
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: serviceInfo.Name, MountPath: path.Join(mountPrefix, "requires", serviceInfo.Class, "credentials"), ReadOnly: true})
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: serviceInfo.Name, MountPath: path.Join(defaultServiceBindingRootEnv.Value, serviceInfo.Class), ReadOnly: true})
 	}
 	return volumeMounts
 }
@@ -645,6 +633,16 @@ func getVolumes(serviceInfos []v1alpha1.ServiceInfo) []corev1.Volume {
 	return volumes
 }
 
-func useVolumeMounts(envVars []corev1.EnvVar) bool {
-	return slices.ContainsFunc(envVars, func(env corev1.EnvVar) bool { return env.Name == EnvUseVolumeMounts && env.Value == "true" })
+func useVolumeMounts(cav *v1alpha1.CAPApplicationVersion) bool {
+	value, exists := cav.Annotations[AnnotationUseVolumeMount]
+	return exists && value == "true"
+}
+
+func updateServiceBindingRootEnv(envVars []corev1.EnvVar) []corev1.EnvVar {
+	if envIndex := slices.IndexFunc(envVars, func(currentEnv corev1.EnvVar) bool { return currentEnv.Name == defaultServiceBindingRootEnv.Name }); envIndex > -1 {
+		envVars[envIndex] = defaultServiceBindingRootEnv
+	} else {
+		envVars = append(envVars, defaultServiceBindingRootEnv)
+	}
+	return envVars
 }

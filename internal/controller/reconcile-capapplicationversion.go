@@ -51,7 +51,7 @@ type DeploymentParameters struct {
 	CAV             *v1alpha1.CAPApplicationVersion
 	OwnerRef        *metav1.OwnerReference
 	WorkloadDetails v1alpha1.WorkloadDetails
-	VCAPSecretName  string
+	EnvFrom         []corev1.EnvFromSource
 	Volumes         []corev1.Volume
 	VolumeMounts    []corev1.VolumeMount
 }
@@ -264,7 +264,10 @@ func (c *Controller) handleContentDeployJob(ca *v1alpha1.CAPApplication, cav *v1
 		ownerRef := *metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind))
 
 		// Get VCAP secret name
-		vcapSecretName, err = createVCAPSecret(jobName, cav.Namespace, ownerRef, consumedServiceInfos, c.kubeClient)
+		err = nil
+		if !useVolumeMounts(cav) {
+			vcapSecretName, err = createVCAPSecret(jobName, cav.Namespace, ownerRef, consumedServiceInfos, c.kubeClient)
+		}
 
 		if err == nil {
 			contentDeployJob, err = c.kubeClient.BatchV1().Jobs(cav.Namespace).Create(context.TODO(), newContentDeploymentJob(ca, cav, workload, ownerRef, vcapSecretName), metav1.CreateOptions{})
@@ -297,7 +300,8 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 	var serviceSecretVolumeMounts []corev1.VolumeMount
 	var serviceSecretVolumes []corev1.Volume
 
-	if useVolumeMounts(workload.JobDefinition.Env) {
+	if useVolumeMounts(cav) {
+		workload.JobDefinition.Env = updateServiceBindingRootEnv(workload.JobDefinition.Env)
 		serviceSecretVolumeMounts = getVolumeMounts(consumedServiceInfos)
 		serviceSecretVolumes = getVolumes(consumedServiceInfos)
 	} else {
@@ -339,7 +343,7 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 					},
 					InitContainers: *updateInitContainers(workload.JobDefinition.InitContainers, []corev1.EnvVar{
 						{Name: EnvCAPOpAppVersion, Value: cav.Spec.Version},
-					}, vcapSecretName),
+					}, envFrom),
 					SecurityContext:           workload.JobDefinition.PodSecurityContext,
 					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,
 					Volumes:                   append(workload.JobDefinition.Volumes, serviceSecretVolumes...),
@@ -689,7 +693,10 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 		ownerRef := *metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind))
 
 		// Get VCAP secret name
-		vcapSecretName, err = createVCAPSecret(deploymentName, cav.Namespace, ownerRef, consumedServiceInfos, c.kubeClient)
+		err = nil
+		if !useVolumeMounts(cav) {
+			vcapSecretName, err = createVCAPSecret(deploymentName, cav.Namespace, ownerRef, consumedServiceInfos, c.kubeClient)
+		}
 
 		if err == nil {
 			workloadDeployment, err = c.kubeClient.AppsV1().Deployments(cav.Namespace).Create(context.TODO(), newDeployment(ca, cav, workload, ownerRef, vcapSecretName), metav1.CreateOptions{})
@@ -712,16 +719,14 @@ func newDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVers
 		CAV:             cav,
 		OwnerRef:        &ownerRef,
 		WorkloadDetails: *workload,
-		VCAPSecretName:  vcapSecretName,
 	}
 
-	if useVolumeMounts(workload.DeploymentDefinition.Env) {
-		if workload.DeploymentDefinition.Type == v1alpha1.DeploymentCAP {
-			params.VolumeMounts = getCAPVolumeMounts(consumedServiceInfos, CDSVolMountPrefix)
-		} else {
-			params.VolumeMounts = getVolumeMounts(consumedServiceInfos)
-		}
+	if useVolumeMounts(cav) {
+		params.WorkloadDetails.DeploymentDefinition.Env = updateServiceBindingRootEnv(params.WorkloadDetails.DeploymentDefinition.Env)
+		params.VolumeMounts = getVolumeMounts(consumedServiceInfos)
 		params.Volumes = getVolumes(consumedServiceInfos)
+	} else {
+		params.EnvFrom = getEnvFrom(vcapSecretName)
 	}
 
 	return createDeployment(params)
@@ -758,7 +763,7 @@ func createDeployment(params *DeploymentParameters) *appsv1.Deployment {
 					ImagePullSecrets: convertToLocalObjectReferences(params.CAV.Spec.RegistrySecrets),
 					InitContainers: *updateInitContainers(params.WorkloadDetails.DeploymentDefinition.InitContainers, []corev1.EnvVar{
 						{Name: EnvCAPOpAppVersion, Value: params.CAV.Spec.Version},
-					}, params.VCAPSecretName),
+					}, params.EnvFrom),
 					Containers:                getContainer(params),
 					ServiceAccountName:        params.WorkloadDetails.DeploymentDefinition.ServiceAccountName,
 					Volumes:                   append(params.WorkloadDetails.DeploymentDefinition.Volumes, params.Volumes...),
@@ -782,7 +787,7 @@ func getContainer(params *DeploymentParameters) []corev1.Container {
 		ImagePullPolicy: params.WorkloadDetails.DeploymentDefinition.ImagePullPolicy,
 		Command:         params.WorkloadDetails.DeploymentDefinition.Command,
 		Env:             getEnv(params),
-		EnvFrom:         getEnvFrom(params.VCAPSecretName),
+		EnvFrom:         params.EnvFrom,
 		VolumeMounts:    append(params.WorkloadDetails.DeploymentDefinition.VolumeMounts, params.VolumeMounts...),
 		LivenessProbe:   params.WorkloadDetails.DeploymentDefinition.LivenessProbe,
 		ReadinessProbe:  params.WorkloadDetails.DeploymentDefinition.ReadinessProbe,
