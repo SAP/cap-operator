@@ -51,6 +51,7 @@ type DeploymentParameters struct {
 	CAV             *v1alpha1.CAPApplicationVersion
 	OwnerRef        *metav1.OwnerReference
 	WorkloadDetails v1alpha1.WorkloadDetails
+	Env             []corev1.EnvVar
 	EnvFrom         []corev1.EnvFromSource
 	Volumes         []corev1.Volume
 	VolumeMounts    []corev1.VolumeMount
@@ -293,15 +294,18 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 	contentJobName := getContentJobName(workload.Name, cav)
 
 	util.LogInfo("Creating content job", string(Processing), cav, nil, "contentJobName", contentJobName, "version", cav.Spec.Version)
-	// Get ServiceInfos for consumed BTP services
-	consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), ca.Spec.BTP.Services)
 
 	var envFrom []corev1.EnvFromSource
 	var serviceSecretVolumeMounts []corev1.VolumeMount
 	var serviceSecretVolumes []corev1.Volume
 
+	env := workload.JobDefinition.Env
+
 	if useVolumeMounts(cav) {
-		workload.JobDefinition.Env = updateServiceBindingRootEnv(workload.JobDefinition.Env)
+		// Get ServiceInfos for consumed BTP services
+		consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), ca.Spec.BTP.Services)
+
+		env = updateServiceBindingRootEnv(env)
 		serviceSecretVolumeMounts = getVolumeMounts(consumedServiceInfos)
 		serviceSecretVolumes = getVolumes(consumedServiceInfos)
 	} else {
@@ -334,7 +338,7 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 							Command:         workload.JobDefinition.Command,
 							Env: append([]corev1.EnvVar{
 								{Name: EnvCAPOpAppVersion, Value: cav.Spec.Version},
-							}, workload.JobDefinition.Env...),
+							}, env...),
 							EnvFrom:         envFrom,
 							VolumeMounts:    append(workload.JobDefinition.VolumeMounts, serviceSecretVolumeMounts...),
 							Resources:       workload.JobDefinition.Resources,
@@ -343,7 +347,7 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 					},
 					InitContainers: *updateInitContainers(workload.JobDefinition.InitContainers, []corev1.EnvVar{
 						{Name: EnvCAPOpAppVersion, Value: cav.Spec.Version},
-					}, envFrom),
+					}, serviceSecretVolumeMounts, envFrom),
 					SecurityContext:           workload.JobDefinition.PodSecurityContext,
 					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,
 					Volumes:                   append(workload.JobDefinition.Volumes, serviceSecretVolumes...),
@@ -711,18 +715,19 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 
 // newDeployment creates a new generic Deployment for a CAV resource based on the type. It also sets the appropriate OwnerReferences.
 func newDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails, ownerRef metav1.OwnerReference, vcapSecretName string) *appsv1.Deployment {
-	// Get ServiceInfos for consumed BTP services
-	consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), ca.Spec.BTP.Services)
-
 	params := &DeploymentParameters{
 		CA:              ca,
 		CAV:             cav,
 		OwnerRef:        &ownerRef,
 		WorkloadDetails: *workload,
+		Env:             workload.DeploymentDefinition.Env,
 	}
 
 	if useVolumeMounts(cav) {
-		params.WorkloadDetails.DeploymentDefinition.Env = updateServiceBindingRootEnv(params.WorkloadDetails.DeploymentDefinition.Env)
+		// Get ServiceInfos for consumed BTP services
+		consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), ca.Spec.BTP.Services)
+
+		params.Env = updateServiceBindingRootEnv(params.Env)
 		params.VolumeMounts = getVolumeMounts(consumedServiceInfos)
 		params.Volumes = getVolumes(consumedServiceInfos)
 	} else {
@@ -763,7 +768,7 @@ func createDeployment(params *DeploymentParameters) *appsv1.Deployment {
 					ImagePullSecrets: convertToLocalObjectReferences(params.CAV.Spec.RegistrySecrets),
 					InitContainers: *updateInitContainers(params.WorkloadDetails.DeploymentDefinition.InitContainers, []corev1.EnvVar{
 						{Name: EnvCAPOpAppVersion, Value: params.CAV.Spec.Version},
-					}, params.EnvFrom),
+					}, params.VolumeMounts, params.EnvFrom),
 					Containers:                getContainer(params),
 					ServiceAccountName:        params.WorkloadDetails.DeploymentDefinition.ServiceAccountName,
 					Volumes:                   append(params.WorkloadDetails.DeploymentDefinition.Volumes, params.Volumes...),
@@ -801,7 +806,7 @@ func getEnv(params *DeploymentParameters) []corev1.EnvVar {
 	env := []corev1.EnvVar{
 		{Name: EnvCAPOpAppVersion, Value: params.CAV.Spec.Version},
 	}
-	env = append(env, params.WorkloadDetails.DeploymentDefinition.Env...)
+	env = append(env, params.Env...)
 
 	if params.WorkloadDetails.DeploymentDefinition.Type == v1alpha1.DeploymentRouter {
 		// Add destinations env for `Router`

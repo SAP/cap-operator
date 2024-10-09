@@ -598,7 +598,7 @@ func copyMaps(originalMap map[string]string, additionalMap map[string]string) ma
 	return newMap
 }
 
-func updateInitContainers(initContainers []corev1.Container, additionalEnv []corev1.EnvVar, EnvFrom []corev1.EnvFromSource) *[]corev1.Container {
+func updateInitContainers(initContainers []corev1.Container, additionalEnv []corev1.EnvVar, serviceSecretVolumeMounts []corev1.VolumeMount, EnvFrom []corev1.EnvFromSource) *[]corev1.Container {
 	var updatedInitContainers []corev1.Container
 	if len(initContainers) > 0 {
 		updatedInitContainers = []corev1.Container{}
@@ -606,6 +606,10 @@ func updateInitContainers(initContainers []corev1.Container, additionalEnv []cor
 			updatedContainer := container.DeepCopy()
 			updatedContainer.Env = append(updatedContainer.Env, additionalEnv...)
 			updatedContainer.EnvFrom = EnvFrom
+			if len(serviceSecretVolumeMounts) > 0 {
+				updatedContainer.VolumeMounts = append(updatedContainer.VolumeMounts, serviceSecretVolumeMounts...)
+				updatedContainer.Env = append(updatedContainer.Env, defaultServiceBindingRootEnv)
+			}
 			updatedInitContainers = append(updatedInitContainers, *updatedContainer)
 		}
 	}
