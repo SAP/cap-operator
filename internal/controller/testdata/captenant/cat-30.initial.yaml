@@ -68,66 +68,8 @@ spec:
       type: TenantOperation
 status:
   conditions:
-    - message: job default.test-cap-01-provider-upg-abcs completed
+    - message: job default.test-cap-01-provider-upg-abcd completed
       reason: StepCompleted
       status: "True"
       type: Ready
   state: Completed
----
-apiVersion: networking.istio.io/v1beta1
-kind: VirtualService
-metadata:
-  labels:
-    sme.sap.com/owner-generation: "1"
-    sme.sap.com/owner-identifier: default.test-cap-01-wrong-tenant
-  name: test-cap-01-provider
-  namespace: default
-  ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
-      blockOwnerDeletion: true
-      controller: true
-      kind: CAPTenant
-      name: test-cap-01-wrong-tenant
-spec:
-  gateways:
-    - test-cap-01-gw
-  hosts:
-    - my-provider.app-domain.test.local
-    - my-provider.foo.bar.local
-  http:
-    - match:
-      - headers:
-          Cookie:
-            regex: (^|.*; )COP_CAV=test-cap-01-cav-v1($|; .*)
-        uri:
-          regex: ^|.*(logout|logoff).*
-      route:
-      - destination:
-          host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
-          port:
-            number: 5000
-        headers:
-          response:
-            set:
-              Set-Cookie: COP_CAV=test-cap-01-cav-v1;Path=/;HttpOnly;Secure;Max-Age=0
-        weight: 100
-    - match:
-      - headers:
-          Cookie:
-            regex: (^|.*; )COP_CAV=test-cap-01-cav-v1($|; .*)
-      route:
-      - destination:
-          host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
-          port:
-            number: 5000
-        weight: 100
-    - route:
-      - destination:
-          host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
-          port:
-            number: 5000
-        headers:
-          response:
-            add:
-              Set-Cookie: COP_CAV=test-cap-01-cav-v1;Path=/;HttpOnly;Secure;Max-Age=Session
-        weight: 100

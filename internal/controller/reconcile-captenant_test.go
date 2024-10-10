@@ -340,6 +340,29 @@ func TestCAPTenantUpgradeOperationCompleted(t *testing.T) {
 	)
 }
 
+func TestCAPTenantUpgradeOperationCompletedWithLogoutEndpointOnNewCAV(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "captenant upgrade operation completed expecting virtual service, destination rule adjustments",
+			initialResources: []string{
+				"testdata/common/istio-ingress.yaml",
+				"testdata/common/capapplication.yaml",
+				"testdata/common/operator-gateway.yaml",
+				"testdata/common/capapplicationversion-v1.yaml",
+				"testdata/common/capapplicationversion-v2-logout-endpoint.yaml",
+				"testdata/captenant/provider-tenant-dnsentry.yaml",
+				"testdata/captenant/provider-tenant-vs-v1.yaml",
+				"testdata/captenant/provider-tenant-dr-v1.yaml",
+				"testdata/captenant/cat-30.initial.yaml",
+			},
+			expectedResources: "testdata/captenant/cat-30.expected.yaml",
+			backlogItems:      []string{"ERP4SMEPREPWORKAPPPLAT-2811", "ERP4SMEPREPWORKAPPPLAT-3206"},
+		},
+	)
+}
+
 func TestCAPTenantUpgradeOperationCompletedPreviousVersionsLimited(t *testing.T) {
 	os.Setenv(v1alpha1.EnvMaxTenantVersionHistory, "3")
 	defer os.Unsetenv(v1alpha1.EnvMaxTenantVersionHistory)
