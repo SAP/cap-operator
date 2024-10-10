@@ -184,6 +184,9 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 				ingressRes = createIngressResource(ingressGWName, ca, dns)
 			}
 
+			// Deregister metrics
+			defer deregisterMetrics()
+
 			c = getTestController(testResources{
 				cas:       []*v1alpha1.CAPApplication{ca, ca2},
 				ingressGW: []*ingressResources{ingressRes},
@@ -224,6 +227,10 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 					}
 				}
 				ca.Spec.Domains.Secondary = []string{"2" + secondaryDomain, "3" + secondaryDomain}
+
+				// Deregister metrics before starting new controller again
+				deregisterMetrics()
+
 				c = getTestController(testResources{
 					cas:             []*v1alpha1.CAPApplication{ca, ca2},
 					gateway:         gw,
@@ -266,6 +273,10 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 					ca2.Spec.Domains.IstioIngressGatewayLabels[1].Value += "2"
 					ingressGW2 = createIngressResource(ingressGWName+"2", ca2, "Something.that.surely.exceeds.the.64char.limit."+dnsTarget)
 				}
+
+				// Deregister metrics before starting new controller again
+				deregisterMetrics()
+
 				c = getTestController(testResources{
 					cas:             []*v1alpha1.CAPApplication{ca, ca2},
 					gateway:         gw,
@@ -273,6 +284,7 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 					certManagerCert: certManagerCert,
 					ingressGW:       []*ingressResources{ingressRes, ingressGW2},
 				})
+
 				err = c.reconcileOperatorDomains(context.TODO(), q, 0)
 				if (err != nil) != tt.wantErr {
 					t.Errorf("Controller.reconcileOperatorDomains() error = %v, wantErr %v", err, tt.wantErr)
