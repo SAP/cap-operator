@@ -324,6 +324,9 @@ func eventDrain(ctx context.Context, c *Controller, t *testing.T) {
 func reconcileTestItem(ctx context.Context, t *testing.T, item QueueItem, data TestData) (err error) {
 	// run inside a test sub-context to maintain test case name with reference to backlog items
 	t.Run(strings.Join(append([]string{data.description}, data.backlogItems...), " "), func(t *testing.T) {
+		// Deregister metrics
+		defer deregisterMetrics()
+
 		c := initializeControllerForReconciliationTests(t, data.mockErrorForResources, data.discoverResources)
 		go eventDrain(ctx, c, t)
 

@@ -114,6 +114,9 @@ func setupTestControllerWithInitialResources(t *testing.T, initialResources []st
 }
 
 func TestGracefulShutdownMonitoringRoutines(t *testing.T) {
+	// Deregister metrics at the end of the test
+	defer deregisterMetrics()
+
 	c := setupTestControllerWithInitialResources(t, []string{})
 
 	s, _ := getPromServer(false, []queryTestCase{})
@@ -213,6 +216,9 @@ func TestVersionSelectionForCleanup(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// Deregister metrics at the end of the test
+			defer deregisterMetrics()
+
 			c := setupTestControllerWithInitialResources(t, tc.resources)
 			orc := &cleanupOrchestrator{queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[NamespacedResourceKey]())}
 			defer orc.queue.ShutDown()
@@ -557,6 +563,10 @@ func TestVersionCleanupEvaluation(t *testing.T) {
 			defer s.Close()
 			o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{address: s.URL, acquireClientRetryDelay: 1 * time.Minute})
 			defer o.queue.ShutDown()
+
+			// Deregister metrics at the end of the test
+			defer deregisterMetrics()
+
 			c := setupTestControllerWithInitialResources(t, tt.startResources)
 			item := NamespacedResourceKey{Namespace: "default", Name: tt.evaluatedVersion}
 			o.queue.Add(item)

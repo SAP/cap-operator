@@ -486,6 +486,9 @@ func TestGetLatestReadyCAPApplicationVersion(t *testing.T) {
 				cavs = append(cavs, cav)
 			}
 
+			// Deregister metrics at the end of the test
+			defer deregisterMetrics()
+
 			c := getTestController(testResources{
 				cas:  []*v1alpha1.CAPApplication{ca},
 				cavs: cavs,
@@ -577,6 +580,9 @@ func TestGetLatestCAPApplicationVersion(t *testing.T) {
 
 				cavs = append(cavs, cav)
 			}
+
+			// Deregister metrics at the end of the test
+			defer deregisterMetrics()
 
 			c := getTestController(testResources{
 				cas:  []*v1alpha1.CAPApplication{ca},

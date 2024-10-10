@@ -57,6 +57,8 @@ type Controller struct {
 }
 
 func NewController(client kubernetes.Interface, crdClient versioned.Interface, istioClient istio.Interface, gardenerCertificateClient gardenerCert.Interface, certManagerCertificateClient certManager.Interface, gardenerDNSClient gardenerDNS.Interface, promClient promop.Interface) *Controller {
+	// Register metrics provider on the workqueue
+	initializeMetrics()
 
 	queues := map[int]workqueue.TypedRateLimitingInterface[QueueItem]{
 		ResourceCAPApplication:        workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPApplication]}),
@@ -134,6 +136,8 @@ func (c *Controller) Start(ctx context.Context) {
 		for _, q := range c.queues {
 			q.ShutDown()
 		}
+		// Deregister metrics and shutdown queues
+		deregisterMetrics()
 	}()
 
 	c.initializeInformers()
@@ -259,6 +263,7 @@ func (c *Controller) processQueueItem(ctx context.Context, key int) error {
 	// Handle reconcile errors
 	if err != nil {
 		klog.ErrorS(err, "queue processing error", "resource", getResourceKindFromKey(key))
+		ReconcileErrors.WithLabelValues(getResourceKindFromKey(item.Key), item.ResourceKey.Namespace, item.ResourceKey.Name).Inc()
 		if !skipItem {
 			// add back to queue for re-processing
 			q.AddRateLimited(item)
@@ -309,6 +314,7 @@ func (c *Controller) recoverFromPanic(ctx context.Context, item QueueItem, q wor
 		default:
 			c.setCAStatusError(ctx, item.ResourceKey, err)
 		}
+		Panics.WithLabelValues(getResourceKindFromKey(item.Key), item.ResourceKey.Namespace, item.ResourceKey.Name).Inc()
 
 		// Add the item back to the queue to be processed again with a RateLimited delay
 		q.AddRateLimited(item)

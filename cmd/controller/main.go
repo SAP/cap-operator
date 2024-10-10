@@ -79,6 +79,9 @@ func main() {
 		klog.Fatal("could not create client for dns resources: ", err.Error())
 	}
 
+	// Initialize/start metrics server
+	util.InitMetricsServer()
+
 	// context for the reconciliation controller
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

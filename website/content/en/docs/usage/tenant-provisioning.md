@@ -25,7 +25,7 @@ spec:
 
 ## Tenant Provisioning
 
-The process of tenant provisioning starts when a consumer subaccount subscribes to the application, either via the SAP BTP cockpit or using the APIs provided by the SaaS provisioning service. This, in turn, initiates the asynchronous callback from the SaaS provisioning service instance into the cluster, and the request is handled by the [subscription server]({{< ref "docs/concepts/operator-components/subscription-server.md" >}}). The subscription server validates the request and creates an instance of `CAPTenant` for the identified `CAPApplication`.
+The process of tenant provisioning starts when a consumer subaccount subscribes to the application, either via the SAP BTP cockpit or using the APIs provided by the SaaS provisioning service. This, in turn, initiates the asynchronous callback from the SaaS provisioning service instance into the cluster, and the request is handled by the [subscription server](docs/concepts/operator-components/subscription-server). The subscription server validates the request and creates an instance of `CAPTenant` for the identified `CAPApplication`.
 
 {{< alert color="warning" title="Warning" >}}
 An instance of `CAPTenant` must not be created or deleted manually within the cluster. A new instance has to be created by the subscription server after receiving a provisioning call from SaaS provisioning service.
