@@ -56,6 +56,7 @@ spec:
                 - services
                 type: object
               btpAppName:
+                pattern: ^[a-z0-9_-]+$
                 type: string
               domains:
                 properties:
