@@ -387,11 +387,19 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 		return nil, fmt.Errorf("could not find workload %s in %s %s.%s", step.Name, v1alpha1.CAPApplicationVersionKind, relatedResources.CAPApplicationVersion.Namespace, relatedResources.CAPApplicationVersion.Name)
 	}
 
-	// create VCAP secret from consumed BTP services
 	consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), relatedResources.CAPApplication.Spec.BTP.Services)
-	vcapSecretName, err := createVCAPSecret(ctop.Name+"-"+strings.ToLower(workload.Name), ctop.Namespace, *metav1.NewControllerRef(ctop, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantOperationKind)), consumedServiceInfos, c.kubeClient)
-	if err != nil {
-		return nil, err
+
+	// check volume mount annotation
+	useVolumeMount := useVolumeMounts(relatedResources.CAPApplicationVersion)
+
+	// create VCAP secret from consumed BTP services
+	var vcapSecretName string
+	err = nil
+	if !useVolumeMount {
+		vcapSecretName, err = createVCAPSecret(ctop.Name+"-"+strings.ToLower(workload.Name), ctop.Namespace, *metav1.NewControllerRef(ctop, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantOperationKind)), consumedServiceInfos, c.kubeClient)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	annotations := copyMaps(workload.Annotations, map[string]string{
@@ -416,7 +424,6 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 		namePrefix:        relatedResources.CAPTenant.Name + "-" + workload.Name + "-",
 		labels:            labels,
 		annotations:       annotations,
-		vcapSecretName:    vcapSecretName,
 		imagePullSecrets:  convertToLocalObjectReferences(relatedResources.CAPApplicationVersion.Spec.RegistrySecrets),
 		version:           relatedResources.CAPApplicationVersion.Spec.Version,
 		appName:           relatedResources.CAPApplication.Spec.BTPAppName,
@@ -424,6 +431,20 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 		providerTenantId:  relatedResources.CAPApplication.Spec.Provider.TenantId,
 		providerSubdomain: relatedResources.CAPApplication.Spec.Provider.SubDomain,
 		tenantType:        relatedResources.CAPTenant.Labels[LabelTenantType],
+	}
+
+	if workload.DeploymentDefinition == nil {
+		params.Env = workload.JobDefinition.Env
+	} else {
+		params.Env = workload.DeploymentDefinition.Env
+	}
+
+	if useVolumeMount {
+		params.Env = updateServiceBindingRootEnv(params.Env)
+		params.volumeMounts = getVolumeMounts(consumedServiceInfos)
+		params.volumes = getVolumes(consumedServiceInfos)
+	} else {
+		params.EnvFrom = getEnvFrom(vcapSecretName)
 	}
 
 	var job *batchv1.Job
@@ -450,7 +471,6 @@ type jobCreateParams struct {
 	namePrefix        string
 	labels            map[string]string
 	annotations       map[string]string
-	vcapSecretName    string
 	imagePullSecrets  []corev1.LocalObjectReference
 	version           string
 	appName           string
@@ -458,6 +478,10 @@ type jobCreateParams struct {
 	providerTenantId  string
 	providerSubdomain string
 	tenantType        string
+	Env               []corev1.EnvVar
+	EnvFrom           []corev1.EnvFromSource
+	volumes           []corev1.Volume
+	volumeMounts      []corev1.VolumeMount
 }
 
 func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {
@@ -484,8 +508,8 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 					RestartPolicy:             corev1.RestartPolicyNever,
 					ImagePullSecrets:          params.imagePullSecrets,
 					Containers:                getContainers(ctop, derivedWorkload, workload, params),
-					InitContainers:            *updateInitContainers(derivedWorkload.initContainers, getCTOPEnv(params, ctop), params.vcapSecretName),
-					Volumes:                   derivedWorkload.volumes,
+					InitContainers:            *updateInitContainers(derivedWorkload.initContainers, getCTOPEnv(params, ctop), params.volumeMounts, params.EnvFrom),
+					Volumes:                   append(derivedWorkload.volumes, params.volumes...),
 					ServiceAccountName:        derivedWorkload.serviceAccountName,
 					SecurityContext:           derivedWorkload.podSecurityContext,
 					NodeSelector:              derivedWorkload.nodeSelector,
@@ -508,9 +532,9 @@ func getContainers(ctop *v1alpha1.CAPTenantOperation, derivedWorkload tentantOpe
 		Name:            workload.Name,
 		Image:           derivedWorkload.image,
 		ImagePullPolicy: derivedWorkload.imagePullPolicy,
-		Env:             append(getCTOPEnv(params, ctop), derivedWorkload.env...),
-		EnvFrom:         getEnvFrom(params.vcapSecretName),
-		VolumeMounts:    derivedWorkload.volumeMounts,
+		Env:             append(getCTOPEnv(params, ctop), params.Env...),
+		EnvFrom:         params.EnvFrom,
+		VolumeMounts:    append(derivedWorkload.volumeMounts, params.volumeMounts...),
 		Resources:       derivedWorkload.resources,
 		SecurityContext: derivedWorkload.securityContext,
 	}
@@ -614,7 +638,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 				Spec: corev1.PodSpec{
 					RestartPolicy:             corev1.RestartPolicyNever,
 					SecurityContext:           workload.JobDefinition.PodSecurityContext,
-					Volumes:                   workload.JobDefinition.Volumes,
+					Volumes:                   append(workload.JobDefinition.Volumes, params.volumes...),
 					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,
 					NodeSelector:              workload.JobDefinition.NodeSelector,
 					NodeName:                  workload.JobDefinition.NodeName,
@@ -628,15 +652,15 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 							Name:            workload.Name,
 							Image:           workload.JobDefinition.Image,
 							ImagePullPolicy: workload.JobDefinition.ImagePullPolicy,
-							Env:             append(getCTOPEnv(params, ctop), workload.JobDefinition.Env...),
-							EnvFrom:         getEnvFrom(params.vcapSecretName),
-							VolumeMounts:    workload.JobDefinition.VolumeMounts,
+							Env:             append(getCTOPEnv(params, ctop), params.Env...),
+							EnvFrom:         params.EnvFrom,
+							VolumeMounts:    append(workload.JobDefinition.VolumeMounts, params.volumeMounts...),
 							Command:         workload.JobDefinition.Command,
 							Resources:       workload.JobDefinition.Resources,
 							SecurityContext: workload.JobDefinition.SecurityContext,
 						},
 					},
-					InitContainers: *updateInitContainers(workload.JobDefinition.InitContainers, getCTOPEnv(params, ctop), params.vcapSecretName),
+					InitContainers: *updateInitContainers(workload.JobDefinition.InitContainers, getCTOPEnv(params, ctop), params.volumeMounts, params.EnvFrom),
 				},
 			},
 		},

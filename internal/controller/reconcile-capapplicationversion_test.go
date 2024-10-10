@@ -846,3 +846,21 @@ func TestCAV_InvalidMonitoringConfig(t *testing.T) {
 
 	}
 }
+
+func TestCAV_UseVolumeMount(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with initContainers",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/cav-use-vol-mount.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-processing-use-vol-mount.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
+			backlogItems:      []string{},
+		},
+	)
+}

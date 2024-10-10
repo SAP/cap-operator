@@ -1,0 +1,157 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPApplicationVersion
+metadata:
+  creationTimestamp: "2022-03-18T22:14:33Z"
+  generation: 1
+  annotations:
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+    sme.sap.com/owner-identifier: default.test-cap-01
+    sme.sap.com/use-volume-mount: "true"
+  labels:
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/owner-generation: "2"
+    sme.sap.com/owner-identifier-hash: 1f74ae2fbff71a708786a4df4bb2ca87ec603581
+  name: test-cap-01-cav-v1
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplication
+      name: test-cap-01
+      uid: 3c7ba7cb-dc04-4fd1-be86-3eb3a5c64a98
+  resourceVersion: "11371108"
+  uid: 5e64489b-7346-4984-8617-e8c37338b3d8
+spec:
+  capApplicationInstance: test-cap-01
+  registrySecrets:
+    - regcred
+  version: 5.6.7
+  workloads:
+    - name: cap-backend
+      consumedBTPServices:
+        - cap-uaa
+        - cap-service-manager
+        - cap-saas-registry
+      deploymentDefinition:
+        type: CAP
+        image: docker.image.repo/srv/server:latest
+    - name: content-job
+      consumedBTPServices:
+        - cap-uaa
+      jobDefinition:
+        type: Content
+        image: docker.image.repo/content/cap-content:latest
+    - name: mtx
+      consumedBTPServices:
+        - cap-uaa
+        - cap-service-manager
+        - cap-saas-registry
+      jobDefinition:
+        type: "TenantOperation"
+        volumeMounts:
+          - mountPath: /cache
+            name: cache-vol
+        volumes:
+          - name: cache-vol
+            emptyDir:
+              sizeLimit: 500Mi
+          - name: log-data
+            emptyDir: {}
+        serviceAccountName: custom-op-sa
+        resources:
+          limits:
+            cpu: 200m
+            memory: 200Mi
+          requests:
+            cpu: 20m
+            memory: 20Mi
+        securityContext:
+          runAsUser: 1000
+          runAsGroup: 2000
+        nodeSelector:
+          disktype: ssd
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: topology.kubernetes.io/zone
+                      operator: In
+                      values:
+                        - antarctica-east1
+                        - antarctica-west1
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 1
+                preference:
+                  matchExpressions:
+                    - key: another-node-label-key
+                      operator: In
+                      values:
+                        - another-node-label-value
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: someZone
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                foo: bar
+            matchLabelKeys:
+              - dummy-test-1.27
+        tolerations:
+          - key: "test"
+            operator: "Equal"
+            value: "foo"
+            effect: "NoExecute"
+            tolerationSeconds: 300
+          - key: "never-exec"
+            operator: "Equal"
+            value: "noexec"
+            effect: "NoExecute"
+        image: docker.image.repo/srv/server:latest
+        initContainers:
+          - name: init-container
+            image: docker.image.repo/init-container:latest
+            env:
+              - name: INIT_CONTAINER_ENV
+                value: "init-container-env"
+            resources:
+              limits:
+                cpu: 100m
+                memory: 200Mi
+              requests:
+                cpu: 10m
+                memory: 20Mi
+          - name: log-container
+            image: docker.image.repo/log-container:latest
+            restartPolicy: Always
+            command: ["sh", "-c", "tail -F /log/logs.txt"]
+            volumeMounts:
+              - name: log-data
+                mountPath: /log
+            env:
+              - name: LOG_CONTAINER_ENV
+                value: "log-container-env"
+            resources:
+              limits:
+                cpu: 100m
+                memory: 200Mi
+              requests:
+                cpu: 10m
+                memory: 20Mi
+    - name: app-router
+      consumedBTPServices:
+        - cap-uaa
+        - cap-saas-registry
+      deploymentDefinition:
+        type: Router
+        image: docker.image.repo/approuter/approuter:latest
+status:
+  conditions:
+    - lastTransitionTime: "2022-03-18T23:07:47Z"
+      lastUpdateTime: "2022-03-18T23:07:47Z"
+      reason: CreatedDeployments
+      status: "True"
+      type: Ready
+  observedGeneration: 1
+  state: Ready
