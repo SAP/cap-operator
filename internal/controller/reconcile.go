@@ -630,7 +630,6 @@ func getVolumeMounts(serviceInfos []v1alpha1.ServiceInfo) []corev1.VolumeMount {
 
 func getVolumes(serviceInfos []v1alpha1.ServiceInfo) []corev1.Volume {
 	volumes := []corev1.Volume{}
-
 	for _, serviceInfo := range serviceInfos {
 		volumes = append(volumes, corev1.Volume{Name: serviceInfo.Name, VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: serviceInfo.Secret}}})
 	}
