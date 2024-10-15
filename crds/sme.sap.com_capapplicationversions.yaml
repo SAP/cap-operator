@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.2
+    controller-gen.kubebuilder.io/version: v0.16.4
   name: capapplicationversions.sme.sap.com
 spec:
   group: sme.sap.com
@@ -540,6 +540,10 @@ spec:
                                   x-kubernetes-list-type: atomic
                               type: object
                           type: object
+                        args:
+                          items:
+                            type: string
+                          type: array
                         command:
                           items:
                             type: string
@@ -1379,10 +1383,10 @@ spec:
                           properties:
                             deletionRules:
                               oneOf:
-                              - required:
-                                - metrics
-                              - required:
-                                - expression
+                                - required:
+                                    - metrics
+                                - required:
+                                    - expression
                               properties:
                                 expression:
                                   type: string
@@ -3044,6 +3048,10 @@ spec:
                                   x-kubernetes-list-type: atomic
                               type: object
                           type: object
+                        args:
+                          items:
+                            type: string
+                          type: array
                         backoffLimit:
                           format: int32
                           type: integer
