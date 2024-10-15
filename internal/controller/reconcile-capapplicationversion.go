@@ -336,6 +336,7 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 							Image:           workload.JobDefinition.Image,
 							ImagePullPolicy: workload.JobDefinition.ImagePullPolicy,
 							Command:         workload.JobDefinition.Command,
+							Args:            workload.JobDefinition.Args,
 							Env: append([]corev1.EnvVar{
 								{Name: EnvCAPOpAppVersion, Value: cav.Spec.Version},
 							}, env...),
@@ -791,6 +792,7 @@ func getContainer(params *DeploymentParameters) []corev1.Container {
 		Image:           params.WorkloadDetails.DeploymentDefinition.Image,
 		ImagePullPolicy: params.WorkloadDetails.DeploymentDefinition.ImagePullPolicy,
 		Command:         params.WorkloadDetails.DeploymentDefinition.Command,
+		Args:            params.WorkloadDetails.DeploymentDefinition.Args,
 		Env:             getEnv(params),
 		EnvFrom:         params.EnvFrom,
 		VolumeMounts:    append(params.WorkloadDetails.DeploymentDefinition.VolumeMounts, params.VolumeMounts...),

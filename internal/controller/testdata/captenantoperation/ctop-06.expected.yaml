@@ -106,13 +106,16 @@ spec:
               value: tenant-id-for-provider
             - name: CAPOP_PROVIDER_SUBDOMAIN
               value: my-provider
+            - name: CAPOP_TENANT_MTXS_OPERATION
+              value: upgrade
             - name: foo
               value: bar
           envFrom:
             - secretRef:
                 name: test-cap-01-provider-abcd-cap-backend-gen
                 optional: true
-          command: ["node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx", "upgrade", "tenant-id-for-provider"]
+          command: ["node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx"]
+          args: ["$(CAPOP_TENANT_MTXS_OPERATION)", "tenant-id-for-provider"]
           image: docker.image.repo/srv/server:v2
           name: cap-backend
       imagePullSecrets:
