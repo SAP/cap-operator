@@ -112,8 +112,8 @@ spec:
                 optional: true
           command:
             - node
-          args:
             - ./node_modules/@sap/cds-mtxs/bin/cds-mtx
+          args:
             - $(CAPOP_TENANT_MTXS_OPERATION)
             - tenant-id-for-provider
           image: docker.image.repo/srv/server:latest

@@ -516,17 +516,13 @@ func getContainers(ctop *v1alpha1.CAPTenantOperation, derivedWorkload tentantOpe
 		SecurityContext: derivedWorkload.securityContext,
 	}
 
-	appendCommand := false
 	if derivedWorkload.command != nil {
 		container.Command = derivedWorkload.command
 		container.Args = derivedWorkload.args
 	} else {
-		container.Command = []string{"node"}
-		container.Args = []string{"./node_modules/@sap/cds-mtxs/bin/cds-mtx", `$(` + EnvCAPOpTenantMtxsOperation + `)`, ctop.Spec.TenantId}
-		appendCommand = true
-	}
-	if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
-		if appendCommand {
+		container.Command = []string{"node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx"} // Use entrypoint for mtxs as the command
+		container.Args = []string{`$(` + EnvCAPOpTenantMtxsOperation + `)`, ctop.Spec.TenantId}
+		if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
 			container.Args = append(container.Args, "--body", `$(`+EnvCAPOpSubscriptionPayload+`)`)
 		}
 	}
