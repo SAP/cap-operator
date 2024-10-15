@@ -110,11 +110,14 @@ spec:
                 secretKeyRef:
                   name: test-cap-01-gen
                   key: subscriptionContext
+            - name: CAPOP_TENANT_MTXS_OPERATION
+              value: subscribe
           envFrom:
             - secretRef:
                 name: test-cap-01-provider-abcd-mtx-gen
                 optional: true
-          command: ["node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx", "subscribe", "tenant-id-for-provider", "--body", "$(CAPOP_SUBSCRIPTION_PAYLOAD)"]
+          command: ["node"]
+          args: ["./node_modules/@sap/cds-mtxs/bin/cds-mtx", "$(CAPOP_TENANT_MTXS_OPERATION)", "tenant-id-for-provider", "--body", "$(CAPOP_SUBSCRIPTION_PAYLOAD)"]
           image: docker.image.repo/srv/server:latest
           name: mtx
       imagePullSecrets:

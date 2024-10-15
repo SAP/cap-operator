@@ -35,6 +35,7 @@ type tentantOperationWorkload struct {
 	image                     string
 	imagePullPolicy           corev1.PullPolicy
 	command                   []string
+	args                      []string
 	env                       []corev1.EnvVar
 	volumeMounts              []corev1.VolumeMount
 	volumes                   []corev1.Volume
@@ -484,7 +485,7 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 					RestartPolicy:             corev1.RestartPolicyNever,
 					ImagePullSecrets:          params.imagePullSecrets,
 					Containers:                getContainers(ctop, derivedWorkload, workload, params),
-					InitContainers:            *updateInitContainers(derivedWorkload.initContainers, getCTOPEnv(params, ctop), params.vcapSecretName),
+					InitContainers:            *updateInitContainers(derivedWorkload.initContainers, getCTOPEnv(params, ctop, v1alpha1.JobTenantOperation), params.vcapSecretName),
 					Volumes:                   derivedWorkload.volumes,
 					ServiceAccountName:        derivedWorkload.serviceAccountName,
 					SecurityContext:           derivedWorkload.podSecurityContext,
@@ -508,34 +509,25 @@ func getContainers(ctop *v1alpha1.CAPTenantOperation, derivedWorkload tentantOpe
 		Name:            workload.Name,
 		Image:           derivedWorkload.image,
 		ImagePullPolicy: derivedWorkload.imagePullPolicy,
-		Env:             append(getCTOPEnv(params, ctop), derivedWorkload.env...),
+		Env:             append(getCTOPEnv(params, ctop, v1alpha1.JobTenantOperation), derivedWorkload.env...),
 		EnvFrom:         getEnvFrom(params.vcapSecretName),
 		VolumeMounts:    derivedWorkload.volumeMounts,
 		Resources:       derivedWorkload.resources,
 		SecurityContext: derivedWorkload.securityContext,
 	}
 
-	var operation string
-
-	if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
-		operation = "subscribe"
-	} else if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeUpgrade {
-		operation = "upgrade"
-	} else { // deprovisioning
-		operation = "unsubscribe"
-	}
-
 	appendCommand := false
 	if derivedWorkload.command != nil {
 		container.Command = derivedWorkload.command
+		container.Args = derivedWorkload.args
 	} else {
-		container.Command = []string{"node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx", operation, ctop.Spec.TenantId}
+		container.Command = []string{"node"}
+		container.Args = []string{"./node_modules/@sap/cds-mtxs/bin/cds-mtx", `$(` + EnvCAPOpTenantMtxsOperation + `)`, ctop.Spec.TenantId}
 		appendCommand = true
 	}
 	if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
-		container.Env = append(container.Env, corev1.EnvVar{Name: EnvCAPOpSubscriptionPayload, ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: ctop.Annotations[AnnotationSubscriptionContextSecret]}, Key: SubscriptionContext}}})
 		if appendCommand {
-			container.Command = append(container.Command, "--body", `$(`+EnvCAPOpSubscriptionPayload+`)`)
+			container.Args = append(container.Args, "--body", `$(`+EnvCAPOpSubscriptionPayload+`)`)
 		}
 	}
 
@@ -570,6 +562,7 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 		result.image = workload.JobDefinition.Image
 		result.imagePullPolicy = workload.JobDefinition.ImagePullPolicy
 		result.command = workload.JobDefinition.Command
+		result.args = workload.JobDefinition.Args
 		result.env = workload.JobDefinition.Env
 		result.volumeMounts = workload.JobDefinition.VolumeMounts
 		result.volumes = workload.JobDefinition.Volumes
@@ -628,15 +621,16 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 							Name:            workload.Name,
 							Image:           workload.JobDefinition.Image,
 							ImagePullPolicy: workload.JobDefinition.ImagePullPolicy,
-							Env:             append(getCTOPEnv(params, ctop), workload.JobDefinition.Env...),
+							Env:             append(getCTOPEnv(params, ctop, v1alpha1.JobCustomTenantOperation), workload.JobDefinition.Env...),
 							EnvFrom:         getEnvFrom(params.vcapSecretName),
 							VolumeMounts:    workload.JobDefinition.VolumeMounts,
 							Command:         workload.JobDefinition.Command,
+							Args:            workload.JobDefinition.Args,
 							Resources:       workload.JobDefinition.Resources,
 							SecurityContext: workload.JobDefinition.SecurityContext,
 						},
 					},
-					InitContainers: *updateInitContainers(workload.JobDefinition.InitContainers, getCTOPEnv(params, ctop), params.vcapSecretName),
+					InitContainers: *updateInitContainers(workload.JobDefinition.InitContainers, getCTOPEnv(params, ctop, v1alpha1.JobCustomTenantOperation), params.vcapSecretName),
 				},
 			},
 		},
@@ -677,8 +671,8 @@ func addCAPTenantOperationLabels(ctop *v1alpha1.CAPTenantOperation, cat *v1alpha
 	return updated
 }
 
-func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation) []corev1.EnvVar {
-	return []corev1.EnvVar{
+func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation, stepType v1alpha1.JobType) []corev1.EnvVar {
+	env := []corev1.EnvVar{
 		{Name: EnvCAPOpAppVersion, Value: params.version},
 		{Name: EnvCAPOpTenantId, Value: ctop.Spec.TenantId},
 		{Name: EnvCAPOpTenantOperation, Value: string(ctop.Spec.Operation)},
@@ -689,4 +683,19 @@ func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation) []co
 		{Name: EnvCAPOpProviderTenantId, Value: params.providerTenantId},
 		{Name: EnvCAPOpProviderSubDomain, Value: params.providerSubdomain},
 	}
+
+	if stepType == v1alpha1.JobTenantOperation {
+		var operation string
+		if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
+			operation = "subscribe"
+			env = append(env, corev1.EnvVar{Name: EnvCAPOpSubscriptionPayload, ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: ctop.Annotations[AnnotationSubscriptionContextSecret]}, Key: SubscriptionContext}}})
+		} else if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeUpgrade {
+			operation = "upgrade"
+		} else { // deprovisioning
+			operation = "unsubscribe"
+		}
+		env = append(env, corev1.EnvVar{Name: EnvCAPOpTenantMtxsOperation, Value: operation})
+	}
+
+	return env
 }

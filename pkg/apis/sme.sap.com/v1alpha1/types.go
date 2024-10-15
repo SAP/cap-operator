@@ -367,6 +367,8 @@ type CommonDetails struct {
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 	// Entrypoint array for the container
 	Command []string `json:"command,omitempty"`
+	// Arguments to the entrypoint
+	Args []string `json:"args,omitempty"`
 	// Environment Config for the Container
 	Env []corev1.EnvVar `json:"env,omitempty"`
 	// Volume Configuration for the Pod

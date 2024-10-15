@@ -104,11 +104,14 @@ spec:
               value: tenant-id-for-provider
             - name: CAPOP_PROVIDER_SUBDOMAIN
               value: my-provider
+            - name: CAPOP_TENANT_MTXS_OPERATION
+              value: unsubscribe
           envFrom:
             - secretRef:
                 name: test-cap-01-provider-abcd-mtx-gen
                 optional: true
-          command: ["node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx", "unsubscribe", "tenant-id-for-provider"]
+          command: ["node"]
+          args: ["./node_modules/@sap/cds-mtxs/bin/cds-mtx", "$(CAPOP_TENANT_MTXS_OPERATION)", "tenant-id-for-provider"]
           image: docker.image.repo/srv/server:latest
           name: mtx
       imagePullSecrets:
