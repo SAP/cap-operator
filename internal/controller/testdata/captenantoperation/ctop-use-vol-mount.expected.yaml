@@ -105,13 +105,15 @@ spec:
               value: tenant-id-for-provider
             - name: CAPOP_PROVIDER_SUBDOMAIN
               value: my-provider
-            - name: SERVICE_BINDING_ROOT
-              value: "/etc/secrets"
             - name: CAPOP_SUBSCRIPTION_PAYLOAD
               valueFrom:
                 secretKeyRef:
                   name: test-cap-01-gen
                   key: subscriptionContext
+            - name: CAPOP_TENANT_MTXS_OPERATION
+              value: subscribe
+            - name: SERVICE_BINDING_ROOT
+              value: "/etc/secrets"
           volumeMounts:
             - mountPath: /cache
               name: cache-vol
@@ -124,13 +126,8 @@ spec:
             - name: cap-service-manager
               readOnly: true
               mountPath: "/etc/secrets/service-manager"
-          command:
-            - node
-            - ./node_modules/@sap/cds-mtxs/bin/cds-mtx
-            - subscribe
-            - tenant-id-for-provider
-            - --body
-            - $(CAPOP_SUBSCRIPTION_PAYLOAD)
+          command: ["node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx"]
+          args: ["$(CAPOP_TENANT_MTXS_OPERATION)", "tenant-id-for-provider", "--body", "$(CAPOP_SUBSCRIPTION_PAYLOAD)"]
           resources:
             limits:
               cpu: 200m
@@ -233,6 +230,13 @@ spec:
               value: tenant-id-for-provider
             - name: CAPOP_PROVIDER_SUBDOMAIN
               value: my-provider
+            - name: CAPOP_SUBSCRIPTION_PAYLOAD
+              valueFrom:
+                secretKeyRef:
+                  name: test-cap-01-gen
+                  key: subscriptionContext
+            - name: CAPOP_TENANT_MTXS_OPERATION
+              value: subscribe
             - name: SERVICE_BINDING_ROOT
               value: "/etc/secrets"
             resources:
@@ -279,6 +283,13 @@ spec:
                 value: tenant-id-for-provider
               - name: CAPOP_PROVIDER_SUBDOMAIN
                 value: my-provider
+              - name: CAPOP_SUBSCRIPTION_PAYLOAD
+                valueFrom:
+                  secretKeyRef:
+                    name: test-cap-01-gen
+                    key: subscriptionContext
+              - name: CAPOP_TENANT_MTXS_OPERATION
+                value: subscribe
               - name: SERVICE_BINDING_ROOT
                 value: "/etc/secrets"
             resources:
