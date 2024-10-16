@@ -256,6 +256,12 @@ type DeploymentDetails struct {
 	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty"`
 	// Workload monitoring specification
 	Monitoring *WorkloadMonitoring `json:"monitoring,omitempty"`
+	// Configuration for the service to be exposed (relevant only for 'Service' type)
+	ServiceExposure *ServiceExposure `json:"serviceExposure,omitempty"`
+}
+
+type ServiceExposure struct {
+	ExposedDomain string `json:"exposedDomain"`
 }
 
 // WorkloadMonitoring specifies the metrics related to the workload
@@ -334,6 +340,8 @@ const (
 	DeploymentRouter DeploymentType = "Router"
 	// Additional deployment type
 	DeploymentAdditional DeploymentType = "Additional"
+	// Service deployment type
+	DeploymentService DeploymentType = "Service"
 )
 
 // JobDetails specifies the details of the Job

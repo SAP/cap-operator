@@ -1728,6 +1728,13 @@ spec:
                           type: object
                         serviceAccountName:
                           type: string
+                        serviceExposure:
+                          properties:
+                            exposedDomain:
+                              type: string
+                          required:
+                          - exposedDomain
+                          type: object
                         tolerations:
                           items:
                             properties:

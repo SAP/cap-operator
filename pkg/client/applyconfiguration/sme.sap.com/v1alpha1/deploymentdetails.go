@@ -22,6 +22,7 @@ type DeploymentDetailsApplyConfiguration struct {
 	LivenessProbe                   *v1.Probe                             `json:"livenessProbe,omitempty"`
 	ReadinessProbe                  *v1.Probe                             `json:"readinessProbe,omitempty"`
 	Monitoring                      *WorkloadMonitoringApplyConfiguration `json:"monitoring,omitempty"`
+	ServiceExposure                 *ServiceExposureApplyConfiguration    `json:"serviceExposure,omitempty"`
 }
 
 // DeploymentDetailsApplyConfiguration constructs a declarative configuration of the DeploymentDetails type for use with
@@ -246,5 +247,13 @@ func (b *DeploymentDetailsApplyConfiguration) WithReadinessProbe(value v1.Probe)
 // If called multiple times, the Monitoring field is set to the value of the last call.
 func (b *DeploymentDetailsApplyConfiguration) WithMonitoring(value *WorkloadMonitoringApplyConfiguration) *DeploymentDetailsApplyConfiguration {
 	b.Monitoring = value
+	return b
+}
+
+// WithServiceExposure sets the ServiceExposure field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ServiceExposure field is set to the value of the last call.
+func (b *DeploymentDetailsApplyConfiguration) WithServiceExposure(value *ServiceExposureApplyConfiguration) *DeploymentDetailsApplyConfiguration {
+	b.ServiceExposure = value
 	return b
 }

@@ -75,6 +75,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.NameValueApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Ports"):
 		return &smesapcomv1alpha1.PortsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ServiceExposure"):
+		return &smesapcomv1alpha1.ServiceExposureApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ServiceInfo"):
 		return &smesapcomv1alpha1.ServiceInfoApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("TenantOperations"):
