@@ -266,7 +266,7 @@ func (c *Controller) handleContentDeployJob(ca *v1alpha1.CAPApplication, cav *v1
 
 		// Get VCAP secret name
 		err = nil
-		if !useVolumeMounts(cav) {
+		if !useVolumeMountsForServiceCredentials(cav) {
 			vcapSecretName, err = createVCAPSecret(jobName, cav.Namespace, ownerRef, consumedServiceInfos, c.kubeClient)
 		}
 
@@ -301,13 +301,13 @@ func newContentDeploymentJob(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAppli
 
 	env := workload.JobDefinition.Env
 
-	if useVolumeMounts(cav) {
+	if useVolumeMountsForServiceCredentials(cav) {
 		// Get ServiceInfos for consumed BTP services
 		consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), ca.Spec.BTP.Services)
 
 		env = updateServiceBindingRootEnv(env)
-		serviceSecretVolumeMounts = getVolumeMounts(consumedServiceInfos)
-		serviceSecretVolumes = getVolumes(consumedServiceInfos)
+		serviceSecretVolumeMounts = getServiceCredentialVolumeMounts(consumedServiceInfos)
+		serviceSecretVolumes = getServiceCredentialVolumes(consumedServiceInfos)
 	} else {
 		envFrom = getEnvFrom(vcapSecretName)
 	}
@@ -699,7 +699,7 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 
 		// Get VCAP secret name
 		err = nil
-		if !useVolumeMounts(cav) {
+		if !useVolumeMountsForServiceCredentials(cav) {
 			vcapSecretName, err = createVCAPSecret(deploymentName, cav.Namespace, ownerRef, consumedServiceInfos, c.kubeClient)
 		}
 
@@ -724,13 +724,13 @@ func newDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVers
 		Env:             workload.DeploymentDefinition.Env,
 	}
 
-	if useVolumeMounts(cav) {
+	if useVolumeMountsForServiceCredentials(cav) {
 		// Get ServiceInfos for consumed BTP services
 		consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), ca.Spec.BTP.Services)
 
 		params.Env = updateServiceBindingRootEnv(params.Env)
-		params.VolumeMounts = getVolumeMounts(consumedServiceInfos)
-		params.Volumes = getVolumes(consumedServiceInfos)
+		params.VolumeMounts = getServiceCredentialVolumeMounts(consumedServiceInfos)
+		params.Volumes = getServiceCredentialVolumes(consumedServiceInfos)
 	} else {
 		params.EnvFrom = getEnvFrom(vcapSecretName)
 	}

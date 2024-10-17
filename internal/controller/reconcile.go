@@ -50,7 +50,7 @@ const (
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
 	AnnotationProviderSubAccountId      = "sme.sap.com/provider-sub-account-id"
 	AnnotationEnableCleanupMonitoring   = "sme.sap.com/enable-cleanup-monitoring"
-	AnnotationUseVolumeMount            = "sme.sap.com/use-credential-volume-mount"
+	AnnotationUseCredentialVolumeMount  = "sme.sap.com/use-credential-volume-mount"
 	FinalizerCAPApplication             = "sme.sap.com/capapplication"
 	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
 	FinalizerCAPTenant                  = "sme.sap.com/captenant"
@@ -621,7 +621,7 @@ func getWorkloadName(cavName, workloadName string) string {
 	return fmt.Sprintf("%s-%s", cavName, strings.ToLower(workloadName))
 }
 
-func getVolumeMounts(serviceInfos []v1alpha1.ServiceInfo) []corev1.VolumeMount {
+func getServiceCredentialVolumeMounts(serviceInfos []v1alpha1.ServiceInfo) []corev1.VolumeMount {
 	volumeMounts := []corev1.VolumeMount{}
 	for _, serviceInfo := range serviceInfos {
 		volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: serviceInfo.Name, MountPath: path.Join(defaultServiceBindingRootEnv.Value, serviceInfo.Class), ReadOnly: true})
@@ -629,7 +629,7 @@ func getVolumeMounts(serviceInfos []v1alpha1.ServiceInfo) []corev1.VolumeMount {
 	return volumeMounts
 }
 
-func getVolumes(serviceInfos []v1alpha1.ServiceInfo) []corev1.Volume {
+func getServiceCredentialVolumes(serviceInfos []v1alpha1.ServiceInfo) []corev1.Volume {
 	volumes := []corev1.Volume{}
 	for _, serviceInfo := range serviceInfos {
 		volumes = append(volumes, corev1.Volume{Name: serviceInfo.Name, VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: serviceInfo.Secret}}})
@@ -637,8 +637,8 @@ func getVolumes(serviceInfos []v1alpha1.ServiceInfo) []corev1.Volume {
 	return volumes
 }
 
-func useVolumeMounts(cav *v1alpha1.CAPApplicationVersion) bool {
-	value, exists := cav.Annotations[AnnotationUseVolumeMount]
+func useVolumeMountsForServiceCredentials(cav *v1alpha1.CAPApplicationVersion) bool {
+	value, exists := cav.Annotations[AnnotationUseCredentialVolumeMount]
 	return exists && value == "true"
 }
 

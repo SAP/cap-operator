@@ -391,7 +391,7 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 	consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), relatedResources.CAPApplication.Spec.BTP.Services)
 
 	// check volume mount annotation
-	useVolumeMount := useVolumeMounts(relatedResources.CAPApplicationVersion)
+	useVolumeMount := useVolumeMountsForServiceCredentials(relatedResources.CAPApplicationVersion)
 
 	// create VCAP secret from consumed BTP services
 	var vcapSecretName string
@@ -442,8 +442,8 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 
 	if useVolumeMount {
 		params.Env = updateServiceBindingRootEnv(params.Env)
-		params.volumeMounts = getVolumeMounts(consumedServiceInfos)
-		params.volumes = getVolumes(consumedServiceInfos)
+		params.volumeMounts = getServiceCredentialVolumeMounts(consumedServiceInfos)
+		params.volumes = getServiceCredentialVolumes(consumedServiceInfos)
 	} else {
 		params.EnvFrom = getEnvFrom(vcapSecretName)
 	}
