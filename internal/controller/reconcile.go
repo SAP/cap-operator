@@ -50,7 +50,7 @@ const (
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
 	AnnotationProviderSubAccountId      = "sme.sap.com/provider-sub-account-id"
 	AnnotationEnableCleanupMonitoring   = "sme.sap.com/enable-cleanup-monitoring"
-	AnnotationUseVolumeMount            = "sme.sap.com/use-volume-mount"
+	AnnotationUseVolumeMount            = "sme.sap.com/use-credential-volume-mount"
 	FinalizerCAPApplication             = "sme.sap.com/capapplication"
 	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
 	FinalizerCAPTenant                  = "sme.sap.com/captenant"

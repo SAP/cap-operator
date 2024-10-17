@@ -5,7 +5,7 @@ metadata:
   annotations:
     sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
     sme.sap.com/owner-identifier: default.test-cap-01
-    sme.sap.com/use-volume-mount: "true"
+    sme.sap.com/use-credential-volume-mount: "true"
   labels:
     sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
     sme.sap.com/owner-generation: "2"
