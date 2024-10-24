@@ -624,7 +624,7 @@ func getWorkloadName(cavName, workloadName string) string {
 func getServiceCredentialVolumeMounts(serviceInfos []v1alpha1.ServiceInfo) []corev1.VolumeMount {
 	volumeMounts := []corev1.VolumeMount{}
 	for _, serviceInfo := range serviceInfos {
-		volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: serviceInfo.Name, MountPath: path.Join(defaultServiceBindingRootEnv.Value, serviceInfo.Class), ReadOnly: true})
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: serviceInfo.Name, MountPath: path.Join(defaultServiceBindingRootEnv.Value, serviceInfo.Name), ReadOnly: true})
 	}
 	return volumeMounts
 }

@@ -391,12 +391,12 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 	consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), relatedResources.CAPApplication.Spec.BTP.Services)
 
 	// check volume mount annotation
-	useVolumeMount := useVolumeMountsForServiceCredentials(relatedResources.CAPApplicationVersion)
+	useVolumeMountsForServiceCredentials := useVolumeMountsForServiceCredentials(relatedResources.CAPApplicationVersion)
 
 	// create VCAP secret from consumed BTP services
 	var vcapSecretName string
 	err = nil
-	if !useVolumeMount {
+	if !useVolumeMountsForServiceCredentials {
 		vcapSecretName, err = createVCAPSecret(ctop.Name+"-"+strings.ToLower(workload.Name), ctop.Namespace, *metav1.NewControllerRef(ctop, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantOperationKind)), consumedServiceInfos, c.kubeClient)
 		if err != nil {
 			return nil, err
@@ -440,7 +440,7 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 		params.Env = workload.DeploymentDefinition.Env
 	}
 
-	if useVolumeMount {
+	if useVolumeMountsForServiceCredentials {
 		params.Env = updateServiceBindingRootEnv(params.Env)
 		params.volumeMounts = getServiceCredentialVolumeMounts(consumedServiceInfos)
 		params.volumes = getServiceCredentialVolumes(consumedServiceInfos)
