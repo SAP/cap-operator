@@ -32,7 +32,6 @@ import (
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned/fake"
 	istionwv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	istiofake "istio.io/client-go/pkg/clientset/versioned/fake"
-	apiextFake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 )
 
 const (
@@ -333,8 +332,6 @@ func getTestController(resources testResources) *Controller {
 
 	crdClient := fake.NewSimpleClientset(crdObjects...)
 
-	apiExtClient := apiextFake.NewSimpleClientset()
-
 	promopClient := promopFake.NewSimpleClientset()
 
 	istioClient := istiofake.NewSimpleClientset(istioObjects...)
@@ -345,7 +342,7 @@ func getTestController(resources testResources) *Controller {
 
 	dnsClient := dnsfake.NewSimpleClientset(dnsObjects...)
 
-	c := NewController(coreClient, crdClient, istioClient, certClient, certManagerCertClient, dnsClient, apiExtClient, promopClient)
+	c := NewController(coreClient, crdClient, istioClient, certClient, certManagerCertClient, dnsClient, promopClient)
 
 	for _, ca := range resources.cas {
 		if ca != nil {

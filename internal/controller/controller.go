@@ -35,7 +35,6 @@ import (
 	"k8s.io/klog/v2"
 
 	promop "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
-	apiext "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 )
 
 type Controller struct {
@@ -45,7 +44,6 @@ type Controller struct {
 	gardenerCertificateClient    gardenerCert.Interface
 	certManagerCertificateClient certManager.Interface
 	gardenerDNSClient            gardenerDNS.Interface
-	apiExtClient                 apiext.Interface
 	promClient                   promop.Interface
 	kubeInformerFactory          informers.SharedInformerFactory
 	crdInformerFactory           crdInformers.SharedInformerFactory
@@ -58,7 +56,7 @@ type Controller struct {
 	eventRecorder                events.EventRecorder
 }
 
-func NewController(client kubernetes.Interface, crdClient versioned.Interface, istioClient istio.Interface, gardenerCertificateClient gardenerCert.Interface, certManagerCertificateClient certManager.Interface, gardenerDNSClient gardenerDNS.Interface, apiExtClient apiext.Interface, promClient promop.Interface) *Controller {
+func NewController(client kubernetes.Interface, crdClient versioned.Interface, istioClient istio.Interface, gardenerCertificateClient gardenerCert.Interface, certManagerCertificateClient certManager.Interface, gardenerDNSClient gardenerDNS.Interface, promClient promop.Interface) *Controller {
 
 	queues := map[int]workqueue.TypedRateLimitingInterface[QueueItem]{
 		ResourceCAPApplication:        workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPApplication]}),
@@ -107,7 +105,6 @@ func NewController(client kubernetes.Interface, crdClient versioned.Interface, i
 		gardenerCertificateClient:    gardenerCertificateClient,
 		certManagerCertificateClient: certManagerCertificateClient,
 		gardenerDNSClient:            gardenerDNSClient,
-		apiExtClient:                 apiExtClient,
 		promClient:                   promClient,
 		kubeInformerFactory:          kubeInformerFactory,
 		crdInformerFactory:           crdInformerFactory,

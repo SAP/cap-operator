@@ -9,6 +9,8 @@ import (
 	"context"
 	"fmt"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func TestCAV_WithoutCAPApplicationAndVersion(t *testing.T) {
@@ -811,15 +813,14 @@ func TestCAV_ServiceMonitorCreation(t *testing.T) {
 		TestData{
 			description: "capapplication version - service monitor creation",
 			initialResources: []string{
-				"testdata/common/crd-servicemonitors.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/credential-secrets.yaml",
 				"testdata/version-monitoring/cav-v1-deletion-rules-processing.yaml",
 				"testdata/capapplicationversion/deployments-ready.yaml",
 				"testdata/capapplicationversion/content-job-completed.yaml",
 			},
+			discoverResources: []schema.GroupVersionResource{{Resource: "servicemonitors", Group: "monitoring.coreos.com", Version: "v1"}},
 			expectedResources: "testdata/version-monitoring/servicemonitors-cav-v1.yaml",
-			backlogItems:      []string{},
 		},
 	)
 }
@@ -831,15 +832,15 @@ func TestCAV_InvalidMonitoringConfig(t *testing.T) {
 		TestData{
 			description: "capapplication version - service monitor creation",
 			initialResources: []string{
-				"testdata/common/crd-servicemonitors.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/credential-secrets.yaml",
 				"testdata/version-monitoring/cav-v1-monitoring-port-missing.yaml",
 				"testdata/capapplicationversion/deployments-ready.yaml",
 				"testdata/capapplicationversion/content-job-completed.yaml",
 			},
-			expectError:  true,
-			backlogItems: []string{},
+			discoverResources: []schema.GroupVersionResource{{Resource: "servicemonitors", Group: "monitoring.coreos.com", Version: "v1"}},
+			expectError:       true,
+			backlogItems:      []string{},
 		},
 	)
 	if err == nil || err.Error() != fmt.Sprintf("invalid port reference in workload %s monitoring config of version %s", "app-router", "test-cap-01-cav-v1") {

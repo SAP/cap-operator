@@ -20,6 +20,7 @@ import (
 	prommodel "github.com/prometheus/common/model"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/util/workqueue"
 )
 
@@ -85,7 +86,7 @@ func TestMonitoringEnv(t *testing.T) {
 }
 
 func setupTestControllerWithInitialResources(t *testing.T, initialResources []string) *Controller {
-	c := initializeControllerForReconciliationTests(t, []ResourceAction{})
+	c := initializeControllerForReconciliationTests(t, []ResourceAction{}, []schema.GroupVersionResource{})
 	var wg sync.WaitGroup
 	work := func(file string) {
 		defer wg.Done()
