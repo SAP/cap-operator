@@ -284,10 +284,10 @@ spec:
               subPath: xsapp.json
             - name: cap-uaa
               readOnly: true
-              mountPath: "/etc/secrets/xsuaa"
+              mountPath: "/etc/secrets/cap-uaa"
             - name: cap-saas-registry
               readOnly: true
-              mountPath: "/etc/secrets/saas-registry"
+              mountPath: "/etc/secrets/cap-saas-registry"
           livenessProbe:
             failureThreshold: 3
             httpGet:
@@ -342,10 +342,10 @@ spec:
           volumeMounts:
             - name: cap-uaa
               readOnly: true
-              mountPath: "/etc/secrets/xsuaa"
+              mountPath: "/etc/secrets/cap-uaa"
             - name: cap-saas-registry
               readOnly: true
-              mountPath: "/etc/secrets/saas-registry"
+              mountPath: "/etc/secrets/cap-saas-registry"
           resources:
             limits:
               cpu: 100m
@@ -362,10 +362,10 @@ spec:
               mountPath: /log
             - name: cap-uaa
               readOnly: true
-              mountPath: "/etc/secrets/xsuaa"
+              mountPath: "/etc/secrets/cap-uaa"
             - name: cap-saas-registry
               readOnly: true
-              mountPath: "/etc/secrets/saas-registry"
+              mountPath: "/etc/secrets/cap-saas-registry"
           env:
             - name: LOG_CONTAINER_ENV
               value: "log-container-env"
@@ -422,7 +422,7 @@ spec:
           volumeMounts:
           - name: cap-uaa
             readOnly: true
-            mountPath: "/etc/secrets/xsuaa"
+            mountPath: "/etc/secrets/cap-uaa"
       imagePullSecrets:
         - name: regcred
       restartPolicy: "OnFailure"

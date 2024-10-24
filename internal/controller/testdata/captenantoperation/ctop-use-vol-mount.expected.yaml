@@ -119,13 +119,13 @@ spec:
               name: cache-vol
             - name: cap-uaa
               readOnly: true
-              mountPath: "/etc/secrets/xsuaa"
+              mountPath: "/etc/secrets/cap-uaa"
             - name: cap-saas-registry
               readOnly: true
-              mountPath: "/etc/secrets/saas-registry"
+              mountPath: "/etc/secrets/cap-saas-registry"
             - name: cap-service-manager
               readOnly: true
-              mountPath: "/etc/secrets/service-manager"
+              mountPath: "/etc/secrets/cap-service-manager"
           command: ["node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx"]
           args: ["$(CAPOP_TENANT_MTXS_OPERATION)", "tenant-id-for-provider", "--body", "$(CAPOP_SUBSCRIPTION_PAYLOAD)"]
           resources:
@@ -202,13 +202,13 @@ spec:
             volumeMounts:
               - name: cap-uaa
                 readOnly: true
-                mountPath: "/etc/secrets/xsuaa"
+                mountPath: "/etc/secrets/cap-uaa"
               - name: cap-saas-registry
                 readOnly: true
-                mountPath: "/etc/secrets/saas-registry"
+                mountPath: "/etc/secrets/cap-saas-registry"
               - name: cap-service-manager
                 readOnly: true
-                mountPath: "/etc/secrets/service-manager"
+                mountPath: "/etc/secrets/cap-service-manager"
             env:
             - name: INIT_CONTAINER_ENV
               value: "init-container-env"
@@ -255,13 +255,13 @@ spec:
                 mountPath: /log
               - name: cap-uaa
                 readOnly: true
-                mountPath: "/etc/secrets/xsuaa"
+                mountPath: "/etc/secrets/cap-uaa"
               - name: cap-saas-registry
                 readOnly: true
-                mountPath: "/etc/secrets/saas-registry"
+                mountPath: "/etc/secrets/cap-saas-registry"
               - name: cap-service-manager
                 readOnly: true
-                mountPath: "/etc/secrets/service-manager"
+                mountPath: "/etc/secrets/cap-service-manager"
             env:
               - name: LOG_CONTAINER_ENV
                 value: "log-container-env"
