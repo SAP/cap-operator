@@ -467,46 +467,47 @@ func (c *Controller) updateServiceMonitors(ctx context.Context, ca *v1alpha1.CAP
 		return nil
 	}
 
-	isWorkloadPort := func(wlPorts []corev1.ServicePort, scrapePort string) bool {
-		for j := range wlPorts {
-			if wlPorts[j].Name == scrapePort {
-				return true
-			}
-		}
-		return false
-	}
-
 	for i := range cav.Spec.Workloads {
 		wl := cav.Spec.Workloads[i]
-		if wl.DeploymentDefinition == nil || wl.DeploymentDefinition.Monitoring == nil || wl.DeploymentDefinition.Monitoring.ScrapeConfig == nil {
-			continue // do not reconcile service monitors
-		}
-
-		wlPortInfos := getServicePortInfoByWorkloadName(workloadServicePortInfos, cav.Name, wl.Name)
-		if wlPortInfos == nil {
-			return fmt.Errorf("could not identify workload port information for workload %s in version %s", wl.Name, cav.Name)
-		}
-
-		if portVerified := isWorkloadPort(wlPortInfos.Ports, wl.DeploymentDefinition.Monitoring.ScrapeConfig.WorkloadPort); !portVerified {
-			return fmt.Errorf("invalid port reference in workload %s monitoring config of version %s", wl.Name, cav.Name)
-		}
-
-		sm, err := c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Get(ctx, wlPortInfos.WorkloadName+ServiceSuffix, metav1.GetOptions{})
-		if err != nil {
-			if k8sErrors.IsNotFound(err) {
-				sm, err = c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Create(ctx, newServiceMonitor(ca, cav, &wl, wlPortInfos), metav1.CreateOptions{})
-				if err == nil {
-					util.LogInfo("Service monitor created successfully", string(Processing), cav, sm, "version", cav.Spec.Version)
-				}
-			}
-		}
-		err = doChecks(err, sm, cav, wlPortInfos.WorkloadName+ServiceSuffix)
-		if err != nil {
+		if err := c.reconcileWorkloadServiceMonitor(ctx, &wl, cav, workloadServicePortInfos, ca); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (c *Controller) reconcileWorkloadServiceMonitor(ctx context.Context, wl *v1alpha1.WorkloadDetails, cav *v1alpha1.CAPApplicationVersion, workloadServicePortInfos []servicePortInfo, ca *v1alpha1.CAPApplication) error {
+	if wl.DeploymentDefinition == nil || wl.DeploymentDefinition.Monitoring == nil || wl.DeploymentDefinition.Monitoring.ScrapeConfig == nil {
+		return nil // do not reconcile service monitors
+	}
+
+	wlPortInfos := getServicePortInfoByWorkloadName(workloadServicePortInfos, cav.Name, wl.Name)
+	if wlPortInfos == nil {
+		return fmt.Errorf("could not identify workload port information for workload %s in version %s", wl.Name, cav.Name)
+	}
+
+	if portVerified := isWorkloadPort(wlPortInfos.Ports, wl.DeploymentDefinition.Monitoring.ScrapeConfig.WorkloadPort); !portVerified {
+		return fmt.Errorf("invalid port reference in workload %s monitoring config of version %s", wl.Name, cav.Name)
+	}
+
+	sm, err := c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Get(ctx, wlPortInfos.WorkloadName+ServiceSuffix, metav1.GetOptions{})
+	if err != nil && k8sErrors.IsNotFound(err) {
+		sm, err = c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Create(ctx, newServiceMonitor(ca, cav, wl, wlPortInfos), metav1.CreateOptions{})
+		if err == nil {
+			util.LogInfo("Service monitor created successfully", string(Processing), cav, sm, "version", cav.Spec.Version)
+		}
+	}
+	return doChecks(err, sm, cav, wlPortInfos.WorkloadName+ServiceSuffix)
+}
+
+func isWorkloadPort(wlPorts []corev1.ServicePort, scrapePort string) bool {
+	for j := range wlPorts {
+		if wlPorts[j].Name == scrapePort {
+			return true
+		}
+	}
+	return false
 }
 
 func newServiceMonitor(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, wl *v1alpha1.WorkloadDetails, wlPortInfos *servicePortInfo) *monv1.ServiceMonitor {
