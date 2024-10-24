@@ -42,6 +42,8 @@ spec:
 
 > The `CAPApplicationVersion` resource is meant to be immutable - it's spec should not be modified once it is deployed. This is also prevented by our web-hooks which we recommend to always keep active (default).
 
+> By default, credentials (from secrets) required to access SAP BTP services are automatically provided as the `VCAP_SERVICES` environment variable across all workloads. However, this behavior can be changed to use volume mounts by setting the annotation `sme.sap.com/use-credential-volume-mount: "true"` on the `CAPApplicationVersion` resource. When this annotation is set, the `SERVICE_BINDING_ROOT` environment variable will be injected into all the workloads, pointing to the secret path and overriding user-defined values, if any.
+
 ### Workloads with `deploymentDefinition`
 
 ```yaml
@@ -364,4 +366,4 @@ spec:
 >
 > The supported configurations is kept minimal intentionally to keep the overall API simple by considering commonly used configurations.
 
-> Note: For `initContainers` nearly the same environment variables as the main container are made available including VCAP_SERVICES environment.
+> Note: For `initContainers` nearly the same environment variables as the main container are made available including VCAP_SERVICES environment. Additionally, if annotation `sme.sap.com/use-credential-volume-mount: "true"` is set on the `CAPApplicationVersion` resource, the environment variable `SERVICE_BINDING_ROOT` and the volume mounts for the service credentials will also be made available.
