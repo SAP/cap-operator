@@ -21,8 +21,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apiextensions-apiserver/pkg/apihelpers"
-	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -447,19 +445,20 @@ func newService(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion
 
 // #region ServiceMonitor
 func (c *Controller) checkServiceMonitorCapability(ctx context.Context) error {
-	crdName := "servicemonitors.monitoring.coreos.com"
-	crd, err := c.apiExtClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+	const (
+		monitoringGroupVersion = "monitoring.coreos.com/v1"
+		resourceKind           = "ServiceMonitor"
+	)
+	list, err := c.kubeClient.Discovery().ServerResourcesForGroupVersion("monitoring.coreos.com/v1")
 	if err != nil {
-		return fmt.Errorf("could not get custom resource definition %s: %v", crdName, err)
+		return fmt.Errorf("error discovering resources for API version %s: %v", monitoringGroupVersion, err)
 	}
-	requiredVersion := "v1"
-	if !apihelpers.HasVersionServed(crd, requiredVersion) {
-		return fmt.Errorf("version %s of custom resource %s is not served", requiredVersion, crdName)
+	for i := range list.APIResources {
+		if list.APIResources[i].Kind == resourceKind {
+			return nil // found service monitor capability
+		}
 	}
-	if !apihelpers.IsCRDConditionTrue(crd, apiextv1.Established) {
-		return fmt.Errorf("custom resource %s condition %s not true", crdName, apiextv1.Established)
-	}
-	return nil
+	return fmt.Errorf("resource %s is not served by API version %s", resourceKind, monitoringGroupVersion)
 }
 
 func (c *Controller) updateServiceMonitors(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workloadServicePortInfos []servicePortInfo) error {
