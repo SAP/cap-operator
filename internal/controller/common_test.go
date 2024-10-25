@@ -45,9 +45,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	apiextFake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
-	apiExtScheme "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -65,6 +62,7 @@ var gvrKindMap map[string]string = map[string]string{
 	"captenants.sme.sap.com/v1alpha1":             "CAPTenant",
 	"capapplications.sme.sap.com/v1alpha1":        "CAPApplication",
 	"capapplicationversions.sme.sap.com/v1alpha1": "CAPApplicationVersion",
+	"servicemonitors.monitoring.coreos.com/v1":    "ServiceMonitor",
 }
 
 // adds fixed suffix "gen" to newly created objects with generateName
@@ -209,23 +207,44 @@ func getDeleteCollectionHandler[T FakeClientSetConstraint](t *testing.T, client 
 	}
 }
 
-func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAction) *Controller {
+func addForDiscovery(c *k8stesting.Fake, resources []schema.GroupVersionResource) {
+	m := map[string][]schema.GroupVersionResource{}
+	for i := range resources {
+		r := resources[i]
+		gv := fmt.Sprintf("%s/%s", r.Group, r.Version)
+		if v, ok := m[gv]; ok {
+			v = append(v, r)
+		} else {
+			m[gv] = []schema.GroupVersionResource{r}
+		}
+	}
+	for k, v := range m {
+		apiResources := []metav1.APIResource{}
+		for i := range v {
+			apiResources = append(apiResources, metav1.APIResource{Name: v[i].Resource, Kind: getKindFromGVR(v[i])})
+		}
+		c.Resources = append(c.Resources, &metav1.APIResourceList{GroupVersion: k, APIResources: apiResources})
+	}
+}
+
+func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAction, discoverResources []schema.GroupVersionResource) *Controller {
 	// add schemes for various client sets
 	smeScheme.AddToScheme(scheme.Scheme)
 	gardenercertscheme.AddToScheme(scheme.Scheme)
 	gardenerdnsscheme.AddToScheme(scheme.Scheme)
 	istioscheme.AddToScheme(scheme.Scheme)
 	certManagerScheme.AddToScheme(scheme.Scheme)
-	apiExtScheme.AddToScheme(scheme.Scheme)
 	promopScheme.AddToScheme(scheme.Scheme)
 
 	coreClient := k8sfake.NewSimpleClientset()
+	if len(discoverResources) > 0 {
+		addForDiscovery(&coreClient.Fake, discoverResources)
+	}
 	copClient := copfake.NewSimpleClientset()
 	istioClient := istiofake.NewSimpleClientset()
 	gardenerCertClient := gardenercertfake.NewSimpleClientset()
 	gardenerDNSClient := gardenerdnsfake.NewSimpleClientset()
 	certManagerClient := certManagerFake.NewSimpleClientset()
-	apiExtClient := apiextFake.NewSimpleClientset()
 	promopClient := promopFake.NewSimpleClientset()
 
 	copClient.PrependReactor("create", "*", generateNameCreateHandler)
@@ -249,7 +268,7 @@ func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAc
 	gardenerCertClient.PrependReactor("*", "*", getErrorReactorWithResources(t, items))
 	gardenerCertClient.PrependReactor("delete-collection", "*", getDeleteCollectionHandler(t, gardenerDNSClient))
 
-	c := NewController(coreClient, copClient, istioClient, gardenerCertClient, certManagerClient, gardenerDNSClient, apiExtClient, promopClient)
+	c := NewController(coreClient, copClient, istioClient, gardenerCertClient, certManagerClient, gardenerDNSClient, promopClient)
 	c.eventRecorder = events.NewFakeRecorder(10)
 	return c
 }
@@ -271,6 +290,8 @@ type TestData struct {
 	attempts int
 	// mock errors during the following resource modifications
 	mockErrorForResources []ResourceAction
+	// add resources for discovery API
+	discoverResources []schema.GroupVersionResource
 	// relevant backlog items (link for traceability)
 	backlogItems []string
 }
@@ -303,7 +324,7 @@ func eventDrain(ctx context.Context, c *Controller, t *testing.T) {
 func reconcileTestItem(ctx context.Context, t *testing.T, item QueueItem, data TestData) (err error) {
 	// run inside a test sub-context to maintain test case name with reference to backlog items
 	t.Run(strings.Join(append([]string{data.description}, data.backlogItems...), " "), func(t *testing.T) {
-		c := initializeControllerForReconciliationTests(t, data.mockErrorForResources)
+		c := initializeControllerForReconciliationTests(t, data.mockErrorForResources, data.discoverResources)
 		go eventDrain(ctx, c, t)
 
 		// load initial data
@@ -555,12 +576,6 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 		case *v1alpha1.CAPTenantOperation:
 			err = c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Informer().GetIndexer().Add(obj)
 		}
-	case *apiextv1.CustomResourceDefinition:
-		fakeClient, ok := c.apiExtClient.(*apiextFake.Clientset)
-		if !ok {
-			return fmt.Errorf("controller is not using a fake clientset")
-		}
-		fakeClient.Tracker().Add(obj)
 	case *monv1.ServiceMonitor:
 		fakeClient, ok := c.promClient.(*promopFake.Clientset)
 		if !ok {

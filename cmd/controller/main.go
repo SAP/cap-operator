@@ -28,7 +28,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	promop "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
-	apiext "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 )
 
 const (
@@ -53,11 +52,6 @@ func main() {
 	crdClient, err := versioned.NewForConfig(config)
 	if err != nil {
 		klog.Fatal("could not create client for custom resources: ", err.Error())
-	}
-
-	apiExtClient, err := apiext.NewForConfig(config)
-	if err != nil {
-		klog.Fatal("could not create client for api-extensions: ", err.Error())
 	}
 
 	promClient, err := promop.NewForConfig(config)
@@ -120,7 +114,7 @@ func main() {
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				klog.InfoS("Started leading: ", LeaseLockName, leaseLockId)
-				c := controller.NewController(coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient, apiExtClient, promClient)
+				c := controller.NewController(coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient, promClient)
 				go c.Start(ctx)
 			},
 			OnStoppedLeading: func() {
