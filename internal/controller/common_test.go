@@ -45,7 +45,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	apiExtScheme "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -235,7 +234,6 @@ func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAc
 	gardenerdnsscheme.AddToScheme(scheme.Scheme)
 	istioscheme.AddToScheme(scheme.Scheme)
 	certManagerScheme.AddToScheme(scheme.Scheme)
-	apiExtScheme.AddToScheme(scheme.Scheme)
 	promopScheme.AddToScheme(scheme.Scheme)
 
 	coreClient := k8sfake.NewSimpleClientset()

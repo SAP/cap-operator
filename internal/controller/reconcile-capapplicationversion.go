@@ -449,7 +449,7 @@ func (c *Controller) checkServiceMonitorCapability(ctx context.Context) error {
 		monitoringGroupVersion = "monitoring.coreos.com/v1"
 		resourceKind           = "ServiceMonitor"
 	)
-	list, err := c.kubeClient.Discovery().ServerResourcesForGroupVersion("monitoring.coreos.com/v1")
+	list, err := c.kubeClient.Discovery().ServerResourcesForGroupVersion(monitoringGroupVersion)
 	if err != nil {
 		return fmt.Errorf("error discovering resources for API version %s: %v", monitoringGroupVersion, err)
 	}
