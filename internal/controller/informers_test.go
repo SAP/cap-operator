@@ -18,14 +18,14 @@ import (
 var expectedResult = false
 
 type dummyType struct {
-	workqueue.RateLimitingInterface
+	workqueue.TypedRateLimitingInterface[QueueItem]
 }
 
-func (q *dummyType) Add(item interface{}) {
+func (q *dummyType) Add(item QueueItem) {
 	expectedResult = true
 }
 
-func (q *dummyType) AddAfter(item interface{}, duration time.Duration) {
+func (q *dummyType) AddAfter(item QueueItem, duration time.Duration) {
 	expectedResult = true
 }
 
@@ -87,7 +87,7 @@ func TestController_initializeInformers(t *testing.T) {
 			c := getTestController(testResources{})
 			expectedResult = false
 
-			queues := map[int]workqueue.RateLimitingInterface{
+			queues := map[int]workqueue.TypedRateLimitingInterface[QueueItem]{
 				ResourceCAPApplication:        &dummyType{},
 				ResourceCAPApplicationVersion: &dummyType{},
 				ResourceCAPTenant:             &dummyType{},

@@ -6,7 +6,7 @@ metadata:
   labels:
     sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
     sme.sap.com/owner-generation: "2"
-    sme.sap.com/owner-identifier: default.test-cap-01
+    sme.sap.com/owner-identifier-hash: 1f74ae2fbff71a708786a4df4bb2ca87ec603581
   name: test-cap-01-cav-v1
   namespace: default
   resourceVersion: "11371108"

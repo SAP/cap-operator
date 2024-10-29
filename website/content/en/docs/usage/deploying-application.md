@@ -119,11 +119,11 @@ The controller component of CAP Operator reacts to these objects and creates fur
 - Deployment (and service) for the application server with credentials (from secrets) to access SAP BTP services injected as `VCAP_SERVICES` environment variable
 - Deployment (and service) for the approuter with destination mapping to the application server and subscription server (for the tenant provisioning route)
 - Job for the version content deployer
-- TLS certificates for the domains provided using either [Gardener cert-management](https://github.com/gardener/cert-management) or [cert-manager.io cert-manager](https://github.com/cert-manager/cert-manager)
+- TLS certificates for the domains provided using either ["Gardener" cert-management](https://github.com/gardener/cert-management) or [cert-manager.io cert-manager](https://github.com/cert-manager/cert-manager)
 - Istio gateway resource for the application domains
 
 > The content deployer is used to deploy content or configuration to SAP BTP services, before using them.
 
-Once these resources are available, the `CAPApplicationVersion` status changes to `Ready`. **The controller proceeds to automatically create an object of type `CAPTenant`, which corresponds to the tenant of the provider subaccount.** Please see [tenant subscription]({{< ref "/tenant-provisioning.md" >}}) for details on how the `CAPTenant` resource is reconciled.
+Once these resources are available, the `CAPApplicationVersion` status changes to `Ready`. **The controller proceeds to automatically create an object of type `CAPTenant`, which corresponds to the tenant of the provider subaccount.** Please see [tenant subscription](./tenant-provisioning.md) for details on how the `CAPTenant` resource is reconciled.
 
 > The `CAPApplicationVersion` resource is meant to be immutable - it's spec should not be modified once it is deployed. This is also prevented by our web-hooks which we recommend to always keep active (default).

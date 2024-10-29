@@ -33,6 +33,8 @@ import (
 	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog/v2"
+
+	promop "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 )
 
 type Controller struct {
@@ -42,24 +44,26 @@ type Controller struct {
 	gardenerCertificateClient    gardenerCert.Interface
 	certManagerCertificateClient certManager.Interface
 	gardenerDNSClient            gardenerDNS.Interface
+	promClient                   promop.Interface
 	kubeInformerFactory          informers.SharedInformerFactory
 	crdInformerFactory           crdInformers.SharedInformerFactory
 	istioInformerFactory         istioInformers.SharedInformerFactory
 	gardenerCertInformerFactory  gardenerCertInformers.SharedInformerFactory
 	certManagerInformerFactory   certManagerInformers.SharedInformerFactory
 	gardenerDNSInformerFactory   gardenerDNSInformers.SharedInformerFactory
-	queues                       map[int]workqueue.RateLimitingInterface
+	queues                       map[int]workqueue.TypedRateLimitingInterface[QueueItem]
 	eventBroadcaster             events.EventBroadcaster
 	eventRecorder                events.EventRecorder
 }
 
-func NewController(client kubernetes.Interface, crdClient versioned.Interface, istioClient istio.Interface, gardenerCertificateClient gardenerCert.Interface, certManagerCertificateClient certManager.Interface, gardenerDNSClient gardenerDNS.Interface) *Controller {
-	queues := map[int]workqueue.RateLimitingInterface{
-		ResourceCAPApplication:        workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		ResourceCAPApplicationVersion: workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		ResourceCAPTenant:             workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		ResourceCAPTenantOperation:    workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		ResourceOperatorDomains:       workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+func NewController(client kubernetes.Interface, crdClient versioned.Interface, istioClient istio.Interface, gardenerCertificateClient gardenerCert.Interface, certManagerCertificateClient certManager.Interface, gardenerDNSClient gardenerDNS.Interface, promClient promop.Interface) *Controller {
+
+	queues := map[int]workqueue.TypedRateLimitingInterface[QueueItem]{
+		ResourceCAPApplication:        workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPApplication]}),
+		ResourceCAPApplicationVersion: workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPApplicationVersion]}),
+		ResourceCAPTenant:             workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPTenant]}),
+		ResourceCAPTenantOperation:    workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPTenantOperation]}),
+		ResourceOperatorDomains:       workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceOperatorDomains]}),
 	}
 
 	// Use 30mins as the default Resync interval for kube / proprietary  resources
@@ -91,7 +95,7 @@ func NewController(client kubernetes.Interface, crdClient versioned.Interface, i
 	v1alpha1scheme.AddToScheme(scheme)
 	istioscheme.AddToScheme(scheme)
 	eventBroadcaster := events.NewBroadcaster(&events.EventSinkImpl{Interface: client.EventsV1()})
-	eventBroadcaster.StartStructuredLogging(klog.Level(1))
+	eventBroadcaster.StartLogging(klog.Background())
 	recorder := eventBroadcaster.NewRecorder(scheme, "cap-controller.sme.sap.com")
 
 	c := &Controller{
@@ -101,6 +105,7 @@ func NewController(client kubernetes.Interface, crdClient versioned.Interface, i
 		gardenerCertificateClient:    gardenerCertificateClient,
 		certManagerCertificateClient: certManagerCertificateClient,
 		gardenerDNSClient:            gardenerDNSClient,
+		promClient:                   promClient,
 		kubeInformerFactory:          kubeInformerFactory,
 		crdInformerFactory:           crdInformerFactory,
 		istioInformerFactory:         istioInformerFactory,
@@ -180,6 +185,13 @@ func (c *Controller) Start(ctx context.Context) {
 		}(k)
 	}
 
+	// start version cleanup routines
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		c.startVersionCleanup(qCxt)
+	}()
+
 	// wait for workers
 	wg.Wait()
 }
@@ -208,24 +220,19 @@ func (c *Controller) processQueueItem(ctx context.Context, key int) error {
 
 	klog.V(2).InfoS("Processing queue item in work queue", "resource", getResourceKindFromKey(key), "queue length", q.Len())
 
-	i, shutdown := q.Get()
+	item, shutdown := q.Get()
 	if shutdown {
 		return fmt.Errorf("queue (%d) shutdown", key) // stop processing when the queue has been shutdown
 	}
 
 	// [IMPORTANT] always mark the item as done (after processing it)
-	defer q.Done(i)
+	defer q.Done(item)
 
 	var (
 		err      error
 		skipItem bool
 		result   *ReconcileResult
 	)
-	item, ok := i.(QueueItem)
-	if !ok {
-		klog.ErrorS(err, "unknown item found in queue", "resource", getResourceKindFromKey(key))
-		return nil // process next item
-	}
 
 	attempts := q.NumRequeues(item)
 
@@ -254,14 +261,14 @@ func (c *Controller) processQueueItem(ctx context.Context, key int) error {
 		klog.ErrorS(err, "queue processing error", "resource", getResourceKindFromKey(key))
 		if !skipItem {
 			// add back to queue for re-processing
-			q.AddRateLimited(i)
+			q.AddRateLimited(item)
 			return nil
 		}
 	}
 
 	// Forget the item after processing it
 	// This just clears the rate limiter from tracking the item
-	q.Forget(i)
+	q.Forget(item)
 
 	if result != nil {
 		// requeue resources specified in the reconciliation result
@@ -286,7 +293,7 @@ func (c *Controller) processReconcileResult(result *ReconcileResult) {
 	}
 }
 
-func (c *Controller) recoverFromPanic(ctx context.Context, item QueueItem, q workqueue.RateLimitingInterface) {
+func (c *Controller) recoverFromPanic(ctx context.Context, item QueueItem, q workqueue.TypedRateLimitingInterface[QueueItem]) {
 	if r := recover(); r != nil {
 		// Log the Error / Stack Trace
 		err := fmt.Errorf("panic: %v", r)
@@ -306,5 +313,4 @@ func (c *Controller) recoverFromPanic(ctx context.Context, item QueueItem, q wor
 		// Add the item back to the queue to be processed again with a RateLimited delay
 		q.AddRateLimited(item)
 	}
-
 }

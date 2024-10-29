@@ -11,11 +11,15 @@
 | tolerations | list | `[]` | Default tolerations (can be overwritten on component level) |
 | priorityClassName | string | `""` | Default priority class (can be overwritten on component level) |
 | topologySpreadConstraints | list | `[]` | Default topology spread constraints (can be overwritten on component level) |
+| podLabels | object | `{}` | Additional pod labels for all components |
+| podAnnotations | object | `{}` | Additional pod annotations for all components |
 | controller.replicas | int | `1` | Replicas |
 | controller.image.repository | string | `"ghcr.io/sap/cap-operator/controller"` | Image repository |
 | controller.image.tag | string | `""` | Image tag |
 | controller.image.pullPolicy | string | `""` | Image pull policy |
 | controller.imagePullSecrets | list | `[]` | Image pull secrets |
+| controller.podLabels | object | `{}` | Additional labels for controller pods |
+| controller.podAnnotations | object | `{}` | Additional annotations for controller pods |
 | controller.podSecurityContext | object | `{}` | Pod security content |
 | controller.nodeSelector | object | `{}` | Node selector |
 | controller.affinity | object | `{}` | Affinity settings |
@@ -27,12 +31,19 @@
 | controller.resources.limits.cpu | float | `0.2` | CPU limit |
 | controller.resources.requests.memory | string | `"50Mi"` | Memory request |
 | controller.resources.requests.cpu | float | `0.02` | CPU request |
+| controller.volumes | list | `[]` | Optionally specify list of additional volumes for the controller pod(s) |
+| controller.volumeMounts | list | `[]` | Optionally specify list of additional volumeMounts for the controller container(s) |
 | controller.dnsTarget | string | `""` | The dns target mentioned on the public ingress gateway service used in the cluster |
+| controller.versionMonitoring.prometheusAddress | string | `""` | The URL of the Prometheus server from which metrics related to managed application versions can be queried  |
+| controller.versionMonitoring.metricsEvaluationInterval | string | `"1h"` | The duration (example 2h) after which versions are evaluated for deletion; based on specified workload metrics |
+| controller.versionMonitoring.promClientAcquireRetryDelay | string | `"1h"` | The duration (example 10m) to wait before retrying to acquire Prometheus client and verify connection, after a failed attempt |
 | subscriptionServer.replicas | int | `1` | Replicas |
 | subscriptionServer.image.repository | string | `"ghcr.io/sap/cap-operator/server"` | Image repository |
 | subscriptionServer.image.tag | string | `""` | Image tag |
 | subscriptionServer.image.pullPolicy | string | `""` | Image pull policy |
 | subscriptionServer.imagePullSecrets | list | `[]` | Image pull secrets |
+| subscriptionServer.podLabels | object | `{}` | Additional labels for subscription server pods |
+| subscriptionServer.podAnnotations | object | `{}` | Additional annotations for subscription server pods |
 | subscriptionServer.podSecurityContext | object | `{}` | Pod security content |
 | subscriptionServer.nodeSelector | object | `{}` | Node selector |
 | subscriptionServer.affinity | object | `{}` | Affinity settings |
@@ -44,6 +55,8 @@
 | subscriptionServer.resources.limits.cpu | float | `0.1` | CPU limit |
 | subscriptionServer.resources.requests.memory | string | `"20Mi"` | Memory request |
 | subscriptionServer.resources.requests.cpu | float | `0.01` | CPU request |
+| subscriptionServer.volumes | list | `[]` | Optionally specify list of additional volumes for the server pod(s) |
+| subscriptionServer.volumeMounts | list | `[]` | Optionally specify list of additional volumeMounts for the server container(s) |
 | subscriptionServer.port | int | `4000` | Service port |
 | subscriptionServer.istioSystemNamespace | string | `"istio-system"` | The namespace in the cluster where istio system components are installed |
 | subscriptionServer.ingressGatewayLabels | object | `{"app":"istio-ingressgateway","istio":"ingressgateway"}` | Labels used to identify the istio ingress-gateway component |
@@ -55,6 +68,8 @@
 | webhook.image.tag | string | `""` | Image tag |
 | webhook.image.pullPolicy | string | `""` | Image pull policy |
 | webhook.imagePullSecrets | list | `[]` | Image pull secrets |
+| webhook.podLabels | object | `{}` | Additional labels for validating webhook pods |
+| webhook.podAnnotations | object | `{}` | Additional annotations for validating webhook pods |
 | webhook.podSecurityContext | object | `{}` | Pod security content |
 | webhook.nodeSelector | object | `{}` | Node selector |
 | webhook.affinity | object | `{}` | Affinity settings |

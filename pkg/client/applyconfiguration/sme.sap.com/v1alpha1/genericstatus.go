@@ -8,17 +8,17 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// GenericStatusApplyConfiguration represents an declarative configuration of the GenericStatus type for use
+// GenericStatusApplyConfiguration represents a declarative configuration of the GenericStatus type for use
 // with apply.
 type GenericStatusApplyConfiguration struct {
-	ObservedGeneration *int64         `json:"observedGeneration,omitempty"`
-	Conditions         []v1.Condition `json:"conditions,omitempty"`
+	ObservedGeneration *int64                           `json:"observedGeneration,omitempty"`
+	Conditions         []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
 }
 
-// GenericStatusApplyConfiguration constructs an declarative configuration of the GenericStatus type for use with
+// GenericStatusApplyConfiguration constructs a declarative configuration of the GenericStatus type for use with
 // apply.
 func GenericStatus() *GenericStatusApplyConfiguration {
 	return &GenericStatusApplyConfiguration{}
@@ -35,9 +35,12 @@ func (b *GenericStatusApplyConfiguration) WithObservedGeneration(value int64) *G
 // WithConditions adds the given value to the Conditions field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Conditions field.
-func (b *GenericStatusApplyConfiguration) WithConditions(values ...v1.Condition) *GenericStatusApplyConfiguration {
+func (b *GenericStatusApplyConfiguration) WithConditions(values ...*v1.ConditionApplyConfiguration) *GenericStatusApplyConfiguration {
 	for i := range values {
-		b.Conditions = append(b.Conditions, values[i])
+		if values[i] == nil {
+			panic("nil value passed to WithConditions")
+		}
+		b.Conditions = append(b.Conditions, *values[i])
 	}
 	return b
 }

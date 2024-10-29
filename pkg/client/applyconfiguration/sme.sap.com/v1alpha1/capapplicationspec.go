@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package v1alpha1
 
-// CAPApplicationSpecApplyConfiguration represents an declarative configuration of the CAPApplicationSpec type for use
+// CAPApplicationSpecApplyConfiguration represents a declarative configuration of the CAPApplicationSpec type for use
 // with apply.
 type CAPApplicationSpecApplyConfiguration struct {
 	Domains         *ApplicationDomainsApplyConfiguration      `json:"domains,omitempty"`
@@ -17,7 +17,7 @@ type CAPApplicationSpecApplyConfiguration struct {
 	BTP             *BTPApplyConfiguration                     `json:"btp,omitempty"`
 }
 
-// CAPApplicationSpecApplyConfiguration constructs an declarative configuration of the CAPApplicationSpec type for use with
+// CAPApplicationSpecApplyConfiguration constructs a declarative configuration of the CAPApplicationSpec type for use with
 // apply.
 func CAPApplicationSpec() *CAPApplicationSpecApplyConfiguration {
 	return &CAPApplicationSpecApplyConfiguration{}

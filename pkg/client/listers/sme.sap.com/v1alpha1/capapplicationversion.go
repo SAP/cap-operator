@@ -9,8 +9,8 @@ package v1alpha1
 
 import (
 	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -27,25 +27,17 @@ type CAPApplicationVersionLister interface {
 
 // cAPApplicationVersionLister implements the CAPApplicationVersionLister interface.
 type cAPApplicationVersionLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1alpha1.CAPApplicationVersion]
 }
 
 // NewCAPApplicationVersionLister returns a new CAPApplicationVersionLister.
 func NewCAPApplicationVersionLister(indexer cache.Indexer) CAPApplicationVersionLister {
-	return &cAPApplicationVersionLister{indexer: indexer}
-}
-
-// List lists all CAPApplicationVersions in the indexer.
-func (s *cAPApplicationVersionLister) List(selector labels.Selector) (ret []*v1alpha1.CAPApplicationVersion, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.CAPApplicationVersion))
-	})
-	return ret, err
+	return &cAPApplicationVersionLister{listers.New[*v1alpha1.CAPApplicationVersion](indexer, v1alpha1.Resource("capapplicationversion"))}
 }
 
 // CAPApplicationVersions returns an object that can list and get CAPApplicationVersions.
 func (s *cAPApplicationVersionLister) CAPApplicationVersions(namespace string) CAPApplicationVersionNamespaceLister {
-	return cAPApplicationVersionNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return cAPApplicationVersionNamespaceLister{listers.NewNamespaced[*v1alpha1.CAPApplicationVersion](s.ResourceIndexer, namespace)}
 }
 
 // CAPApplicationVersionNamespaceLister helps list and get CAPApplicationVersions.
@@ -63,26 +55,5 @@ type CAPApplicationVersionNamespaceLister interface {
 // cAPApplicationVersionNamespaceLister implements the CAPApplicationVersionNamespaceLister
 // interface.
 type cAPApplicationVersionNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all CAPApplicationVersions in the indexer for a given namespace.
-func (s cAPApplicationVersionNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.CAPApplicationVersion, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.CAPApplicationVersion))
-	})
-	return ret, err
-}
-
-// Get retrieves the CAPApplicationVersion from the indexer for a given namespace and name.
-func (s cAPApplicationVersionNamespaceLister) Get(name string) (*v1alpha1.CAPApplicationVersion, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("capapplicationversion"), name)
-	}
-	return obj.(*v1alpha1.CAPApplicationVersion), nil
+	listers.ResourceIndexer[*v1alpha1.CAPApplicationVersion]
 }

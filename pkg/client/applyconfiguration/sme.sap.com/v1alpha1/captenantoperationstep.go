@@ -11,7 +11,7 @@ import (
 	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 )
 
-// CAPTenantOperationStepApplyConfiguration represents an declarative configuration of the CAPTenantOperationStep type for use
+// CAPTenantOperationStepApplyConfiguration represents a declarative configuration of the CAPTenantOperationStep type for use
 // with apply.
 type CAPTenantOperationStepApplyConfiguration struct {
 	Name              *string           `json:"name,omitempty"`
@@ -19,7 +19,7 @@ type CAPTenantOperationStepApplyConfiguration struct {
 	ContinueOnFailure *bool             `json:"continueOnFailure,omitempty"`
 }
 
-// CAPTenantOperationStepApplyConfiguration constructs an declarative configuration of the CAPTenantOperationStep type for use with
+// CAPTenantOperationStepApplyConfiguration constructs a declarative configuration of the CAPTenantOperationStep type for use with
 // apply.
 func CAPTenantOperationStep() *CAPTenantOperationStepApplyConfiguration {
 	return &CAPTenantOperationStepApplyConfiguration{}

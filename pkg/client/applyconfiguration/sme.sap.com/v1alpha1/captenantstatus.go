@@ -10,9 +10,10 @@ package v1alpha1
 import (
 	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// CAPTenantStatusApplyConfiguration represents an declarative configuration of the CAPTenantStatus type for use
+// CAPTenantStatusApplyConfiguration represents a declarative configuration of the CAPTenantStatus type for use
 // with apply.
 type CAPTenantStatusApplyConfiguration struct {
 	GenericStatusApplyConfiguration      `json:",inline"`
@@ -22,7 +23,7 @@ type CAPTenantStatusApplyConfiguration struct {
 	LastFullReconciliationTime           *v1.Time                          `json:"lastFullReconciliationTime,omitempty"`
 }
 
-// CAPTenantStatusApplyConfiguration constructs an declarative configuration of the CAPTenantStatus type for use with
+// CAPTenantStatusApplyConfiguration constructs a declarative configuration of the CAPTenantStatus type for use with
 // apply.
 func CAPTenantStatus() *CAPTenantStatusApplyConfiguration {
 	return &CAPTenantStatusApplyConfiguration{}
@@ -39,9 +40,12 @@ func (b *CAPTenantStatusApplyConfiguration) WithObservedGeneration(value int64) 
 // WithConditions adds the given value to the Conditions field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Conditions field.
-func (b *CAPTenantStatusApplyConfiguration) WithConditions(values ...v1.Condition) *CAPTenantStatusApplyConfiguration {
+func (b *CAPTenantStatusApplyConfiguration) WithConditions(values ...*metav1.ConditionApplyConfiguration) *CAPTenantStatusApplyConfiguration {
 	for i := range values {
-		b.Conditions = append(b.Conditions, values[i])
+		if values[i] == nil {
+			panic("nil value passed to WithConditions")
+		}
+		b.Conditions = append(b.Conditions, *values[i])
 	}
 	return b
 }

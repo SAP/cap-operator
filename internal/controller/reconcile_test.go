@@ -27,6 +27,7 @@ import (
 	certfake "github.com/gardener/cert-management/pkg/client/cert/clientset/versioned/fake"
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsfake "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/fake"
+	promopFake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned/fake"
 	istionwv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
@@ -331,6 +332,8 @@ func getTestController(resources testResources) *Controller {
 
 	crdClient := fake.NewSimpleClientset(crdObjects...)
 
+	promopClient := promopFake.NewSimpleClientset()
+
 	istioClient := istiofake.NewSimpleClientset(istioObjects...)
 
 	certClient := certfake.NewSimpleClientset(gardenerCertObjects...)
@@ -339,7 +342,7 @@ func getTestController(resources testResources) *Controller {
 
 	dnsClient := dnsfake.NewSimpleClientset(dnsObjects...)
 
-	c := NewController(coreClient, crdClient, istioClient, certClient, certManagerCertClient, dnsClient)
+	c := NewController(coreClient, crdClient, istioClient, certClient, certManagerCertClient, dnsClient, promopClient)
 
 	for _, ca := range resources.cas {
 		if ca != nil {

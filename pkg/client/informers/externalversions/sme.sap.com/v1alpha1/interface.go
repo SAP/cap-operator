@@ -21,6 +21,8 @@ type Interface interface {
 	CAPTenants() CAPTenantInformer
 	// CAPTenantOperations returns a CAPTenantOperationInformer.
 	CAPTenantOperations() CAPTenantOperationInformer
+	// CAPTenantOutputs returns a CAPTenantOutputInformer.
+	CAPTenantOutputs() CAPTenantOutputInformer
 }
 
 type version struct {
@@ -52,4 +54,9 @@ func (v *version) CAPTenants() CAPTenantInformer {
 // CAPTenantOperations returns a CAPTenantOperationInformer.
 func (v *version) CAPTenantOperations() CAPTenantOperationInformer {
 	return &cAPTenantOperationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// CAPTenantOutputs returns a CAPTenantOutputInformer.
+func (v *version) CAPTenantOutputs() CAPTenantOutputInformer {
+	return &cAPTenantOutputInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

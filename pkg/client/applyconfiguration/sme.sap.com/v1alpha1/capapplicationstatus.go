@@ -10,9 +10,10 @@ package v1alpha1
 import (
 	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// CAPApplicationStatusApplyConfiguration represents an declarative configuration of the CAPApplicationStatus type for use
+// CAPApplicationStatusApplyConfiguration represents a declarative configuration of the CAPApplicationStatus type for use
 // with apply.
 type CAPApplicationStatusApplyConfiguration struct {
 	GenericStatusApplyConfiguration `json:",inline"`
@@ -21,7 +22,7 @@ type CAPApplicationStatusApplyConfiguration struct {
 	LastFullReconciliationTime      *v1.Time                               `json:"lastFullReconciliationTime,omitempty"`
 }
 
-// CAPApplicationStatusApplyConfiguration constructs an declarative configuration of the CAPApplicationStatus type for use with
+// CAPApplicationStatusApplyConfiguration constructs a declarative configuration of the CAPApplicationStatus type for use with
 // apply.
 func CAPApplicationStatus() *CAPApplicationStatusApplyConfiguration {
 	return &CAPApplicationStatusApplyConfiguration{}
@@ -38,9 +39,12 @@ func (b *CAPApplicationStatusApplyConfiguration) WithObservedGeneration(value in
 // WithConditions adds the given value to the Conditions field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Conditions field.
-func (b *CAPApplicationStatusApplyConfiguration) WithConditions(values ...v1.Condition) *CAPApplicationStatusApplyConfiguration {
+func (b *CAPApplicationStatusApplyConfiguration) WithConditions(values ...*metav1.ConditionApplyConfiguration) *CAPApplicationStatusApplyConfiguration {
 	for i := range values {
-		b.Conditions = append(b.Conditions, values[i])
+		if values[i] == nil {
+			panic("nil value passed to WithConditions")
+		}
+		b.Conditions = append(b.Conditions, *values[i])
 	}
 	return b
 }

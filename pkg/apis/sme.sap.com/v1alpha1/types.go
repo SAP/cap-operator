@@ -21,6 +21,8 @@ const (
 	CAPTenantResource             = "captenants"
 	CAPTenantOperationKind        = "CAPTenantOperation"
 	CAPTenantOperationResource    = "captenantoperations"
+	CAPTenantOutputKind           = "CAPTenantOutput"
+	CAPTenantOutputResource       = "captenantouputs"
 )
 
 // +kubebuilder:resource:shortName=ca
@@ -92,8 +94,9 @@ type CAPApplicationSpec struct {
 type ApplicationDomains struct {
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
 	// +kubebuilder:validation:MaxLength=62
-	// Primary application domain will be used to generate a wildcard TLS certificate. In SAP Gardener managed clusters this is (usually) a subdomain of the cluster domain
+	// Primary application domain will be used to generate a wildcard TLS certificate. In project "Gardener" managed clusters this is (usually) a subdomain of the cluster domain
 	Primary string `json:"primary"`
+	// +kubebuilder:validation:items:Pattern=^[a-z0-9-.]+$
 	// Customer specific domains to serve application endpoints (optional)
 	Secondary []string `json:"secondary,omitempty"`
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]*$
@@ -251,7 +254,75 @@ type DeploymentDetails struct {
 	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty"`
 	//  Readiness probe
 	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty"`
+	// Workload monitoring specification
+	Monitoring *WorkloadMonitoring `json:"monitoring,omitempty"`
 }
+
+// WorkloadMonitoring specifies the metrics related to the workload
+type WorkloadMonitoring struct {
+	// DeletionRules specify the metrics conditions that need to be satisfied for the version to be deleted automatically.
+	// Either a set of metrics based rules can be specified, or a PromQL expression which evaluates to a boolean scalar.
+	DeletionRules *DeletionRules `json:"deletionRules,omitempty"`
+	// Configuration to be used to create ServiceMonitor for the workload service.
+	// If not specified, CAP Operator will not attempt to create a ServiceMonitor for the workload
+	ScrapeConfig *MonitoringConfig `json:"scrapeConfig,omitempty"`
+}
+
+type MonitoringConfig struct {
+	// Interval at which Prometheus scrapes the metrics from the target.
+	ScrapeInterval Duration `json:"interval,omitempty"`
+	// Name of the port (specified on the workload) which will be used by Prometheus server to scrape metrics
+	WorkloadPort string `json:"port"`
+	// HTTP path from which to scrape for metrics.
+	Path string `json:"path,omitempty"`
+	// Timeout after which Prometheus considers the scrape to be failed.
+	Timeout Duration `json:"scrapeTimeout,omitempty"`
+}
+
+type DeletionRules struct {
+	Metrics []MetricRule `json:"metrics,omitempty"`
+	// A promQL expression that evaluates to a scalar boolean (1 or 0).
+	// Example: scalar(sum(avg_over_time(demo_metric{job="cav-demo-app-4-srv-svc",namespace="demo"}[2m]))) <= bool 0.1
+	ScalarExpression *string `json:"expression,omitempty"`
+}
+
+// MetricRule specifies a Prometheus metric and rule which represents a cleanup condition. Metrics of type Gauge and Counter are supported.
+//
+// Rule evaluation for Gauge type metric: The time series data of the metric (restricted to the current workload by setting `job` label as workload service name) is calculated as an average over the specified period.
+// A sum of the calculated average from different time series is then compared to the provided threshold value to determine whether the rule has been satisfied.
+// Evaluation: `sum(avg_over_time(<gauge-metric>{job=<workload-service-name>}[<lookback-duration>])) <= <lower0threshold-value>`
+//
+// Rule evaluation for Counter type metric: The time series data of the metric (restricted to the current workload by setting `job` label as workload service name) is calculated as rate of increase over the specified period.
+// The sum of the calculated rates from different time series is then compared to the provided threshold value to determine whether the rule has been satisfied.
+// Evaluation: `sum(rate(<counter-metric>{job=<workload-service-name>}[<lookback-duration>])) <= <lower0threshold-value>`
+type MetricRule struct {
+	// Prometheus metric. For example `http_request_count`
+	Name string `json:"name"`
+	// Type of Prometheus metric which can be either `Gauge` or `Counter`
+	// +kubebuilder:validation:Enum=Gauge;Counter
+	Type MetricType `json:"type"`
+	// Duration of time series data used for the rule evaluation
+	CalculationPeriod Duration `json:"calculationPeriod"`
+	// The threshold value which is compared against the calculated value. If calculated value is less than or equal to the threshold the rule condition is fulfilled.
+	// +kubebuilder:validation:Format:=double
+	ThresholdValue string `json:"thresholdValue"`
+}
+
+// Duration is a valid time duration that can be parsed by Prometheus
+// Supported units: y, w, d, h, m, s, ms
+// Examples: `30s`, `1m`, `1h20m15s`, `15d`
+// +kubebuilder:validation:Pattern:="^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$"
+type Duration string
+
+// Type of Prometheus metric
+type MetricType string
+
+const (
+	// Prometheus Metric type Gauge
+	MetricTypeGauge MetricType = "Gauge"
+	// Prometheus Metric type Counter
+	MetricTypeCounter MetricType = "Counter"
+)
 
 // Type of deployment
 type DeploymentType string
@@ -296,6 +367,8 @@ type CommonDetails struct {
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 	// Entrypoint array for the container
 	Command []string `json:"command,omitempty"`
+	// Arguments to the entrypoint
+	Args []string `json:"args,omitempty"`
 	// Environment Config for the Container
 	Env []corev1.EnvVar `json:"env,omitempty"`
 	// Volume Configuration for the Pod
@@ -322,6 +395,8 @@ type CommonDetails struct {
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 	// The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+	// List of containers executed before the main container is started
+	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 }
 
 // Configuration of Service Ports for the deployment
@@ -530,3 +605,30 @@ const (
 	// Upgrade tenant
 	CAPTenantOperationTypeUpgrade CAPTenantOperationType = "upgrade"
 )
+
+// +kubebuilder:resource:shortName=ctout
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// CAPTenantOutput is the schema for captenantoutputs API
+type CAPTenantOutput struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	// CAPTenantOutputData spec
+	Spec CAPTenantOutputSpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// CAPTenantOutputList contains a list of CAPTenantOutput
+type CAPTenantOutputList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []CAPTenantOutput `json:"items"`
+}
+
+type CAPTenantOutputSpec struct {
+	// +kubebuilder:validation:nullable
+	SubscriptionCallbackData string `json:"subscriptionCallbackData,omitempty"`
+}

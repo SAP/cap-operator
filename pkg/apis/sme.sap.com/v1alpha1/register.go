@@ -53,6 +53,11 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&CAPTenantOperation{},
 		&CAPTenantOperationList{},
 	)
+	scheme.AddKnownTypes(
+		SchemeGroupVersion,
+		&CAPTenantOutput{},
+		&CAPTenantOutputList{},
+	)
 	metaV1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
 }

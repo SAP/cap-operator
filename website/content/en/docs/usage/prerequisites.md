@@ -17,11 +17,11 @@ A multi-tenant CAP-based application consumes the following SAP BTP services. Wh
 
 Other services (not listed here) may also be used depending on the requirement (for example, SAP HTML5 Application Repository service for SAP BTP, Business Logging, and so on).
 
-> IMPORTANT: As some SAP BTP services are not available on Kubernetes, enable Cloud Foundry for the provider subaccount to create certain services. We recommend that you use use the [cf-service-operator](https://sap.github.io/cf-service-operator/docs/) for managing the service instances and service bindings directly from within the Kubernetes cluster. Based on the service bindings, it automatically generates the secrets containing the service access credentials.
+> Note: If some SAP BTP services are not available on Kubernetes, enable Cloud Foundry for the provider subaccount to create certain services. In such cases you may use the [cf-service-operator](https://sap.github.io/cf-service-operator/docs/) for managing the service instances and service bindings directly from within the Kubernetes cluster. Based on the service bindings, it automatically generates the secrets containing the service access credentials.
 
 ##### SAP Authorization and Trust Management Service
 
-The parameter `oauth2-configuration.redirect-uris` must include the domain used by the application. If the application is hosted in a Gardener (Canary)-managed cluster, the entry will have the form `https://*<application-specific-prefix>.<cluster-id>.<gardener-project-id>.shoot.url.k8s.example.com/**`.
+The parameter `oauth2-configuration.redirect-uris` must include the domain used by the application. For instance, if the application is hosted in a "Gardener"  managed cluster, the entry may have the form `https://*<application-specific-prefix>.<cluster-id>.<gardener-project-id>.shoot.url.k8s.example.com/**`.
 
 Scope required to make asynchronous tenant subscription operations need to be included. Additionally, check the [CAP Multitenancy](https://cap.cloud.sap/docs/java/multitenancy#xsuaa-mt-configuration) documentation for additional scopes which are required.
 

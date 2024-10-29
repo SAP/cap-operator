@@ -30,6 +30,9 @@ import (
 	gardenerdnsscheme "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/scheme"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	promopFake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
+	promopScheme "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/scheme"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	copfake "github.com/sap/cap-operator/pkg/client/clientset/versioned/fake"
 	smeScheme "github.com/sap/cap-operator/pkg/client/clientset/versioned/scheme"
@@ -54,10 +57,12 @@ import (
 
 var gvrKindMap map[string]string = map[string]string{
 	"dnsentries.dns.gardener.cloud/v1alpha1":      "DNSEntry",
+	"captenantoutputs.sme.sap.com/v1alpha1":       "CAPTenantOutput",
 	"captenantoperations.sme.sap.com/v1alpha1":    "CAPTenantOperation",
 	"captenants.sme.sap.com/v1alpha1":             "CAPTenant",
 	"capapplications.sme.sap.com/v1alpha1":        "CAPApplication",
 	"capapplicationversions.sme.sap.com/v1alpha1": "CAPApplicationVersion",
+	"servicemonitors.monitoring.coreos.com/v1":    "ServiceMonitor",
 }
 
 // adds fixed suffix "gen" to newly created objects with generateName
@@ -202,20 +207,45 @@ func getDeleteCollectionHandler[T FakeClientSetConstraint](t *testing.T, client 
 	}
 }
 
-func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAction) *Controller {
+func addForDiscovery(c *k8stesting.Fake, resources []schema.GroupVersionResource) {
+	m := map[string][]schema.GroupVersionResource{}
+	for i := range resources {
+		r := resources[i]
+		gv := fmt.Sprintf("%s/%s", r.Group, r.Version)
+		if v, ok := m[gv]; ok {
+			v = append(v, r)
+		} else {
+			m[gv] = []schema.GroupVersionResource{r}
+		}
+	}
+	for k, v := range m {
+		apiResources := []metav1.APIResource{}
+		for i := range v {
+			apiResources = append(apiResources, metav1.APIResource{Name: v[i].Resource, Kind: getKindFromGVR(v[i])})
+		}
+		c.Resources = append(c.Resources, &metav1.APIResourceList{GroupVersion: k, APIResources: apiResources})
+	}
+}
+
+func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAction, discoverResources []schema.GroupVersionResource) *Controller {
 	// add schemes for various client sets
 	smeScheme.AddToScheme(scheme.Scheme)
 	gardenercertscheme.AddToScheme(scheme.Scheme)
 	gardenerdnsscheme.AddToScheme(scheme.Scheme)
 	istioscheme.AddToScheme(scheme.Scheme)
 	certManagerScheme.AddToScheme(scheme.Scheme)
+	promopScheme.AddToScheme(scheme.Scheme)
 
 	coreClient := k8sfake.NewSimpleClientset()
+	if len(discoverResources) > 0 {
+		addForDiscovery(&coreClient.Fake, discoverResources)
+	}
 	copClient := copfake.NewSimpleClientset()
 	istioClient := istiofake.NewSimpleClientset()
 	gardenerCertClient := gardenercertfake.NewSimpleClientset()
 	gardenerDNSClient := gardenerdnsfake.NewSimpleClientset()
 	certManagerClient := certManagerFake.NewSimpleClientset()
+	promopClient := promopFake.NewSimpleClientset()
 
 	copClient.PrependReactor("create", "*", generateNameCreateHandler)
 	copClient.PrependReactor("update", "*", removeStatusTimestampHandler)
@@ -238,7 +268,7 @@ func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAc
 	gardenerCertClient.PrependReactor("*", "*", getErrorReactorWithResources(t, items))
 	gardenerCertClient.PrependReactor("delete-collection", "*", getDeleteCollectionHandler(t, gardenerDNSClient))
 
-	c := NewController(coreClient, copClient, istioClient, gardenerCertClient, certManagerClient, gardenerDNSClient)
+	c := NewController(coreClient, copClient, istioClient, gardenerCertClient, certManagerClient, gardenerDNSClient, promopClient)
 	c.eventRecorder = events.NewFakeRecorder(10)
 	return c
 }
@@ -260,6 +290,8 @@ type TestData struct {
 	attempts int
 	// mock errors during the following resource modifications
 	mockErrorForResources []ResourceAction
+	// add resources for discovery API
+	discoverResources []schema.GroupVersionResource
 	// relevant backlog items (link for traceability)
 	backlogItems []string
 }
@@ -292,7 +324,7 @@ func eventDrain(ctx context.Context, c *Controller, t *testing.T) {
 func reconcileTestItem(ctx context.Context, t *testing.T, item QueueItem, data TestData) (err error) {
 	// run inside a test sub-context to maintain test case name with reference to backlog items
 	t.Run(strings.Join(append([]string{data.description}, data.backlogItems...), " "), func(t *testing.T) {
-		c := initializeControllerForReconciliationTests(t, data.mockErrorForResources)
+		c := initializeControllerForReconciliationTests(t, data.mockErrorForResources, data.discoverResources)
 		go eventDrain(ctx, c, t)
 
 		// load initial data
@@ -407,22 +439,16 @@ func processTestData(t *testing.T, c *Controller, data TestData, dataType TestDa
 
 	var processFile = func(file string) {
 		defer wg.Done()
-		i, err := os.ReadFile(file)
+
+		resources, err := readYAMLResourcesFromFile(file)
 		if err != nil {
 			t.Error(err.Error())
 		}
-
-		fileContents := string(i)
-		splits := strings.Split(fileContents, "---")
-		for _, part := range splits {
-			if part == "\n" || part == "" {
-				continue
-			}
-
+		for i := range resources {
 			if dataType == TestDataTypeInitial {
-				err = addInitialObjectToStore(t, []byte(part), c)
+				err = addInitialObjectToStore(resources[i], c)
 			} else {
-				err = compareExpectedWithStore(t, []byte(part), c)
+				err = compareExpectedWithStore(t, resources[i], c)
 			}
 			if err != nil {
 				t.Error(err.Error())
@@ -437,7 +463,25 @@ func processTestData(t *testing.T, c *Controller, data TestData, dataType TestDa
 	wg.Wait()
 }
 
-func addInitialObjectToStore(t *testing.T, resource []byte, c *Controller) error {
+func readYAMLResourcesFromFile(file string) ([][]byte, error) {
+	i, err := os.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	resources := [][]byte{}
+	fileContents := string(i)
+	splits := strings.Split(fileContents, "---")
+	for _, part := range splits {
+		if part == "\n" || part == "" {
+			continue
+		}
+		resources = append(resources, []byte(part))
+	}
+	return resources, nil
+}
+
+func addInitialObjectToStore(resource []byte, c *Controller) error {
 	decoder := scheme.Codecs.UniversalDeserializer().Decode
 	obj, _, err := decoder(resource, nil, nil)
 	if err != nil {
@@ -461,6 +505,13 @@ func addInitialObjectToStore(t *testing.T, resource []byte, c *Controller) error
 		case *corev1.Service:
 			err = c.kubeInformerFactory.Core().V1().Services().Informer().GetIndexer().Add(obj)
 		}
+	case *appsv1.Deployment:
+		fakeClient, ok := c.kubeClient.(*k8sfake.Clientset)
+		if !ok {
+			return fmt.Errorf("controller is not using a fake clientset")
+		}
+		fakeClient.Tracker().Add(obj)
+		err = c.kubeInformerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(obj)
 	case *batchv1.Job:
 		fakeClient, ok := c.kubeClient.(*k8sfake.Clientset)
 		if !ok {
@@ -525,6 +576,12 @@ func addInitialObjectToStore(t *testing.T, resource []byte, c *Controller) error
 		case *v1alpha1.CAPTenantOperation:
 			err = c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Informer().GetIndexer().Add(obj)
 		}
+	case *monv1.ServiceMonitor:
+		fakeClient, ok := c.promClient.(*promopFake.Clientset)
+		if !ok {
+			return fmt.Errorf("controller is not using a fake clientset")
+		}
+		fakeClient.Tracker().Add(obj)
 	default:
 		return fmt.Errorf("unknown object type")
 	}
@@ -584,6 +641,9 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 		case *v1alpha1.CAPTenantOperation:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("captenantoperations"), mo.GetNamespace(), mo.GetName())
 		}
+	case *monv1.ServiceMonitor:
+		fakeClient := c.promClient.(*promopFake.Clientset)
+		actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("servicemonitors"), mo.GetNamespace(), mo.GetName())
 	default:
 		return fmt.Errorf("unknown expected object type")
 	}

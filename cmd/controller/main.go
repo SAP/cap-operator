@@ -26,6 +26,8 @@ import (
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned"
 	istio "istio.io/client-go/pkg/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	promop "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 )
 
 const (
@@ -33,6 +35,7 @@ const (
 )
 
 func main() {
+	klog.SetLogger(util.GetLogger())
 	config := util.GetConfig()
 	if config == nil {
 		klog.Fatal("Config not found")
@@ -49,6 +52,11 @@ func main() {
 	crdClient, err := versioned.NewForConfig(config)
 	if err != nil {
 		klog.Fatal("could not create client for custom resources: ", err.Error())
+	}
+
+	promClient, err := promop.NewForConfig(config)
+	if err != nil {
+		klog.Fatal("could not create client for prometheus-operator resources: ", err.Error())
 	}
 
 	istioClient, err := istio.NewForConfig(config)
@@ -106,13 +114,7 @@ func main() {
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				klog.InfoS("Started leading: ", LeaseLockName, leaseLockId)
-
-				checkDone := make(chan bool, 1)
-				go checkHashedLabels(checkDone, coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient)
-				<-checkDone
-				klog.InfoS("check & update of hashed labels done")
-
-				c := controller.NewController(coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient)
+				c := controller.NewController(coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient, promClient)
 				go c.Start(ctx)
 			},
 			OnStoppedLeading: func() {

@@ -11,12 +11,13 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-// CommonDetailsApplyConfiguration represents an declarative configuration of the CommonDetails type for use
+// CommonDetailsApplyConfiguration represents a declarative configuration of the CommonDetails type for use
 // with apply.
 type CommonDetailsApplyConfiguration struct {
 	Image                     *string                       `json:"image,omitempty"`
 	ImagePullPolicy           *v1.PullPolicy                `json:"imagePullPolicy,omitempty"`
 	Command                   []string                      `json:"command,omitempty"`
+	Args                      []string                      `json:"args,omitempty"`
 	Env                       []v1.EnvVar                   `json:"env,omitempty"`
 	Volumes                   []v1.Volume                   `json:"volumes,omitempty"`
 	VolumeMounts              []v1.VolumeMount              `json:"volumeMounts,omitempty"`
@@ -30,9 +31,10 @@ type CommonDetailsApplyConfiguration struct {
 	Affinity                  *v1.Affinity                  `json:"affinity,omitempty"`
 	Tolerations               []v1.Toleration               `json:"tolerations,omitempty"`
 	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+	InitContainers            []v1.Container                `json:"initContainers,omitempty"`
 }
 
-// CommonDetailsApplyConfiguration constructs an declarative configuration of the CommonDetails type for use with
+// CommonDetailsApplyConfiguration constructs a declarative configuration of the CommonDetails type for use with
 // apply.
 func CommonDetails() *CommonDetailsApplyConfiguration {
 	return &CommonDetailsApplyConfiguration{}
@@ -60,6 +62,16 @@ func (b *CommonDetailsApplyConfiguration) WithImagePullPolicy(value v1.PullPolic
 func (b *CommonDetailsApplyConfiguration) WithCommand(values ...string) *CommonDetailsApplyConfiguration {
 	for i := range values {
 		b.Command = append(b.Command, values[i])
+	}
+	return b
+}
+
+// WithArgs adds the given value to the Args field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Args field.
+func (b *CommonDetailsApplyConfiguration) WithArgs(values ...string) *CommonDetailsApplyConfiguration {
+	for i := range values {
+		b.Args = append(b.Args, values[i])
 	}
 	return b
 }
@@ -180,6 +192,16 @@ func (b *CommonDetailsApplyConfiguration) WithTolerations(values ...v1.Toleratio
 func (b *CommonDetailsApplyConfiguration) WithTopologySpreadConstraints(values ...v1.TopologySpreadConstraint) *CommonDetailsApplyConfiguration {
 	for i := range values {
 		b.TopologySpreadConstraints = append(b.TopologySpreadConstraints, values[i])
+	}
+	return b
+}
+
+// WithInitContainers adds the given value to the InitContainers field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the InitContainers field.
+func (b *CommonDetailsApplyConfiguration) WithInitContainers(values ...v1.Container) *CommonDetailsApplyConfiguration {
+	for i := range values {
+		b.InitContainers = append(b.InitContainers, values[i])
 	}
 	return b
 }

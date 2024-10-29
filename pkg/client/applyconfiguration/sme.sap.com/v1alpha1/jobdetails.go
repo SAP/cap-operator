@@ -12,7 +12,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-// JobDetailsApplyConfiguration represents an declarative configuration of the JobDetails type for use
+// JobDetailsApplyConfiguration represents a declarative configuration of the JobDetails type for use
 // with apply.
 type JobDetailsApplyConfiguration struct {
 	CommonDetailsApplyConfiguration `json:",inline"`
@@ -21,7 +21,7 @@ type JobDetailsApplyConfiguration struct {
 	TTLSecondsAfterFinished         *int32                     `json:"ttlSecondsAfterFinished,omitempty"`
 }
 
-// JobDetailsApplyConfiguration constructs an declarative configuration of the JobDetails type for use with
+// JobDetailsApplyConfiguration constructs a declarative configuration of the JobDetails type for use with
 // apply.
 func JobDetails() *JobDetailsApplyConfiguration {
 	return &JobDetailsApplyConfiguration{}
@@ -49,6 +49,16 @@ func (b *JobDetailsApplyConfiguration) WithImagePullPolicy(value v1.PullPolicy) 
 func (b *JobDetailsApplyConfiguration) WithCommand(values ...string) *JobDetailsApplyConfiguration {
 	for i := range values {
 		b.Command = append(b.Command, values[i])
+	}
+	return b
+}
+
+// WithArgs adds the given value to the Args field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Args field.
+func (b *JobDetailsApplyConfiguration) WithArgs(values ...string) *JobDetailsApplyConfiguration {
+	for i := range values {
+		b.Args = append(b.Args, values[i])
 	}
 	return b
 }
@@ -169,6 +179,16 @@ func (b *JobDetailsApplyConfiguration) WithTolerations(values ...v1.Toleration) 
 func (b *JobDetailsApplyConfiguration) WithTopologySpreadConstraints(values ...v1.TopologySpreadConstraint) *JobDetailsApplyConfiguration {
 	for i := range values {
 		b.TopologySpreadConstraints = append(b.TopologySpreadConstraints, values[i])
+	}
+	return b
+}
+
+// WithInitContainers adds the given value to the InitContainers field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the InitContainers field.
+func (b *JobDetailsApplyConfiguration) WithInitContainers(values ...v1.Container) *JobDetailsApplyConfiguration {
+	for i := range values {
+		b.InitContainers = append(b.InitContainers, values[i])
 	}
 	return b
 }

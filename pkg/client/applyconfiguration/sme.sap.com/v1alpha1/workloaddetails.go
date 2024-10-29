@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package v1alpha1
 
-// WorkloadDetailsApplyConfiguration represents an declarative configuration of the WorkloadDetails type for use
+// WorkloadDetailsApplyConfiguration represents a declarative configuration of the WorkloadDetails type for use
 // with apply.
 type WorkloadDetailsApplyConfiguration struct {
 	Name                 *string                              `json:"name,omitempty"`
@@ -18,7 +18,7 @@ type WorkloadDetailsApplyConfiguration struct {
 	JobDefinition        *JobDetailsApplyConfiguration        `json:"jobDefinition,omitempty"`
 }
 
-// WorkloadDetailsApplyConfiguration constructs an declarative configuration of the WorkloadDetails type for use with
+// WorkloadDetailsApplyConfiguration constructs a declarative configuration of the WorkloadDetails type for use with
 // apply.
 func WorkloadDetails() *WorkloadDetailsApplyConfiguration {
 	return &WorkloadDetailsApplyConfiguration{}

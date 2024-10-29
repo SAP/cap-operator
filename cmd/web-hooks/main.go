@@ -26,6 +26,7 @@ type ServerParameters struct {
 var parameters ServerParameters
 
 func main() {
+	klog.SetLogger(util.GetLogger())
 	// check env for relevant values
 	portEnv := os.Getenv("WEBHOOK_PORT")
 	port := 8443

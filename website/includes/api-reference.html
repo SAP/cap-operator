@@ -14,6 +14,8 @@ Resource Types:
 <a href="#sme.sap.com/v1alpha1.CAPTenant">CAPTenant</a>
 </li><li>
 <a href="#sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput</a>
 </li></ul>
 <h3 id="sme.sap.com/v1alpha1.CAPApplication">CAPApplication
 </h3>
@@ -554,6 +556,79 @@ CAPTenantOperationStatus
 </tr>
 </tbody>
 </table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput
+</h3>
+<div>
+<p>CAPTenantOutput is the schema for captenantoutputs API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>CAPTenantOutput</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOutputSpec">
+CAPTenantOutputSpec
+</a>
+</em>
+</td>
+<td>
+<p>CAPTenantOutputData spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>subscriptionCallbackData</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="sme.sap.com/v1alpha1.ApplicationDomains">ApplicationDomains
 </h3>
 <p>
@@ -578,7 +653,7 @@ string
 </em>
 </td>
 <td>
-<p>Primary application domain will be used to generate a wildcard TLS certificate. In SAP Gardener managed clusters this is (usually) a subdomain of the cluster domain</p>
+<p>Primary application domain will be used to generate a wildcard TLS certificate. In project &ldquo;Gardener&rdquo; managed clusters this is (usually) a subdomain of the cluster domain</p>
 </td>
 </tr>
 <tr>
@@ -1295,6 +1370,33 @@ bool
 </td>
 </tr></tbody>
 </table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOutputSpec">CAPTenantOutputSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>subscriptionCallbackData</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="sme.sap.com/v1alpha1.CAPTenantSpec">CAPTenantSpec
 </h3>
 <p>
@@ -1690,6 +1792,60 @@ Kubernetes core/v1.Affinity
 <p>The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints">https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints</a></p>
 </td>
 </tr>
+<tr>
+<td>
+<code>initContainers</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Container">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<p>List of containers executed before the main container is started</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DeletionRules">DeletionRules
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.WorkloadMonitoring">WorkloadMonitoring</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metrics</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.MetricRule">
+[]MetricRule
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>expression</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>A promQL expression that evaluates to a scalar boolean (1 or 0).
+Example: scalar(sum(avg_over_time(demo_metric{job=&ldquo;cav-demo-app-4-srv-svc&rdquo;,namespace=&ldquo;demo&rdquo;}[2m]))) &lt;= bool 0.1</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails
@@ -1786,6 +1942,19 @@ Kubernetes core/v1.Probe
 <p>Readiness probe</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>monitoring</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.WorkloadMonitoring">
+WorkloadMonitoring
+</a>
+</em>
+</td>
+<td>
+<p>Workload monitoring specification</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.DeploymentType">DeploymentType
@@ -1814,6 +1983,16 @@ Kubernetes core/v1.Probe
 </td>
 </tr></tbody>
 </table>
+<h3 id="sme.sap.com/v1alpha1.Duration">Duration
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.MetricRule">MetricRule</a>, <a href="#sme.sap.com/v1alpha1.MonitoringConfig">MonitoringConfig</a>)
+</p>
+<div>
+<p>Duration is a valid time duration that can be parsed by Prometheus
+Supported units: y, w, d, h, m, s, ms
+Examples: <code>30s</code>, <code>1m</code>, <code>1h20m15s</code>, <code>15d</code></p>
+</div>
 <h3 id="sme.sap.com/v1alpha1.GenericStatus">GenericStatus
 </h3>
 <p>
@@ -1949,6 +2128,166 @@ int32
 <td><p>job for tenant operation e.g. deploying relevant data to a tenant</p>
 </td>
 </tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.MetricRule">MetricRule
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeletionRules">DeletionRules</a>)
+</p>
+<div>
+<p>MetricRule specifies a Prometheus metric and rule which represents a cleanup condition. Metrics of type Gauge and Counter are supported.</p>
+<p>Rule evaluation for Gauge type metric: The time series data of the metric (restricted to the current workload by setting <code>job</code> label as workload service name) is calculated as an average over the specified period.
+A sum of the calculated average from different time series is then compared to the provided threshold value to determine whether the rule has been satisfied.
+Evaluation: <code>sum(avg_over_time(&lt;gauge-metric&gt;{job=&lt;workload-service-name&gt;}[&lt;lookback-duration&gt;])) &lt;= &lt;lower0threshold-value&gt;</code></p>
+<p>Rule evaluation for Counter type metric: The time series data of the metric (restricted to the current workload by setting <code>job</code> label as workload service name) is calculated as rate of increase over the specified period.
+The sum of the calculated rates from different time series is then compared to the provided threshold value to determine whether the rule has been satisfied.
+Evaluation: <code>sum(rate(&lt;counter-metric&gt;{job=&lt;workload-service-name&gt;}[&lt;lookback-duration&gt;])) &lt;= &lt;lower0threshold-value&gt;</code></p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Prometheus metric. For example <code>http_request_count</code></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.MetricType">
+MetricType
+</a>
+</em>
+</td>
+<td>
+<p>Type of Prometheus metric which can be either <code>Gauge</code> or <code>Counter</code></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>calculationPeriod</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.Duration">
+Duration
+</a>
+</em>
+</td>
+<td>
+<p>Duration of time series data used for the rule evaluation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>thresholdValue</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The threshold value which is compared against the calculated value. If calculated value is less than or equal to the threshold the rule condition is fulfilled.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.MetricType">MetricType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.MetricRule">MetricRule</a>)
+</p>
+<div>
+<p>Type of Prometheus metric</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Counter&#34;</p></td>
+<td><p>Prometheus Metric type Counter</p>
+</td>
+</tr><tr><td><p>&#34;Gauge&#34;</p></td>
+<td><p>Prometheus Metric type Gauge</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.MonitoringConfig">MonitoringConfig
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.WorkloadMonitoring">WorkloadMonitoring</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>interval</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.Duration">
+Duration
+</a>
+</em>
+</td>
+<td>
+<p>Interval at which Prometheus scrapes the metrics from the target.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>port</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the port (specified on the workload) which will be used by Prometheus server to scrape metrics</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>HTTP path from which to scrape for metrics.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scrapeTimeout</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.Duration">
+Duration
+</a>
+</em>
+</td>
+<td>
+<p>Timeout after which Prometheus considers the scrape to be failed.</p>
+</td>
+</tr>
+</tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.NameValue">NameValue
 </h3>
@@ -2358,8 +2697,54 @@ JobDetails
 </tr>
 </tbody>
 </table>
+<h3 id="sme.sap.com/v1alpha1.WorkloadMonitoring">WorkloadMonitoring
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>)
+</p>
+<div>
+<p>WorkloadMonitoring specifies the metrics related to the workload</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>deletionRules</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DeletionRules">
+DeletionRules
+</a>
+</em>
+</td>
+<td>
+<p>DeletionRules specify the metrics conditions that need to be satisfied for the version to be deleted automatically.
+Either a set of metrics based rules can be specified, or a PromQL expression which evaluates to a boolean scalar.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scrapeConfig</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.MonitoringConfig">
+MonitoringConfig
+</a>
+</em>
+</td>
+<td>
+<p>Configuration to be used to create ServiceMonitor for the workload service.
+If not specified, CAP Operator will not attempt to create a ServiceMonitor for the workload</p>
+</td>
+</tr>
+</tbody>
+</table>
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>932af34</code>.
+on git commit <code>b632fa0</code>.
 </em></p>

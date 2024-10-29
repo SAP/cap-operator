@@ -30,7 +30,7 @@ spec:
     - name: "service-content"
       jobDefinition: # ...
       consumedBTPServices: # ...
-    - name: "mtx-runner"
+    - name: "tenant-operation"
       jobDefinition: # ...
       consumedBTPServices: # ...
   tenantOperations: # ... <-- (optional)
@@ -62,6 +62,11 @@ deploymentDefinition:
       routerDestinationName: cap-server-url
     - name: tech-port
       port: 4005
+  monitoring:
+    scrapeConfig:
+      port: tech--port
+    deletionRules:
+      expression: scalar(sum(avg_over_time(current_sessions{job="cav-cap-app-v1-cap-backend-svc",namespace="cap-ns"}[2h]))) <= bool 5
 ```
 
 The `type` of the deployment is important to indicate how the operator handles this workload (for example, injection of `destinations` to be used by the approuter). Valid values are:
@@ -70,7 +75,7 @@ The `type` of the deployment is important to indicate how the operator handles t
 - `Router` to indicate a version of [AppRouter](https://www.npmjs.com/package/@sap/approuter). Only one workload of this type can be used.
 - `Additional` to indicate supporting components that can be deployed along with the CAP application server.
 
-You can define optional attributes such as `replicas`, `env`, `resources`, `probes`, `securityContext`, and `ports` to configure the deployment.
+You can define optional attributes such as `replicas`, `env`, `resources`, `probes`, `securityContext`, `initContainers` and `ports` to configure the deployment.
 
 #### Port configuration
 
@@ -85,6 +90,14 @@ The port configurations aren't mandatory and can be omitted. This would mean tha
 
 > NOTE: If multiple ports are configured for a workload of type `Router`, the first available port will be used to target external traffic to the application domain.
 
+#### Monitoring configuration
+
+For each _workload of type deployment_ in a `CAPApplicationVersion`, it is possible to define:
+1. Deletion rules: A criteria based on metrics which when satisfied signifies that the workload can be removed
+2. Scrape configuration: Configuration which defines how metrics are scraped from the workload service.
+
+Details of how to configure workload monitoring can be found [here](../version-monitoring.md#configure-capapplicationversion).
+
 ### Workloads with `jobDefinition`
 
 ```yaml
@@ -95,7 +108,7 @@ workloads:
     jobDefinition:
       type: Content
       image: some.repo.example.com/cap-app/content:1.0.1
-  - name: "mtx-runner"
+  - name: "tenant-operation"
     consumedServices: # ...
     jobDefinition:
       type: TenantOperation
@@ -125,14 +138,12 @@ workloads:
 Workloads with a `jobDefinition` represent a job execution at a particular point in the lifecycle of the application or tenant. The following values are allowed for `type` in such workloads:
 
 - `Content`: A content deployer job that can be used to deploy (SAP BTP) service specific content from the application version. This job is executed as soon as a new `CAPApplicationVersion` resource is created in the cluster. Multiple workloads of this type may be defined in the `CAPApplicationVersion` and the order in which they are executed can be specified via `ContentJobs`.
-- `TenantOperation`: A job executed during provisioning, upgrade, or deprovisioning of a tenant (`CAPTenant`). These jobs are controlled by the operator and use the `cds/mtxs` APIs to perform HDI content deployment by default. In order to use `cds/mtx` APIs for HDI content deployment, set the environment variable `IS_MTXS_ENABLED` to `"false"` on the `TenantOperation` job. If a workload of type `TenantOperation` isn't provided as part of the `CAPApplicationVersion`, the workload with `deploymentDefinition` of type `CAP` will be used to determine the `jobDefinition` (`image`, `env`, etc. will be used and, in such cases, to trigger deployment via `cds/mtx` APIs, the environment variable `IS_MTXS_ENABLED` must be set in the `CAP` workload). Also, if `cds/mtxs` APIs are used, `command` can be used by applications to trigger tenant operations with custom command.
+- `TenantOperation`: A job executed during provisioning, upgrade, or deprovisioning of a tenant (`CAPTenant`). These jobs are controlled by the operator and use the `cds/mtxs` APIs to perform HDI content deployment by default. If a workload of type `TenantOperation` isn't provided as part of the `CAPApplicationVersion`, the workload with `deploymentDefinition` of type `CAP` will be used to determine the `jobDefinition` (`image`, `env`, etc.). Also, if `cds/mtxs` APIs are used, `command` can be used by applications to trigger tenant operations with custom command.
 - `CustomTenantOperation`: An optional job which runs before or after the `TenantOperation` where the application can perform tenant-specific tasks (for example, create test data).
-
-> NOTE: `command` will be ignored for workloads of type `TenantOperation` (for non-mtxs-based scenarios) as this is controlled by the operator. Also, [`@sap/cds-mtx` is no longer supported with CDS 7](https://cap.cloud.sap/docs/releases/jun23#migration-from-old-mtx).
 
 ### Sequencing tenant operations
 
-A tenant operation refers to `provisioning`, `upgrade` or `deprovisioning` which are executed in the context of a CAP application for individual tenants (i.e. using the `cds/mtx` or similar modules provided by CAP). Within the `workloads`, we have already defined two types of jobs that are valid for such operations, namely `TenantOperation` and `CustomTenantOperation`.
+A tenant operation refers to `provisioning`, `upgrade` or `deprovisioning` which are executed in the context of a CAP application for individual tenants (i.e. using the `cds/mtxs` or similar modules provided by CAP). Within the `workloads`, we have already defined two types of jobs that are valid for such operations, namely `TenantOperation` and `CustomTenantOperation`.
 
 The `TenantOperation` is mandatory for all tenant operations.
 
@@ -145,12 +156,12 @@ spec:
   workloads: # ...
   tenantOperations:
     provisioning:
-      - workloadName: "mtx-runner"
+      - workloadName: "tenant-operation"
       - workloadName: "create-test-data"
     upgrade:
       - workloadName: "notify-upgrade"
         continueOnFailure: true # <-- indicates the overall operation may proceed even if this step fails
-      - workloadName: "mtx-runner"
+      - workloadName: "tenant-operation"
       - workloadName: "create-test-data"
     # <-- as the deprovisioning steps are not specified, only the `TenantOperation` workload (first available) will be executed
 ```
@@ -213,6 +224,11 @@ spec:
           - name: tech-port
             port: 4005
             appProtocol: grpc
+        monitoring:
+          scrapeConfig:
+            port: tech--port
+          deletionRules:
+            expression: scalar(sum(avg_over_time(current_sessions{job="cav-cap-app-v1-cap-backend-svc",namespace="cap-ns"}[2h]))) <= bool 5
         livenessProbe:
           failureThreshold: 3
           httpGet:
@@ -301,7 +317,7 @@ spec:
         securityContext:
           runAsUser: 1000
           runAsGroup: 2000
-    - name: "mtx-runner"
+    - name: "tenant-operation"
       consumedServices: # ...
       jobDefinition:
         type: TenantOperation
@@ -329,12 +345,12 @@ spec:
         command: ["npm", "run ", "deploy:testdata"]
   tenantOperations:
     provisioning:
-      - workloadName: "mtx-runner"
+      - workloadName: "tenant-operation"
       - workloadName: "create-test-data"
     upgrade:
       - workloadName: "notify-upgrade"
         continueOnFailure: true
-      - workloadName: "mtx-runner"
+      - workloadName: "tenant-operation"
       - workloadName: "create-test-data"
   contentJobs:
     - service-content
@@ -347,3 +363,5 @@ spec:
 > - [Job API reference](../../../reference/#sme.sap.com/v1alpha1.JobDetails) for job-specific configuration
 >
 > The supported configurations is kept minimal intentionally to keep the overall API simple by considering commonly used configurations.
+
+> Note: For `initContainers` nearly the same environment variables as the main container are made available including VCAP_SERVICES environment.

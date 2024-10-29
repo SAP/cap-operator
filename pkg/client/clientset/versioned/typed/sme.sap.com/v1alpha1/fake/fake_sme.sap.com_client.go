@@ -33,6 +33,10 @@ func (c *FakeSmeV1alpha1) CAPTenantOperations(namespace string) v1alpha1.CAPTena
 	return &FakeCAPTenantOperations{c, namespace}
 }
 
+func (c *FakeSmeV1alpha1) CAPTenantOutputs(namespace string) v1alpha1.CAPTenantOutputInterface {
+	return &FakeCAPTenantOutputs{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeSmeV1alpha1) RESTClient() rest.Interface {

@@ -88,6 +88,7 @@ func TestController_processQueue(t *testing.T) {
 				istioClient:                 c.istioClient,
 				gardenerCertificateClient:   c.gardenerCertificateClient,
 				gardenerDNSClient:           c.gardenerDNSClient,
+				promClient:                  c.promClient,
 				kubeInformerFactory:         dummyKubeInformerFactory,
 				crdInformerFactory:          c.crdInformerFactory,
 				istioInformerFactory:        c.istioInformerFactory,
@@ -228,7 +229,7 @@ func TestController_processQueueItem(t *testing.T) {
 
 			c := getTestController(testResources{cas: []*v1alpha1.CAPApplication{ca}, cats: []*v1alpha1.CAPTenant{cat}, preventStart: true})
 			if tt.resource == 9 || tt.resource == 99 {
-				c.queues[tt.resource] = workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter())
+				c.queues[tt.resource] = workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{})
 			}
 
 			dummyKubeInformerFactory := &dummyInformerFactoryType{c.kubeInformerFactory, tt.resourceNamespace, nil}
@@ -261,10 +262,8 @@ func TestController_processQueueItem(t *testing.T) {
 				cancel()
 				expectedRes = testC.processQueueItem(ctx, tt.resource)
 			} else {
-				if tt.resource < 4 || tt.resource == 9 {
+				if tt.resource < 4 || tt.resource == 9 || tt.resource == 99 {
 					q.Add(item)
-				} else if tt.resource == 99 {
-					q.Add(tt.resource)
 				}
 				expectedRes = testC.processQueueItem(context.TODO(), tt.resource)
 			}
@@ -278,7 +277,7 @@ func TestController_processQueueItem(t *testing.T) {
 				if res < 1 {
 					t.Error("Unexpected result", expectedRes, "; expected to contain", tt.errorString)
 				} else {
-					klog.InfoS("Expected error occured", "result", expectedRes, "expected result", tt.errorString)
+					klog.InfoS("Expected error occurred", "result", expectedRes, "expected result", tt.errorString)
 				}
 			} else {
 				if tt.expectRequeue {

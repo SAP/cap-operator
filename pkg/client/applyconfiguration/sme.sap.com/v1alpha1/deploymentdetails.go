@@ -12,18 +12,19 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-// DeploymentDetailsApplyConfiguration represents an declarative configuration of the DeploymentDetails type for use
+// DeploymentDetailsApplyConfiguration represents a declarative configuration of the DeploymentDetails type for use
 // with apply.
 type DeploymentDetailsApplyConfiguration struct {
 	CommonDetailsApplyConfiguration `json:",inline"`
-	Type                            *smesapcomv1alpha1.DeploymentType `json:"type,omitempty"`
-	Replicas                        *int32                            `json:"replicas,omitempty"`
-	Ports                           []PortsApplyConfiguration         `json:"ports,omitempty"`
-	LivenessProbe                   *v1.Probe                         `json:"livenessProbe,omitempty"`
-	ReadinessProbe                  *v1.Probe                         `json:"readinessProbe,omitempty"`
+	Type                            *smesapcomv1alpha1.DeploymentType     `json:"type,omitempty"`
+	Replicas                        *int32                                `json:"replicas,omitempty"`
+	Ports                           []PortsApplyConfiguration             `json:"ports,omitempty"`
+	LivenessProbe                   *v1.Probe                             `json:"livenessProbe,omitempty"`
+	ReadinessProbe                  *v1.Probe                             `json:"readinessProbe,omitempty"`
+	Monitoring                      *WorkloadMonitoringApplyConfiguration `json:"monitoring,omitempty"`
 }
 
-// DeploymentDetailsApplyConfiguration constructs an declarative configuration of the DeploymentDetails type for use with
+// DeploymentDetailsApplyConfiguration constructs a declarative configuration of the DeploymentDetails type for use with
 // apply.
 func DeploymentDetails() *DeploymentDetailsApplyConfiguration {
 	return &DeploymentDetailsApplyConfiguration{}
@@ -51,6 +52,16 @@ func (b *DeploymentDetailsApplyConfiguration) WithImagePullPolicy(value v1.PullP
 func (b *DeploymentDetailsApplyConfiguration) WithCommand(values ...string) *DeploymentDetailsApplyConfiguration {
 	for i := range values {
 		b.Command = append(b.Command, values[i])
+	}
+	return b
+}
+
+// WithArgs adds the given value to the Args field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Args field.
+func (b *DeploymentDetailsApplyConfiguration) WithArgs(values ...string) *DeploymentDetailsApplyConfiguration {
+	for i := range values {
+		b.Args = append(b.Args, values[i])
 	}
 	return b
 }
@@ -175,6 +186,16 @@ func (b *DeploymentDetailsApplyConfiguration) WithTopologySpreadConstraints(valu
 	return b
 }
 
+// WithInitContainers adds the given value to the InitContainers field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the InitContainers field.
+func (b *DeploymentDetailsApplyConfiguration) WithInitContainers(values ...v1.Container) *DeploymentDetailsApplyConfiguration {
+	for i := range values {
+		b.InitContainers = append(b.InitContainers, values[i])
+	}
+	return b
+}
+
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
@@ -217,5 +238,13 @@ func (b *DeploymentDetailsApplyConfiguration) WithLivenessProbe(value v1.Probe) 
 // If called multiple times, the ReadinessProbe field is set to the value of the last call.
 func (b *DeploymentDetailsApplyConfiguration) WithReadinessProbe(value v1.Probe) *DeploymentDetailsApplyConfiguration {
 	b.ReadinessProbe = &value
+	return b
+}
+
+// WithMonitoring sets the Monitoring field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Monitoring field is set to the value of the last call.
+func (b *DeploymentDetailsApplyConfiguration) WithMonitoring(value *WorkloadMonitoringApplyConfiguration) *DeploymentDetailsApplyConfiguration {
+	b.Monitoring = value
 	return b
 }

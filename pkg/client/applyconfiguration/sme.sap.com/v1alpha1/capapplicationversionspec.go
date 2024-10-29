@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 
 package v1alpha1
 
-// CAPApplicationVersionSpecApplyConfiguration represents an declarative configuration of the CAPApplicationVersionSpec type for use
+// CAPApplicationVersionSpecApplyConfiguration represents a declarative configuration of the CAPApplicationVersionSpec type for use
 // with apply.
 type CAPApplicationVersionSpecApplyConfiguration struct {
 	CAPApplicationInstance *string                             `json:"capApplicationInstance,omitempty"`
@@ -18,7 +18,7 @@ type CAPApplicationVersionSpecApplyConfiguration struct {
 	ContentJobs            []string                            `json:"contentJobs,omitempty"`
 }
 
-// CAPApplicationVersionSpecApplyConfiguration constructs an declarative configuration of the CAPApplicationVersionSpec type for use with
+// CAPApplicationVersionSpecApplyConfiguration constructs a declarative configuration of the CAPApplicationVersionSpec type for use with
 // apply.
 func CAPApplicationVersionSpec() *CAPApplicationVersionSpecApplyConfiguration {
 	return &CAPApplicationVersionSpecApplyConfiguration{}

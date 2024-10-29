@@ -9,10 +9,10 @@ package v1alpha1
 
 import (
 	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// CAPTenantOperationStatusApplyConfiguration represents an declarative configuration of the CAPTenantOperationStatus type for use
+// CAPTenantOperationStatusApplyConfiguration represents a declarative configuration of the CAPTenantOperationStatus type for use
 // with apply.
 type CAPTenantOperationStatusApplyConfiguration struct {
 	GenericStatusApplyConfiguration `json:",inline"`
@@ -21,7 +21,7 @@ type CAPTenantOperationStatusApplyConfiguration struct {
 	ActiveJob                       *string                                    `json:"activeJob,omitempty"`
 }
 
-// CAPTenantOperationStatusApplyConfiguration constructs an declarative configuration of the CAPTenantOperationStatus type for use with
+// CAPTenantOperationStatusApplyConfiguration constructs a declarative configuration of the CAPTenantOperationStatus type for use with
 // apply.
 func CAPTenantOperationStatus() *CAPTenantOperationStatusApplyConfiguration {
 	return &CAPTenantOperationStatusApplyConfiguration{}
@@ -38,9 +38,12 @@ func (b *CAPTenantOperationStatusApplyConfiguration) WithObservedGeneration(valu
 // WithConditions adds the given value to the Conditions field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Conditions field.
-func (b *CAPTenantOperationStatusApplyConfiguration) WithConditions(values ...v1.Condition) *CAPTenantOperationStatusApplyConfiguration {
+func (b *CAPTenantOperationStatusApplyConfiguration) WithConditions(values ...*v1.ConditionApplyConfiguration) *CAPTenantOperationStatusApplyConfiguration {
 	for i := range values {
-		b.Conditions = append(b.Conditions, values[i])
+		if values[i] == nil {
+			panic("nil value passed to WithConditions")
+		}
+		b.Conditions = append(b.Conditions, *values[i])
 	}
 	return b
 }

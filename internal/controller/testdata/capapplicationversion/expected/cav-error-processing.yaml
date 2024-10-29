@@ -60,7 +60,7 @@ spec:
         type: TenantOperation
 status:
   conditions:
-    - reason: RetryProcessing
+    - reason: WaitingForWorkloads
       observedGeneration: 1
       status: "False"
       type: Ready

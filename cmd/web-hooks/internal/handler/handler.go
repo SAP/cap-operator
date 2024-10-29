@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 
 	"github.com/google/go-cmp/cmp"
@@ -21,6 +22,7 @@ import (
 	admissionv1 "k8s.io/api/admission/v1"
 	"k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/klog/v2"
@@ -28,6 +30,7 @@ import (
 
 const (
 	LabelTenantType             = "sme.sap.com/tenant-type"
+	LabelTenantId               = "sme.sap.com/btp-tenant-id"
 	ProviderTenantType          = "provider"
 	SideCarEnv                  = "WEBHOOK_SIDE_CAR"
 	AdmissionError              = "admission error:"
@@ -66,6 +69,12 @@ type ResponseCat struct {
 	Spec     *v1alpha1.CAPTenantSpec   `json:"spec"`
 	Status   *v1alpha1.CAPTenantStatus `json:"status"`
 	Kind     string                    `json:"kind"`
+}
+
+type ResponseCtout struct {
+	Metadata `json:"metadata"`
+	Spec     *v1alpha1.CAPTenantOutputSpec `json:"spec"`
+	Kind     string                        `json:"kind"`
 }
 
 type ResponseCav struct {
@@ -257,10 +266,29 @@ func checkWorkloadContentJob(cavObjNew *ResponseCav) validateResource {
 }
 
 func validateWorkloads(cavObjNew *ResponseCav) validateResource {
+	//  regex pattern for workload name - based on RFC 1123 label
+	regex, _ := regexp.Compile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
+
 	// Check: Workload name should be unique
 	//		  Only one workload deployment of type CAP, router and content is allowed
 	uniqueWorkloadNameCountMap := make(map[string]int)
 	for _, workload := range cavObjNew.Spec.Workloads {
+
+		// check workload name matches the regex pattern
+		if !regex.MatchString(workload.Name) {
+			return validateResource{
+				allowed: false,
+				message: fmt.Sprintf("%s %s Invalid workload name: %s", InvalidationMessage, cavObjNew.Kind, workload.Name),
+			}
+		}
+
+		// Allowed length for service name is 63 characters
+		if len(cavObjNew.Name+"-"+workload.Name+"-svc") > 63 {
+			return validateResource{
+				allowed: false,
+				message: fmt.Sprintf("%s %s Derived service name: %s for workload %s will exceed 63 character limit. Adjust CAPApplicationVerion resource name or the workload name accordingly", InvalidationMessage, cavObjNew.Kind, cavObjNew.Name+"-"+workload.Name+"-svc", workload.Name),
+			}
+		}
 
 		if workloadTypeValidate := checkWorkloadType(&workload); !workloadTypeValidate.allowed {
 			return workloadTypeValidate
@@ -531,6 +559,38 @@ func (wh *WebhookHandler) validateCAPTenant(w http.ResponseWriter, admissionRevi
 	return validAdmissionReviewObj()
 }
 
+func (wh *WebhookHandler) validateCAPTenantOutput(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview) validateResource {
+	ctoutObjNew := ResponseCtout{}
+
+	if admissionReview.Request.Operation == admissionv1.Delete {
+		return validAdmissionReviewObj()
+	}
+
+	if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &ctoutObjNew, v1alpha1.CAPTenantOutputKind); !validatedResource.allowed {
+		return validatedResource
+	}
+
+	if _, exists := ctoutObjNew.Labels[LabelTenantId]; !exists {
+		return validateResource{
+			allowed: false,
+			message: fmt.Sprintf("%s %s label %s missing on CAP tenant output %s", InvalidationMessage, v1alpha1.CAPTenantOutputKind, LabelTenantId, ctoutObjNew.Name),
+		}
+	} else {
+		labelSelector, _ := labels.ValidatedSelectorFromSet(map[string]string{
+			LabelTenantId: ctoutObjNew.Labels[LabelTenantId],
+		})
+		ctList, err := wh.CrdClient.SmeV1alpha1().CAPTenants(ctoutObjNew.Namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
+		if err != nil || len(ctList.Items) == 0 {
+			return validateResource{
+				allowed: false,
+				message: fmt.Sprintf("%s %s label %s on CAP tenant output %s does not contain a valid tenant ID", InvalidationMessage, v1alpha1.CAPTenantOutputKind, LabelTenantId, ctoutObjNew.Name),
+			}
+		}
+	}
+
+	return validAdmissionReviewObj()
+}
+
 func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview) validateResource {
 	caObjOld := ResponseCa{}
 	caObjNew := ResponseCa{}
@@ -603,6 +663,10 @@ func (wh *WebhookHandler) Validate(w http.ResponseWriter, r *http.Request) {
 		}
 	case v1alpha1.CAPApplicationKind:
 		if validation = wh.validateCAPApplication(w, admissionReview); validation.errorOccured {
+			return
+		}
+	case v1alpha1.CAPTenantOutputKind:
+		if validation = wh.validateCAPTenantOutput(w, admissionReview); validation.errorOccured {
 			return
 		}
 	}

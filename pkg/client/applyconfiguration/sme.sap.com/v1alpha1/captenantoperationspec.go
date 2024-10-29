@@ -11,7 +11,7 @@ import (
 	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 )
 
-// CAPTenantOperationSpecApplyConfiguration represents an declarative configuration of the CAPTenantOperationSpec type for use
+// CAPTenantOperationSpecApplyConfiguration represents a declarative configuration of the CAPTenantOperationSpec type for use
 // with apply.
 type CAPTenantOperationSpecApplyConfiguration struct {
 	Operation                                 *v1alpha1.CAPTenantOperationType `json:"operation,omitempty"`
@@ -20,7 +20,7 @@ type CAPTenantOperationSpecApplyConfiguration struct {
 	Steps                                     []CAPTenantOperationStepApplyConfiguration `json:"steps,omitempty"`
 }
 
-// CAPTenantOperationSpecApplyConfiguration constructs an declarative configuration of the CAPTenantOperationSpec type for use with
+// CAPTenantOperationSpecApplyConfiguration constructs a declarative configuration of the CAPTenantOperationSpec type for use with
 // apply.
 func CAPTenantOperationSpec() *CAPTenantOperationSpecApplyConfiguration {
 	return &CAPTenantOperationSpecApplyConfiguration{}
