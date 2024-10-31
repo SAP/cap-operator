@@ -137,12 +137,12 @@ func (c *Controller) registerJobListeners() {
 }
 
 func (c *Controller) registerVirtualServiceListeners() {
-	c.istioInformerFactory.Networking().V1beta1().VirtualServices().Informer().
+	c.istioInformerFactory.Networking().V1().VirtualServices().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceVirtualService))
 }
 
 func (c *Controller) registerDestinationRuleListeners() {
-	c.istioInformerFactory.Networking().V1beta1().DestinationRules().Informer().
+	c.istioInformerFactory.Networking().V1().DestinationRules().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceDestinationRule))
 }
 
@@ -152,7 +152,7 @@ func (c *Controller) registerSecretListeners() {
 }
 
 func (c *Controller) registerGatewayListeners() {
-	c.istioInformerFactory.Networking().V1beta1().Gateways().Informer().
+	c.istioInformerFactory.Networking().V1().Gateways().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceGateway))
 }
 

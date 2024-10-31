@@ -37,8 +37,8 @@ import (
 	copfake "github.com/sap/cap-operator/pkg/client/clientset/versioned/fake"
 	smeScheme "github.com/sap/cap-operator/pkg/client/clientset/versioned/scheme"
 	istiometav1alpha1 "istio.io/api/meta/v1alpha1"
-	networkingv1beta1 "istio.io/api/networking/v1beta1"
-	istionwv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
+	istionetworkingv1 "istio.io/api/networking/v1"
+	istionwv1 "istio.io/client-go/pkg/apis/networking/v1"
 	istiofake "istio.io/client-go/pkg/clientset/versioned/fake"
 	istioscheme "istio.io/client-go/pkg/clientset/versioned/scheme"
 	appsv1 "k8s.io/api/apps/v1"
@@ -540,7 +540,7 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 		}
 		fakeClient.Tracker().Add(obj)
 		err = c.gardenerDNSInformerFactory.Dns().V1alpha1().DNSEntries().Informer().GetIndexer().Add(obj)
-	case *istionwv1beta1.Gateway, *istionwv1beta1.VirtualService, *istionwv1beta1.DestinationRule:
+	case *istionwv1.Gateway, *istionwv1.VirtualService, *istionwv1.DestinationRule:
 		fakeClient, ok := c.istioClient.(*istiofake.Clientset)
 		if !ok {
 			return fmt.Errorf("controller is not using a fake clientset")
@@ -550,15 +550,15 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 			return fmt.Errorf("could not type cast event object to meta object")
 		}
 		switch obj.(type) {
-		case *istionwv1beta1.VirtualService:
-			fakeClient.Tracker().Create(schema.GroupVersionResource{Group: "networking.istio.io", Version: "v1beta1", Resource: "virtualservices"}, obj, metaObj.GetNamespace())
-			err = c.istioInformerFactory.Networking().V1beta1().VirtualServices().Informer().GetIndexer().Add(obj)
-		case *istionwv1beta1.Gateway:
-			fakeClient.Tracker().Create(schema.GroupVersionResource{Group: "networking.istio.io", Version: "v1beta1", Resource: "gateways"}, obj, metaObj.GetNamespace())
-			err = c.istioInformerFactory.Networking().V1beta1().Gateways().Informer().GetIndexer().Add(obj)
-		case *istionwv1beta1.DestinationRule:
-			fakeClient.Tracker().Create(schema.GroupVersionResource{Group: "networking.istio.io", Version: "v1beta1", Resource: "destinationrules"}, obj, metaObj.GetNamespace())
-			err = c.istioInformerFactory.Networking().V1beta1().DestinationRules().Informer().GetIndexer().Add(obj)
+		case *istionwv1.VirtualService:
+			fakeClient.Tracker().Create(schema.GroupVersionResource{Group: "networking.istio.io", Version: "v1", Resource: "virtualservices"}, obj, metaObj.GetNamespace())
+			err = c.istioInformerFactory.Networking().V1().VirtualServices().Informer().GetIndexer().Add(obj)
+		case *istionwv1.Gateway:
+			fakeClient.Tracker().Create(schema.GroupVersionResource{Group: "networking.istio.io", Version: "v1", Resource: "gateways"}, obj, metaObj.GetNamespace())
+			err = c.istioInformerFactory.Networking().V1().Gateways().Informer().GetIndexer().Add(obj)
+		case *istionwv1.DestinationRule:
+			fakeClient.Tracker().Create(schema.GroupVersionResource{Group: "networking.istio.io", Version: "v1", Resource: "destinationrules"}, obj, metaObj.GetNamespace())
+			err = c.istioInformerFactory.Networking().V1().DestinationRules().Informer().GetIndexer().Add(obj)
 		}
 	case *v1alpha1.CAPApplication, *v1alpha1.CAPApplicationVersion, *v1alpha1.CAPTenant, *v1alpha1.CAPTenantOperation:
 		fakeClient, ok := c.crdClient.(*copfake.Clientset)
@@ -619,14 +619,14 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 		actual, err = c.certManagerCertificateClient.(*certManagerFake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("certificates.cert.gardener.cloud"), mo.GetNamespace(), mo.GetName())
 	case *gardenerdnsv1alpha1.DNSEntry:
 		actual, err = c.gardenerDNSClient.(*gardenerdnsfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("dnsentries"), mo.GetNamespace(), mo.GetName())
-	case *istionwv1beta1.Gateway, *istionwv1beta1.VirtualService, *istionwv1beta1.DestinationRule:
+	case *istionwv1.Gateway, *istionwv1.VirtualService, *istionwv1.DestinationRule:
 		fakeClient := c.istioClient.(*istiofake.Clientset)
 		switch expected.(type) {
-		case *istionwv1beta1.VirtualService:
+		case *istionwv1.VirtualService:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("virtualservices"), mo.GetNamespace(), mo.GetName())
-		case *istionwv1beta1.DestinationRule:
+		case *istionwv1.DestinationRule:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("destinationrules"), mo.GetNamespace(), mo.GetName())
-		case *istionwv1beta1.Gateway:
+		case *istionwv1.Gateway:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("gateways"), mo.GetNamespace(), mo.GetName())
 		}
 	case *v1alpha1.CAPApplication, *v1alpha1.CAPApplicationVersion, *v1alpha1.CAPTenant, *v1alpha1.CAPTenantOperation:
@@ -669,20 +669,20 @@ func compareResourceFields(actual runtime.Object, expected runtime.Object, t *te
 			ps := p.String()
 			return ps == "Spec" || strings.HasPrefix(ps, "Spec.")
 		}, cmpopts.IgnoreUnexported(
-			networkingv1beta1.PortSelector{},
-			networkingv1beta1.Destination{},
-			networkingv1beta1.HTTPRouteDestination{},
-			networkingv1beta1.StringMatch{},
-			networkingv1beta1.HTTPMatchRequest{},
-			networkingv1beta1.HTTPRoute{},
-			networkingv1beta1.VirtualService{},
-			networkingv1beta1.Server{},
-			networkingv1beta1.Port{},
-			networkingv1beta1.DestinationRule{},
-			networkingv1beta1.TrafficPolicy{},
-			networkingv1beta1.LoadBalancerSettings{},
-			networkingv1beta1.LoadBalancerSettings_ConsistentHashLB{},
-			networkingv1beta1.LoadBalancerSettings_ConsistentHashLB_HTTPCookie{},
+			istionetworkingv1.PortSelector{},
+			istionetworkingv1.Destination{},
+			istionetworkingv1.HTTPRouteDestination{},
+			istionetworkingv1.StringMatch{},
+			istionetworkingv1.HTTPMatchRequest{},
+			istionetworkingv1.HTTPRoute{},
+			istionetworkingv1.VirtualService{},
+			istionetworkingv1.Server{},
+			istionetworkingv1.Port{},
+			istionetworkingv1.DestinationRule{},
+			istionetworkingv1.TrafficPolicy{},
+			istionetworkingv1.LoadBalancerSettings{},
+			istionetworkingv1.LoadBalancerSettings_ConsistentHashLB{},
+			istionetworkingv1.LoadBalancerSettings_ConsistentHashLB_HTTPCookie{},
 			durationpb.Duration{},
 		)),
 		cmp.FilterPath(func(p cmp.Path) bool {
