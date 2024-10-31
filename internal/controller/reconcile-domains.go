@@ -21,8 +21,8 @@ import (
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/durationpb"
-	networkingv1beta1 "istio.io/api/networking/v1beta1"
-	istionwv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
+	networkingv1 "istio.io/api/networking/v1"
+	istionwv1 "istio.io/client-go/pkg/apis/networking/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -97,9 +97,9 @@ func (c *Controller) handleDomains(ctx context.Context, ca *v1alpha1.CAPApplicat
 func (c *Controller) handlePrimaryDomainGateway(ctx context.Context, ca *v1alpha1.CAPApplication, secretName string, namespace string) error {
 	gwName := getResourceName(ca.Spec.BTPAppName, GatewaySuffix)
 	ingressGWLabels := getIngressGatewayLabels(ca)
-	gwSpec := networkingv1beta1.Gateway{
+	gwSpec := networkingv1.Gateway{
 		Selector: ingressGWLabels,
-		Servers: []*networkingv1beta1.Server{
+		Servers: []*networkingv1.Server{
 			getGatewayServerSpec(ca.Spec.Domains.Primary, secretName),
 		},
 	}
@@ -107,13 +107,13 @@ func (c *Controller) handlePrimaryDomainGateway(ctx context.Context, ca *v1alpha
 	hash := sha256Sum(ca.Spec.Domains.Primary, secretName, fmt.Sprintf("%v", ingressGWLabels))
 
 	// check for existing gateway
-	gw, err := c.istioInformerFactory.Networking().V1beta1().Gateways().Lister().Gateways(namespace).Get(gwName)
+	gw, err := c.istioInformerFactory.Networking().V1().Gateways().Lister().Gateways(namespace).Get(gwName)
 
 	// create gateway
 	if errors.IsNotFound(err) {
 		util.LogInfo("Creating gateway for primary domain", string(Processing), ca, nil, "gatewayName", gwName)
-		_, err = c.istioClient.NetworkingV1beta1().Gateways(namespace).Create(
-			ctx, &istionwv1beta1.Gateway{
+		_, err = c.istioClient.NetworkingV1().Gateways(namespace).Create(
+			ctx, &istionwv1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      gwName,
 					Namespace: namespace,
@@ -138,7 +138,7 @@ func (c *Controller) handlePrimaryDomainGateway(ctx context.Context, ca *v1alpha
 
 		// Trigger the actual update on the resource
 		util.LogInfo("Updating gateway for primary domain", string(Processing), ca, gw)
-		_, err = c.istioClient.NetworkingV1beta1().Gateways(namespace).Update(ctx, gw, metav1.UpdateOptions{})
+		_, err = c.istioClient.NetworkingV1().Gateways(namespace).Update(ctx, gw, metav1.UpdateOptions{})
 	}
 
 	if err == nil {
@@ -294,7 +294,7 @@ func (c *Controller) checkPrimaryDomainResources(ctx context.Context, ca *v1alph
 	}()
 
 	// check for existing gateway
-	_, err = c.istioClient.NetworkingV1beta1().Gateways(ca.Namespace).Get(ctx, getResourceName(ca.Spec.BTPAppName, GatewaySuffix), metav1.GetOptions{})
+	_, err = c.istioClient.NetworkingV1().Gateways(ca.Namespace).Get(ctx, getResourceName(ca.Spec.BTPAppName, GatewaySuffix), metav1.GetOptions{})
 	if err != nil {
 		return false, err
 	}
@@ -443,17 +443,17 @@ func getCertManagerReadyCondition(certificate *certManagerv1.Certificate) *certM
 	return readyCond
 }
 
-func getGatewayServerSpec(domain string, credentialName string) *networkingv1beta1.Server {
-	return &networkingv1beta1.Server{
+func getGatewayServerSpec(domain string, credentialName string) *networkingv1.Server {
+	return &networkingv1.Server{
 		Hosts: []string{"*." + domain},
-		Port: &networkingv1beta1.Port{
+		Port: &networkingv1.Port{
 			Number:   443,
 			Protocol: "HTTPS",
 			Name:     domain,
 		},
-		Tls: &networkingv1beta1.ServerTLSSettings{
+		Tls: &networkingv1.ServerTLSSettings{
 			CredentialName: credentialName,
-			Mode:           networkingv1beta1.ServerTLSSettings_SIMPLE,
+			Mode:           networkingv1.ServerTLSSettings_SIMPLE,
 		},
 	}
 }
@@ -647,11 +647,11 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 func (c *Controller) reconcileTenantDestinationRule(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (modified bool, err error) {
 	var (
 		create, update bool
-		dr             *istionwv1beta1.DestinationRule
+		dr             *istionwv1.DestinationRule
 	)
-	dr, err = c.istioClient.NetworkingV1beta1().DestinationRules(cat.Namespace).Get(ctx, cat.Name, metav1.GetOptions{})
+	dr, err = c.istioClient.NetworkingV1().DestinationRules(cat.Namespace).Get(ctx, cat.Name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
-		dr = &istionwv1beta1.DestinationRule{
+		dr = &istionwv1.DestinationRule{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            cat.Name, // keep the same name as CAPTenant to avoid duplicates
 				Namespace:       cat.Namespace,
@@ -671,16 +671,16 @@ func (c *Controller) reconcileTenantDestinationRule(ctx context.Context, cat *v1
 
 	if create {
 		util.LogInfo("Creating destination rule", string(Processing), cat, dr, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
-		_, err = c.istioClient.NetworkingV1beta1().DestinationRules(cat.Namespace).Create(ctx, dr, metav1.CreateOptions{})
+		_, err = c.istioClient.NetworkingV1().DestinationRules(cat.Namespace).Create(ctx, dr, metav1.CreateOptions{})
 	} else if update {
 		util.LogInfo("Updating destination rule", string(Processing), cat, dr, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
-		_, err = c.istioClient.NetworkingV1beta1().DestinationRules(cat.Namespace).Update(ctx, dr, metav1.UpdateOptions{})
+		_, err = c.istioClient.NetworkingV1().DestinationRules(cat.Namespace).Update(ctx, dr, metav1.UpdateOptions{})
 	}
 
 	return create || update, err
 }
 
-func (c *Controller) getUpdatedTenantDestinationRuleObject(ctx context.Context, cat *v1alpha1.CAPTenant, dr *istionwv1beta1.DestinationRule, cavName string) (modified bool, err error) {
+func (c *Controller) getUpdatedTenantDestinationRuleObject(ctx context.Context, cat *v1alpha1.CAPTenant, dr *istionwv1.DestinationRule, cavName string) (modified bool, err error) {
 	// verify owner reference
 	modified, err = c.enforceTenantResourceOwnership(&dr.ObjectMeta, &dr.TypeMeta, cat)
 	if err != nil {
@@ -692,14 +692,14 @@ func (c *Controller) getUpdatedTenantDestinationRuleObject(ctx context.Context, 
 		return modified, err
 	}
 
-	spec := &networkingv1beta1.DestinationRule{
+	spec := &networkingv1.DestinationRule{
 		Host: routerPortInfo.WorkloadName + ServiceSuffix + "." + cat.Namespace + ".svc.cluster.local",
-		TrafficPolicy: &networkingv1beta1.TrafficPolicy{
-			LoadBalancer: &networkingv1beta1.LoadBalancerSettings{
-				LbPolicy: &networkingv1beta1.LoadBalancerSettings_ConsistentHash{
-					ConsistentHash: &networkingv1beta1.LoadBalancerSettings_ConsistentHashLB{
-						HashKey: &networkingv1beta1.LoadBalancerSettings_ConsistentHashLB_HttpCookie{
-							HttpCookie: &networkingv1beta1.LoadBalancerSettings_ConsistentHashLB_HTTPCookie{
+		TrafficPolicy: &networkingv1.TrafficPolicy{
+			LoadBalancer: &networkingv1.LoadBalancerSettings{
+				LbPolicy: &networkingv1.LoadBalancerSettings_ConsistentHash{
+					ConsistentHash: &networkingv1.LoadBalancerSettings_ConsistentHashLB{
+						HashKey: &networkingv1.LoadBalancerSettings_ConsistentHashLB_HttpCookie{
+							HttpCookie: &networkingv1.LoadBalancerSettings_ConsistentHashLB_HTTPCookie{
 								Name: RouterHttpCookieName,
 								Ttl:  durationpb.New(0 * time.Second),
 								Path: "/",
@@ -729,12 +729,12 @@ func (c *Controller) getUpdatedTenantDestinationRuleObject(ctx context.Context, 
 func (c *Controller) reconcileTenantVirtualService(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (modified bool, err error) {
 	var (
 		create, update bool
-		vs             *istionwv1beta1.VirtualService
+		vs             *istionwv1.VirtualService
 	)
 
-	vs, err = c.istioClient.NetworkingV1beta1().VirtualServices(cat.Namespace).Get(ctx, cat.Name, metav1.GetOptions{})
+	vs, err = c.istioClient.NetworkingV1().VirtualServices(cat.Namespace).Get(ctx, cat.Name, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
-		vs = &istionwv1beta1.VirtualService{
+		vs = &istionwv1.VirtualService{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            cat.Name, // keep the same name as CAPTenant to avoid duplicates
 				Namespace:       cat.Namespace,
@@ -754,16 +754,16 @@ func (c *Controller) reconcileTenantVirtualService(ctx context.Context, cat *v1a
 
 	if create {
 		util.LogInfo("Creating virtual service", string(Processing), cat, vs, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
-		_, err = c.istioClient.NetworkingV1beta1().VirtualServices(cat.Namespace).Create(ctx, vs, metav1.CreateOptions{})
+		_, err = c.istioClient.NetworkingV1().VirtualServices(cat.Namespace).Create(ctx, vs, metav1.CreateOptions{})
 	} else if update {
 		util.LogInfo("Updating virtual service", string(Processing), cat, vs, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
-		_, err = c.istioClient.NetworkingV1beta1().VirtualServices(cat.Namespace).Update(ctx, vs, metav1.UpdateOptions{})
+		_, err = c.istioClient.NetworkingV1().VirtualServices(cat.Namespace).Update(ctx, vs, metav1.UpdateOptions{})
 	}
 
 	return create || update, err
 }
 
-func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, cat *v1alpha1.CAPTenant, vs *istionwv1beta1.VirtualService, cavName string, ca *v1alpha1.CAPApplication) (modified bool, err error) {
+func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, cat *v1alpha1.CAPTenant, vs *istionwv1.VirtualService, cavName string, ca *v1alpha1.CAPApplication) (modified bool, err error) {
 	if ca == nil {
 		ca, err = c.getCachedCAPApplication(cat.Namespace, cat.Spec.CAPApplicationInstance)
 		if err != nil {
@@ -782,17 +782,17 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 		return modified, err
 	}
 
-	spec := &networkingv1beta1.VirtualService{
+	spec := &networkingv1.VirtualService{
 		Gateways: []string{ca.Spec.BTPAppName + "-gw"},
 		Hosts:    []string{cat.Spec.SubDomain + "." + ca.Spec.Domains.Primary},
-		Http: []*networkingv1beta1.HTTPRoute{{
-			Match: []*networkingv1beta1.HTTPMatchRequest{
-				{Uri: &networkingv1beta1.StringMatch{MatchType: &networkingv1beta1.StringMatch_Prefix{Prefix: "/"}}},
+		Http: []*networkingv1.HTTPRoute{{
+			Match: []*networkingv1.HTTPMatchRequest{
+				{Uri: &networkingv1.StringMatch{MatchType: &networkingv1.StringMatch_Prefix{Prefix: "/"}}},
 			},
-			Route: []*networkingv1beta1.HTTPRouteDestination{{
-				Destination: &networkingv1beta1.Destination{
+			Route: []*networkingv1.HTTPRouteDestination{{
+				Destination: &networkingv1.Destination{
 					Host: routerPortInfo.WorkloadName + ServiceSuffix + "." + cat.Namespace + ".svc.cluster.local",
-					Port: &networkingv1beta1.PortSelector{Number: uint32(routerPortInfo.Ports[0].Port)},
+					Port: &networkingv1.PortSelector{Number: uint32(routerPortInfo.Ports[0].Port)},
 				},
 				Weight: 100,
 			}},
@@ -824,7 +824,7 @@ func (err *OperatorGatewayMissingError) Error() string {
 	return "operator gateway for secondary domains missing"
 }
 
-func (c *Controller) updateTenantVirtualServiceSpecWithSecondaryDomains(ctx context.Context, spec *networkingv1beta1.VirtualService, cat *v1alpha1.CAPTenant, ca *v1alpha1.CAPApplication) error {
+func (c *Controller) updateTenantVirtualServiceSpecWithSecondaryDomains(ctx context.Context, spec *networkingv1.VirtualService, cat *v1alpha1.CAPTenant, ca *v1alpha1.CAPApplication) error {
 	secondaryDomainsExist := ca.Spec.Domains.Secondary != nil && len(ca.Spec.Domains.Secondary) > 0
 	if !secondaryDomainsExist {
 		return nil
@@ -1021,7 +1021,7 @@ func (c *Controller) reconcileOperatorDomains(ctx context.Context, item QueueIte
 
 func (c *Controller) getRelevantOperatorDomainInfo(ctx context.Context) (map[string]*operatorDomainInfo, error) {
 	relevantDomainInfos := map[string]*operatorDomainInfo{}
-	operatorDomainGWs, err := c.istioInformerFactory.Networking().V1beta1().Gateways().Lister().Gateways(metav1.NamespaceAll).List(labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}))
+	operatorDomainGWs, err := c.istioInformerFactory.Networking().V1().Gateways().Lister().Gateways(metav1.NamespaceAll).List(labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}))
 	if err != nil {
 		return nil, err
 	}
@@ -1073,7 +1073,7 @@ func (c *Controller) getRelevantOperatorDomainInfo(ctx context.Context) (map[str
 	return relevantDomainInfos, nil
 }
 
-func (c *Controller) getOperatorGateway(ctx context.Context, gwNamespace string, dnsTargetSum string) (*istionwv1beta1.Gateway, error) {
+func (c *Controller) getOperatorGateway(ctx context.Context, gwNamespace string, dnsTargetSum string) (*istionwv1.Gateway, error) {
 	gwSelector, err := labels.ValidatedSelectorFromSet(map[string]string{
 		LabelRelevantDNSTarget:   dnsTargetSum,
 		LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains),
@@ -1081,7 +1081,7 @@ func (c *Controller) getOperatorGateway(ctx context.Context, gwNamespace string,
 	if err != nil {
 		return nil, err
 	}
-	gwList, err := c.istioInformerFactory.Networking().V1beta1().Gateways().Lister().Gateways(gwNamespace).List(gwSelector)
+	gwList, err := c.istioInformerFactory.Networking().V1().Gateways().Lister().Gateways(gwNamespace).List(gwSelector)
 	if err != nil {
 		return nil, err
 	}
@@ -1091,7 +1091,7 @@ func (c *Controller) getOperatorGateway(ctx context.Context, gwNamespace string,
 	return gwList[0], nil
 }
 
-func (c *Controller) handleOperatorGateway(ctx context.Context, relevantDomainInfo *operatorDomainInfo, dnsTargetSum string) (*istionwv1beta1.Gateway, error) {
+func (c *Controller) handleOperatorGateway(ctx context.Context, relevantDomainInfo *operatorDomainInfo, dnsTargetSum string) (*istionwv1.Gateway, error) {
 	gw, err := c.getOperatorGateway(ctx, relevantDomainInfo.Namespace, dnsTargetSum)
 	if err != nil {
 		return nil, err
@@ -1099,7 +1099,7 @@ func (c *Controller) handleOperatorGateway(ctx context.Context, relevantDomainIn
 	hash := sha256Sum(fmt.Sprintf("%v", relevantDomainInfo))
 	// If no Gateway exists yet --> create one
 	if gw == nil {
-		gw = &istionwv1beta1.Gateway{
+		gw = &istionwv1.Gateway{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: relevantDomainInfo.Name,
 				Annotations: map[string]string{
@@ -1111,12 +1111,12 @@ func (c *Controller) handleOperatorGateway(ctx context.Context, relevantDomainIn
 					LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains),
 				},
 			},
-			Spec: networkingv1beta1.Gateway{
+			Spec: networkingv1.Gateway{
 				Selector: relevantDomainInfo.ingressGWSelector,
 			},
 		}
 		c.updateServerInfo(gw, relevantDomainInfo, relevantDomainInfo.dnsTarget)
-		gw, err = c.istioClient.NetworkingV1beta1().Gateways(relevantDomainInfo.Namespace).Create(ctx, gw, metav1.CreateOptions{})
+		gw, err = c.istioClient.NetworkingV1().Gateways(relevantDomainInfo.Namespace).Create(ctx, gw, metav1.CreateOptions{})
 	} else if gw.Annotations[AnnotationResourceHash] != hash { // Check if update is needed
 		// Update the relevant gw parts, if there are changes (detected via sha256 sum)
 		gw = gw.DeepCopy()
@@ -1124,13 +1124,13 @@ func (c *Controller) handleOperatorGateway(ctx context.Context, relevantDomainIn
 		// Update hash value on annotation
 		updateResourceAnnotation(&gw.ObjectMeta, hash)
 		// Trigger the actual update on the resource
-		gw, err = c.istioClient.NetworkingV1beta1().Gateways(relevantDomainInfo.Namespace).Update(ctx, gw, metav1.UpdateOptions{})
+		gw, err = c.istioClient.NetworkingV1().Gateways(relevantDomainInfo.Namespace).Update(ctx, gw, metav1.UpdateOptions{})
 	}
 	return gw, err
 }
 
-func (c *Controller) updateServerInfo(gw *istionwv1beta1.Gateway, relevantDomainInfo *operatorDomainInfo, dnsTarget string) {
-	gw.Spec.Servers = []*networkingv1beta1.Server{}
+func (c *Controller) updateServerInfo(gw *istionwv1.Gateway, relevantDomainInfo *operatorDomainInfo, dnsTarget string) {
+	gw.Spec.Servers = []*networkingv1.Server{}
 	for _, domain := range relevantDomainInfo.Domains {
 		gw.Spec.Servers = append(gw.Spec.Servers, getGatewayServerSpec(domain, dnsTarget))
 	}
@@ -1257,7 +1257,7 @@ func (c *Controller) cleanUpOperatorDomains(ctx context.Context, relevantDomainI
 		return err
 	}
 	if gw != nil {
-		err := c.istioClient.NetworkingV1beta1().Gateways(relevantDomainInfo.Namespace).Delete(ctx, gw.Name, metav1.DeleteOptions{})
+		err := c.istioClient.NetworkingV1().Gateways(relevantDomainInfo.Namespace).Delete(ctx, gw.Name, metav1.DeleteOptions{})
 		if err != nil {
 			return err
 		}
