@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -262,4 +263,12 @@ func (c *Controller) setCTOPStatusError(ctx context.Context, itemKey NamespacedR
 	ctop := cached.DeepCopy()
 	ctop.SetStatusWithReadyCondition(v1alpha1.CAPTenantOperationStateFailed, metav1.ConditionFalse, recoveredPanic, err.Error())
 	c.crdClient.SmeV1alpha1().CAPTenantOperations(itemKey.Namespace).UpdateStatus(ctx, ctop, metav1.UpdateOptions{})
+}
+
+func marshalAndHash[T any](v T) (string, error) {
+	serialized, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return sha256Sum(string(serialized)), nil
 }

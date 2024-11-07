@@ -7,7 +7,6 @@ package controller
 
 import (
 	"reflect"
-	"time"
 
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -26,7 +25,6 @@ const (
 	ResourceGateway
 	ResourceCertificate
 	ResourceDNSEntry
-	ResourceOperatorDomains
 	ResourceVirtualService
 	ResourceDestinationRule
 )
@@ -43,7 +41,6 @@ var (
 		ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind,
 		ResourceCAPApplication:        v1alpha1.CAPApplicationKind,
 		ResourceCAPTenantOperation:    v1alpha1.CAPTenantOperationKind,
-		ResourceOperatorDomains:       OperatorDomains,
 	}
 )
 
@@ -64,7 +61,6 @@ var QueueMapping map[int]map[int]string = map[int]map[int]string{
 	ResourceDestinationRule:       {ResourceCAPTenant: v1alpha1.CAPTenantKind},
 	ResourceCAPApplicationVersion: {ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind, ResourceCAPApplication: v1alpha1.CAPApplicationKind},
 	ResourceCAPApplication:        {ResourceCAPApplication: v1alpha1.CAPApplicationKind},
-	ResourceOperatorDomains:       {ResourceOperatorDomains: OperatorDomains},
 }
 
 type QueueItem struct {
@@ -205,13 +201,6 @@ func (c *Controller) enqueueModifiedResource(sourceKey int, new, old interface{}
 			klog.InfoS(queuing, "namespace", owner.Namespace, "name", owner.Name, "kind", dependentKind)
 			q.Add(QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: owner.Name, Namespace: owner.Namespace}})
 		}
-	}
-
-	// Reconcile OperatorDomains just after all CAPApplication updates
-	if sourceKey == ResourceCAPApplication {
-		klog.InfoS(queuing, "resource", KindMap[ResourceOperatorDomains])
-		// Reconcile Secondary domains via a dummy resource (separate reconciliation) after 1s
-		c.queues[ResourceOperatorDomains].AddAfter(QueueItem{Key: ResourceOperatorDomains, ResourceKey: NamespacedResourceKey{Namespace: metav1.NamespaceAll, Name: ""}}, 1*time.Second)
 	}
 }
 

@@ -120,7 +120,7 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 	}
 
 	// step 5 - check state of dependent resources
-	if processing, err = c.checkPrimaryDomainResources(ctx, ca); err != nil || processing {
+	if processing, err = c.checkApplicationDomainResources(ctx, ca); err != nil || processing {
 		return
 	}
 
@@ -401,7 +401,7 @@ func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alp
 
 	// TODO: cleanup domain resources via reconciliation
 	util.LogInfo("Removing primary domain certificate", string(Deleting), ca, nil)
-	if err = c.deletePrimaryDomainCertificate(ctx, ca); err != nil && !k8sErrors.IsNotFound(err) {
+	if err = c.deleteApplicationCertificate(ctx, ca); err != nil && !k8sErrors.IsNotFound(err) {
 		return nil, err
 	}
 

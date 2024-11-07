@@ -92,7 +92,6 @@ func TestController_initializeInformers(t *testing.T) {
 				ResourceCAPApplicationVersion: &dummyType{},
 				ResourceCAPTenant:             &dummyType{},
 				ResourceCAPTenantOperation:    &dummyType{},
-				ResourceOperatorDomains:       &dummyType{},
 			}
 
 			testC := &Controller{

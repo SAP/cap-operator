@@ -7,7 +7,6 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -19,7 +18,6 @@ import (
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/durationpb"
 	networkingv1 "istio.io/api/networking/v1"
 	istionwv1 "istio.io/client-go/pkg/apis/networking/v1"
@@ -50,31 +48,25 @@ const (
 )
 
 func (c *Controller) handleDomains(ctx context.Context, ca *v1alpha1.CAPApplication) (*ReconcileResult, error) {
-	domains, err := json.Marshal(ca.Spec.Domains)
+	domainsHash, err := marshalAndHash(&ca.Spec.Domains)
 	if err != nil {
 		util.LogError(err, "Error occurred while encoding domains to json", string(Processing), ca, nil)
 		return nil, fmt.Errorf("error occurred while encoding domains to json: %w", err)
 	}
-	domainsHash := sha256Sum(string(domains))
 
 	requeue := NewReconcileResult()
 
-	commonName := strings.Join([]string{"*", ca.Spec.Domains.Primary}, ".")
-	secretName := strings.Join([]string{strings.Join([]string{ca.Namespace, ca.Name}, "--"), SecretSuffix}, "-")
-	c.handlePrimaryDomainGateway(ctx, ca, secretName, ca.Namespace)
+	c.handleApplicationGateway(ctx, ca)
 
 	istioIngressGatewayInfo, err := c.getIngressGatewayInfo(ctx, ca)
 	if err != nil {
 		return nil, err
 	}
 
-	c.handlePrimaryDomainCertificate(ctx, ca, commonName, secretName, istioIngressGatewayInfo.Namespace)
-	c.handlePrimaryDomainDNSEntry(ctx, ca, commonName, ca.Namespace, sanitizeDNSTarget(istioIngressGatewayInfo.DNSTarget))
+	c.handleApplicationCertificate(ctx, ca, istioIngressGatewayInfo.Namespace)
+	c.handlePrimaryDomainDNSEntry(ctx, ca, strings.Join([]string{"*", ca.Spec.Domains.Primary}, "."), ca.Namespace, sanitizeDNSTarget(istioIngressGatewayInfo.DNSTarget))
 
 	if domainsHash != ca.Status.DomainSpecHash {
-
-		// Reconcile Secondary domains via a dummy resource (separate reconciliation)
-		requeue.AddResource(ResourceOperatorDomains, "", metav1.NamespaceAll, 0)
 		requeue.AddResource(ResourceCAPApplication, ca.Name, ca.Namespace, 3*time.Second) // requeue CAPApplication for further processing
 
 		// notify tenants of domain specification change (dns entries, virtual services)
@@ -94,29 +86,31 @@ func (c *Controller) handleDomains(ctx context.Context, ca *v1alpha1.CAPApplicat
 	return nil, nil
 }
 
-func (c *Controller) handlePrimaryDomainGateway(ctx context.Context, ca *v1alpha1.CAPApplication, secretName string, namespace string) error {
-	gwName := getResourceName(ca.Spec.BTPAppName, GatewaySuffix)
-	ingressGWLabels := getIngressGatewayLabels(ca)
-	gwSpec := networkingv1.Gateway{
-		Selector: ingressGWLabels,
+func (c *Controller) handleApplicationGateway(ctx context.Context, ca *v1alpha1.CAPApplication) (err error) {
+	spec := networkingv1.Gateway{
+		Selector: getIngressGatewayLabels(ca),
 		Servers: []*networkingv1.Server{
-			getGatewayServerSpec(ca.Spec.Domains.Primary, secretName),
+			{
+				Hosts: []string{"./*"}, // match all virtual services in the current namespace
+				Port:  &networkingv1.Port{Number: 443, Name: "https", Protocol: "HTTPS"},
+				Tls:   &networkingv1.ServerTLSSettings{CredentialName: ca.Namespace + "-" + ca.Name, Mode: networkingv1.ServerTLSSettings_SIMPLE},
+			},
 		},
 	}
-	// Calculate sha256 sum for GW spec
-	hash := sha256Sum(ca.Spec.Domains.Primary, secretName, fmt.Sprintf("%v", ingressGWLabels))
+
+	hash, err := marshalAndHash(&spec)
+	if err != nil {
+		return fmt.Errorf("could not serialize gateway specification for application %s.%s: %w", ca.Namespace, ca.Name, err)
+	}
 
 	// check for existing gateway
-	gw, err := c.istioInformerFactory.Networking().V1().Gateways().Lister().Gateways(namespace).Get(gwName)
-
-	// create gateway
+	gw, err := c.istioInformerFactory.Networking().V1().Gateways().Lister().Gateways(ca.Namespace).Get(ca.Name)
 	if errors.IsNotFound(err) {
-		util.LogInfo("Creating gateway for primary domain", string(Processing), ca, nil, "gatewayName", gwName)
-		_, err = c.istioClient.NetworkingV1().Gateways(namespace).Create(
+		_, err = c.istioClient.NetworkingV1().Gateways(ca.Namespace).Create(
 			ctx, &istionwv1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      gwName,
-					Namespace: namespace,
+					Name:      ca.Name,
+					Namespace: ca.Namespace,
 					Annotations: map[string]string{
 						AnnotationResourceHash:             hash,
 						AnnotationBTPApplicationIdentifier: ca.Spec.GlobalAccountId + "." + ca.Spec.BTPAppName,
@@ -126,44 +120,40 @@ func (c *Controller) handlePrimaryDomainGateway(ctx context.Context, ca *v1alpha
 					},
 					OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(ca, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationKind))},
 				},
-				Spec: gwSpec,
+				Spec: spec,
 			}, metav1.CreateOptions{},
 		)
 	} else if err == nil && gw != nil && gw.Annotations[AnnotationResourceHash] != hash {
 		// Update the relevant gw parts, if there are changes (detected via sha256 sum)
-		gw.Spec = gwSpec
-
-		// Update hash value on annotation
+		gw.Spec = spec
+		// Update annotation with new hash
 		updateResourceAnnotation(&gw.ObjectMeta, hash)
-
-		// Trigger the actual update on the resource
-		util.LogInfo("Updating gateway for primary domain", string(Processing), ca, gw)
-		_, err = c.istioClient.NetworkingV1().Gateways(namespace).Update(ctx, gw, metav1.UpdateOptions{})
+		_, err = c.istioClient.NetworkingV1().Gateways(ca.Namespace).Update(ctx, gw, metav1.UpdateOptions{})
 	}
 
 	if err == nil {
-		c.Event(ca, nil, corev1.EventTypeNormal, CAPApplicationEventPrimaryGatewayModified, EventActionProcessingDomainResources, fmt.Sprintf("primary gateway %s has been modified", gwName))
+		c.Event(ca, nil, corev1.EventTypeNormal, CAPApplicationEventPrimaryGatewayModified, EventActionProcessingDomainResources, fmt.Sprintf("application gateway %s has been modified", ca.Name))
 	}
 	return err
+
 }
 
-func (c *Controller) handlePrimaryDomainCertificate(ctx context.Context, ca *v1alpha1.CAPApplication, commonName string, secretName string, istioNamespace string) error {
-	var err error
-	certName := getResourceName(ca.Spec.BTPAppName, CertificateSuffix)
-	// Calculate sha256 sum for Cert spec
-	hash := sha256Sum(commonName, secretName)
+func (c *Controller) handleApplicationCertificate(ctx context.Context, ca *v1alpha1.CAPApplication, istioNamespace string) (err error) {
+	name := ca.Namespace + "-" + ca.Name
 	switch certificateManager() {
 	case certManagerGardener:
-		// check for existing certificate
-		gardenerCert, err := c.gardenerCertificateClient.CertV1alpha1().Certificates(istioNamespace).Get(context.TODO(), certName, metav1.GetOptions{})
-		gardenerCertSpec := getGardenerCertificateSpec(commonName, secretName)
+		spec := getGardenerCertificateSpec(ca, name)
+		hash, err := marshalAndHash(&spec)
+		if err != nil {
+			return fmt.Errorf("count not serialize certificate specification for application %s.%s: %w", ca.Namespace, ca.Name, err)
+		}
+
+		cert, err := c.gardenerCertificateClient.CertV1alpha1().Certificates(istioNamespace).Get(ctx, name, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
-			// create certificate
-			util.LogInfo("Creating gardener certificates for primary domain", string(Processing), ca, nil, "certificateName", certName)
 			_, err = c.gardenerCertificateClient.CertV1alpha1().Certificates(istioNamespace).Create(
 				ctx, &certv1alpha1.Certificate{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      certName,
+						Name:      name,
 						Namespace: istioNamespace,
 						Annotations: map[string]string{
 							AnnotationResourceHash:    hash,
@@ -175,33 +165,29 @@ func (c *Controller) handlePrimaryDomainCertificate(ctx context.Context, ca *v1a
 						},
 						Finalizers: []string{FinalizerCAPApplication},
 					},
-					Spec: gardenerCertSpec,
+					Spec: spec,
 				}, metav1.CreateOptions{},
 			)
-		} else if err == nil && gardenerCert != nil && gardenerCert.Annotations[AnnotationResourceHash] != hash {
+		} else if err == nil && cert != nil && cert.Annotations[AnnotationResourceHash] != hash {
 			// Update the certificate spec
-			gardenerCert.Spec = gardenerCertSpec
-
-			// Update hash value on annotation
-			updateResourceAnnotation(&gardenerCert.ObjectMeta, hash)
-
-			// Trigger the actual update on the resource
-			util.LogInfo("Updating gardener certificates for primary domain", string(Processing), ca, gardenerCert)
-			_, err = c.gardenerCertificateClient.CertV1alpha1().Certificates(istioNamespace).Update(ctx, gardenerCert, metav1.UpdateOptions{})
+			cert.Spec = spec
+			// Update annotation with new hash
+			updateResourceAnnotation(&cert.ObjectMeta, hash)
+			_, err = c.gardenerCertificateClient.CertV1alpha1().Certificates(istioNamespace).Update(ctx, cert, metav1.UpdateOptions{})
+		}
+	case certManagerCertManagerIO:
+		spec := getCertManagerCertificateSpec(ca, name)
+		hash, err := marshalAndHash(&spec)
+		if err != nil {
+			return fmt.Errorf("count not serialize certificate specification for application %s.%s: %w", ca.Namespace, ca.Name, err)
 		}
 
-	case certManagerCertManagerIO:
-		// check for existing certificate
-		certManagerCert, err := c.certManagerCertificateClient.CertmanagerV1().Certificates(istioNamespace).Get(context.TODO(), certName, metav1.GetOptions{})
-		certManagerCertSpec := getCertManagerCertificateSpec(commonName, secretName)
-
+		cert, err := c.certManagerCertificateClient.CertmanagerV1().Certificates(istioNamespace).Get(ctx, name, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
-			// create certificate
-			util.LogInfo("Creating cert-manager certificates for primary domain", string(Processing), ca, nil, "certificateName", certName)
 			_, err = c.certManagerCertificateClient.CertmanagerV1().Certificates(istioNamespace).Create(
 				ctx, &certManagerv1.Certificate{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      certName,
+						Name:      name,
 						Namespace: istioNamespace,
 						Annotations: map[string]string{
 							AnnotationResourceHash:    hash,
@@ -213,21 +199,18 @@ func (c *Controller) handlePrimaryDomainCertificate(ctx context.Context, ca *v1a
 						},
 						Finalizers: []string{FinalizerCAPApplication},
 					},
-					Spec: certManagerCertSpec,
+					Spec: spec,
 				}, metav1.CreateOptions{},
 			)
-		} else if err == nil && certManagerCert != nil && certManagerCert.Annotations[AnnotationResourceHash] != hash {
+		} else if err == nil && cert != nil && cert.Annotations[AnnotationResourceHash] != hash {
 			// Update the certificate spec
-			certManagerCert.Spec = certManagerCertSpec
-
+			cert.Spec = spec
 			// Update hash value on annotation
-			updateResourceAnnotation(&certManagerCert.ObjectMeta, hash)
-
-			// Trigger the actual update on the resource
-			util.LogInfo("Updating cert-manager certificates for primary domain", string(Processing), ca, certManagerCert)
-			_, err = c.certManagerCertificateClient.CertmanagerV1().Certificates(istioNamespace).Update(ctx, certManagerCert, metav1.UpdateOptions{})
+			updateResourceAnnotation(&cert.ObjectMeta, hash)
+			_, err = c.certManagerCertificateClient.CertmanagerV1().Certificates(istioNamespace).Update(ctx, cert, metav1.UpdateOptions{})
 		}
 	}
+
 	return err
 }
 
@@ -285,7 +268,7 @@ func (c *Controller) handlePrimaryDomainDNSEntry(ctx context.Context, ca *v1alph
 	return nil
 }
 
-func (c *Controller) checkPrimaryDomainResources(ctx context.Context, ca *v1alpha1.CAPApplication) (processing bool, err error) {
+func (c *Controller) checkApplicationDomainResources(ctx context.Context, ca *v1alpha1.CAPApplication) (processing bool, err error) {
 	defer func() {
 		if err != nil {
 			// set CAPApplication status - with error
@@ -294,7 +277,7 @@ func (c *Controller) checkPrimaryDomainResources(ctx context.Context, ca *v1alph
 	}()
 
 	// check for existing gateway
-	_, err = c.istioClient.NetworkingV1().Gateways(ca.Namespace).Get(ctx, getResourceName(ca.Spec.BTPAppName, GatewaySuffix), metav1.GetOptions{})
+	_, err = c.istioClient.NetworkingV1().Gateways(ca.Namespace).Get(ctx, ca.Name, metav1.GetOptions{})
 	if err != nil {
 		return false, err
 	}
@@ -306,7 +289,7 @@ func (c *Controller) checkPrimaryDomainResources(ctx context.Context, ca *v1alph
 		return false, err
 	}
 
-	certName := getResourceName(ca.Spec.BTPAppName, CertificateSuffix)
+	certName := ca.Namespace + "-" + ca.Name
 	// check for certificate status
 	if processing, err := c.checkCertificateStatus(ctx, ca, istioIngressGatewayInfo.Namespace, certName); err != nil || processing {
 		util.LogError(err, "", string(Processing), ca, nil, "certificateName", certName)
@@ -336,13 +319,12 @@ func (c *Controller) checkPrimaryDomainResources(ctx context.Context, ca *v1alph
 	return
 }
 
-func (c *Controller) deletePrimaryDomainCertificate(ctx context.Context, ca *v1alpha1.CAPApplication) error {
-	var err error
+func (c *Controller) deleteApplicationCertificate(ctx context.Context, ca *v1alpha1.CAPApplication) (err error) {
 	ingressGatewayInfo, err := c.getIngressGatewayInfo(ctx, ca)
 	if err != nil {
 		return err
 	}
-	certName := getResourceName(ca.Spec.BTPAppName, CertificateSuffix)
+	certName := ca.Namespace + "-" + ca.Name
 	// delete Certificate
 	switch certificateManager() {
 	case certManagerGardener:
@@ -399,7 +381,7 @@ func (c *Controller) checkCertificateStatus(ctx context.Context, ca *v1alpha1.CA
 	switch certificateManager() {
 	case certManagerGardener:
 		// check for existing certificate
-		certificate, err := c.gardenerCertificateClient.CertV1alpha1().Certificates(certNamespace).Get(context.TODO(), certName, metav1.GetOptions{})
+		certificate, err := c.gardenerCertificateClient.CertV1alpha1().Certificates(certNamespace).Get(ctx, certName, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -458,17 +440,19 @@ func getGatewayServerSpec(domain string, credentialName string) *networkingv1.Se
 	}
 }
 
-func getGardenerCertificateSpec(commonName string, secretName string) certv1alpha1.CertificateSpec {
+func getGardenerCertificateSpec(ca *v1alpha1.CAPApplication, secretName string) certv1alpha1.CertificateSpec {
+	san := getSubjectAlternateNames(ca, true)
 	return certv1alpha1.CertificateSpec{
-		CommonName: &commonName,
+		// CommonName: &cn,
+		DNSNames:   san,
 		SecretName: &secretName,
 	}
 }
 
-func getCertManagerCertificateSpec(commonName string, secretName string) certManagerv1.CertificateSpec {
+func getCertManagerCertificateSpec(ca *v1alpha1.CAPApplication, secretName string) certManagerv1.CertificateSpec {
+	san := getSubjectAlternateNames(ca, true)
 	return certManagerv1.CertificateSpec{
-		CommonName: commonName,
-		DNSNames:   []string{commonName},
+		DNSNames:   san,
 		SecretName: secretName,
 		IssuerRef: certManagermetav1.ObjectReference{
 			// TODO: make this configurable
@@ -476,6 +460,14 @@ func getCertManagerCertificateSpec(commonName string, secretName string) certMan
 			Name: "cluster-ca",
 		},
 	}
+}
+
+func getSubjectAlternateNames(ca *v1alpha1.CAPApplication, includePrimaryInSAN bool) []string {
+	san := []string{strings.Join([]string{"*", ca.Spec.Domains.Primary}, ".")}
+	for i := range ca.Spec.Domains.Secondary {
+		san = append(san, strings.Join([]string{"*", ca.Spec.Domains.Secondary[i]}, "."))
+	}
+	return san
 }
 
 func (c *Controller) detectTenantDNSEntryChanges(ctx context.Context, cat *v1alpha1.CAPTenant, ca *v1alpha1.CAPApplication, hash string) (bool, error) {
@@ -712,11 +704,10 @@ func (c *Controller) getUpdatedTenantDestinationRuleObject(ctx context.Context, 
 	}
 
 	// check whether changes have to be applied using hash comparison
-	serializedSpec, err := json.Marshal(spec)
+	hash, err := marshalAndHash(spec)
 	if err != nil {
 		return modified, fmt.Errorf("error serializing destination rule spec: %s", err.Error())
 	}
-	hash := sha256Sum(string(serializedSpec))
 	if dr.Annotations[AnnotationResourceHash] != hash {
 		dr.Spec = *spec
 		updateResourceAnnotation(&dr.ObjectMeta, hash)
@@ -783,7 +774,7 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 	}
 
 	spec := &networkingv1.VirtualService{
-		Gateways: []string{ca.Spec.BTPAppName + "-gw"},
+		Gateways: []string{ca.Name},
 		Hosts:    []string{cat.Spec.SubDomain + "." + ca.Spec.Domains.Primary},
 		Http: []*networkingv1.HTTPRoute{{
 			Match: []*networkingv1.HTTPMatchRequest{
@@ -804,11 +795,10 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 	}
 
 	// check whether changes have to be applied using hash comparison
-	serializedSpec, err := json.Marshal(spec)
+	hash, err := marshalAndHash(spec)
 	if err != nil {
 		return modified, fmt.Errorf("error serializing virtual service spec: %s", err.Error())
 	}
-	hash := sha256Sum(string(serializedSpec))
 	if vs.Annotations[AnnotationResourceHash] != hash {
 		vs.Spec = *spec
 		updateResourceAnnotation(&vs.ObjectMeta, hash)
@@ -834,21 +824,6 @@ func (c *Controller) updateTenantVirtualServiceSpecWithSecondaryDomains(ctx cont
 	for _, domain := range ca.Spec.Domains.Secondary {
 		spec.Hosts = append(spec.Hosts, cat.Spec.SubDomain+"."+domain)
 	}
-
-	// Determine Ingress GW service for this app
-	gwInfo, err := c.getIngressGatewayInfo(ctx, ca)
-	if err != nil {
-		return err
-	}
-
-	// Get the relevant central operator GW for this ingress GW
-	operatorGW, _ := c.getOperatorGateway(ctx, gwInfo.Namespace, sha1Sum(gwInfo.DNSTarget))
-	if operatorGW == nil {
-		// requeue for later reconciliation
-		return &OperatorGatewayMissingError{}
-	}
-	spec.Gateways = append(spec.Gateways, operatorGW.Namespace+"/"+operatorGW.Name)
-
 	return nil
 }
 
@@ -983,325 +958,6 @@ func (c *Controller) getIngressGatewayService(ctx context.Context, istioIngressG
 		return nil, fmt.Errorf("unable to find a matching ingress gateway service for %s %s.%s", v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
 	}
 	return &ingressGwSvc, nil
-}
-
-type operatorDomainInfo struct {
-	Namespace         string
-	Name              string
-	ingressGWSelector map[string]string
-	dnsTarget         string
-	Domains           []string
-}
-
-// Operator Domains is a dummy resource that is referenced by a DNSTarget (in QueuedItem) to handle "secondary" domains across all relevant CAPApplications
-// TODO: ignore duplicate reconciliation calls for same dnsTarget, Finalizers... and a whole lot more!
-func (c *Controller) reconcileOperatorDomains(ctx context.Context, item QueueItem, attempts int) error {
-	// Get Relevant Domain Infos
-	relevantDomainInfos, err := c.getRelevantOperatorDomainInfo(ctx)
-	if err != nil {
-		return err
-	}
-
-	for dnsTargetSum, relevantDomainInfo := range relevantDomainInfos {
-		// When no secondary domains exists --> Cleanup and return
-		if len(relevantDomainInfo.Domains) == 0 {
-			return c.cleanUpOperatorDomains(ctx, relevantDomainInfo, dnsTargetSum)
-		}
-
-		// Handle Operator Gateway
-		gw, err := c.handleOperatorGateway(ctx, relevantDomainInfo, dnsTargetSum)
-		if err != nil {
-			return err
-		}
-		// Handle Operator Certificate
-		return c.handleOperatorCertificate(ctx, gw.Name, relevantDomainInfo, dnsTargetSum)
-	}
-	return nil
-}
-
-func (c *Controller) getRelevantOperatorDomainInfo(ctx context.Context) (map[string]*operatorDomainInfo, error) {
-	relevantDomainInfos := map[string]*operatorDomainInfo{}
-	operatorDomainGWs, err := c.istioInformerFactory.Networking().V1().Gateways().Lister().Gateways(metav1.NamespaceAll).List(labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}))
-	if err != nil {
-		return nil, err
-	}
-	// Collect existing operator gateways (without Domains)
-	for _, operatorDomainGW := range operatorDomainGWs {
-		dnsTargetSum := operatorDomainGW.Labels[LabelRelevantDNSTarget]
-		relevantDomainInfos[dnsTargetSum] = &operatorDomainInfo{
-			Namespace:         operatorDomainGW.Namespace,
-			Name:              operatorDomainGW.Name,
-			ingressGWSelector: operatorDomainGW.Spec.Selector,
-			Domains:           []string{},
-		}
-	}
-
-	allCAs, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister().CAPApplications(metav1.NamespaceAll).List(labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-	// Create & Update relevant operator gateways with domains
-	for _, ca := range allCAs {
-		// If no secondary domain exists for a CAPApplication --> skip
-		if len(ca.Spec.Domains.Secondary) == 0 {
-			continue
-		}
-		// Create / Update relevant operator domain info
-		if gwInfo, err := c.getIngressGatewayInfo(ctx, ca); err == nil {
-			dnsTarget := trimDNSTarget(gwInfo.DNSTarget)
-
-			dnsTargetSum := sha1Sum(gwInfo.DNSTarget)
-
-			if relevantDomainInfo, ok := relevantDomainInfos[dnsTargetSum]; ok {
-				relevantDomainInfo.Domains = append(relevantDomainInfo.Domains, ca.Spec.Domains.Secondary...)
-				// Fill dnsTarget
-				relevantDomainInfo.dnsTarget = dnsTarget
-			} else {
-				relevantDomainInfos[dnsTargetSum] = &operatorDomainInfo{
-					Namespace:         gwInfo.Namespace,
-					Name:              OperatorDomainNamePrefix,
-					ingressGWSelector: getIngressGatewayLabels(ca),
-					dnsTarget:         dnsTarget,
-					Domains:           ca.Spec.Domains.Secondary,
-				}
-			}
-		} else {
-			return nil, err
-		}
-	}
-
-	return relevantDomainInfos, nil
-}
-
-func (c *Controller) getOperatorGateway(ctx context.Context, gwNamespace string, dnsTargetSum string) (*istionwv1.Gateway, error) {
-	gwSelector, err := labels.ValidatedSelectorFromSet(map[string]string{
-		LabelRelevantDNSTarget:   dnsTargetSum,
-		LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains),
-	})
-	if err != nil {
-		return nil, err
-	}
-	gwList, err := c.istioInformerFactory.Networking().V1().Gateways().Lister().Gateways(gwNamespace).List(gwSelector)
-	if err != nil {
-		return nil, err
-	}
-	if len(gwList) == 0 {
-		return nil, nil
-	}
-	return gwList[0], nil
-}
-
-func (c *Controller) handleOperatorGateway(ctx context.Context, relevantDomainInfo *operatorDomainInfo, dnsTargetSum string) (*istionwv1.Gateway, error) {
-	gw, err := c.getOperatorGateway(ctx, relevantDomainInfo.Namespace, dnsTargetSum)
-	if err != nil {
-		return nil, err
-	}
-	hash := sha256Sum(fmt.Sprintf("%v", relevantDomainInfo))
-	// If no Gateway exists yet --> create one
-	if gw == nil {
-		gw = &istionwv1.Gateway{
-			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: relevantDomainInfo.Name,
-				Annotations: map[string]string{
-					AnnotationResourceHash:    hash,
-					AnnotationOwnerIdentifier: OperatorDomainLabel,
-				},
-				Labels: map[string]string{
-					LabelRelevantDNSTarget:   dnsTargetSum,
-					LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains),
-				},
-			},
-			Spec: networkingv1.Gateway{
-				Selector: relevantDomainInfo.ingressGWSelector,
-			},
-		}
-		c.updateServerInfo(gw, relevantDomainInfo, relevantDomainInfo.dnsTarget)
-		gw, err = c.istioClient.NetworkingV1().Gateways(relevantDomainInfo.Namespace).Create(ctx, gw, metav1.CreateOptions{})
-	} else if gw.Annotations[AnnotationResourceHash] != hash { // Check if update is needed
-		// Update the relevant gw parts, if there are changes (detected via sha256 sum)
-		gw = gw.DeepCopy()
-		c.updateServerInfo(gw, relevantDomainInfo, relevantDomainInfo.dnsTarget)
-		// Update hash value on annotation
-		updateResourceAnnotation(&gw.ObjectMeta, hash)
-		// Trigger the actual update on the resource
-		gw, err = c.istioClient.NetworkingV1().Gateways(relevantDomainInfo.Namespace).Update(ctx, gw, metav1.UpdateOptions{})
-	}
-	return gw, err
-}
-
-func (c *Controller) updateServerInfo(gw *istionwv1.Gateway, relevantDomainInfo *operatorDomainInfo, dnsTarget string) {
-	gw.Spec.Servers = []*networkingv1.Server{}
-	for _, domain := range relevantDomainInfo.Domains {
-		gw.Spec.Servers = append(gw.Spec.Servers, getGatewayServerSpec(domain, dnsTarget))
-	}
-}
-
-func (c *Controller) handleOperatorCertificate(ctx context.Context, certName string, relevantDomainInfo *operatorDomainInfo, dnsTargetSum string) error {
-	hash := sha256Sum(fmt.Sprintf("%v", relevantDomainInfo))
-	dnsTarget := trimDNSTarget(relevantDomainInfo.dnsTarget)
-	switch certificateManager() {
-	case certManagerGardener:
-		cert, err := c.getGardenerOperatorCertificate(ctx, relevantDomainInfo.Namespace, dnsTargetSum)
-		if err != nil {
-			return err
-		}
-		// If no certiicate exists yet --> create one
-		if cert == nil {
-			cert := &certv1alpha1.Certificate{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: certName,
-					Annotations: map[string]string{
-						AnnotationResourceHash:    hash,
-						AnnotationOwnerIdentifier: OperatorDomainLabel,
-					},
-					Labels: map[string]string{
-						LabelRelevantDNSTarget:   dnsTargetSum,
-						LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains),
-					},
-				},
-				Spec: getGardenerCertificateSpec(dnsTarget, dnsTarget),
-			}
-			cert.Spec.DNSNames = getCertificateDNSNames(relevantDomainInfo)
-			_, err = c.gardenerCertificateClient.CertV1alpha1().Certificates(relevantDomainInfo.Namespace).Create(ctx, cert, metav1.CreateOptions{})
-		} else if cert.Annotations[AnnotationResourceHash] != hash {
-			// Update the relevant certificate parts, if there are changes (detected via sha256 sum)
-			cert = cert.DeepCopy()
-			cert.Spec.DNSNames = getCertificateDNSNames(relevantDomainInfo)
-			// Update hash value on annotation
-			updateResourceAnnotation(&cert.ObjectMeta, hash)
-			// Trigger the actual update on the resource
-			_, err = c.gardenerCertificateClient.CertV1alpha1().Certificates(relevantDomainInfo.Namespace).Update(ctx, cert, metav1.UpdateOptions{})
-		}
-		return err
-	case certManagerCertManagerIO:
-		cert, err := c.getCertManagerOperatorCertificate(ctx, relevantDomainInfo.Namespace, dnsTargetSum)
-		if err != nil {
-			return err
-		}
-		// If no certiicate exists yet --> create one
-		if cert == nil {
-			cert := &certManagerv1.Certificate{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: certName,
-					Annotations: map[string]string{
-						AnnotationResourceHash:    hash,
-						AnnotationOwnerIdentifier: OperatorDomainLabel,
-					},
-					Labels: map[string]string{
-						LabelRelevantDNSTarget:   dnsTargetSum,
-						LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains),
-					},
-				},
-				Spec: getCertManagerCertificateSpec("*."+dnsTarget, dnsTarget),
-			}
-			cert.Spec.DNSNames = getCertificateDNSNames(relevantDomainInfo)
-			_, err = c.certManagerCertificateClient.CertmanagerV1().Certificates(relevantDomainInfo.Namespace).Create(ctx, cert, metav1.CreateOptions{})
-		} else if cert.Annotations[AnnotationResourceHash] != hash {
-			// Update the relevant certificate parts, if there are changes (detected via sha256 sum)
-			cert = cert.DeepCopy()
-			cert.Spec.DNSNames = getCertificateDNSNames(relevantDomainInfo)
-			// Update hash value on annotation
-			updateResourceAnnotation(&cert.ObjectMeta, hash)
-			// Trigger the actual update on the resource
-			_, err = c.certManagerCertificateClient.CertmanagerV1().Certificates(relevantDomainInfo.Namespace).Update(ctx, cert, metav1.UpdateOptions{})
-		}
-		return err
-	}
-	return nil
-}
-
-func (c *Controller) getGardenerOperatorCertificate(ctx context.Context, gwNamespace string, dnsTargetSum string) (*certv1alpha1.Certificate, error) {
-	certSelector, err := labels.ValidatedSelectorFromSet(map[string]string{
-		LabelRelevantDNSTarget:   dnsTargetSum,
-		LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	certList, err := c.gardenerCertInformerFactory.Cert().V1alpha1().Certificates().Lister().Certificates(gwNamespace).List(certSelector)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(certList) == 0 {
-		return nil, nil
-	}
-	return certList[0], nil
-}
-
-func (c *Controller) getCertManagerOperatorCertificate(ctx context.Context, gwNamespace string, dnsTargetSum string) (*certManagerv1.Certificate, error) {
-	certSelector, err := labels.ValidatedSelectorFromSet(map[string]string{
-		LabelRelevantDNSTarget:   dnsTargetSum,
-		LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	certList, err := c.certManagerInformerFactory.Certmanager().V1().Certificates().Lister().Certificates(gwNamespace).List(certSelector)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(certList) == 0 {
-		return nil, nil
-	}
-	return certList[0], nil
-}
-
-func (c *Controller) cleanUpOperatorDomains(ctx context.Context, relevantDomainInfo *operatorDomainInfo, dnsTargetSum string) error {
-	// Delete Operator Gateway (if any)
-	gw, err := c.getOperatorGateway(ctx, relevantDomainInfo.Namespace, dnsTargetSum)
-	if err != nil {
-		return err
-	}
-	if gw != nil {
-		err := c.istioClient.NetworkingV1().Gateways(relevantDomainInfo.Namespace).Delete(ctx, gw.Name, metav1.DeleteOptions{})
-		if err != nil {
-			return err
-		}
-	}
-
-	// Delete Operator certificate (if any)
-	switch certificateManager() {
-	case certManagerGardener:
-		cert, err := c.getGardenerOperatorCertificate(ctx, relevantDomainInfo.Namespace, dnsTargetSum)
-		if err != nil {
-			return err
-		}
-		if cert != nil {
-			return c.gardenerCertificateClient.CertV1alpha1().Certificates(relevantDomainInfo.Namespace).Delete(ctx, cert.Name, metav1.DeleteOptions{})
-		}
-	case certManagerCertManagerIO:
-		cert, err := c.getCertManagerOperatorCertificate(ctx, relevantDomainInfo.Namespace, dnsTargetSum)
-		if err != nil {
-			return err
-		}
-		if cert != nil {
-			return c.certManagerCertificateClient.CertmanagerV1().Certificates(relevantDomainInfo.Namespace).Delete(ctx, cert.Name, metav1.DeleteOptions{})
-		}
-	}
-	return nil
-}
-
-func getCertificateDNSNames(relevantDomainInfo *operatorDomainInfo) []string {
-	dnsNames := []string{}
-	for _, domain := range relevantDomainInfo.Domains {
-		// Don't add duplicate DNSNames when multiple apps provide same secondary domain!
-		if !slices.ContainsFunc(dnsNames, func(dnsName string) bool { return dnsName == "*."+domain }) {
-			dnsNames = append(dnsNames, "*."+domain)
-		}
-	}
-	return dnsNames
-}
-
-func trimDNSTarget(dnsTarget string) string {
-	// Trim dnsTarget to under 64 chars --> TODO: Also handle this in webhook/crd spec
-	for len(dnsTarget) > 64 {
-		dnsTarget = dnsTarget[strings.Index(dnsTarget, ".")+1:]
-	}
-	return sanitizeDNSTarget(dnsTarget)
 }
 
 func sanitizeDNSTarget(dnsTarget string) string {
