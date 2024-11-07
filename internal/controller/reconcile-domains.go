@@ -91,11 +91,15 @@ func (c *Controller) handleApplicationGateway(ctx context.Context, ca *v1alpha1.
 		Selector: getIngressGatewayLabels(ca),
 		Servers: []*networkingv1.Server{
 			{
-				Hosts: []string{"./*"}, // match all virtual services in the current namespace
+				Hosts: []string{},
 				Port:  &networkingv1.Port{Number: 443, Name: "https", Protocol: "HTTPS"},
 				Tls:   &networkingv1.ServerTLSSettings{CredentialName: ca.Namespace + "-" + ca.Name, Mode: networkingv1.ServerTLSSettings_SIMPLE},
 			},
 		},
+	}
+	_, san := getCertificateSubjects(ca, true)
+	for i := range san {
+		spec.Servers[0].Hosts = append(spec.Servers[0].Hosts, fmt.Sprintf("%s/%s", ca.Namespace, san[i]))
 	}
 
 	hash, err := marshalAndHash(&spec)
@@ -441,17 +445,18 @@ func getGatewayServerSpec(domain string, credentialName string) *networkingv1.Se
 }
 
 func getGardenerCertificateSpec(ca *v1alpha1.CAPApplication, secretName string) certv1alpha1.CertificateSpec {
-	san := getSubjectAlternateNames(ca, true)
+	cn, san := getCertificateSubjects(ca, false)
 	return certv1alpha1.CertificateSpec{
-		// CommonName: &cn,
+		CommonName: &cn,
 		DNSNames:   san,
 		SecretName: &secretName,
 	}
 }
 
 func getCertManagerCertificateSpec(ca *v1alpha1.CAPApplication, secretName string) certManagerv1.CertificateSpec {
-	san := getSubjectAlternateNames(ca, true)
+	cn, san := getCertificateSubjects(ca, true)
 	return certManagerv1.CertificateSpec{
+		CommonName: cn,
 		DNSNames:   san,
 		SecretName: secretName,
 		IssuerRef: certManagermetav1.ObjectReference{
@@ -462,12 +467,16 @@ func getCertManagerCertificateSpec(ca *v1alpha1.CAPApplication, secretName strin
 	}
 }
 
-func getSubjectAlternateNames(ca *v1alpha1.CAPApplication, includePrimaryInSAN bool) []string {
-	san := []string{strings.Join([]string{"*", ca.Spec.Domains.Primary}, ".")}
+func getCertificateSubjects(ca *v1alpha1.CAPApplication, includePrimaryInSAN bool) (cn string, san []string) {
+	cn = strings.Join([]string{"*", ca.Spec.Domains.Primary}, ".")
+	san = []string{}
+	if includePrimaryInSAN {
+		san = append(san, cn)
+	}
 	for i := range ca.Spec.Domains.Secondary {
 		san = append(san, strings.Join([]string{"*", ca.Spec.Domains.Secondary[i]}, "."))
 	}
-	return san
+	return cn, san
 }
 
 func (c *Controller) detectTenantDNSEntryChanges(ctx context.Context, cat *v1alpha1.CAPTenant, ca *v1alpha1.CAPApplication, hash string) (bool, error) {
