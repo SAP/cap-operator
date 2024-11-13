@@ -15,7 +15,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// Initalizes the metrics server with default port 9090 and path /metrics based on default prometheus client
+// Initializes the metrics server with default port 9090 and path /metrics based on default prometheus client
 func InitMetricsServer() {
 	// Expose /metrics HTTP endpoint
 	go func() {

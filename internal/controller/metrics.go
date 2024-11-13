@@ -122,7 +122,7 @@ var (
 	}, []string{"name"})
 )
 
-// Create a varaible to hold all the collectors
+// Create a variable to hold all the collectors
 var collectors = []prometheus.Collector{ReconcileErrors, Panics, TenantOperations, depth, adds, latency, workDuration, unfinished, longestRunningProcessor, retries}
 
 // #region capOperatorMetricsProvider
