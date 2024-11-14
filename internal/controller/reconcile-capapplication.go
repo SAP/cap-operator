@@ -119,12 +119,7 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 		return
 	}
 
-	// step 5 - check state of dependent resources
-	if processing, err = c.checkPrimaryDomainResources(ctx, ca); err != nil || processing {
-		return
-	}
-
-	// step 6 - check and set consistent status
+	// step 5 - check and set consistent status
 	return c.verifyApplicationConsistent(ctx, ca)
 }
 
@@ -397,12 +392,6 @@ func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alp
 	if ca.Status.State != v1alpha1.CAPApplicationStateDeleting {
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateDeleting, metav1.ConditionFalse, "DeleteTriggered", "")
 		return NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0), nil
-	}
-
-	// TODO: cleanup domain resources via reconciliation
-	util.LogInfo("Removing primary domain certificate", string(Deleting), ca, nil)
-	if err = c.deletePrimaryDomainCertificate(ctx, ca); err != nil && !k8sErrors.IsNotFound(err) {
-		return nil, err
 	}
 
 	// delete CAPTenants - return if found in this loop, to verify deletion
