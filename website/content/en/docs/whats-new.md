@@ -6,7 +6,7 @@ description: >
   Discover new features added to CAP Operator
 ---
 
-#### New updates
+### New updates
 
 {{% cardpane %}}
   {{% card header="Q4 2024" %}}
@@ -21,7 +21,7 @@ description: >
 {{% /cardpane %}}
 
 
-#### Previous updates
+### Previous updates
 
 {{% cardpane %}}
   {{% card header="Q2 2024" %}}
