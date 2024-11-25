@@ -10,7 +10,7 @@ description: >
 
 To install CAP operator components, we recommend using the [Helm chart](https://github.com/sap/cap-operator-lifecycle/tree/main/chart) that is published as an OCI package at `oci://ghcr.io/sap/cap-operator-lifecycle/helm/cap-operator`.
 
-## Installation
+### Installation
 
 Create a namespace and install the Helm chart in that namespace by specifying the `domain` and the `dnsTarget` for your subscription server, either 
 
@@ -32,7 +32,7 @@ Create a namespace and install the Helm chart in that namespace by specifying th
     domain: cap-operator.<CLUSTER-DOMAIN>   
   ```
 
-## Optional steps
+### Optional steps
 
 - #### Enable Service Monitors for metrics emitted by controller and subscription server
 

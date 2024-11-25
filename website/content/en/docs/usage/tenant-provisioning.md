@@ -23,7 +23,7 @@ spec:
   versionUpgradeStrategy: always # <-- always / never
 ```
 
-## Tenant Provisioning
+### Tenant Provisioning
 
 The process of tenant provisioning starts when a consumer subaccount subscribes to the application, either via the SAP BTP cockpit or using the APIs provided by the SaaS provisioning service. This, in turn, initiates the asynchronous callback from the SaaS provisioning service instance into the cluster, and the request is handled by the [subscription server](docs/concepts/operator-components/subscription-server). The subscription server validates the request and creates an instance of `CAPTenant` for the identified `CAPApplication`.
 
@@ -58,7 +58,7 @@ The `CAPTenant` reaches a `Ready` state, only after
 
 ![tenant-provisioning](/cap-operator/img/activity-tenantprovisioning.drawio.svg)
 
-## Tenant Deprovisioning
+### Tenant Deprovisioning
 
 Similar to the tenant provisioning process, when a tenant unsubscribes from the application, the request is received by the subscription server. It validates the existence and status of the `CAPTenant` and submits a request for deletion to the Kubernetes API server.
 
