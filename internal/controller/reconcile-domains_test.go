@@ -13,7 +13,7 @@ import (
 	certManagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	certv1alpha1 "github.com/gardener/cert-management/pkg/apis/cert/v1alpha1"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	istionwv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
+	istionwv1 "istio.io/client-go/pkg/apis/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -184,6 +184,9 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 				ingressRes = createIngressResource(ingressGWName, ca, dns)
 			}
 
+			// Deregister metrics
+			defer deregisterMetrics()
+
 			c = getTestController(testResources{
 				cas:       []*v1alpha1.CAPApplication{ca, ca2},
 				ingressGW: []*ingressResources{ingressRes},
@@ -202,8 +205,8 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 			}
 
 			if tt.updateCA {
-				var gw *istionwv1beta1.Gateway
-				listGWs, _ := c.istioClient.NetworkingV1beta1().Gateways(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}).String()})
+				var gw *istionwv1.Gateway
+				listGWs, _ := c.istioClient.NetworkingV1().Gateways(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}).String()})
 				if len(listGWs.Items) > 0 {
 					gw = listGWs.Items[0]
 					generateMetaObjName(gw)
@@ -224,6 +227,10 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 					}
 				}
 				ca.Spec.Domains.Secondary = []string{"2" + secondaryDomain, "3" + secondaryDomain}
+
+				// Deregister metrics before starting new controller again
+				deregisterMetrics()
+
 				c = getTestController(testResources{
 					cas:             []*v1alpha1.CAPApplication{ca, ca2},
 					gateway:         gw,
@@ -238,9 +245,9 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 			}
 
 			if tt.cleanUpDomains {
-				var gw *istionwv1beta1.Gateway
+				var gw *istionwv1.Gateway
 				var ingressGW2 *ingressResources
-				listGWs, _ := c.istioClient.NetworkingV1beta1().Gateways(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}).String()})
+				listGWs, _ := c.istioClient.NetworkingV1().Gateways(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}).String()})
 				if len(listGWs.Items) > 0 {
 					gw = listGWs.Items[0]
 					generateMetaObjName(gw)
@@ -266,6 +273,10 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 					ca2.Spec.Domains.IstioIngressGatewayLabels[1].Value += "2"
 					ingressGW2 = createIngressResource(ingressGWName+"2", ca2, "Something.that.surely.exceeds.the.64char.limit."+dnsTarget)
 				}
+
+				// Deregister metrics before starting new controller again
+				deregisterMetrics()
+
 				c = getTestController(testResources{
 					cas:             []*v1alpha1.CAPApplication{ca, ca2},
 					gateway:         gw,
@@ -273,14 +284,15 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 					certManagerCert: certManagerCert,
 					ingressGW:       []*ingressResources{ingressRes, ingressGW2},
 				})
+
 				err = c.reconcileOperatorDomains(context.TODO(), q, 0)
 				if (err != nil) != tt.wantErr {
 					t.Errorf("Controller.reconcileOperatorDomains() error = %v, wantErr %v", err, tt.wantErr)
 				}
 			}
 
-			var gw *istionwv1beta1.Gateway
-			listGWs, _ := c.istioClient.NetworkingV1beta1().Gateways(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}).String()})
+			var gw *istionwv1.Gateway
+			listGWs, _ := c.istioClient.NetworkingV1().Gateways(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}).String()})
 			if len(listGWs.Items) > 0 {
 				gw = listGWs.Items[0]
 			}

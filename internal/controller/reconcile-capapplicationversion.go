@@ -21,8 +21,6 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apiextensions-apiserver/pkg/apihelpers"
-	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -192,6 +190,7 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "WaitingForWorkloads"})
 		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second), nil
 	} else if err != nil {
+		util.LogError(err, "Workload(s) in error status", string(Error), cav, nil, "version", cav.Spec.Version)
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInWorkloadStatus", Message: err.Error()})
 		return nil, err
 	}
@@ -312,6 +311,7 @@ func newContentDeploymentJob(cav *v1alpha1.CAPApplicationVersion, workload *v1al
 							Image:           workload.JobDefinition.Image,
 							ImagePullPolicy: workload.JobDefinition.ImagePullPolicy,
 							Command:         workload.JobDefinition.Command,
+							Args:            workload.JobDefinition.Args,
 							Env: append([]corev1.EnvVar{
 								{Name: EnvCAPOpAppVersion, Value: cav.Spec.Version},
 							}, workload.JobDefinition.Env...),
@@ -445,19 +445,20 @@ func newService(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion
 
 // #region ServiceMonitor
 func (c *Controller) checkServiceMonitorCapability(ctx context.Context) error {
-	crdName := "servicemonitors.monitoring.coreos.com"
-	crd, err := c.apiExtClient.ApiextensionsV1().CustomResourceDefinitions().Get(ctx, crdName, metav1.GetOptions{})
+	const (
+		monitoringGroupVersion = "monitoring.coreos.com/v1"
+		resourceKind           = "ServiceMonitor"
+	)
+	list, err := c.kubeClient.Discovery().ServerResourcesForGroupVersion(monitoringGroupVersion)
 	if err != nil {
-		return fmt.Errorf("could not get custom resource definition %s: %v", crdName, err)
+		return fmt.Errorf("error discovering resources for API version %s: %v", monitoringGroupVersion, err)
 	}
-	requiredVersion := "v1"
-	if !apihelpers.HasVersionServed(crd, requiredVersion) {
-		return fmt.Errorf("version %s of custom resource %s is not served", requiredVersion, crdName)
+	for i := range list.APIResources {
+		if list.APIResources[i].Kind == resourceKind {
+			return nil // found service monitor capability
+		}
 	}
-	if !apihelpers.IsCRDConditionTrue(crd, apiextv1.Established) {
-		return fmt.Errorf("custom resource %s condition %s not true", crdName, apiextv1.Established)
-	}
-	return nil
+	return fmt.Errorf("resource %s is not served by API version %s", resourceKind, monitoringGroupVersion)
 }
 
 func (c *Controller) updateServiceMonitors(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workloadServicePortInfos []servicePortInfo) error {
@@ -466,46 +467,47 @@ func (c *Controller) updateServiceMonitors(ctx context.Context, ca *v1alpha1.CAP
 		return nil
 	}
 
-	isWorkloadPort := func(wlPorts []corev1.ServicePort, scrapePort string) bool {
-		for j := range wlPorts {
-			if wlPorts[j].Name == scrapePort {
-				return true
-			}
-		}
-		return false
-	}
-
 	for i := range cav.Spec.Workloads {
 		wl := cav.Spec.Workloads[i]
-		if wl.DeploymentDefinition == nil || wl.DeploymentDefinition.Monitoring == nil || wl.DeploymentDefinition.Monitoring.ScrapeConfig == nil {
-			continue // do not reconcile service monitors
-		}
-
-		wlPortInfos := getServicePortInfoByWorkloadName(workloadServicePortInfos, cav.Name, wl.Name)
-		if wlPortInfos == nil {
-			return fmt.Errorf("could not identify workload port information for workload %s in version %s", wl.Name, cav.Name)
-		}
-
-		if portVerified := isWorkloadPort(wlPortInfos.Ports, wl.DeploymentDefinition.Monitoring.ScrapeConfig.WorkloadPort); !portVerified {
-			return fmt.Errorf("invalid port reference in workload %s monitoring config of version %s", wl.Name, cav.Name)
-		}
-
-		sm, err := c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Get(ctx, wlPortInfos.WorkloadName+ServiceSuffix, metav1.GetOptions{})
-		if err != nil {
-			if k8sErrors.IsNotFound(err) {
-				sm, err = c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Create(ctx, newServiceMonitor(ca, cav, &wl, wlPortInfos), metav1.CreateOptions{})
-				if err == nil {
-					util.LogInfo("Service monitor created successfully", string(Processing), cav, sm, "version", cav.Spec.Version)
-				}
-			}
-		}
-		err = doChecks(err, sm, cav, wlPortInfos.WorkloadName+ServiceSuffix)
-		if err != nil {
+		if err := c.reconcileWorkloadServiceMonitor(ctx, &wl, cav, workloadServicePortInfos, ca); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+func (c *Controller) reconcileWorkloadServiceMonitor(ctx context.Context, wl *v1alpha1.WorkloadDetails, cav *v1alpha1.CAPApplicationVersion, workloadServicePortInfos []servicePortInfo, ca *v1alpha1.CAPApplication) error {
+	if wl.DeploymentDefinition == nil || wl.DeploymentDefinition.Monitoring == nil || wl.DeploymentDefinition.Monitoring.ScrapeConfig == nil {
+		return nil // do not reconcile service monitors
+	}
+
+	wlPortInfos := getServicePortInfoByWorkloadName(workloadServicePortInfos, cav.Name, wl.Name)
+	if wlPortInfos == nil {
+		return fmt.Errorf("could not identify workload port information for workload %s in version %s", wl.Name, cav.Name)
+	}
+
+	if portVerified := isWorkloadPort(wlPortInfos.Ports, wl.DeploymentDefinition.Monitoring.ScrapeConfig.WorkloadPort); !portVerified {
+		return fmt.Errorf("invalid port reference in workload %s monitoring config of version %s", wl.Name, cav.Name)
+	}
+
+	sm, err := c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Get(ctx, wlPortInfos.WorkloadName+ServiceSuffix, metav1.GetOptions{})
+	if err != nil && k8sErrors.IsNotFound(err) {
+		sm, err = c.promClient.MonitoringV1().ServiceMonitors(cav.Namespace).Create(ctx, newServiceMonitor(ca, cav, wl, wlPortInfos), metav1.CreateOptions{})
+		if err == nil {
+			util.LogInfo("Service monitor created successfully", string(Processing), cav, sm, "version", cav.Spec.Version)
+		}
+	}
+	return doChecks(err, sm, cav, wlPortInfos.WorkloadName+ServiceSuffix)
+}
+
+func isWorkloadPort(wlPorts []corev1.ServicePort, scrapePort string) bool {
+	for j := range wlPorts {
+		if wlPorts[j].Name == scrapePort {
+			return true
+		}
+	}
+	return false
 }
 
 func newServiceMonitor(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, wl *v1alpha1.WorkloadDetails, wlPortInfos *servicePortInfo) *monv1.ServiceMonitor {
@@ -753,6 +755,7 @@ func getContainer(params *DeploymentParameters) []corev1.Container {
 		Image:           params.WorkloadDetails.DeploymentDefinition.Image,
 		ImagePullPolicy: params.WorkloadDetails.DeploymentDefinition.ImagePullPolicy,
 		Command:         params.WorkloadDetails.DeploymentDefinition.Command,
+		Args:            params.WorkloadDetails.DeploymentDefinition.Args,
 		Env:             getEnv(params),
 		EnvFrom:         getEnvFrom(params.VCAPSecretName),
 		VolumeMounts:    params.WorkloadDetails.DeploymentDefinition.VolumeMounts,
@@ -998,6 +1001,7 @@ func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alph
 
 		numOfFinishedJobsBeforeUpd := len(cav.Status.FinishedJobs)
 		if err := checkAndUpdateJobStatusFinishedJobs(contentDeployJob, cav); err != nil {
+			util.LogError(err, "Error in content job", string(Processing), cav, contentDeployJob, "version", cav.Spec.Version)
 			return false, err
 		}
 
@@ -1039,7 +1043,10 @@ func (c *Controller) checkOverallWorkloadStatus(ctx context.Context, overallDepl
 				deploymentAvailable = true
 				break
 			} else if condition.Type == appsv1.DeploymentReplicaFailure && condition.Status == corev1.ConditionTrue {
-				return false, fmt.Errorf("%s", condition.Message)
+				// if the deployment has replica failure, return error
+				err := fmt.Errorf("%s", condition.Message)
+				util.LogError(err, "Error in deployment", string(Processing), cav, deployment, "version", cav.Spec.Version)
+				return false, err
 			}
 		}
 		if !deploymentAvailable {

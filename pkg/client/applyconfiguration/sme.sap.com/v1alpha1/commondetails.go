@@ -17,6 +17,7 @@ type CommonDetailsApplyConfiguration struct {
 	Image                     *string                       `json:"image,omitempty"`
 	ImagePullPolicy           *v1.PullPolicy                `json:"imagePullPolicy,omitempty"`
 	Command                   []string                      `json:"command,omitempty"`
+	Args                      []string                      `json:"args,omitempty"`
 	Env                       []v1.EnvVar                   `json:"env,omitempty"`
 	Volumes                   []v1.Volume                   `json:"volumes,omitempty"`
 	VolumeMounts              []v1.VolumeMount              `json:"volumeMounts,omitempty"`
@@ -61,6 +62,16 @@ func (b *CommonDetailsApplyConfiguration) WithImagePullPolicy(value v1.PullPolic
 func (b *CommonDetailsApplyConfiguration) WithCommand(values ...string) *CommonDetailsApplyConfiguration {
 	for i := range values {
 		b.Command = append(b.Command, values[i])
+	}
+	return b
+}
+
+// WithArgs adds the given value to the Args field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Args field.
+func (b *CommonDetailsApplyConfiguration) WithArgs(values ...string) *CommonDetailsApplyConfiguration {
+	for i := range values {
+		b.Args = append(b.Args, values[i])
 	}
 	return b
 }

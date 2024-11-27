@@ -56,6 +56,16 @@ func (b *DeploymentDetailsApplyConfiguration) WithCommand(values ...string) *Dep
 	return b
 }
 
+// WithArgs adds the given value to the Args field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Args field.
+func (b *DeploymentDetailsApplyConfiguration) WithArgs(values ...string) *DeploymentDetailsApplyConfiguration {
+	for i := range values {
+		b.Args = append(b.Args, values[i])
+	}
+	return b
+}
+
 // WithEnv adds the given value to the Env field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Env field.

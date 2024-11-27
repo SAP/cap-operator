@@ -81,6 +81,7 @@ const (
 	EnvCAPOpTenantId            = "CAPOP_TENANT_ID"
 	EnvCAPOpTenantSubDomain     = "CAPOP_TENANT_SUBDOMAIN"
 	EnvCAPOpTenantOperation     = "CAPOP_TENANT_OPERATION"
+	EnvCAPOpTenantMtxsOperation = "CAPOP_TENANT_MTXS_OPERATION"
 	EnvCAPOpTenantType          = "CAPOP_TENANT_TYPE"
 	EnvCAPOpAppName             = "CAPOP_APP_NAME"
 	EnvCAPOpGlobalAccountId     = "CAPOP_GLOBAL_ACCOUNT_ID"
@@ -149,6 +150,7 @@ const (
 	Deprovisioning Steps = "Deprovisioning"
 	Deleting       Steps = "Deleting"
 	Ready          Steps = "Ready"
+	Error          Steps = "Error"
 )
 
 func (c *Controller) Event(main runtime.Object, related runtime.Object, eventType, reason, action, message string) {

@@ -114,6 +114,8 @@ spec:
                 secretKeyRef:
                   name: test-cap-01-gen
                   key: subscriptionContext
+            - name: CAPOP_TENANT_MTXS_OPERATION
+              value: subscribe
           envFrom:
             - secretRef:
                 name: test-cap-01-provider-abcd-mtx-gen

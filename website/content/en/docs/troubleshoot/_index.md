@@ -7,7 +7,7 @@ description: >
   Common issues and how to solve them
 ---
 
-**Usage of @sap/cds-mtxs library for multitenancy**
+### Usage of @sap/cds-mtxs library for multitenancy
 
 > The CAP Operator utilizes the `@sap/cds-mtxs` library. Prior to version 0.7.0 one could disable this by setting the IS_MTXS_ENABLED environment variable to "false" in the TenantOperation workload, in which case the old `@sap/cds-mtx` library-based wrapper job was used instead. However, this is no longer supported and is removed as support for older CDS version (v6) has ended.
 
@@ -35,7 +35,7 @@ As of now, for the usage of this new library, you (depending on your k8s cluster
         runAsUser: 1000
 ```
 
-**Secret/credential handling for different workloads of the CAP Operator**
+### Secret/credential handling for different workloads of the CAP Operator
 
 Libraries like `xsenv`/`cds`(CAP) handle credentials differently in different environments (CF, K8s) and on K8s when using credential data directly from secrets, any JSON data type information related to the data values may get lost and lead to inconsistencies.
 
@@ -57,21 +57,21 @@ spec:
 
 > We recommend that you use `secretKey`, even when credential metadata is available to reduce the overhead of interpreting parsing multiple JSON attributes.
 
-**HTTP requests reaching the AppRouter are not getting forwarded to the application server (pods)**
+### HTTP requests reaching the AppRouter are not getting forwarded to the application server (pods)
 
 The Approuter component maps incoming requests to destinations (applications or services) that have been configured. If you're using an `xs-app.json` file with your Approuter to specify route mapping to various destinations, ensure that the `destinationName` property for the 
 SAP Cloud Application Programming Model back end is specified in the corresponding CAPApplicationVersion configuration. CAP Operator will inject this destination to the Approuter pods (via environment variables).
 
 
-**HTTP Requests Timing Out in the Approuter for Long-Running Operations in Back End Workload**
+### HTTP Requests Timing Out in the Approuter for Long-Running Operations in Back End Workload
 
 If your back-end service is known to take a long time, configure the `destinations` environment variable on the Approuter component to set the desired timeout configuration for that destination (`destinationName`). CAP Operator will overwrite the URL part of that destination to point to the right workload, the remaining settings are taken over exactly as configured.
 
-**Supported Approuter Version**
+### Supported Approuter Version
 
 Use `@sap/approuter` version `14.x.x` (or higher).
 
-**CAP Operator Resources Can't Be Deleted in the K8S Cluster/Namespace**
+### CAP Operator Resources Can't Be Deleted in the K8S Cluster/Namespace
 
 All custom resource objects (CROs) created by CAP Operator are protected with `finalizers` to ensure a proper cleanup takes place.
 For instance, when deleting a `CAPApplication` CRO, any existing tenants would be deprovisioned automatically to avoid inconsistenties. Once the deprovisioning is successful, the corresponding CROs would be removed automatically.
