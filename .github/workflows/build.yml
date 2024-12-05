@@ -17,7 +17,7 @@ permissions:
 jobs:
   build:
     name: Build and Test
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
 
     - name: Check out code into the Go module directory
@@ -47,7 +47,7 @@ jobs:
   analysis:
     name: Analyze with Sonar Cloud
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
     
     - name: Check out code for Sonar Analysis
