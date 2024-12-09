@@ -23,6 +23,7 @@ func main() {
 	subHandler := getSubscriptionHandler()
 
 	http.HandleFunc("/provision/", util.InstrumentHttpHandler(subHandler.HandleRequest, "cap_op_subscription_requests", "subscription-server requests."))
+	http.HandleFunc("/dependencies/{globalAccountId}/{appName}", util.InstrumentHttpHandler(subHandler.HandleGetDependenciesRequest, "cap_op_dependencies_requests", "subscription-server dependencies requests."))
 
 	// Initialize/start metrics server
 	util.InitMetricsServer()
