@@ -611,3 +611,10 @@ func updateInitContainers(initContainers []corev1.Container, additionalEnv []cor
 func getWorkloadName(cavName, workloadName string) string {
 	return fmt.Sprintf("%s-%s", cavName, strings.ToLower(workloadName))
 }
+
+func getRestartPolicy(restartPolicy corev1.RestartPolicy, isJob bool) corev1.RestartPolicy {
+	if isJob && restartPolicy == "" {
+		return corev1.RestartPolicyNever
+	}
+	return restartPolicy
+}
