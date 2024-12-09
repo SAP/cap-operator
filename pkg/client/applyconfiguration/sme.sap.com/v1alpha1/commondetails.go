@@ -32,6 +32,7 @@ type CommonDetailsApplyConfiguration struct {
 	Tolerations               []v1.Toleration               `json:"tolerations,omitempty"`
 	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 	InitContainers            []v1.Container                `json:"initContainers,omitempty"`
+	RestartPolicy             *v1.RestartPolicy             `json:"restartPolicy,omitempty"`
 }
 
 // CommonDetailsApplyConfiguration constructs a declarative configuration of the CommonDetails type for use with
@@ -203,5 +204,13 @@ func (b *CommonDetailsApplyConfiguration) WithInitContainers(values ...v1.Contai
 	for i := range values {
 		b.InitContainers = append(b.InitContainers, values[i])
 	}
+	return b
+}
+
+// WithRestartPolicy sets the RestartPolicy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the RestartPolicy field is set to the value of the last call.
+func (b *CommonDetailsApplyConfiguration) WithRestartPolicy(value v1.RestartPolicy) *CommonDetailsApplyConfiguration {
+	b.RestartPolicy = &value
 	return b
 }

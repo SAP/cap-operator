@@ -51,6 +51,7 @@ type tentantOperationWorkload struct {
 	tolerations               []corev1.Toleration
 	backoffLimit              *int32
 	ttlSecondsAfterFinished   *int32
+	restartPolicy             corev1.RestartPolicy
 }
 
 const (
@@ -484,7 +485,7 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 					Annotations: params.annotations,
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy:             corev1.RestartPolicyNever,
+					RestartPolicy:             getRestartPolicy(derivedWorkload.restartPolicy, true),
 					ImagePullSecrets:          params.imagePullSecrets,
 					Containers:                getContainers(ctop, derivedWorkload, workload, params),
 					InitContainers:            *updateInitContainers(derivedWorkload.initContainers, getCTOPEnv(params, ctop, v1alpha1.JobTenantOperation), params.vcapSecretName),
@@ -574,6 +575,7 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 		if workload.JobDefinition.TTLSecondsAfterFinished != nil {
 			result.ttlSecondsAfterFinished = workload.JobDefinition.TTLSecondsAfterFinished
 		}
+		result.restartPolicy = workload.JobDefinition.RestartPolicy
 		result.affinity = workload.JobDefinition.Affinity
 		result.nodeSelector = workload.JobDefinition.NodeSelector
 		result.nodeName = workload.JobDefinition.NodeName
@@ -603,7 +605,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 					Annotations: params.annotations,
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy:             corev1.RestartPolicyNever,
+					RestartPolicy:             getRestartPolicy(workload.JobDefinition.RestartPolicy, true),
 					SecurityContext:           workload.JobDefinition.PodSecurityContext,
 					Volumes:                   workload.JobDefinition.Volumes,
 					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,

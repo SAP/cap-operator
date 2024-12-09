@@ -397,6 +397,8 @@ type CommonDetails struct {
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 	// List of containers executed before the main container is started
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
+	// Restart policy for the Pod. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
+	RestartPolicy corev1.RestartPolicy `json:"restartPolicy,omitempty"`
 }
 
 // Configuration of Service Ports for the deployment
