@@ -8,179 +8,33 @@ SPDX-License-Identifier: Apache-2.0
 package fake
 
 import (
-	"context"
-	json "encoding/json"
-	"fmt"
-
 	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	typedsmesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/clientset/versioned/typed/sme.sap.com/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeCAPTenants implements CAPTenantInterface
-type FakeCAPTenants struct {
+// fakeCAPTenants implements CAPTenantInterface
+type fakeCAPTenants struct {
+	*gentype.FakeClientWithListAndApply[*v1alpha1.CAPTenant, *v1alpha1.CAPTenantList, *smesapcomv1alpha1.CAPTenantApplyConfiguration]
 	Fake *FakeSmeV1alpha1
-	ns   string
 }
 
-var captenantsResource = v1alpha1.SchemeGroupVersion.WithResource("captenants")
-
-var captenantsKind = v1alpha1.SchemeGroupVersion.WithKind("CAPTenant")
-
-// Get takes name of the cAPTenant, and returns the corresponding cAPTenant object, and an error if there is any.
-func (c *FakeCAPTenants) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.CAPTenant, err error) {
-	emptyResult := &v1alpha1.CAPTenant{}
-	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithOptions(captenantsResource, c.ns, name, options), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
+func newFakeCAPTenants(fake *FakeSmeV1alpha1, namespace string) typedsmesapcomv1alpha1.CAPTenantInterface {
+	return &fakeCAPTenants{
+		gentype.NewFakeClientWithListAndApply[*v1alpha1.CAPTenant, *v1alpha1.CAPTenantList, *smesapcomv1alpha1.CAPTenantApplyConfiguration](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("captenants"),
+			v1alpha1.SchemeGroupVersion.WithKind("CAPTenant"),
+			func() *v1alpha1.CAPTenant { return &v1alpha1.CAPTenant{} },
+			func() *v1alpha1.CAPTenantList { return &v1alpha1.CAPTenantList{} },
+			func(dst, src *v1alpha1.CAPTenantList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.CAPTenantList) []*v1alpha1.CAPTenant { return gentype.ToPointerSlice(list.Items) },
+			func(list *v1alpha1.CAPTenantList, items []*v1alpha1.CAPTenant) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.CAPTenant), err
-}
-
-// List takes label and field selectors, and returns the list of CAPTenants that match those selectors.
-func (c *FakeCAPTenants) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.CAPTenantList, err error) {
-	emptyResult := &v1alpha1.CAPTenantList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewListActionWithOptions(captenantsResource, captenantsKind, c.ns, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.CAPTenantList{ListMeta: obj.(*v1alpha1.CAPTenantList).ListMeta}
-	for _, item := range obj.(*v1alpha1.CAPTenantList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested cAPTenants.
-func (c *FakeCAPTenants) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchActionWithOptions(captenantsResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a cAPTenant and creates it.  Returns the server's representation of the cAPTenant, and an error, if there is any.
-func (c *FakeCAPTenants) Create(ctx context.Context, cAPTenant *v1alpha1.CAPTenant, opts v1.CreateOptions) (result *v1alpha1.CAPTenant, err error) {
-	emptyResult := &v1alpha1.CAPTenant{}
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithOptions(captenantsResource, c.ns, cAPTenant, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.CAPTenant), err
-}
-
-// Update takes the representation of a cAPTenant and updates it. Returns the server's representation of the cAPTenant, and an error, if there is any.
-func (c *FakeCAPTenants) Update(ctx context.Context, cAPTenant *v1alpha1.CAPTenant, opts v1.UpdateOptions) (result *v1alpha1.CAPTenant, err error) {
-	emptyResult := &v1alpha1.CAPTenant{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithOptions(captenantsResource, c.ns, cAPTenant, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.CAPTenant), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeCAPTenants) UpdateStatus(ctx context.Context, cAPTenant *v1alpha1.CAPTenant, opts v1.UpdateOptions) (result *v1alpha1.CAPTenant, err error) {
-	emptyResult := &v1alpha1.CAPTenant{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithOptions(captenantsResource, "status", c.ns, cAPTenant, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.CAPTenant), err
-}
-
-// Delete takes name of the cAPTenant and deletes it. Returns an error if one occurs.
-func (c *FakeCAPTenants) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(captenantsResource, c.ns, name, opts), &v1alpha1.CAPTenant{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeCAPTenants) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionActionWithOptions(captenantsResource, c.ns, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.CAPTenantList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched cAPTenant.
-func (c *FakeCAPTenants) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.CAPTenant, err error) {
-	emptyResult := &v1alpha1.CAPTenant{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(captenantsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.CAPTenant), err
-}
-
-// Apply takes the given apply declarative configuration, applies it and returns the applied cAPTenant.
-func (c *FakeCAPTenants) Apply(ctx context.Context, cAPTenant *smesapcomv1alpha1.CAPTenantApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.CAPTenant, err error) {
-	if cAPTenant == nil {
-		return nil, fmt.Errorf("cAPTenant provided to Apply must not be nil")
-	}
-	data, err := json.Marshal(cAPTenant)
-	if err != nil {
-		return nil, err
-	}
-	name := cAPTenant.Name
-	if name == nil {
-		return nil, fmt.Errorf("cAPTenant.Name must be provided to Apply")
-	}
-	emptyResult := &v1alpha1.CAPTenant{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(captenantsResource, c.ns, *name, types.ApplyPatchType, data, opts.ToPatchOptions()), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.CAPTenant), err
-}
-
-// ApplyStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
-func (c *FakeCAPTenants) ApplyStatus(ctx context.Context, cAPTenant *smesapcomv1alpha1.CAPTenantApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.CAPTenant, err error) {
-	if cAPTenant == nil {
-		return nil, fmt.Errorf("cAPTenant provided to Apply must not be nil")
-	}
-	data, err := json.Marshal(cAPTenant)
-	if err != nil {
-		return nil, err
-	}
-	name := cAPTenant.Name
-	if name == nil {
-		return nil, fmt.Errorf("cAPTenant.Name must be provided to Apply")
-	}
-	emptyResult := &v1alpha1.CAPTenant{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(captenantsResource, c.ns, *name, types.ApplyPatchType, data, opts.ToPatchOptions(), "status"), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.CAPTenant), err
 }

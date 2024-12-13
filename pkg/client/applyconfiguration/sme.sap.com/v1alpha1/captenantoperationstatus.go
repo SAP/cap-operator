@@ -31,7 +31,7 @@ func CAPTenantOperationStatus() *CAPTenantOperationStatusApplyConfiguration {
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ObservedGeneration field is set to the value of the last call.
 func (b *CAPTenantOperationStatusApplyConfiguration) WithObservedGeneration(value int64) *CAPTenantOperationStatusApplyConfiguration {
-	b.ObservedGeneration = &value
+	b.GenericStatusApplyConfiguration.ObservedGeneration = &value
 	return b
 }
 
@@ -43,7 +43,7 @@ func (b *CAPTenantOperationStatusApplyConfiguration) WithConditions(values ...*v
 		if values[i] == nil {
 			panic("nil value passed to WithConditions")
 		}
-		b.Conditions = append(b.Conditions, *values[i])
+		b.GenericStatusApplyConfiguration.Conditions = append(b.GenericStatusApplyConfiguration.Conditions, *values[i])
 	}
 	return b
 }

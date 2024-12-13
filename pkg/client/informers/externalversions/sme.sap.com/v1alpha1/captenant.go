@@ -8,13 +8,13 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	apissmesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	versioned "github.com/sap/cap-operator/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/sap/cap-operator/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/sap/cap-operator/pkg/client/listers/sme.sap.com/v1alpha1"
+	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/listers/sme.sap.com/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -25,7 +25,7 @@ import (
 // CAPTenants.
 type CAPTenantInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.CAPTenantLister
+	Lister() smesapcomv1alpha1.CAPTenantLister
 }
 
 type cAPTenantInformer struct {
@@ -60,7 +60,7 @@ func NewFilteredCAPTenantInformer(client versioned.Interface, namespace string, 
 				return client.SmeV1alpha1().CAPTenants(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&smesapcomv1alpha1.CAPTenant{},
+		&apissmesapcomv1alpha1.CAPTenant{},
 		resyncPeriod,
 		indexers,
 	)
@@ -71,9 +71,9 @@ func (f *cAPTenantInformer) defaultInformer(client versioned.Interface, resyncPe
 }
 
 func (f *cAPTenantInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&smesapcomv1alpha1.CAPTenant{}, f.defaultInformer)
+	return f.factory.InformerFor(&apissmesapcomv1alpha1.CAPTenant{}, f.defaultInformer)
 }
 
-func (f *cAPTenantInformer) Lister() v1alpha1.CAPTenantLister {
-	return v1alpha1.NewCAPTenantLister(f.Informer().GetIndexer())
+func (f *cAPTenantInformer) Lister() smesapcomv1alpha1.CAPTenantLister {
+	return smesapcomv1alpha1.NewCAPTenantLister(f.Informer().GetIndexer())
 }

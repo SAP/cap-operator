@@ -8,8 +8,8 @@ SPDX-License-Identifier: Apache-2.0
 package internal
 
 import (
-	"fmt"
-	"sync"
+	fmt "fmt"
+	sync "sync"
 
 	typed "sigs.k8s.io/structured-merge-diff/v4/typed"
 )

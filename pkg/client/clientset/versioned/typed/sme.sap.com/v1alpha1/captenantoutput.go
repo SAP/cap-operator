@@ -8,10 +8,10 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha1"
+	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	applyconfigurationsmesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha1"
 	scheme "github.com/sap/cap-operator/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -27,32 +27,33 @@ type CAPTenantOutputsGetter interface {
 
 // CAPTenantOutputInterface has methods to work with CAPTenantOutput resources.
 type CAPTenantOutputInterface interface {
-	Create(ctx context.Context, cAPTenantOutput *v1alpha1.CAPTenantOutput, opts v1.CreateOptions) (*v1alpha1.CAPTenantOutput, error)
-	Update(ctx context.Context, cAPTenantOutput *v1alpha1.CAPTenantOutput, opts v1.UpdateOptions) (*v1alpha1.CAPTenantOutput, error)
+	Create(ctx context.Context, cAPTenantOutput *smesapcomv1alpha1.CAPTenantOutput, opts v1.CreateOptions) (*smesapcomv1alpha1.CAPTenantOutput, error)
+	Update(ctx context.Context, cAPTenantOutput *smesapcomv1alpha1.CAPTenantOutput, opts v1.UpdateOptions) (*smesapcomv1alpha1.CAPTenantOutput, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.CAPTenantOutput, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.CAPTenantOutputList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*smesapcomv1alpha1.CAPTenantOutput, error)
+	List(ctx context.Context, opts v1.ListOptions) (*smesapcomv1alpha1.CAPTenantOutputList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.CAPTenantOutput, err error)
-	Apply(ctx context.Context, cAPTenantOutput *smesapcomv1alpha1.CAPTenantOutputApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.CAPTenantOutput, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *smesapcomv1alpha1.CAPTenantOutput, err error)
+	Apply(ctx context.Context, cAPTenantOutput *applyconfigurationsmesapcomv1alpha1.CAPTenantOutputApplyConfiguration, opts v1.ApplyOptions) (result *smesapcomv1alpha1.CAPTenantOutput, err error)
 	CAPTenantOutputExpansion
 }
 
 // cAPTenantOutputs implements CAPTenantOutputInterface
 type cAPTenantOutputs struct {
-	*gentype.ClientWithListAndApply[*v1alpha1.CAPTenantOutput, *v1alpha1.CAPTenantOutputList, *smesapcomv1alpha1.CAPTenantOutputApplyConfiguration]
+	*gentype.ClientWithListAndApply[*smesapcomv1alpha1.CAPTenantOutput, *smesapcomv1alpha1.CAPTenantOutputList, *applyconfigurationsmesapcomv1alpha1.CAPTenantOutputApplyConfiguration]
 }
 
 // newCAPTenantOutputs returns a CAPTenantOutputs
 func newCAPTenantOutputs(c *SmeV1alpha1Client, namespace string) *cAPTenantOutputs {
 	return &cAPTenantOutputs{
-		gentype.NewClientWithListAndApply[*v1alpha1.CAPTenantOutput, *v1alpha1.CAPTenantOutputList, *smesapcomv1alpha1.CAPTenantOutputApplyConfiguration](
+		gentype.NewClientWithListAndApply[*smesapcomv1alpha1.CAPTenantOutput, *smesapcomv1alpha1.CAPTenantOutputList, *applyconfigurationsmesapcomv1alpha1.CAPTenantOutputApplyConfiguration](
 			"captenantoutputs",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.CAPTenantOutput { return &v1alpha1.CAPTenantOutput{} },
-			func() *v1alpha1.CAPTenantOutputList { return &v1alpha1.CAPTenantOutputList{} }),
+			func() *smesapcomv1alpha1.CAPTenantOutput { return &smesapcomv1alpha1.CAPTenantOutput{} },
+			func() *smesapcomv1alpha1.CAPTenantOutputList { return &smesapcomv1alpha1.CAPTenantOutputList{} },
+		),
 	}
 }

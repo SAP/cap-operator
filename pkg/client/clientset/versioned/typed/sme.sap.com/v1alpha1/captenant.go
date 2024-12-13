@@ -8,10 +8,10 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha1"
+	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	applyconfigurationsmesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha1"
 	scheme "github.com/sap/cap-operator/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -27,36 +27,37 @@ type CAPTenantsGetter interface {
 
 // CAPTenantInterface has methods to work with CAPTenant resources.
 type CAPTenantInterface interface {
-	Create(ctx context.Context, cAPTenant *v1alpha1.CAPTenant, opts v1.CreateOptions) (*v1alpha1.CAPTenant, error)
-	Update(ctx context.Context, cAPTenant *v1alpha1.CAPTenant, opts v1.UpdateOptions) (*v1alpha1.CAPTenant, error)
+	Create(ctx context.Context, cAPTenant *smesapcomv1alpha1.CAPTenant, opts v1.CreateOptions) (*smesapcomv1alpha1.CAPTenant, error)
+	Update(ctx context.Context, cAPTenant *smesapcomv1alpha1.CAPTenant, opts v1.UpdateOptions) (*smesapcomv1alpha1.CAPTenant, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, cAPTenant *v1alpha1.CAPTenant, opts v1.UpdateOptions) (*v1alpha1.CAPTenant, error)
+	UpdateStatus(ctx context.Context, cAPTenant *smesapcomv1alpha1.CAPTenant, opts v1.UpdateOptions) (*smesapcomv1alpha1.CAPTenant, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.CAPTenant, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.CAPTenantList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*smesapcomv1alpha1.CAPTenant, error)
+	List(ctx context.Context, opts v1.ListOptions) (*smesapcomv1alpha1.CAPTenantList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.CAPTenant, err error)
-	Apply(ctx context.Context, cAPTenant *smesapcomv1alpha1.CAPTenantApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.CAPTenant, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *smesapcomv1alpha1.CAPTenant, err error)
+	Apply(ctx context.Context, cAPTenant *applyconfigurationsmesapcomv1alpha1.CAPTenantApplyConfiguration, opts v1.ApplyOptions) (result *smesapcomv1alpha1.CAPTenant, err error)
 	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
-	ApplyStatus(ctx context.Context, cAPTenant *smesapcomv1alpha1.CAPTenantApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.CAPTenant, err error)
+	ApplyStatus(ctx context.Context, cAPTenant *applyconfigurationsmesapcomv1alpha1.CAPTenantApplyConfiguration, opts v1.ApplyOptions) (result *smesapcomv1alpha1.CAPTenant, err error)
 	CAPTenantExpansion
 }
 
 // cAPTenants implements CAPTenantInterface
 type cAPTenants struct {
-	*gentype.ClientWithListAndApply[*v1alpha1.CAPTenant, *v1alpha1.CAPTenantList, *smesapcomv1alpha1.CAPTenantApplyConfiguration]
+	*gentype.ClientWithListAndApply[*smesapcomv1alpha1.CAPTenant, *smesapcomv1alpha1.CAPTenantList, *applyconfigurationsmesapcomv1alpha1.CAPTenantApplyConfiguration]
 }
 
 // newCAPTenants returns a CAPTenants
 func newCAPTenants(c *SmeV1alpha1Client, namespace string) *cAPTenants {
 	return &cAPTenants{
-		gentype.NewClientWithListAndApply[*v1alpha1.CAPTenant, *v1alpha1.CAPTenantList, *smesapcomv1alpha1.CAPTenantApplyConfiguration](
+		gentype.NewClientWithListAndApply[*smesapcomv1alpha1.CAPTenant, *smesapcomv1alpha1.CAPTenantList, *applyconfigurationsmesapcomv1alpha1.CAPTenantApplyConfiguration](
 			"captenants",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.CAPTenant { return &v1alpha1.CAPTenant{} },
-			func() *v1alpha1.CAPTenantList { return &v1alpha1.CAPTenantList{} }),
+			func() *smesapcomv1alpha1.CAPTenant { return &smesapcomv1alpha1.CAPTenant{} },
+			func() *smesapcomv1alpha1.CAPTenantList { return &smesapcomv1alpha1.CAPTenantList{} },
+		),
 	}
 }
