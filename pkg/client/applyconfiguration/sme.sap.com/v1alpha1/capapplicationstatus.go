@@ -32,7 +32,7 @@ func CAPApplicationStatus() *CAPApplicationStatusApplyConfiguration {
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ObservedGeneration field is set to the value of the last call.
 func (b *CAPApplicationStatusApplyConfiguration) WithObservedGeneration(value int64) *CAPApplicationStatusApplyConfiguration {
-	b.ObservedGeneration = &value
+	b.GenericStatusApplyConfiguration.ObservedGeneration = &value
 	return b
 }
 
@@ -44,7 +44,7 @@ func (b *CAPApplicationStatusApplyConfiguration) WithConditions(values ...*metav
 		if values[i] == nil {
 			panic("nil value passed to WithConditions")
 		}
-		b.Conditions = append(b.Conditions, *values[i])
+		b.GenericStatusApplyConfiguration.Conditions = append(b.GenericStatusApplyConfiguration.Conditions, *values[i])
 	}
 	return b
 }

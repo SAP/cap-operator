@@ -8,16 +8,16 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 )
 
 // MetricRuleApplyConfiguration represents a declarative configuration of the MetricRule type for use
 // with apply.
 type MetricRuleApplyConfiguration struct {
-	Name              *string              `json:"name,omitempty"`
-	Type              *v1alpha1.MetricType `json:"type,omitempty"`
-	CalculationPeriod *v1alpha1.Duration   `json:"calculationPeriod,omitempty"`
-	ThresholdValue    *string              `json:"thresholdValue,omitempty"`
+	Name              *string                       `json:"name,omitempty"`
+	Type              *smesapcomv1alpha1.MetricType `json:"type,omitempty"`
+	CalculationPeriod *smesapcomv1alpha1.Duration   `json:"calculationPeriod,omitempty"`
+	ThresholdValue    *string                       `json:"thresholdValue,omitempty"`
 }
 
 // MetricRuleApplyConfiguration constructs a declarative configuration of the MetricRule type for use with
@@ -37,7 +37,7 @@ func (b *MetricRuleApplyConfiguration) WithName(value string) *MetricRuleApplyCo
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *MetricRuleApplyConfiguration) WithType(value v1alpha1.MetricType) *MetricRuleApplyConfiguration {
+func (b *MetricRuleApplyConfiguration) WithType(value smesapcomv1alpha1.MetricType) *MetricRuleApplyConfiguration {
 	b.Type = &value
 	return b
 }
@@ -45,7 +45,7 @@ func (b *MetricRuleApplyConfiguration) WithType(value v1alpha1.MetricType) *Metr
 // WithCalculationPeriod sets the CalculationPeriod field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the CalculationPeriod field is set to the value of the last call.
-func (b *MetricRuleApplyConfiguration) WithCalculationPeriod(value v1alpha1.Duration) *MetricRuleApplyConfiguration {
+func (b *MetricRuleApplyConfiguration) WithCalculationPeriod(value smesapcomv1alpha1.Duration) *MetricRuleApplyConfiguration {
 	b.CalculationPeriod = &value
 	return b
 }

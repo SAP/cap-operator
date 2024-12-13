@@ -18,23 +18,23 @@ type FakeSmeV1alpha1 struct {
 }
 
 func (c *FakeSmeV1alpha1) CAPApplications(namespace string) v1alpha1.CAPApplicationInterface {
-	return &FakeCAPApplications{c, namespace}
+	return newFakeCAPApplications(c, namespace)
 }
 
 func (c *FakeSmeV1alpha1) CAPApplicationVersions(namespace string) v1alpha1.CAPApplicationVersionInterface {
-	return &FakeCAPApplicationVersions{c, namespace}
+	return newFakeCAPApplicationVersions(c, namespace)
 }
 
 func (c *FakeSmeV1alpha1) CAPTenants(namespace string) v1alpha1.CAPTenantInterface {
-	return &FakeCAPTenants{c, namespace}
+	return newFakeCAPTenants(c, namespace)
 }
 
 func (c *FakeSmeV1alpha1) CAPTenantOperations(namespace string) v1alpha1.CAPTenantOperationInterface {
-	return &FakeCAPTenantOperations{c, namespace}
+	return newFakeCAPTenantOperations(c, namespace)
 }
 
 func (c *FakeSmeV1alpha1) CAPTenantOutputs(namespace string) v1alpha1.CAPTenantOutputInterface {
-	return &FakeCAPTenantOutputs{c, namespace}
+	return newFakeCAPTenantOutputs(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate
