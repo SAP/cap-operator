@@ -8,17 +8,17 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 )
 
 // PortsApplyConfiguration represents a declarative configuration of the Ports type for use
 // with apply.
 type PortsApplyConfiguration struct {
-	AppProtocol           *string                         `json:"appProtocol,omitempty"`
-	Name                  *string                         `json:"name,omitempty"`
-	NetworkPolicy         *v1alpha1.PortNetworkPolicyType `json:"networkPolicy,omitempty"`
-	Port                  *int32                          `json:"port,omitempty"`
-	RouterDestinationName *string                         `json:"routerDestinationName,omitempty"`
+	AppProtocol           *string                                  `json:"appProtocol,omitempty"`
+	Name                  *string                                  `json:"name,omitempty"`
+	NetworkPolicy         *smesapcomv1alpha1.PortNetworkPolicyType `json:"networkPolicy,omitempty"`
+	Port                  *int32                                   `json:"port,omitempty"`
+	RouterDestinationName *string                                  `json:"routerDestinationName,omitempty"`
 }
 
 // PortsApplyConfiguration constructs a declarative configuration of the Ports type for use with
@@ -46,7 +46,7 @@ func (b *PortsApplyConfiguration) WithName(value string) *PortsApplyConfiguratio
 // WithNetworkPolicy sets the NetworkPolicy field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the NetworkPolicy field is set to the value of the last call.
-func (b *PortsApplyConfiguration) WithNetworkPolicy(value v1alpha1.PortNetworkPolicyType) *PortsApplyConfiguration {
+func (b *PortsApplyConfiguration) WithNetworkPolicy(value smesapcomv1alpha1.PortNetworkPolicyType) *PortsApplyConfiguration {
 	b.NetworkPolicy = &value
 	return b
 }

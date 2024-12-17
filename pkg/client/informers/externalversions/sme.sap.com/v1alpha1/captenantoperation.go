@@ -8,13 +8,13 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	apissmesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	versioned "github.com/sap/cap-operator/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/sap/cap-operator/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/sap/cap-operator/pkg/client/listers/sme.sap.com/v1alpha1"
+	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/listers/sme.sap.com/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -25,7 +25,7 @@ import (
 // CAPTenantOperations.
 type CAPTenantOperationInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.CAPTenantOperationLister
+	Lister() smesapcomv1alpha1.CAPTenantOperationLister
 }
 
 type cAPTenantOperationInformer struct {
@@ -60,7 +60,7 @@ func NewFilteredCAPTenantOperationInformer(client versioned.Interface, namespace
 				return client.SmeV1alpha1().CAPTenantOperations(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&smesapcomv1alpha1.CAPTenantOperation{},
+		&apissmesapcomv1alpha1.CAPTenantOperation{},
 		resyncPeriod,
 		indexers,
 	)
@@ -71,9 +71,9 @@ func (f *cAPTenantOperationInformer) defaultInformer(client versioned.Interface,
 }
 
 func (f *cAPTenantOperationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&smesapcomv1alpha1.CAPTenantOperation{}, f.defaultInformer)
+	return f.factory.InformerFor(&apissmesapcomv1alpha1.CAPTenantOperation{}, f.defaultInformer)
 }
 
-func (f *cAPTenantOperationInformer) Lister() v1alpha1.CAPTenantOperationLister {
-	return v1alpha1.NewCAPTenantOperationLister(f.Informer().GetIndexer())
+func (f *cAPTenantOperationInformer) Lister() smesapcomv1alpha1.CAPTenantOperationLister {
+	return smesapcomv1alpha1.NewCAPTenantOperationLister(f.Informer().GetIndexer())
 }

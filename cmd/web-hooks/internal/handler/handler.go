@@ -20,7 +20,6 @@ import (
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned"
 	"golang.org/x/exp/slices"
 	admissionv1 "k8s.io/api/admission/v1"
-	"k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -698,10 +697,10 @@ func getAdmissionRequestFromBytes(w http.ResponseWriter, body []byte) *admission
 
 func prepareResponse(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview, validation validateResource) []byte {
 	// prepare response object
-	finalizedAdmissionReview := v1beta1.AdmissionReview{}
+	finalizedAdmissionReview := admissionv1.AdmissionReview{}
 	finalizedAdmissionReview.Kind = admissionReview.Kind
 	finalizedAdmissionReview.APIVersion = admissionReview.APIVersion
-	finalizedAdmissionReview.Response = &v1beta1.AdmissionResponse{
+	finalizedAdmissionReview.Response = &admissionv1.AdmissionResponse{
 		UID:     admissionReview.Request.UID,
 		Allowed: validation.allowed,
 	}

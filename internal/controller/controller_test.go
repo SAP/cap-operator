@@ -88,7 +88,6 @@ func TestController_processQueue(t *testing.T) {
 				istioClient:                 c.istioClient,
 				gardenerCertificateClient:   c.gardenerCertificateClient,
 				gardenerDNSClient:           c.gardenerDNSClient,
-				apiExtClient:                c.apiExtClient,
 				promClient:                  c.promClient,
 				kubeInformerFactory:         dummyKubeInformerFactory,
 				crdInformerFactory:          c.crdInformerFactory,
@@ -227,6 +226,9 @@ func TestController_processQueueItem(t *testing.T) {
 			if tt.createCAPTenant {
 				cat = createCatCRO("ca-does-not-exist", "provider", true)
 			}
+
+			// Deregister metrics
+			defer deregisterMetrics()
 
 			c := getTestController(testResources{cas: []*v1alpha1.CAPApplication{ca}, cats: []*v1alpha1.CAPTenant{cat}, preventStart: true})
 			if tt.resource == 9 || tt.resource == 99 {
@@ -402,11 +404,13 @@ func TestController_recoverFromPanic(t *testing.T) {
 
 			defer cancel()
 
+			defer deregisterMetrics()
+
 			if tt.expectPanic {
 				panic("Simulate some panic during reconcile")
 			}
 
-			// There is no need to check for results in this test as in case of errros the panic raised above will not be reovered!
+			// There is no need to check for results in this test as in case of errros the panic raised above will not be recovered!
 		})
 	}
 

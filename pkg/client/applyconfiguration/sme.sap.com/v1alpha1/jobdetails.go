@@ -31,7 +31,7 @@ func JobDetails() *JobDetailsApplyConfiguration {
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Image field is set to the value of the last call.
 func (b *JobDetailsApplyConfiguration) WithImage(value string) *JobDetailsApplyConfiguration {
-	b.Image = &value
+	b.CommonDetailsApplyConfiguration.Image = &value
 	return b
 }
 
@@ -39,7 +39,7 @@ func (b *JobDetailsApplyConfiguration) WithImage(value string) *JobDetailsApplyC
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ImagePullPolicy field is set to the value of the last call.
 func (b *JobDetailsApplyConfiguration) WithImagePullPolicy(value v1.PullPolicy) *JobDetailsApplyConfiguration {
-	b.ImagePullPolicy = &value
+	b.CommonDetailsApplyConfiguration.ImagePullPolicy = &value
 	return b
 }
 
@@ -48,7 +48,7 @@ func (b *JobDetailsApplyConfiguration) WithImagePullPolicy(value v1.PullPolicy) 
 // If called multiple times, values provided by each call will be appended to the Command field.
 func (b *JobDetailsApplyConfiguration) WithCommand(values ...string) *JobDetailsApplyConfiguration {
 	for i := range values {
-		b.Command = append(b.Command, values[i])
+		b.CommonDetailsApplyConfiguration.Command = append(b.CommonDetailsApplyConfiguration.Command, values[i])
 	}
 	return b
 }
@@ -58,7 +58,7 @@ func (b *JobDetailsApplyConfiguration) WithCommand(values ...string) *JobDetails
 // If called multiple times, values provided by each call will be appended to the Args field.
 func (b *JobDetailsApplyConfiguration) WithArgs(values ...string) *JobDetailsApplyConfiguration {
 	for i := range values {
-		b.Args = append(b.Args, values[i])
+		b.CommonDetailsApplyConfiguration.Args = append(b.CommonDetailsApplyConfiguration.Args, values[i])
 	}
 	return b
 }
@@ -68,7 +68,7 @@ func (b *JobDetailsApplyConfiguration) WithArgs(values ...string) *JobDetailsApp
 // If called multiple times, values provided by each call will be appended to the Env field.
 func (b *JobDetailsApplyConfiguration) WithEnv(values ...v1.EnvVar) *JobDetailsApplyConfiguration {
 	for i := range values {
-		b.Env = append(b.Env, values[i])
+		b.CommonDetailsApplyConfiguration.Env = append(b.CommonDetailsApplyConfiguration.Env, values[i])
 	}
 	return b
 }
@@ -78,7 +78,7 @@ func (b *JobDetailsApplyConfiguration) WithEnv(values ...v1.EnvVar) *JobDetailsA
 // If called multiple times, values provided by each call will be appended to the Volumes field.
 func (b *JobDetailsApplyConfiguration) WithVolumes(values ...v1.Volume) *JobDetailsApplyConfiguration {
 	for i := range values {
-		b.Volumes = append(b.Volumes, values[i])
+		b.CommonDetailsApplyConfiguration.Volumes = append(b.CommonDetailsApplyConfiguration.Volumes, values[i])
 	}
 	return b
 }
@@ -88,7 +88,7 @@ func (b *JobDetailsApplyConfiguration) WithVolumes(values ...v1.Volume) *JobDeta
 // If called multiple times, values provided by each call will be appended to the VolumeMounts field.
 func (b *JobDetailsApplyConfiguration) WithVolumeMounts(values ...v1.VolumeMount) *JobDetailsApplyConfiguration {
 	for i := range values {
-		b.VolumeMounts = append(b.VolumeMounts, values[i])
+		b.CommonDetailsApplyConfiguration.VolumeMounts = append(b.CommonDetailsApplyConfiguration.VolumeMounts, values[i])
 	}
 	return b
 }
@@ -97,7 +97,7 @@ func (b *JobDetailsApplyConfiguration) WithVolumeMounts(values ...v1.VolumeMount
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ServiceAccountName field is set to the value of the last call.
 func (b *JobDetailsApplyConfiguration) WithServiceAccountName(value string) *JobDetailsApplyConfiguration {
-	b.ServiceAccountName = &value
+	b.CommonDetailsApplyConfiguration.ServiceAccountName = &value
 	return b
 }
 
@@ -105,7 +105,7 @@ func (b *JobDetailsApplyConfiguration) WithServiceAccountName(value string) *Job
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Resources field is set to the value of the last call.
 func (b *JobDetailsApplyConfiguration) WithResources(value v1.ResourceRequirements) *JobDetailsApplyConfiguration {
-	b.Resources = &value
+	b.CommonDetailsApplyConfiguration.Resources = &value
 	return b
 }
 
@@ -113,7 +113,7 @@ func (b *JobDetailsApplyConfiguration) WithResources(value v1.ResourceRequiremen
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the SecurityContext field is set to the value of the last call.
 func (b *JobDetailsApplyConfiguration) WithSecurityContext(value v1.SecurityContext) *JobDetailsApplyConfiguration {
-	b.SecurityContext = &value
+	b.CommonDetailsApplyConfiguration.SecurityContext = &value
 	return b
 }
 
@@ -121,7 +121,7 @@ func (b *JobDetailsApplyConfiguration) WithSecurityContext(value v1.SecurityCont
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the PodSecurityContext field is set to the value of the last call.
 func (b *JobDetailsApplyConfiguration) WithPodSecurityContext(value v1.PodSecurityContext) *JobDetailsApplyConfiguration {
-	b.PodSecurityContext = &value
+	b.CommonDetailsApplyConfiguration.PodSecurityContext = &value
 	return b
 }
 
@@ -129,7 +129,7 @@ func (b *JobDetailsApplyConfiguration) WithPodSecurityContext(value v1.PodSecuri
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the NodeName field is set to the value of the last call.
 func (b *JobDetailsApplyConfiguration) WithNodeName(value string) *JobDetailsApplyConfiguration {
-	b.NodeName = &value
+	b.CommonDetailsApplyConfiguration.NodeName = &value
 	return b
 }
 
@@ -138,11 +138,11 @@ func (b *JobDetailsApplyConfiguration) WithNodeName(value string) *JobDetailsApp
 // If called multiple times, the entries provided by each call will be put on the NodeSelector field,
 // overwriting an existing map entries in NodeSelector field with the same key.
 func (b *JobDetailsApplyConfiguration) WithNodeSelector(entries map[string]string) *JobDetailsApplyConfiguration {
-	if b.NodeSelector == nil && len(entries) > 0 {
-		b.NodeSelector = make(map[string]string, len(entries))
+	if b.CommonDetailsApplyConfiguration.NodeSelector == nil && len(entries) > 0 {
+		b.CommonDetailsApplyConfiguration.NodeSelector = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.NodeSelector[k] = v
+		b.CommonDetailsApplyConfiguration.NodeSelector[k] = v
 	}
 	return b
 }
@@ -151,7 +151,7 @@ func (b *JobDetailsApplyConfiguration) WithNodeSelector(entries map[string]strin
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the PriorityClassName field is set to the value of the last call.
 func (b *JobDetailsApplyConfiguration) WithPriorityClassName(value string) *JobDetailsApplyConfiguration {
-	b.PriorityClassName = &value
+	b.CommonDetailsApplyConfiguration.PriorityClassName = &value
 	return b
 }
 
@@ -159,7 +159,7 @@ func (b *JobDetailsApplyConfiguration) WithPriorityClassName(value string) *JobD
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Affinity field is set to the value of the last call.
 func (b *JobDetailsApplyConfiguration) WithAffinity(value v1.Affinity) *JobDetailsApplyConfiguration {
-	b.Affinity = &value
+	b.CommonDetailsApplyConfiguration.Affinity = &value
 	return b
 }
 
@@ -168,7 +168,7 @@ func (b *JobDetailsApplyConfiguration) WithAffinity(value v1.Affinity) *JobDetai
 // If called multiple times, values provided by each call will be appended to the Tolerations field.
 func (b *JobDetailsApplyConfiguration) WithTolerations(values ...v1.Toleration) *JobDetailsApplyConfiguration {
 	for i := range values {
-		b.Tolerations = append(b.Tolerations, values[i])
+		b.CommonDetailsApplyConfiguration.Tolerations = append(b.CommonDetailsApplyConfiguration.Tolerations, values[i])
 	}
 	return b
 }
@@ -178,7 +178,7 @@ func (b *JobDetailsApplyConfiguration) WithTolerations(values ...v1.Toleration) 
 // If called multiple times, values provided by each call will be appended to the TopologySpreadConstraints field.
 func (b *JobDetailsApplyConfiguration) WithTopologySpreadConstraints(values ...v1.TopologySpreadConstraint) *JobDetailsApplyConfiguration {
 	for i := range values {
-		b.TopologySpreadConstraints = append(b.TopologySpreadConstraints, values[i])
+		b.CommonDetailsApplyConfiguration.TopologySpreadConstraints = append(b.CommonDetailsApplyConfiguration.TopologySpreadConstraints, values[i])
 	}
 	return b
 }
@@ -188,8 +188,16 @@ func (b *JobDetailsApplyConfiguration) WithTopologySpreadConstraints(values ...v
 // If called multiple times, values provided by each call will be appended to the InitContainers field.
 func (b *JobDetailsApplyConfiguration) WithInitContainers(values ...v1.Container) *JobDetailsApplyConfiguration {
 	for i := range values {
-		b.InitContainers = append(b.InitContainers, values[i])
+		b.CommonDetailsApplyConfiguration.InitContainers = append(b.CommonDetailsApplyConfiguration.InitContainers, values[i])
 	}
+	return b
+}
+
+// WithRestartPolicy sets the RestartPolicy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the RestartPolicy field is set to the value of the last call.
+func (b *JobDetailsApplyConfiguration) WithRestartPolicy(value v1.RestartPolicy) *JobDetailsApplyConfiguration {
+	b.CommonDetailsApplyConfiguration.RestartPolicy = &value
 	return b
 }
 

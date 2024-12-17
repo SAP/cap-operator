@@ -34,7 +34,7 @@ func DeploymentDetails() *DeploymentDetailsApplyConfiguration {
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Image field is set to the value of the last call.
 func (b *DeploymentDetailsApplyConfiguration) WithImage(value string) *DeploymentDetailsApplyConfiguration {
-	b.Image = &value
+	b.CommonDetailsApplyConfiguration.Image = &value
 	return b
 }
 
@@ -42,7 +42,7 @@ func (b *DeploymentDetailsApplyConfiguration) WithImage(value string) *Deploymen
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ImagePullPolicy field is set to the value of the last call.
 func (b *DeploymentDetailsApplyConfiguration) WithImagePullPolicy(value v1.PullPolicy) *DeploymentDetailsApplyConfiguration {
-	b.ImagePullPolicy = &value
+	b.CommonDetailsApplyConfiguration.ImagePullPolicy = &value
 	return b
 }
 
@@ -51,7 +51,7 @@ func (b *DeploymentDetailsApplyConfiguration) WithImagePullPolicy(value v1.PullP
 // If called multiple times, values provided by each call will be appended to the Command field.
 func (b *DeploymentDetailsApplyConfiguration) WithCommand(values ...string) *DeploymentDetailsApplyConfiguration {
 	for i := range values {
-		b.Command = append(b.Command, values[i])
+		b.CommonDetailsApplyConfiguration.Command = append(b.CommonDetailsApplyConfiguration.Command, values[i])
 	}
 	return b
 }
@@ -61,7 +61,7 @@ func (b *DeploymentDetailsApplyConfiguration) WithCommand(values ...string) *Dep
 // If called multiple times, values provided by each call will be appended to the Args field.
 func (b *DeploymentDetailsApplyConfiguration) WithArgs(values ...string) *DeploymentDetailsApplyConfiguration {
 	for i := range values {
-		b.Args = append(b.Args, values[i])
+		b.CommonDetailsApplyConfiguration.Args = append(b.CommonDetailsApplyConfiguration.Args, values[i])
 	}
 	return b
 }
@@ -71,7 +71,7 @@ func (b *DeploymentDetailsApplyConfiguration) WithArgs(values ...string) *Deploy
 // If called multiple times, values provided by each call will be appended to the Env field.
 func (b *DeploymentDetailsApplyConfiguration) WithEnv(values ...v1.EnvVar) *DeploymentDetailsApplyConfiguration {
 	for i := range values {
-		b.Env = append(b.Env, values[i])
+		b.CommonDetailsApplyConfiguration.Env = append(b.CommonDetailsApplyConfiguration.Env, values[i])
 	}
 	return b
 }
@@ -81,7 +81,7 @@ func (b *DeploymentDetailsApplyConfiguration) WithEnv(values ...v1.EnvVar) *Depl
 // If called multiple times, values provided by each call will be appended to the Volumes field.
 func (b *DeploymentDetailsApplyConfiguration) WithVolumes(values ...v1.Volume) *DeploymentDetailsApplyConfiguration {
 	for i := range values {
-		b.Volumes = append(b.Volumes, values[i])
+		b.CommonDetailsApplyConfiguration.Volumes = append(b.CommonDetailsApplyConfiguration.Volumes, values[i])
 	}
 	return b
 }
@@ -91,7 +91,7 @@ func (b *DeploymentDetailsApplyConfiguration) WithVolumes(values ...v1.Volume) *
 // If called multiple times, values provided by each call will be appended to the VolumeMounts field.
 func (b *DeploymentDetailsApplyConfiguration) WithVolumeMounts(values ...v1.VolumeMount) *DeploymentDetailsApplyConfiguration {
 	for i := range values {
-		b.VolumeMounts = append(b.VolumeMounts, values[i])
+		b.CommonDetailsApplyConfiguration.VolumeMounts = append(b.CommonDetailsApplyConfiguration.VolumeMounts, values[i])
 	}
 	return b
 }
@@ -100,7 +100,7 @@ func (b *DeploymentDetailsApplyConfiguration) WithVolumeMounts(values ...v1.Volu
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ServiceAccountName field is set to the value of the last call.
 func (b *DeploymentDetailsApplyConfiguration) WithServiceAccountName(value string) *DeploymentDetailsApplyConfiguration {
-	b.ServiceAccountName = &value
+	b.CommonDetailsApplyConfiguration.ServiceAccountName = &value
 	return b
 }
 
@@ -108,7 +108,7 @@ func (b *DeploymentDetailsApplyConfiguration) WithServiceAccountName(value strin
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Resources field is set to the value of the last call.
 func (b *DeploymentDetailsApplyConfiguration) WithResources(value v1.ResourceRequirements) *DeploymentDetailsApplyConfiguration {
-	b.Resources = &value
+	b.CommonDetailsApplyConfiguration.Resources = &value
 	return b
 }
 
@@ -116,7 +116,7 @@ func (b *DeploymentDetailsApplyConfiguration) WithResources(value v1.ResourceReq
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the SecurityContext field is set to the value of the last call.
 func (b *DeploymentDetailsApplyConfiguration) WithSecurityContext(value v1.SecurityContext) *DeploymentDetailsApplyConfiguration {
-	b.SecurityContext = &value
+	b.CommonDetailsApplyConfiguration.SecurityContext = &value
 	return b
 }
 
@@ -124,7 +124,7 @@ func (b *DeploymentDetailsApplyConfiguration) WithSecurityContext(value v1.Secur
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the PodSecurityContext field is set to the value of the last call.
 func (b *DeploymentDetailsApplyConfiguration) WithPodSecurityContext(value v1.PodSecurityContext) *DeploymentDetailsApplyConfiguration {
-	b.PodSecurityContext = &value
+	b.CommonDetailsApplyConfiguration.PodSecurityContext = &value
 	return b
 }
 
@@ -132,7 +132,7 @@ func (b *DeploymentDetailsApplyConfiguration) WithPodSecurityContext(value v1.Po
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the NodeName field is set to the value of the last call.
 func (b *DeploymentDetailsApplyConfiguration) WithNodeName(value string) *DeploymentDetailsApplyConfiguration {
-	b.NodeName = &value
+	b.CommonDetailsApplyConfiguration.NodeName = &value
 	return b
 }
 
@@ -141,11 +141,11 @@ func (b *DeploymentDetailsApplyConfiguration) WithNodeName(value string) *Deploy
 // If called multiple times, the entries provided by each call will be put on the NodeSelector field,
 // overwriting an existing map entries in NodeSelector field with the same key.
 func (b *DeploymentDetailsApplyConfiguration) WithNodeSelector(entries map[string]string) *DeploymentDetailsApplyConfiguration {
-	if b.NodeSelector == nil && len(entries) > 0 {
-		b.NodeSelector = make(map[string]string, len(entries))
+	if b.CommonDetailsApplyConfiguration.NodeSelector == nil && len(entries) > 0 {
+		b.CommonDetailsApplyConfiguration.NodeSelector = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.NodeSelector[k] = v
+		b.CommonDetailsApplyConfiguration.NodeSelector[k] = v
 	}
 	return b
 }
@@ -154,7 +154,7 @@ func (b *DeploymentDetailsApplyConfiguration) WithNodeSelector(entries map[strin
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the PriorityClassName field is set to the value of the last call.
 func (b *DeploymentDetailsApplyConfiguration) WithPriorityClassName(value string) *DeploymentDetailsApplyConfiguration {
-	b.PriorityClassName = &value
+	b.CommonDetailsApplyConfiguration.PriorityClassName = &value
 	return b
 }
 
@@ -162,7 +162,7 @@ func (b *DeploymentDetailsApplyConfiguration) WithPriorityClassName(value string
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Affinity field is set to the value of the last call.
 func (b *DeploymentDetailsApplyConfiguration) WithAffinity(value v1.Affinity) *DeploymentDetailsApplyConfiguration {
-	b.Affinity = &value
+	b.CommonDetailsApplyConfiguration.Affinity = &value
 	return b
 }
 
@@ -171,7 +171,7 @@ func (b *DeploymentDetailsApplyConfiguration) WithAffinity(value v1.Affinity) *D
 // If called multiple times, values provided by each call will be appended to the Tolerations field.
 func (b *DeploymentDetailsApplyConfiguration) WithTolerations(values ...v1.Toleration) *DeploymentDetailsApplyConfiguration {
 	for i := range values {
-		b.Tolerations = append(b.Tolerations, values[i])
+		b.CommonDetailsApplyConfiguration.Tolerations = append(b.CommonDetailsApplyConfiguration.Tolerations, values[i])
 	}
 	return b
 }
@@ -181,7 +181,7 @@ func (b *DeploymentDetailsApplyConfiguration) WithTolerations(values ...v1.Toler
 // If called multiple times, values provided by each call will be appended to the TopologySpreadConstraints field.
 func (b *DeploymentDetailsApplyConfiguration) WithTopologySpreadConstraints(values ...v1.TopologySpreadConstraint) *DeploymentDetailsApplyConfiguration {
 	for i := range values {
-		b.TopologySpreadConstraints = append(b.TopologySpreadConstraints, values[i])
+		b.CommonDetailsApplyConfiguration.TopologySpreadConstraints = append(b.CommonDetailsApplyConfiguration.TopologySpreadConstraints, values[i])
 	}
 	return b
 }
@@ -191,8 +191,16 @@ func (b *DeploymentDetailsApplyConfiguration) WithTopologySpreadConstraints(valu
 // If called multiple times, values provided by each call will be appended to the InitContainers field.
 func (b *DeploymentDetailsApplyConfiguration) WithInitContainers(values ...v1.Container) *DeploymentDetailsApplyConfiguration {
 	for i := range values {
-		b.InitContainers = append(b.InitContainers, values[i])
+		b.CommonDetailsApplyConfiguration.InitContainers = append(b.CommonDetailsApplyConfiguration.InitContainers, values[i])
 	}
+	return b
+}
+
+// WithRestartPolicy sets the RestartPolicy field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the RestartPolicy field is set to the value of the last call.
+func (b *DeploymentDetailsApplyConfiguration) WithRestartPolicy(value v1.RestartPolicy) *DeploymentDetailsApplyConfiguration {
+	b.CommonDetailsApplyConfiguration.RestartPolicy = &value
 	return b
 }
 

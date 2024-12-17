@@ -425,7 +425,7 @@ spec:
             mountPath: "/etc/secrets/cap-uaa"
       imagePullSecrets:
         - name: regcred
-      restartPolicy: "OnFailure"
+      restartPolicy: "Never"
       volumes:
       - name: cap-uaa
         secret:

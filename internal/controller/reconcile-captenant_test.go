@@ -145,11 +145,11 @@ func TestCAPTenantProvisioningCompletedDestinationRuleModificationFailure(t *tes
 				"testdata/captenant/cat-04.initial.yaml",
 			},
 			expectError:           true,
-			mockErrorForResources: []ResourceAction{{Verb: "create", Group: "networking.istio.io", Version: "v1beta1", Resource: "destinationrules", Namespace: "default", Name: "test-cap-01-provider"}},
+			mockErrorForResources: []ResourceAction{{Verb: "create", Group: "networking.istio.io", Version: "v1", Resource: "destinationrules", Namespace: "default", Name: "test-cap-01-provider"}},
 			backlogItems:          []string{"ERP4SMEPREPWORKAPPPLAT-2811"},
 		},
 	)
-	if err.Error() != "mocked api error (destinationrules.networking.istio.io/v1beta1)" {
+	if err.Error() != "mocked api error (destinationrules.networking.istio.io/v1)" {
 		t.Error("error message is different from expected")
 	}
 }

@@ -650,3 +650,10 @@ func updateServiceBindingRootEnv(envVars []corev1.EnvVar) []corev1.EnvVar {
 	}
 	return envVars
 }
+
+func getRestartPolicy(restartPolicy corev1.RestartPolicy, isJob bool) corev1.RestartPolicy {
+	if isJob && restartPolicy == "" {
+		return corev1.RestartPolicyNever
+	}
+	return restartPolicy
+}

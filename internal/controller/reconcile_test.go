@@ -30,9 +30,8 @@ import (
 	promopFake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned/fake"
-	istionwv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
+	istionwv1 "istio.io/client-go/pkg/apis/networking/v1"
 	istiofake "istio.io/client-go/pkg/clientset/versioned/fake"
-	apiextFake "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/fake"
 )
 
 const (
@@ -69,7 +68,7 @@ type testResources struct {
 	cats            []*v1alpha1.CAPTenant
 	ctops           []*v1alpha1.CAPTenantOperation
 	ingressGW       []*ingressResources
-	gateway         *istionwv1beta1.Gateway
+	gateway         *istionwv1.Gateway
 	gardenerCert    *certv1alpha1.Certificate
 	certManagerCert *certManagerv1.Certificate
 	dnsEntry        *dnsv1alpha1.DNSEntry
@@ -333,8 +332,6 @@ func getTestController(resources testResources) *Controller {
 
 	crdClient := fake.NewSimpleClientset(crdObjects...)
 
-	apiExtClient := apiextFake.NewSimpleClientset()
-
 	promopClient := promopFake.NewSimpleClientset()
 
 	istioClient := istiofake.NewSimpleClientset(istioObjects...)
@@ -345,7 +342,7 @@ func getTestController(resources testResources) *Controller {
 
 	dnsClient := dnsfake.NewSimpleClientset(dnsObjects...)
 
-	c := NewController(coreClient, crdClient, istioClient, certClient, certManagerCertClient, dnsClient, apiExtClient, promopClient)
+	c := NewController(coreClient, crdClient, istioClient, certClient, certManagerCertClient, dnsClient, promopClient)
 
 	for _, ca := range resources.cas {
 		if ca != nil {
@@ -372,8 +369,8 @@ func getTestController(resources testResources) *Controller {
 	}
 
 	if resources.gateway != nil {
-		c.istioClient.NetworkingV1beta1().Gateways(resources.gateway.Namespace).Create(context.TODO(), resources.gateway, metav1.CreateOptions{})
-		c.istioInformerFactory.Networking().V1beta1().Gateways().Informer().GetIndexer().Add(resources.gateway)
+		c.istioClient.NetworkingV1().Gateways(resources.gateway.Namespace).Create(context.TODO(), resources.gateway, metav1.CreateOptions{})
+		c.istioInformerFactory.Networking().V1().Gateways().Informer().GetIndexer().Add(resources.gateway)
 	}
 
 	if resources.gardenerCert != nil {
@@ -489,6 +486,9 @@ func TestGetLatestReadyCAPApplicationVersion(t *testing.T) {
 				cavs = append(cavs, cav)
 			}
 
+			// Deregister metrics at the end of the test
+			defer deregisterMetrics()
+
 			c := getTestController(testResources{
 				cas:  []*v1alpha1.CAPApplication{ca},
 				cavs: cavs,
@@ -580,6 +580,9 @@ func TestGetLatestCAPApplicationVersion(t *testing.T) {
 
 				cavs = append(cavs, cav)
 			}
+
+			// Deregister metrics at the end of the test
+			defer deregisterMetrics()
 
 			c := getTestController(testResources{
 				cas:  []*v1alpha1.CAPApplication{ca},

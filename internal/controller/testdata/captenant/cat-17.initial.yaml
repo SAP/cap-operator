@@ -38,7 +38,7 @@ status:
   currentCAPApplicationVersionInstance: test-cap-01-cav-v2
   observedGeneration: 2
 ---
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   annotations:
@@ -73,7 +73,7 @@ spec:
               number: 4000
           weight: 100
 ---
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: DestinationRule
 metadata:
   annotations:
