@@ -18,12 +18,6 @@ description: >
   {{% card header="Q3 2024" %}}
   New Custom Resource `CAPTenantOutput` can be used to record subscription related data from tenant operations. [Learn more](./usage/resources/captenantoutput.md).
   {{% /card %}}
-{{% /cardpane %}}
-
-
-### Previous updates
-
-{{% cardpane %}}
   {{% card header="Q2 2024" %}}
   `CAPApplicationVersion` now supports configuration of `initContainers`, `volumes`, `serviceAccountName`, [scheduling related configurations](https://kubernetes.io/docs/concepts/scheduling-eviction/) etc. on workloads.
   {{% /card %}}
