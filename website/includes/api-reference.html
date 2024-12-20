@@ -1633,6 +1633,17 @@ Kubernetes core/v1.PullPolicy
 </tr>
 <tr>
 <td>
+<code>args</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Arguments to the entrypoint</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>env</code><br/>
 <em>
 <a href="https://pkg.go.dev/k8s.io/api/core/v1#EnvVar">
@@ -1803,6 +1814,19 @@ Kubernetes core/v1.Affinity
 </td>
 <td>
 <p>List of containers executed before the main container is started</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>restartPolicy</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#RestartPolicy">
+Kubernetes core/v1.RestartPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Restart policy for the Pod. See: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy</a></p>
 </td>
 </tr>
 </tbody>
@@ -2746,5 +2770,5 @@ If not specified, CAP Operator will not attempt to create a ServiceMonitor for t
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>b632fa0</code>.
+on git commit <code>e7e07d8</code>.
 </em></p>
