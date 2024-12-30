@@ -1,6 +1,6 @@
 // This file is needed just to show some coverage as go tests report coverage package wise. The usage in controller and server already cover most of the code.
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
