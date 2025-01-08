@@ -45,6 +45,31 @@ spec:
                 items:
                   type: string
                 type: array
+              serviceExposures:
+                items:
+                  properties:
+                    routes:
+                      items:
+                        properties:
+                          path:
+                            type: string
+                          port:
+                            format: int32
+                            type: integer
+                          workloadName:
+                            type: string
+                        required:
+                        - port
+                        - workloadName
+                        type: object
+                      type: array
+                    subDomain:
+                      type: string
+                  required:
+                  - routes
+                  - subDomain
+                  type: object
+                type: array
               tenantOperations:
                 properties:
                   deprovisioning:
