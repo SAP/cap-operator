@@ -223,6 +223,8 @@ type CAPApplicationVersionSpec struct {
 	TenantOperations *TenantOperations `json:"tenantOperations,omitempty"`
 	// Content Jobs may be used to specify the sequence of content jobs when several jobs exist
 	ContentJobs []string `json:"contentJobs,omitempty"`
+	// Configuration for the service(s) to be exposed (relevant only for 'Service' type deployment workloads)
+	ServiceExposures []ServiceExposure `json:"serviceExposures,omitempty"`
 }
 
 // WorkloadDetails specifies the details of the Workload
@@ -256,6 +258,24 @@ type DeploymentDetails struct {
 	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty"`
 	// Workload monitoring specification
 	Monitoring *WorkloadMonitoring `json:"monitoring,omitempty"`
+}
+
+// ServiceExposure specifies the details of the VirtualService to be exposed for `Service` type workload(s)
+type ServiceExposure struct {
+	// Subdomain under which the service is exposed (used as the Key for identifying the VirtualService)
+	SubDomain string `json:"subDomain"`
+	// Routes specifies the routing configuration (http match) for the exposed service
+	Routes []Route `json:"routes"`
+}
+
+// Routing configuration (http match) for the exposed service
+type Route struct {
+	// Name of the workload (eventually a service to route requests to); must be a valid workload name (Deployment)
+	WorkloadName string `json:"workloadName"`
+	// Port number used for the service (must be present in the workload/service)
+	Port int32 `json:"port"`
+	// A unique routing path used (as a match/prefix) to route requests to the workload (when omitted, "/" would be used)
+	Path string `json:"path,omitempty"`
 }
 
 // WorkloadMonitoring specifies the metrics related to the workload
@@ -334,6 +354,8 @@ const (
 	DeploymentRouter DeploymentType = "Router"
 	// Additional deployment type
 	DeploymentAdditional DeploymentType = "Additional"
+	// Service deployment type
+	DeploymentService DeploymentType = "Service"
 )
 
 // JobDetails specifies the details of the Job
