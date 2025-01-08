@@ -75,7 +75,9 @@ params:
     # set taxonomyCloud = [] to hide taxonomy clouds
     taxonomyCloud: ["tags", "categories"]
 
-  copyright: SAP SE or an SAP affiliate company
+  copyright:
+    authors: SAP SE or an SAP affiliate company
+    from_year: 2023
   # privacy_policy = "https://policies.google.com/privacy"
 
   # Menu title if your navbar has a versions selector to access old versions of your site.
