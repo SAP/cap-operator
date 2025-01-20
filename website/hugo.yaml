@@ -21,6 +21,10 @@ menu:
       weight: 90
       url: "https://github.com/sap/cap-operator/"
       pre: "<i class='fab fa-github'></i>"
+    - name: "Packages"
+      weight: 95
+      url: "https://pkg.go.dev/github.com/sap/cap-operator/"
+      pre: "<i class='fab fa-golang'></i>"
 
 # You can add your own taxonomies
 taxonomies:
