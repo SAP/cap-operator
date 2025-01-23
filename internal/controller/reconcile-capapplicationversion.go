@@ -28,7 +28,10 @@ import (
 )
 
 const (
-	App = "app"
+	App                                             = "app"
+	EventActionReconcileServiceNetworking           = "ReconcileServiceNetworking"
+	CAVEventServiceNetworkingModified               = "ServiceNetworkingModified"
+	CAVEventServiceVirtualServiceModificationFailed = "ServiceVirtualServiceModificationFailed"
 )
 
 const (
@@ -146,6 +149,14 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 		return nil, err
 	}
 
+	// Create Service Deployments
+	serviceDeployments, err := c.updateServiceDeployment(ca, cav)
+	if err != nil {
+		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInServiceDeployment", Message: err.Error()})
+		return nil, err
+	}
+	overallDeployments = append(overallDeployments, serviceDeployments...)
+
 	// Create AppRouter Deployment
 	approuterDeployment, err := c.updateApprouterDeployment(ca, cav)
 	if err != nil {
@@ -195,6 +206,10 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 		return nil, err
 	}
 
+	requeue, err := c.reconcileServiceNetworking(ctx, cav, ca)
+	if requeue != nil || err != nil {
+		return requeue, err
+	}
 	// We now wait until all the deployments are actually "Ready", apart from relying on Content Job completing successfully!
 	if cav.Status.State == v1alpha1.CAPApplicationVersionStateProcessing {
 		// Only log if the state is still processing as cav might be reconciled again
@@ -339,6 +354,13 @@ func newContentDeploymentJob(cav *v1alpha1.CAPApplicationVersion, workload *v1al
 			},
 		},
 	}
+}
+
+//#endregion
+
+// #region Service Deployment
+func (c *Controller) updateServiceDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) ([]*appsv1.Deployment, error) {
+	return c.updateDeployments(v1alpha1.DeploymentService, ca, cav)
 }
 
 //#endregion
