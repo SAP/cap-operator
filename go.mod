@@ -3,7 +3,8 @@ module github.com/sap/cap-operator
 go 1.23.5
 
 require (
-	github.com/MicahParks/keyfunc/v2 v2.1.0
+	github.com/MicahParks/jwkset v0.8.0
+	github.com/MicahParks/keyfunc/v3 v3.3.10
 	github.com/cert-manager/cert-manager v1.16.3
 	github.com/gardener/cert-management v0.17.3
 	github.com/gardener/external-dns-management v0.23.0
