@@ -10,6 +10,7 @@ package v1alpha1
 // CAPApplicationSpecApplyConfiguration represents a declarative configuration of the CAPApplicationSpec type for use
 // with apply.
 type CAPApplicationSpecApplyConfiguration struct {
+	DomainRefs      []DomainRefsApplyConfiguration             `json:"domainRefs,omitempty"`
 	Domains         *ApplicationDomainsApplyConfiguration      `json:"domains,omitempty"`
 	GlobalAccountId *string                                    `json:"globalAccountId,omitempty"`
 	BTPAppName      *string                                    `json:"btpAppName,omitempty"`
@@ -21,6 +22,19 @@ type CAPApplicationSpecApplyConfiguration struct {
 // apply.
 func CAPApplicationSpec() *CAPApplicationSpecApplyConfiguration {
 	return &CAPApplicationSpecApplyConfiguration{}
+}
+
+// WithDomainRefs adds the given value to the DomainRefs field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the DomainRefs field.
+func (b *CAPApplicationSpecApplyConfiguration) WithDomainRefs(values ...*DomainRefsApplyConfiguration) *CAPApplicationSpecApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithDomainRefs")
+		}
+		b.DomainRefs = append(b.DomainRefs, *values[i])
+	}
+	return b
 }
 
 // WithDomains sets the Domains field in the declarative configuration to the given value

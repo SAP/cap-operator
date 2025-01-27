@@ -78,6 +78,8 @@ type CAPApplicationList struct {
 
 // CAPApplicationSpec defines the desired state of CAPApplication
 type CAPApplicationSpec struct {
+	// Domains used by the application (new) // TODO: remove optional once the new field is meant to be used
+	DomainRefs []DomainRefs `json:"domainRefs,omitempty"`
 	// Domains used by the application
 	Domains ApplicationDomains `json:"domains"`
 	// SAP BTP Global Account Identifier where services are entitles for the current application
@@ -89,6 +91,22 @@ type CAPApplicationSpec struct {
 	// SAP BTP Services consumed by the application
 	BTP BTP `json:"btp"`
 }
+
+// Domain references
+type DomainRefs struct {
+	// +kubebuilder:validation:Enum=Domain;ClusterDomain
+	Kind DomainType `json:"kind"`
+	Name string     `json:"name"`
+}
+
+type DomainType string
+
+const (
+	// Domain
+	DomainKind DomainType = "Domain"
+	// Cluster Domain
+	ClusterDomainKind DomainType = "ClusterDomain"
+)
 
 // Application domains
 type ApplicationDomains struct {
@@ -655,4 +673,106 @@ type CAPTenantOutputList struct {
 type CAPTenantOutputSpec struct {
 	// +kubebuilder:validation:nullable
 	SubscriptionCallbackData string `json:"subscriptionCallbackData,omitempty"`
+}
+
+// +kubebuilder:resource:shortName=dom
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Domain is the schema for domains API
+type Domain struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	// Domains spec
+	Spec DomainSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
+	// Domain status
+	Status DomainStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// DomainList contains a list of Domain
+type DomainList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []Domain `json:"items"`
+}
+
+type DomainSpec struct {
+	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
+	Domain          string            `json:"domain"`
+	IngressSelector map[string]string `json:"ingressSelector"`
+	// +kubebuilder:validation:Enum=Simple;Mutual
+	TLSMode TLSMode `json:"tlsMode"`
+	// +kubebuilder:validation:Enum=Node;Wildcard;Subdomain
+	DNSMode DNSMode `json:"dnsMode"`
+	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
+	DNSTarget string `json:"dnsTarget"`
+}
+
+type TLSMode string
+
+const (
+	// Simple TLS Mode (Default)
+	SimpleTLSMode TLSMode = "Simple"
+	// Mutual TLS Mode
+	MutualTLSMode TLSMode = "Mutual"
+)
+
+type DNSMode string
+
+const (
+	// No DNS (Default)
+	NoDNS DNSMode = "None"
+	// Wildcard DNS mode
+	WildCardDNS DNSMode = "Wildcard"
+	// Subdomain DNS mode
+	Subdomain DNSMode = "Subdomain"
+)
+
+type DomainStatus struct {
+	GenericStatus `json:",inline"`
+	// +kubebuilder:validation:Enum="";Ready;Error;Processing;Deleting
+	// State of Domain
+	State DomainState `json:"state"`
+}
+
+type DomainState string
+
+const (
+	DomainStateProcessing DomainState = "Processing"
+	DomainStateError      DomainState = "Error"
+	DomainStateDeleting   DomainState = "Deleting"
+	DomainStateReady      DomainState = "Ready"
+)
+
+// +kubebuilder:resource:scope=Cluster,shortName=cldom
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ClusterDomain is the schema for clusterdomains API
+type ClusterDomain struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	// Domains spec
+	Spec DomainSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
+	// Domain status
+	Status DomainStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ClusterDomainList contains a list of ClusterDomain
+type ClusterDomainList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []ClusterDomain `json:"items"`
 }

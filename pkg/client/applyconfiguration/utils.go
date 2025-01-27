@@ -57,12 +57,22 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.CAPTenantSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantStatus"):
 		return &smesapcomv1alpha1.CAPTenantStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterDomain"):
+		return &smesapcomv1alpha1.ClusterDomainApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CommonDetails"):
 		return &smesapcomv1alpha1.CommonDetailsApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DeletionRules"):
 		return &smesapcomv1alpha1.DeletionRulesApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DeploymentDetails"):
 		return &smesapcomv1alpha1.DeploymentDetailsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Domain"):
+		return &smesapcomv1alpha1.DomainApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainRefs"):
+		return &smesapcomv1alpha1.DomainRefsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainSpec"):
+		return &smesapcomv1alpha1.DomainSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainStatus"):
+		return &smesapcomv1alpha1.DomainStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("GenericStatus"):
 		return &smesapcomv1alpha1.GenericStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("JobDetails"):

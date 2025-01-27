@@ -16,6 +16,10 @@ Resource Types:
 <a href="#sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation</a>
 </li><li>
 <a href="#sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha1.ClusterDomain">ClusterDomain</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha1.Domain">Domain</a>
 </li></ul>
 <h3 id="sme.sap.com/v1alpha1.CAPApplication">CAPApplication
 </h3>
@@ -75,6 +79,19 @@ CAPApplicationSpec
 <br/>
 <br/>
 <table>
+<tr>
+<td>
+<code>domainRefs</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DomainRefs">
+[]DomainRefs
+</a>
+</em>
+</td>
+<td>
+<p>Domains used by the application (new)</p>
+</td>
+</tr>
 <tr>
 <td>
 <code>domains</code><br/>
@@ -280,6 +297,19 @@ TenantOperations
 </td>
 <td>
 <p>Content Jobs may be used to specify the sequence of content jobs when several jobs exist</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceExposures</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.ServiceExposure">
+[]ServiceExposure
+</a>
+</em>
+</td>
+<td>
+<p>Configuration for the service(s) to be exposed (relevant only for &lsquo;Service&rsquo; type deployment workloads)</p>
 </td>
 </tr>
 </table>
@@ -629,6 +659,266 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="sme.sap.com/v1alpha1.ClusterDomain">ClusterDomain
+</h3>
+<div>
+<p>ClusterDomain is the schema for clusterdomains API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>ClusterDomain</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DomainSpec">
+DomainSpec
+</a>
+</em>
+</td>
+<td>
+<p>Domains spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>domain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>ingressSelector</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsMode</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TLSMode">
+TLSMode
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsMode</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DNSMode">
+DNSMode
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsTarget</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DomainStatus">
+DomainStatus
+</a>
+</em>
+</td>
+<td>
+<p>Domain status</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.Domain">Domain
+</h3>
+<div>
+<p>Domain is the schema for domains API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>Domain</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DomainSpec">
+DomainSpec
+</a>
+</em>
+</td>
+<td>
+<p>Domains spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>domain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>ingressSelector</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsMode</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TLSMode">
+TLSMode
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsMode</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DNSMode">
+DNSMode
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsTarget</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DomainStatus">
+DomainStatus
+</a>
+</em>
+</td>
+<td>
+<p>Domain status</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="sme.sap.com/v1alpha1.ApplicationDomains">ApplicationDomains
 </h3>
 <p>
@@ -779,6 +1069,19 @@ string
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+<code>domainRefs</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DomainRefs">
+[]DomainRefs
+</a>
+</em>
+</td>
+<td>
+<p>Domains used by the application (new)</p>
+</td>
+</tr>
 <tr>
 <td>
 <code>domains</code><br/>
@@ -1040,6 +1343,19 @@ TenantOperations
 </td>
 <td>
 <p>Content Jobs may be used to specify the sequence of content jobs when several jobs exist</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceExposures</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.ServiceExposure">
+[]ServiceExposure
+</a>
+</em>
+</td>
+<td>
+<p>Configuration for the service(s) to be exposed (relevant only for &lsquo;Service&rsquo; type deployment workloads)</p>
 </td>
 </tr>
 </tbody>
@@ -1831,6 +2147,31 @@ Kubernetes core/v1.RestartPolicy
 </tr>
 </tbody>
 </table>
+<h3 id="sme.sap.com/v1alpha1.DNSMode">DNSMode
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainSpec">DomainSpec</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;None&#34;</p></td>
+<td><p>No DNS (Default)</p>
+</td>
+</tr><tr><td><p>&#34;Subdomain&#34;</p></td>
+<td><p>Subdomain DNS mode</p>
+</td>
+</tr><tr><td><p>&#34;Wildcard&#34;</p></td>
+<td><p>Wildcard DNS mode</p>
+</td>
+</tr></tbody>
+</table>
 <h3 id="sme.sap.com/v1alpha1.DeletionRules">DeletionRules
 </h3>
 <p>
@@ -2005,6 +2346,211 @@ WorkloadMonitoring
 </tr><tr><td><p>&#34;Router&#34;</p></td>
 <td><p>Application router deployment type</p>
 </td>
+</tr><tr><td><p>&#34;Service&#34;</p></td>
+<td><p>Service deployment type</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DomainRefs">DomainRefs
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationSpec">CAPApplicationSpec</a>)
+</p>
+<div>
+<p>Domain references</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>kind</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DomainType">
+DomainType
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DomainSpec">DomainSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ClusterDomain">ClusterDomain</a>, <a href="#sme.sap.com/v1alpha1.Domain">Domain</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>domain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>ingressSelector</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsMode</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TLSMode">
+TLSMode
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsMode</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DNSMode">
+DNSMode
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsTarget</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DomainState">DomainState
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainStatus">DomainStatus</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Deleting&#34;</p></td>
+<td></td>
+</tr><tr><td><p>&#34;Error&#34;</p></td>
+<td></td>
+</tr><tr><td><p>&#34;Processing&#34;</p></td>
+<td></td>
+</tr><tr><td><p>&#34;Ready&#34;</p></td>
+<td></td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DomainStatus">DomainStatus
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ClusterDomain">ClusterDomain</a>, <a href="#sme.sap.com/v1alpha1.Domain">Domain</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericStatus</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.GenericStatus">
+GenericStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DomainState">
+DomainState
+</a>
+</em>
+</td>
+<td>
+<p>State of Domain</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DomainType">DomainType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainRefs">DomainRefs</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;ClusterDomain&#34;</p></td>
+<td><p>Cluster Domain</p>
+</td>
+</tr><tr><td><p>&#34;Domain&#34;</p></td>
+<td><p>Domain</p>
+</td>
 </tr></tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.Duration">Duration
@@ -2020,7 +2566,7 @@ Examples: <code>30s</code>, <code>1m</code>, <code>1h20m15s</code>, <code>15d</c
 <h3 id="sme.sap.com/v1alpha1.GenericStatus">GenericStatus
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationStatus">CAPApplicationStatus</a>, <a href="#sme.sap.com/v1alpha1.CAPApplicationVersionStatus">CAPApplicationVersionStatus</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantOperationStatus">CAPTenantOperationStatus</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantStatus">CAPTenantStatus</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationStatus">CAPApplicationStatus</a>, <a href="#sme.sap.com/v1alpha1.CAPApplicationVersionStatus">CAPApplicationVersionStatus</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantOperationStatus">CAPTenantOperationStatus</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantStatus">CAPTenantStatus</a>, <a href="#sme.sap.com/v1alpha1.DomainStatus">DomainStatus</a>)
 </p>
 <div>
 <p>Custom resource status</p>
@@ -2449,6 +2995,99 @@ string
 </tr>
 </tbody>
 </table>
+<h3 id="sme.sap.com/v1alpha1.Route">Route
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ServiceExposure">ServiceExposure</a>)
+</p>
+<div>
+<p>Routing configuration (http match) for the exposed service</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>workloadName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the workload (eventually a service to route requests to); must be a valid workload name (Deployment)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>port</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Port number used for the service (must be present in the workload/service)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>A unique routing path used (as a match/prefix) to route requests to the workload (when omitted, &ldquo;/&rdquo; would be used)</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.ServiceExposure">ServiceExposure
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersionSpec">CAPApplicationVersionSpec</a>)
+</p>
+<div>
+<p>ServiceExposure specifies the details of the VirtualService to be exposed for <code>Service</code> type workload(s)</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>subDomain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Subdomain under which the service is exposed (used as the Key for identifying the VirtualService)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>routes</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.Route">
+[]Route
+</a>
+</em>
+</td>
+<td>
+<p>Routes specifies the routing configuration (http match) for the exposed service</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="sme.sap.com/v1alpha1.ServiceInfo">ServiceInfo
 </h3>
 <p>
@@ -2513,6 +3152,28 @@ string
 </thead>
 <tbody><tr><td><p>&#34;Ready&#34;</p></td>
 <td></td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.TLSMode">TLSMode
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainSpec">DomainSpec</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Mutual&#34;</p></td>
+<td><p>Mutual TLS Mode</p>
+</td>
+</tr><tr><td><p>&#34;Simple&#34;</p></td>
+<td><p>Simple TLS Mode (Default)</p>
+</td>
 </tr></tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.TenantOperationWorkloadReference">TenantOperationWorkloadReference
@@ -2770,5 +3431,5 @@ If not specified, CAP Operator will not attempt to create a ServiceMonitor for t
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>e7e07d8</code>.
+on git commit <code>ec8fc4b</code>.
 </em></p>

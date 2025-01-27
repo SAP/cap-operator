@@ -16,3 +16,7 @@ type CAPTenantExpansion interface{}
 type CAPTenantOperationExpansion interface{}
 
 type CAPTenantOutputExpansion interface{}
+
+type ClusterDomainExpansion interface{}
+
+type DomainExpansion interface{}
