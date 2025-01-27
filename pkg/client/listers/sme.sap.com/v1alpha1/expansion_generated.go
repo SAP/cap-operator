@@ -46,3 +46,19 @@ type CAPTenantOutputListerExpansion interface{}
 // CAPTenantOutputNamespaceListerExpansion allows custom methods to be added to
 // CAPTenantOutputNamespaceLister.
 type CAPTenantOutputNamespaceListerExpansion interface{}
+
+// ClusterDomainListerExpansion allows custom methods to be added to
+// ClusterDomainLister.
+type ClusterDomainListerExpansion interface{}
+
+// ClusterDomainNamespaceListerExpansion allows custom methods to be added to
+// ClusterDomainNamespaceLister.
+type ClusterDomainNamespaceListerExpansion interface{}
+
+// DomainListerExpansion allows custom methods to be added to
+// DomainLister.
+type DomainListerExpansion interface{}
+
+// DomainNamespaceListerExpansion allows custom methods to be added to
+// DomainNamespaceLister.
+type DomainNamespaceListerExpansion interface{}

@@ -22,6 +22,8 @@ type SmeV1alpha1Interface interface {
 	CAPTenantsGetter
 	CAPTenantOperationsGetter
 	CAPTenantOutputsGetter
+	ClusterDomainsGetter
+	DomainsGetter
 }
 
 // SmeV1alpha1Client is used to interact with features provided by the sme.sap.com group.
@@ -47,6 +49,14 @@ func (c *SmeV1alpha1Client) CAPTenantOperations(namespace string) CAPTenantOpera
 
 func (c *SmeV1alpha1Client) CAPTenantOutputs(namespace string) CAPTenantOutputInterface {
 	return newCAPTenantOutputs(c, namespace)
+}
+
+func (c *SmeV1alpha1Client) ClusterDomains(namespace string) ClusterDomainInterface {
+	return newClusterDomains(c, namespace)
+}
+
+func (c *SmeV1alpha1Client) Domains(namespace string) DomainInterface {
+	return newDomains(c, namespace)
 }
 
 // NewForConfig creates a new SmeV1alpha1Client for the given config.
