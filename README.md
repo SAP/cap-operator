@@ -5,6 +5,7 @@
 [![CodeQL](https://github.com/SAP/cap-operator/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/SAP/cap-operator/actions/workflows/github-code-scanning/codeql)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/7803/badge)](https://www.bestpractices.dev/projects/7803)
 [![REUSE status](https://api.reuse.software/badge/github.com/SAP/cap-operator)](https://api.reuse.software/info/github.com/SAP/cap-operator)
+[![Go Reference](https://pkg.go.dev/badge/github.com/sap/cap-operator.svg)](https://pkg.go.dev/github.com/sap/cap-operator)
 
 CAP Operator manages the lifecycle operations involved in running multi-tenant CAP applications on Kubernetes clusters, primarily project "Gardener" managed clusters.
 
