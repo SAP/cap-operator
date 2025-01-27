@@ -15,6 +15,9 @@ description: A Kubernetes operator for managing the lifecycle of multi-tenant SA
 	</a>
  	<br><br><br><p class="lead mt-5">
 		<img src="https://img.shields.io/github/go-mod/go-version/SAP/cap-operator" alt="go.mod Go Version">
+		<a href="https://pkg.go.dev/github.com/sap/cap-operator">
+			<img src="https://pkg.go.dev/badge/github.com/sap/cap-operator.svg" alt="Go Reference">
+		</a>
 		<a href="https://goreportcard.com/report/github.com/sap/cap-operator">
 			<img src="https://goreportcard.com/badge/github.com/sap/cap-operator" alt="Go Report Card">
 		</a>
