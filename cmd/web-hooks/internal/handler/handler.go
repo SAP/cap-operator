@@ -302,7 +302,7 @@ func checkServiceExposure(cavObjNew *ResponseCav) validateResource {
 
 	for _, serviceExposure := range cavObjNew.Spec.ServiceExposures {
 		for _, route := range serviceExposure.Routes {
-			if !slices.ContainsFunc(serviceDeploymentWorkloadNames, func(job string) bool { return job == route.WorkloadName }) {
+			if !slices.Contains(serviceDeploymentWorkloadNames, route.WorkloadName) {
 				return validateResource{
 					allowed: false,
 					message: fmt.Sprintf(ServiceExposureWorkloadNameErr, InvalidationMessage, cavObjNew.Kind, route.WorkloadName, serviceExposure.SubDomain),
