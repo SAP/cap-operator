@@ -11,11 +11,11 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
@@ -103,9 +103,7 @@ func isCROConditionReady(status v1alpha1.GenericStatus) bool {
 }
 
 func addFinalizer(finalizers *[]string, finalizerType string) bool {
-	finalizerExists := slices.ContainsFunc(*finalizers, func(f string) bool {
-		return f == finalizerType
-	})
+	finalizerExists := slices.Contains(*finalizers, finalizerType)
 
 	if !finalizerExists {
 		*finalizers = append(*finalizers, finalizerType)

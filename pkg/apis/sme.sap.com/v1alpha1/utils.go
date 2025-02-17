@@ -7,9 +7,9 @@ package v1alpha1
 
 import (
 	"os"
+	"slices"
 	"strconv"
 
-	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -47,9 +47,7 @@ func (cav *CAPApplicationVersion) SetStatusFinishedJobs(finishedJob string) {
 }
 
 func (cav *CAPApplicationVersion) CheckFinishedJobs(finishedJob string) bool {
-	return slices.ContainsFunc(cav.Status.FinishedJobs, func(job string) bool {
-		return job == finishedJob
-	})
+	return slices.Contains(cav.Status.FinishedJobs, finishedJob)
 }
 
 func (cat *CAPTenant) SetStatusWithReadyCondition(state CAPTenantState, readyStatus metav1.ConditionStatus, reason string, message string) {

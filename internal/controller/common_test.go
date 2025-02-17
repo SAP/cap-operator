@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package controller
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -16,7 +17,6 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/exp/constraints"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	certManagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
@@ -28,7 +28,7 @@ import (
 	gardenerdnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	gardenerdnsfake "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/fake"
 	gardenerdnsscheme "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/scheme"
-	"github.com/google/go-cmp/cmp"
+	gocmp "github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promopFake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
@@ -408,7 +408,7 @@ func verifyItemsForRequeue(expected map[int][]NamespacedResourceKey, result *Rec
 	return nil
 }
 
-func getComaSeparatedKeys[K constraints.Ordered, T any](m map[K]T, stringer func(key K) string) string {
+func getComaSeparatedKeys[K cmp.Ordered, T any](m map[K]T, stringer func(key K) string) string {
 	s := []string{}
 	for k := range m {
 		var n string
@@ -661,13 +661,13 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 }
 
 func compareResourceFields(actual runtime.Object, expected runtime.Object, t *testing.T, kind string, namespace string, name string) {
-	if diff := cmp.Diff(
+	if diff := gocmp.Diff(
 		actual, expected,
-		cmp.FilterPath(func(p cmp.Path) bool {
+		gocmp.FilterPath(func(p gocmp.Path) bool {
 			// NOTE: do not compare the type metadata as this is not guaranteed to be filled from the fake client
 			return p.String() == "TypeMeta"
-		}, cmp.Ignore()),
-		cmp.FilterPath(func(p cmp.Path) bool {
+		}, gocmp.Ignore()),
+		gocmp.FilterPath(func(p gocmp.Path) bool {
 			// Ignore relevant Unexported fields introduced recently by istio in Spec
 			ps := p.String()
 			return ps == "Spec" || strings.HasPrefix(ps, "Spec.")
@@ -688,7 +688,7 @@ func compareResourceFields(actual runtime.Object, expected runtime.Object, t *te
 			istionetworkingv1.LoadBalancerSettings_ConsistentHashLB_HTTPCookie{},
 			durationpb.Duration{},
 		)),
-		cmp.FilterPath(func(p cmp.Path) bool {
+		gocmp.FilterPath(func(p gocmp.Path) bool {
 			// Ignore relevant Unexported fields introduced recently by istio in Status
 			ps := p.String()
 			return ps == "Status" || strings.HasPrefix(ps, "Status.")

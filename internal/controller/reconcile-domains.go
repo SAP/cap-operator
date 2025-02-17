@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -19,7 +20,6 @@ import (
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	"golang.org/x/exp/slices"
 	"google.golang.org/protobuf/types/known/durationpb"
 	networkingv1 "istio.io/api/networking/v1"
 	istionwv1 "istio.io/client-go/pkg/apis/networking/v1"
@@ -1289,7 +1289,7 @@ func getCertificateDNSNames(relevantDomainInfo *operatorDomainInfo) []string {
 	dnsNames := []string{}
 	for _, domain := range relevantDomainInfo.Domains {
 		// Don't add duplicate DNSNames when multiple apps provide same secondary domain!
-		if !slices.ContainsFunc(dnsNames, func(dnsName string) bool { return dnsName == "*."+domain }) {
+		if !slices.Contains(dnsNames, "*."+domain) {
 			dnsNames = append(dnsNames, "*."+domain)
 		}
 	}
