@@ -13,12 +13,12 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"slices"
 	"strconv"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned"
-	"golang.org/x/exp/slices"
 	admissionv1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -240,7 +240,7 @@ func checkWorkloadContentJob(cavObjNew *ResponseCav) validateResource {
 	// If there are more than 1 content jobs, then all of them must be part of ContentJobs
 	if len(contentJobWorkloads) > 1 {
 		for _, name := range contentJobWorkloads {
-			if !slices.ContainsFunc(cavObjNew.Spec.ContentJobs, func(job string) bool { return job == name }) {
+			if !slices.Contains(cavObjNew.Spec.ContentJobs, name) {
 				return validateResource{
 					allowed: false,
 					message: fmt.Sprintf("%s %s content job %s is not specified as part of ContentJobs", InvalidationMessage, cavObjNew.Kind, name),
@@ -252,7 +252,7 @@ func checkWorkloadContentJob(cavObjNew *ResponseCav) validateResource {
 	// All the jobs specified in contentJobWorkloads should be a valid content job
 	if cavObjNew.Spec.ContentJobs != nil {
 		for _, job := range cavObjNew.Spec.ContentJobs {
-			if !slices.ContainsFunc(contentJobWorkloads, func(name string) bool { return name == job }) {
+			if !slices.Contains(contentJobWorkloads, job) {
 				return validateResource{
 					allowed: false,
 					message: fmt.Sprintf("%s %s job %s specified as part of ContentJobs is not a valid content job", InvalidationMessage, cavObjNew.Kind, job),

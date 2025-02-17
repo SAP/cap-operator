@@ -19,7 +19,6 @@ require (
 	github.com/prometheus/client_golang v1.20.5
 	github.com/prometheus/common v0.62.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f
 	golang.org/x/mod v0.23.0
 	google.golang.org/protobuf v1.36.5
 	istio.io/api v1.24.3
