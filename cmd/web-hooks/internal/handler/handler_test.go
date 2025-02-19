@@ -893,6 +893,11 @@ func TestCavInvalidity(t *testing.T) {
 			onlyServiceWorkloads: true,
 			backlogItems:         []string{},
 		},
+		{
+			operation:                        admissionv1.Create,
+			serviceExposureWrongWorkloadName: true,
+			backlogItems:                     []string{},
+		},
 	}
 	for _, test := range tests {
 		nameParts := []string{"Testing CAPApplicationversion invalidity for operation " + string(test.operation) + "; "}

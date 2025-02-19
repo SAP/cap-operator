@@ -39,7 +39,7 @@ const (
 	RequestPath                    = "/request"
 	DeploymentWorkloadCountErr     = "%s %s there should always be one workload deployment definition of type %s. Currently, there are %d workloads of type %s"
 	TenantOpJobWorkloadCountErr    = "%s %s there should not be any job workload of type %s or %s defined if all the deployment workloads are of type %s."
-	ServiceExposureWorkloadNameErr = "%s %s workload name %s mentioned as part of routes in service exposure with subDomain %s is not valid."
+	ServiceExposureWorkloadNameErr = "%s %s workload name %s mentioned as part of routes in service exposure with subDomain %s is not a valid workload of type Service."
 )
 
 type validateResource struct {
@@ -528,6 +528,10 @@ func (wh *WebhookHandler) validateCAPApplicationVersion(w http.ResponseWriter, a
 
 		if workloadValidate := validateWorkloads(&cavObjNew); !workloadValidate.allowed {
 			return workloadValidate
+		}
+
+		if serviceExposureValidate := checkServiceExposure(&cavObjNew); !serviceExposureValidate.allowed {
+			return serviceExposureValidate
 		}
 
 		return validateTenantOperations(&cavObjNew)
