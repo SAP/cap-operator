@@ -56,7 +56,8 @@ metadata:
         sme.sap.com/owner-identifier-hash: 1f74ae2fbff71a708786a4df4bb2ca87ec603581
 spec:
   commonname: "*.app-domain.test.local"
-  secretname: default--test-cap-01-secret
+  secretRef:
+    name: default--test-cap-01-secret
 status:
   conditions:
   - message: "cert message"

@@ -461,7 +461,9 @@ func getGatewayServerSpec(domain string, credentialName string) *networkingv1.Se
 func getGardenerCertificateSpec(commonName string, secretName string) certv1alpha1.CertificateSpec {
 	return certv1alpha1.CertificateSpec{
 		CommonName: &commonName,
-		SecretName: &secretName,
+		SecretRef: &corev1.SecretReference{
+			Name: secretName,
+		},
 	}
 }
 
