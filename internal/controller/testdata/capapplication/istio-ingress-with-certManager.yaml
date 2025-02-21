@@ -58,7 +58,8 @@ metadata:
     - sme.sap.com/capapplication
 spec:
   commonname: "*.app-domain.test.local"
-  secretname: default--test-cap-01-secret
+  secretRef:
+    name: default--test-cap-01-secret
 status:
   conditions:
   - message: "cert message"

@@ -54,7 +54,8 @@ metadata:
     sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
 spec:
   commonname: "*.app-domain.test.local"
-  secretname: default--test-cap-01-secret
+  secretRef:
+    name: default--test-cap-01-secret
 status:
   observedGeneration: 0
   state: Ready
