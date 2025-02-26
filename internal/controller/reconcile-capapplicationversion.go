@@ -135,6 +135,13 @@ func (c *Controller) handleCAPApplicationVersion(ctx context.Context, cav *v1alp
 		return nil, statusErr
 	}
 
+	// Create relevant DNSEntries for this version. DNS entries are checked before setting the version as ready
+	for _, serviceExposure := range cav.Spec.ServiceExposures {
+		if err = c.reconcileDNSEntries(ctx, serviceExposure.SubDomain, *metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind)), cav.Namespace, ca.Name, serviceExposure.SubDomain); err != nil {
+			return nil, err
+		}
+	}
+
 	return c.processWorkloads(ctx, ca, cav)
 }
 
@@ -210,12 +217,36 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 	if requeue != nil || err != nil {
 		return requeue, err
 	}
+
+	requeue, err = c.checkServiceDNSEntries(ctx, ca, cav)
+	if requeue != nil || err != nil {
+		return requeue, err
+	}
+
 	// We now wait until all the deployments are actually "Ready", apart from relying on Content Job completing successfully!
 	if cav.Status.State == v1alpha1.CAPApplicationVersionStateProcessing {
 		// Only log if the state is still processing as cav might be reconciled again
 		util.LogInfo("All deployments and other resources created successfully", string(Ready), cav, nil, "version", cav.Spec.Version)
 	}
 	return nil, c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateReady, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "True", Reason: "WorkloadsReady"})
+}
+
+func (c *Controller) checkServiceDNSEntries(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (*ReconcileResult, error) {
+	checkNeeded := len(ca.Spec.Domains.Secondary) > 0 && len(cav.Spec.ServiceExposures) > 0
+	// Check for DNS entries
+	if checkNeeded {
+		processing, err := c.checkDNSEntries(ctx, v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name)
+		if err != nil {
+			util.LogError(err, "DNS entries error", string(Processing), cav, nil, "version", cav.Spec.Version)
+			return nil, err
+		}
+		if processing {
+			util.LogInfo("DNS entry resource not yet ready", string(Processing), cav, nil, "version", cav.Spec.Version)
+			// requeue to iterate this check after a delay
+			return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second), nil
+		}
+	}
+	return nil, nil
 }
 
 func getContentJobName(contentJobWorkloadName string, cav *v1alpha1.CAPApplicationVersion) string {
