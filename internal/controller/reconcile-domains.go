@@ -520,7 +520,7 @@ func (c *Controller) detectDNSEntryChanges(ctx context.Context, ca *v1alpha1.CAP
 	return changeDetected, nil
 }
 
-func (c *Controller) reconcileDNSEntries(ctx context.Context, ownerRef metav1.OwnerReference, namespace string, caName string, subdomain string) error {
+func (c *Controller) reconcileDNSEntries(ctx context.Context, dnsEntryNamePrefix string, ownerRef metav1.OwnerReference, namespace string, caName string, subdomain string) error {
 	if dnsManager() != dnsManagerGardener {
 		// Not a gardener managed cluster -> return
 		return nil
@@ -542,7 +542,7 @@ func (c *Controller) reconcileDNSEntries(ctx context.Context, ownerRef metav1.Ow
 
 	// Create DNS Entries
 	for index, domain := range ca.Spec.Domains.Secondary {
-		dnsEntryName := ownerRef.Name + strconv.Itoa(index)
+		dnsEntryName := dnsEntryNamePrefix + strconv.Itoa(index)
 		_, err = c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ca.Namespace).Create(
 			ctx, &dnsv1alpha1.DNSEntry{
 				ObjectMeta: metav1.ObjectMeta{
@@ -573,22 +573,22 @@ func (c *Controller) reconcileDNSEntries(ctx context.Context, ownerRef metav1.Ow
 	return err
 }
 
-func (c *Controller) checkDNSEntries(ctx context.Context, kind string, namespace string, name string) (bool, error) {
+func (c *Controller) checkDNSEntries(ctx context.Context, kind string, ownerNamespace string, ownerName string) (bool, error) {
 	if dnsManager() == dnsManagerGardener {
 		// get relevant DNSEntries
-		dnsEntries, err := c.gardenerDNSClient.DnsV1alpha1().DNSEntries(namespace).List(ctx, metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(kind, namespace, name)}).String()})
+		dnsEntries, err := c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ownerNamespace).List(ctx, metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(kind, ownerNamespace, ownerName)}).String()})
 		if err != nil {
 			return false, err
 		}
 
 		if len(dnsEntries.Items) == 0 {
-			return false, fmt.Errorf("could not find DNSEntry for %s %s.%s", kind, namespace, name)
+			return false, fmt.Errorf("could not find DNSEntry for %s %s.%s", kind, ownerNamespace, ownerName)
 		}
 
 		for _, dnsEntry := range dnsEntries.Items {
 			// check for ready state
 			if dnsEntry.Status.State == dnsv1alpha1.STATE_ERROR {
-				return false, fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, kind, namespace, name, *dnsEntry.Status.Message)
+				return false, fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, kind, ownerNamespace, ownerName, *dnsEntry.Status.Message)
 			} else if dnsEntry.Status.State != dnsv1alpha1.STATE_READY {
 				return true, nil
 			}
@@ -887,7 +887,7 @@ func (c *Controller) reconcileServiceNetworking(ctx context.Context, cav *v1alph
 
 	// update version status
 	if oneVSModified {
-		message = fmt.Sprintf("VirtualService %s.%s was reconciled", cav.Namespace, cav.Name)
+		message = fmt.Sprintf("VirtualService(s) for app %s.%s reconciled", cav.Namespace, cav.Name)
 		reason = CAVEventServiceNetworkingModified
 		conditionStatus := metav1.ConditionFalse
 		if isCROConditionReady(cav.Status.GenericStatus) {
@@ -937,6 +937,14 @@ func (c *Controller) reconcileServiceVirtualService(ctx context.Context, service
 }
 
 func (c *Controller) getUpdatedServiceVirtualServiceObject(ctx context.Context, cav *v1alpha1.CAPApplicationVersion, vs *istionwv1.VirtualService, serviceExposure v1alpha1.ServiceExposure, ca *v1alpha1.CAPApplication) (modified bool, err error) {
+	// update owner reference
+	if owner, ok := getOwnerByKind(vs.OwnerReferences, v1alpha1.CAPApplicationVersionKind); !ok {
+		vs.OwnerReferences = append(vs.OwnerReferences, *metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind)))
+		modified = true
+	} else if owner.Name != cav.Name {
+		return false, fmt.Errorf("invalid owner reference found for %s %s.%s", vs.Kind, vs.Namespace, vs.Name)
+	}
+
 	httpRoutes := []*networkingv1.HTTPRoute{}
 	for _, route := range serviceExposure.Routes {
 		prefix := route.Path
