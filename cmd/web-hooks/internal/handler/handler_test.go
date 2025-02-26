@@ -784,6 +784,8 @@ func TestCavInvalidity(t *testing.T) {
 		invalidJobinContentJobs            bool
 		invalidWorkloadName                bool
 		longWorkloadName                   bool
+		onlyServiceWorkloads               bool
+		serviceExposureWrongWorkloadName   bool
 		backlogItems                       []string
 	}{
 		{
@@ -885,6 +887,16 @@ func TestCavInvalidity(t *testing.T) {
 			operation:        admissionv1.Create,
 			longWorkloadName: true,
 			backlogItems:     []string{},
+		},
+		{
+			operation:            admissionv1.Create,
+			onlyServiceWorkloads: true,
+			backlogItems:         []string{},
+		},
+		{
+			operation:                        admissionv1.Create,
+			serviceExposureWrongWorkloadName: true,
+			backlogItems:                     []string{},
 		},
 	}
 	for _, test := range tests {
@@ -1161,6 +1173,56 @@ func TestCavInvalidity(t *testing.T) {
 				crd.Spec.Workloads[0].Name = "WrongWorkloadName"
 			} else if test.longWorkloadName == true {
 				crd.Spec.Workloads[0].Name = "extralongworkloadnamecontainingmorethan64characters"
+			} else if test.onlyServiceWorkloads == true {
+				for _, workload := range crd.Spec.Workloads {
+					if workload.DeploymentDefinition != nil {
+						workload.DeploymentDefinition.Type = v1alpha1.DeploymentService
+					}
+				}
+
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "tenant-operation",
+					ConsumedBTPServices: []string{},
+					JobDefinition: &v1alpha1.JobDetails{
+						Type: v1alpha1.JobTenantOperation,
+						CommonDetails: v1alpha1.CommonDetails{
+							Image: "foo",
+						},
+					},
+				})
+
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "custom-tenant-operation",
+					ConsumedBTPServices: []string{},
+					JobDefinition: &v1alpha1.JobDetails{
+						Type: v1alpha1.JobCustomTenantOperation,
+						CommonDetails: v1alpha1.CommonDetails{
+							Image: "foo",
+						},
+					},
+				})
+			} else if test.serviceExposureWrongWorkloadName == true {
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "service-1",
+					ConsumedBTPServices: []string{},
+					DeploymentDefinition: &v1alpha1.DeploymentDetails{
+						Type: v1alpha1.DeploymentService,
+						CommonDetails: v1alpha1.CommonDetails{
+							Image: "foo",
+						},
+					},
+				})
+
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+					SubDomain: "abc.com",
+					Routes: []v1alpha1.Route{
+						{
+							WorkloadName: "wrong-name",
+							Port:         4004,
+							Path:         "abc",
+						},
+					},
+				})
 			}
 
 			rawBytes, _ := json.Marshal(crd)
@@ -1185,7 +1247,7 @@ func TestCavInvalidity(t *testing.T) {
 			if test.duplicateWorkloadName == true {
 				errorMessage = fmt.Sprintf("%s %s duplicate workload name: cap-backend", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.invalidDeploymentType == true {
-				errorMessage = fmt.Sprintf("%s %s invalid deployment definition type. Only supported - CAP, Router and Additional", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s invalid deployment definition type. Only supported - CAP, Router, Additional and Service", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.invalidJobType == true {
 				errorMessage = fmt.Sprintf("%s %s invalid job definition type. Only supported - Content, TenantOperation and CustomTenantOperation", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.onlyOneCAPTypeAllowed == true {
@@ -1222,6 +1284,10 @@ func TestCavInvalidity(t *testing.T) {
 				errorMessage = fmt.Sprintf("%s %s Invalid workload name: %s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, "WrongWorkloadName")
 			} else if test.longWorkloadName == true {
 				errorMessage = fmt.Sprintf("%s %s Derived service name: %s for workload %s will exceed 63 character limit. Adjust CAPApplicationVerion resource name or the workload name accordingly", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Name+"-"+"extralongworkloadnamecontainingmorethan64characters"+"-svc", "extralongworkloadnamecontainingmorethan64characters")
+			} else if test.onlyServiceWorkloads == true {
+				errorMessage = fmt.Sprintf(TenantOpJobWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.JobTenantOperation, v1alpha1.JobCustomTenantOperation, v1alpha1.DeploymentService)
+			} else if test.serviceExposureWrongWorkloadName == true {
+				errorMessage = fmt.Sprintf(ServiceExposureWorkloadNameErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].Routes[0].WorkloadName, crd.Spec.ServiceExposures[0].SubDomain)
 			}
 
 			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
