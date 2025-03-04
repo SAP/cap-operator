@@ -28,10 +28,7 @@ import (
 )
 
 const (
-	App                                             = "app"
-	EventActionReconcileServiceNetworking           = "ReconcileServiceNetworking"
-	CAVEventServiceNetworkingModified               = "ServiceNetworkingModified"
-	CAVEventServiceVirtualServiceModificationFailed = "ServiceVirtualServiceModificationFailed"
+	App = "app"
 )
 
 const (
@@ -135,13 +132,6 @@ func (c *Controller) handleCAPApplicationVersion(ctx context.Context, cav *v1alp
 		return nil, statusErr
 	}
 
-	// Create relevant DNSEntries for this version. DNS entries are checked before setting the version as ready
-	for _, serviceExposure := range cav.Spec.ServiceExposures {
-		if err = c.reconcileDNSEntries(ctx, serviceExposure.SubDomain, *metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind)), cav.Namespace, ca.Name, serviceExposure.SubDomain); err != nil {
-			return nil, err
-		}
-	}
-
 	return c.processWorkloads(ctx, ca, cav)
 }
 
@@ -213,12 +203,7 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 		return nil, err
 	}
 
-	requeue, err := c.reconcileServiceNetworking(ctx, cav, ca)
-	if requeue != nil || err != nil {
-		return requeue, err
-	}
-
-	requeue, err = c.checkServiceDNSEntries(ctx, ca, cav)
+	requeue, err := c.checkServiceDNSEntries(ctx, ca, cav)
 	if requeue != nil || err != nil {
 		return requeue, err
 	}
@@ -235,7 +220,7 @@ func (c *Controller) checkServiceDNSEntries(ctx context.Context, ca *v1alpha1.CA
 	checkNeeded := len(ca.Spec.Domains.Secondary) > 0 && len(cav.Spec.ServiceExposures) > 0
 	// Check for DNS entries
 	if checkNeeded {
-		processing, err := c.checkDNSEntries(ctx, v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name)
+		processing, err := c.checkDNSEntries(ctx, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
 		if err != nil {
 			util.LogError(err, "DNS entries error", string(Processing), cav, nil, "version", cav.Spec.Version)
 			return nil, err
