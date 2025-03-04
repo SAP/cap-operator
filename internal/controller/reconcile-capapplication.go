@@ -119,12 +119,17 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 		return
 	}
 
-	// step 5 - check state of dependent resources
+	// step 5 - reconile service exposure, create/update services based on the latest CAV
+	if requeue, err = c.reconcileServiceNetworking(ctx, ca, cav); requeue != nil || err != nil {
+		return
+	}
+
+	// step 6 - check state of dependent resources
 	if processing, err = c.checkPrimaryDomainResources(ctx, ca); err != nil || processing {
 		return
 	}
 
-	// step 6 - check and set consistent status
+	// step 7 - check and set consistent status
 	return c.verifyApplicationConsistent(ctx, ca)
 }
 

@@ -29,14 +29,15 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-// TODO: ignore duplicates reconciliation calls for same dnsTarget, Finalizers... and a whole lot more!
-
 const PrimaryDnsSuffix = "primary-dns"
 
 const (
-	CAPOperator              = "CAPOperator"
-	OperatorDomainLabel      = CAPOperator + "." + OperatorDomains
-	OperatorDomainNamePrefix = "cap-operator-domains-"
+	CAPOperator                                  = "CAPOperator"
+	OperatorDomainLabel                          = CAPOperator + "." + OperatorDomains
+	OperatorDomainNamePrefix                     = "cap-operator-domains-"
+	EventActionReconcileServiceNetworking        = "ReconcileServiceNetworking"
+	EventServiceNetworkingModified               = "ServiceNetworkingModified"
+	EventServiceVirtualServiceModificationFailed = "ServiceVirtualServiceModificationFailed"
 )
 
 var (
@@ -480,11 +481,8 @@ func getCertManagerCertificateSpec(commonName string, secretName string) certMan
 	}
 }
 
-func (c *Controller) detectDNSEntryChanges(ctx context.Context, ca *v1alpha1.CAPApplication, hash string, ownerHash string) (bool, error) {
-	labelOwner := map[string]string{
-		LabelOwnerIdentifierHash: ownerHash,
-	}
-	dnsEntries, err := c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ca.Namespace).List(ctx, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labelOwner).String()})
+func (c *Controller) detectDNSEntryChanges(ctx context.Context, ca *v1alpha1.CAPApplication, hash string, labelSelector string) (bool, error) {
+	dnsEntries, err := c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ca.Namespace).List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
 		return false, err
 	}
@@ -511,7 +509,7 @@ func (c *Controller) detectDNSEntryChanges(ctx context.Context, ca *v1alpha1.CAP
 	// Delete all existing DNSEntries
 	if changeDetected {
 		// Delete all existing DNSEntries
-		err = c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ca.Namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labels.SelectorFromSet(labelOwner).String()})
+		err = c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ca.Namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labelSelector})
 		if err != nil {
 			return false, err
 		}
@@ -535,7 +533,8 @@ func (c *Controller) reconcileDNSEntries(ctx context.Context, dnsEntryNamePrefix
 	dnsTarget := sanitizeDNSTarget(ingressGatewayInfo.DNSTarget)
 	ownerHash := sha1Sum(ownerRef.Kind, namespace, ownerRef.Name)
 	hash := sha256Sum(dnsTarget, subdomain, strings.Join(ca.Spec.Domains.Secondary, ""))
-	changeDetected, err := c.detectDNSEntryChanges(ctx, ca, hash, ownerHash)
+	labelSelector := labels.SelectorFromSet(map[string]string{LabelOwnerIdentifierHash: ownerHash}).String()
+	changeDetected, err := c.detectDNSEntryChanges(ctx, ca, hash, labelSelector)
 	if err != nil || !changeDetected {
 		return err
 	}
@@ -799,7 +798,7 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 			}},
 		}},
 	}
-	err = c.updateTenantVirtualServiceSpecWithSecondaryDomains(ctx, spec, cat, ca)
+	err = c.updateVirtualServiceSpecWithSecondaryDomains(ctx, spec, cat.Spec.SubDomain, ca)
 	if err != nil {
 		return modified, err
 	}
@@ -825,7 +824,7 @@ func (err *OperatorGatewayMissingError) Error() string {
 	return "operator gateway for secondary domains missing"
 }
 
-func (c *Controller) updateTenantVirtualServiceSpecWithSecondaryDomains(ctx context.Context, spec *networkingv1.VirtualService, cat *v1alpha1.CAPTenant, ca *v1alpha1.CAPApplication) error {
+func (c *Controller) updateVirtualServiceSpecWithSecondaryDomains(ctx context.Context, spec *networkingv1.VirtualService, subdomain string, ca *v1alpha1.CAPApplication) error {
 	secondaryDomainsExist := ca.Spec.Domains.Secondary != nil && len(ca.Spec.Domains.Secondary) > 0
 	if !secondaryDomainsExist {
 		return nil
@@ -833,7 +832,7 @@ func (c *Controller) updateTenantVirtualServiceSpecWithSecondaryDomains(ctx cont
 
 	// add customer specific domains
 	for _, domain := range ca.Spec.Domains.Secondary {
-		spec.Hosts = append(spec.Hosts, cat.Spec.SubDomain+"."+domain)
+		spec.Hosts = append(spec.Hosts, subdomain+"."+domain)
 	}
 
 	// Determine Ingress GW service for this app
@@ -853,10 +852,10 @@ func (c *Controller) updateTenantVirtualServiceSpecWithSecondaryDomains(ctx cont
 	return nil
 }
 
-func (c *Controller) reconcileServiceNetworking(ctx context.Context, cav *v1alpha1.CAPApplicationVersion, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
+func (c *Controller) reconcileServiceNetworking(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (requeue *ReconcileResult, err error) {
 	var (
 		reason, message string
-		oneVSModified   bool
+		vsModified      bool
 		eventType       string = corev1.EventTypeNormal
 	)
 
@@ -866,7 +865,7 @@ func (c *Controller) reconcileServiceNetworking(ctx context.Context, cav *v1alph
 			message = err.Error()
 			if _, ok := err.(*OperatorGatewayMissingError); ok {
 				err = nil
-				requeue = NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second)
+				requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 10*time.Second)
 			}
 		}
 		if reason != "" { // raise event only when there is a modification or problem
@@ -874,74 +873,108 @@ func (c *Controller) reconcileServiceNetworking(ctx context.Context, cav *v1alph
 		}
 	}()
 
-	for _, serviceExposure := range cav.Spec.ServiceExposures {
-		var vsModified bool
-		if vsModified, err = c.reconcileServiceVirtualService(ctx, serviceExposure, cav, ca); err != nil {
-			util.LogError(err, "Virtual service reconciliation failed", string(Processing), cav, nil, "version", cav.Spec.Version)
-			reason = CAVEventServiceVirtualServiceModificationFailed
-			return
-		}
-		// set modified flag if at least one vs was modified
-		oneVSModified = oneVSModified || vsModified
+	if vsModified, err = c.reconcileServiceVirtualServices(ctx, cav, ca); err != nil {
+		util.LogError(err, "Virtual service reconciliation failed", string(Processing), cav, nil, "version", cav.Spec.Version)
+		reason = EventServiceVirtualServiceModificationFailed
+		return
 	}
-
-	// update version status
-	if oneVSModified {
+	// update event reason
+	if vsModified {
 		message = fmt.Sprintf("VirtualService(s) for app %s.%s reconciled", cav.Namespace, cav.Name)
-		reason = CAVEventServiceNetworkingModified
-		conditionStatus := metav1.ConditionFalse
-		if isCROConditionReady(cav.Status.GenericStatus) {
-			conditionStatus = metav1.ConditionTrue
-		}
-		cav.SetStatusWithReadyCondition(cav.Status.State, conditionStatus, reason, message)
+		reason = EventServiceNetworkingModified
 	}
 
 	return
 }
 
-func (c *Controller) reconcileServiceVirtualService(ctx context.Context, serviceExposure v1alpha1.ServiceExposure, cav *v1alpha1.CAPApplicationVersion, ca *v1alpha1.CAPApplication) (modified bool, err error) {
+func (c *Controller) reconcileServiceVirtualServices(ctx context.Context, cav *v1alpha1.CAPApplicationVersion, ca *v1alpha1.CAPApplication) (modified bool, err error) {
+	ownerHash := sha1Sum(ca.Kind, ca.Namespace, ca.Name)
+	labelSelector := labels.SelectorFromSet(map[string]string{LabelOwnerIdentifierHash: ownerHash}).String()
+
+	vsList, err := c.istioClient.NetworkingV1().VirtualServices(ca.Namespace).List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
+	if err != nil {
+		return
+	}
+
+	ownerRef := *metav1.NewControllerRef(ca, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationKind))
+	aFoundIndex := []int{}
+
+	for _, serviceExposure := range cav.Spec.ServiceExposures {
+		var iIndex int
+		iIndex, modified, err = c.modifyServiceExposure(ctx, vsList, serviceExposure, ca, cav, ownerHash, ownerRef)
+		if err != nil {
+			return
+		}
+		if iIndex > -1 {
+			aFoundIndex = append(aFoundIndex, iIndex)
+		}
+	}
+
+	// Delete VirtualServices that are not in the ServiceExposures list (TODO: may have to be done differently for service usage in multi-tenant scenarios)
+	for i, vs := range vsList.Items {
+		if !slices.Contains(aFoundIndex, i) {
+			util.LogInfo("Deleting virtual service", string(Processing), ca, vs, "version", cav.Spec.Version)
+			err = c.istioClient.NetworkingV1().VirtualServices(ca.Namespace).Delete(ctx, vs.Name, metav1.DeleteOptions{})
+			if err != nil {
+				return
+			}
+			modified = true
+		}
+	}
+	return modified, err
+}
+
+func (c *Controller) modifyServiceExposure(ctx context.Context, vsList *istionwv1.VirtualServiceList, serviceExposure v1alpha1.ServiceExposure, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, ownerHash string, ownerRef metav1.OwnerReference) (iIndex int, modified bool, err error) {
 	var (
 		create, update bool
 		vs             *istionwv1.VirtualService
 	)
 
-	vs, err = c.istioClient.NetworkingV1().VirtualServices(cav.Namespace).Get(ctx, serviceExposure.SubDomain, metav1.GetOptions{})
-	if errors.IsNotFound(err) {
+	if iIndex = slices.IndexFunc(vsList.Items, func(vs *istionwv1.VirtualService) bool {
+		initialHost := vs.Spec.Hosts[0]
+		vsSubDomain := strings.Split(initialHost, ".")[0]
+		return serviceExposure.SubDomain == vsSubDomain
+	}); iIndex == -1 {
+		// VirtualService needs to be created
 		vs = &istionwv1.VirtualService{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:            serviceExposure.SubDomain, // Use subdomain of service exposure as name of VS
-				Namespace:       cav.Namespace,
-				Labels:          map[string]string{},
-				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind))},
+				GenerateName: ca.Name, // Generate a unique name based on app name
+				Namespace:    ca.Namespace,
+				Labels: map[string]string{
+					LabelOwnerIdentifierHash: ownerHash,
+				},
+				OwnerReferences: []metav1.OwnerReference{ownerRef},
 			},
 		}
 		create = true
-	} else if err != nil {
-		return
+	} else {
+		// VirtualService already exists
+		vs = vsList.Items[iIndex]
 	}
 
-	if update, err = c.getUpdatedServiceVirtualServiceObject(ctx, cav, vs, serviceExposure, ca); err != nil {
-		util.LogError(err, "", string(Processing), cav, nil, "version", cav.Spec.Version)
+	// update VirtualService Spec
+	if update, err = c.getUpdatedServiceVirtualServiceObject(ctx, vs, serviceExposure, ownerRef, ca, cav.Name); err != nil {
 		return
 	}
 
 	if create {
-		util.LogInfo("Creating virtual service", string(Processing), cav, vs, "version", cav.Spec.Version)
-		_, err = c.istioClient.NetworkingV1().VirtualServices(cav.Namespace).Create(ctx, vs, metav1.CreateOptions{})
+		util.LogInfo("Creating virtual service", string(Processing), ca, vs, "exposureSubDomain", serviceExposure.SubDomain, "version", cav.Spec.Version)
+		_, err = c.istioClient.NetworkingV1().VirtualServices(ca.Namespace).Create(ctx, vs, metav1.CreateOptions{})
 	} else if update {
-		util.LogInfo("Updating virtual service", string(Processing), cav, vs, "version", cav.Spec.Version)
-		_, err = c.istioClient.NetworkingV1().VirtualServices(cav.Namespace).Update(ctx, vs, metav1.UpdateOptions{})
+		util.LogInfo("Updating virtual service", string(Processing), ca, vs, "exposureSubDomain", serviceExposure.SubDomain, "version", cav.Spec.Version)
+		_, err = c.istioClient.NetworkingV1().VirtualServices(ca.Namespace).Update(ctx, vs, metav1.UpdateOptions{})
 	}
 
-	return create || update, err
+	modified = create || update
+	return
 }
 
-func (c *Controller) getUpdatedServiceVirtualServiceObject(ctx context.Context, cav *v1alpha1.CAPApplicationVersion, vs *istionwv1.VirtualService, serviceExposure v1alpha1.ServiceExposure, ca *v1alpha1.CAPApplication) (modified bool, err error) {
+func (c *Controller) getUpdatedServiceVirtualServiceObject(ctx context.Context, vs *istionwv1.VirtualService, serviceExposure v1alpha1.ServiceExposure, ownerRef metav1.OwnerReference, ca *v1alpha1.CAPApplication, cavName string) (modified bool, err error) {
 	// update owner reference
-	if owner, ok := getOwnerByKind(vs.OwnerReferences, v1alpha1.CAPApplicationVersionKind); !ok {
-		vs.OwnerReferences = append(vs.OwnerReferences, *metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind)))
+	if owner, ok := getOwnerByKind(vs.OwnerReferences, v1alpha1.CAPApplicationKind); !ok {
+		vs.OwnerReferences = append(vs.OwnerReferences, ownerRef)
 		modified = true
-	} else if owner.Name != cav.Name {
+	} else if owner.Name != ca.Name {
 		return false, fmt.Errorf("invalid owner reference found for %s %s.%s", vs.Kind, vs.Namespace, vs.Name)
 	}
 
@@ -957,7 +990,7 @@ func (c *Controller) getUpdatedServiceVirtualServiceObject(ctx context.Context, 
 			},
 			Route: []*networkingv1.HTTPRouteDestination{{
 				Destination: &networkingv1.Destination{
-					Host: route.WorkloadName + ServiceSuffix + "." + cav.Namespace + ".svc.cluster.local",
+					Host: getWorkloadName(cavName, route.WorkloadName) + ServiceSuffix + "." + ca.Namespace + ".svc.cluster.local",
 					Port: &networkingv1.PortSelector{Number: uint32(route.Port)},
 				},
 			}},
@@ -969,7 +1002,7 @@ func (c *Controller) getUpdatedServiceVirtualServiceObject(ctx context.Context, 
 		Hosts:    []string{serviceExposure.SubDomain + "." + ca.Spec.Domains.Primary},
 		Http:     httpRoutes,
 	}
-	err = c.updateServiceVirtualServiceSpecWithSecondaryDomains(ctx, spec, serviceExposure, ca)
+	err = c.updateVirtualServiceSpecWithSecondaryDomains(ctx, spec, serviceExposure.SubDomain, ca)
 	if err != nil {
 		return modified, err
 	}
@@ -987,34 +1020,6 @@ func (c *Controller) getUpdatedServiceVirtualServiceObject(ctx context.Context, 
 	}
 
 	return modified, err
-}
-
-func (c *Controller) updateServiceVirtualServiceSpecWithSecondaryDomains(ctx context.Context, spec *networkingv1.VirtualService, serviceExposure v1alpha1.ServiceExposure, ca *v1alpha1.CAPApplication) error {
-	secondaryDomainsExist := ca.Spec.Domains.Secondary != nil && len(ca.Spec.Domains.Secondary) > 0
-	if !secondaryDomainsExist {
-		return nil
-	}
-
-	// add customer specific domains
-	for _, domain := range ca.Spec.Domains.Secondary {
-		spec.Hosts = append(spec.Hosts, serviceExposure.SubDomain+"."+domain)
-	}
-
-	// Determine Ingress GW service for this app
-	gwInfo, err := c.getIngressGatewayInfo(ctx, ca)
-	if err != nil {
-		return err
-	}
-
-	// Get the relevant central operator GW for this ingress GW
-	operatorGW, _ := c.getOperatorGateway(ctx, gwInfo.Namespace, sha1Sum(gwInfo.DNSTarget))
-	if operatorGW == nil {
-		// requeue for later reconciliation
-		return &OperatorGatewayMissingError{}
-	}
-	spec.Gateways = append(spec.Gateways, operatorGW.Namespace+"/"+operatorGW.Name)
-
-	return nil
 }
 
 func getIngressGatewayLabels(ca *v1alpha1.CAPApplication) map[string]string {
