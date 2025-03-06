@@ -731,3 +731,47 @@ func TestProvisioningWithInitContainersCustom(t *testing.T) {
 		},
 	)
 }
+
+func TestProvisioningUsingVolMountForServices(t *testing.T) {
+	_ = reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+		TestData{
+			backlogItems: []string{},
+			description:  "Provisioning - Using service volume mount for TenantOperation",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+				"testdata/common/capapplicationversion-v1-use-vol-mount.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/captenantoperation/ctop-use-vol-mount.initial.yaml",
+			},
+			expectedResources: "testdata/captenantoperation/ctop-use-vol-mount.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+			},
+		},
+	)
+}
+
+func TestProvisioningUsingVolMountForServicesCustom(t *testing.T) {
+	_ = reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+		TestData{
+			backlogItems: []string{},
+			description:  "Provisioning - Using service volume mount for CustomTenantOperation",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+				"testdata/common/capapplicationversion-v1-use-vol-mount-custom.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/captenantoperation/ctop-use-vol-mount-custom.initial.yaml",
+			},
+			expectedResources: "testdata/captenantoperation/ctop-use-vol-mount-custom.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+			},
+		},
+	)
+}

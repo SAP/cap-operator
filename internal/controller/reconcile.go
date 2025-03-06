@@ -9,10 +9,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path"
 	"strings"
 
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"golang.org/x/exp/slices"
 	"golang.org/x/mod/semver"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -48,12 +50,15 @@ const (
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
 	AnnotationProviderSubAccountId      = "sme.sap.com/provider-sub-account-id"
 	AnnotationEnableCleanupMonitoring   = "sme.sap.com/enable-cleanup-monitoring"
+	AnnotationUseCredentialVolumeMount  = "sme.sap.com/use-credential-volume-mount"
 	FinalizerCAPApplication             = "sme.sap.com/capapplication"
 	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
 	FinalizerCAPTenant                  = "sme.sap.com/captenant"
 	FinalizerCAPTenantOperation         = "sme.sap.com/captenantoperation"
 	GardenerDNSClassIdentifier          = "dns.gardener.cloud/class"
 )
+
+var defaultServiceBindingRootEnv = corev1.EnvVar{Name: "SERVICE_BINDING_ROOT", Value: "/etc/secrets"}
 
 const (
 	CertificateSuffix     = "certificate"
@@ -594,14 +599,18 @@ func copyMaps(originalMap map[string]string, additionalMap map[string]string) ma
 	return newMap
 }
 
-func updateInitContainers(initContainers []corev1.Container, additionalEnv []corev1.EnvVar, vcapSecretName string) *[]corev1.Container {
+func updateInitContainers(initContainers []corev1.Container, additionalEnv []corev1.EnvVar, serviceSecretVolumeMounts []corev1.VolumeMount, EnvFrom []corev1.EnvFromSource) *[]corev1.Container {
 	var updatedInitContainers []corev1.Container
 	if len(initContainers) > 0 {
 		updatedInitContainers = []corev1.Container{}
 		for _, container := range initContainers {
 			updatedContainer := container.DeepCopy()
 			updatedContainer.Env = append(updatedContainer.Env, additionalEnv...)
-			updatedContainer.EnvFrom = getEnvFrom(vcapSecretName)
+			updatedContainer.EnvFrom = EnvFrom
+			if len(serviceSecretVolumeMounts) > 0 {
+				updatedContainer.VolumeMounts = append(updatedContainer.VolumeMounts, serviceSecretVolumeMounts...)
+				updatedContainer.Env = append(updatedContainer.Env, defaultServiceBindingRootEnv)
+			}
 			updatedInitContainers = append(updatedInitContainers, *updatedContainer)
 		}
 	}
@@ -610,6 +619,36 @@ func updateInitContainers(initContainers []corev1.Container, additionalEnv []cor
 
 func getWorkloadName(cavName, workloadName string) string {
 	return fmt.Sprintf("%s-%s", cavName, strings.ToLower(workloadName))
+}
+
+func getServiceCredentialVolumeMounts(serviceInfos []v1alpha1.ServiceInfo) []corev1.VolumeMount {
+	volumeMounts := []corev1.VolumeMount{}
+	for _, serviceInfo := range serviceInfos {
+		volumeMounts = append(volumeMounts, corev1.VolumeMount{Name: serviceInfo.Name, MountPath: path.Join(defaultServiceBindingRootEnv.Value, serviceInfo.Name), ReadOnly: true})
+	}
+	return volumeMounts
+}
+
+func getServiceCredentialVolumes(serviceInfos []v1alpha1.ServiceInfo) []corev1.Volume {
+	volumes := []corev1.Volume{}
+	for _, serviceInfo := range serviceInfos {
+		volumes = append(volumes, corev1.Volume{Name: serviceInfo.Name, VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: serviceInfo.Secret}}})
+	}
+	return volumes
+}
+
+func useVolumeMountsForServiceCredentials(cav *v1alpha1.CAPApplicationVersion) bool {
+	value, exists := cav.Annotations[AnnotationUseCredentialVolumeMount]
+	return exists && value == "true"
+}
+
+func updateServiceBindingRootEnv(envVars []corev1.EnvVar) []corev1.EnvVar {
+	if envIndex := slices.IndexFunc(envVars, func(currentEnv corev1.EnvVar) bool { return currentEnv.Name == defaultServiceBindingRootEnv.Name }); envIndex > -1 {
+		envVars[envIndex] = defaultServiceBindingRootEnv
+	} else {
+		envVars = append(envVars, defaultServiceBindingRootEnv)
+	}
+	return envVars
 }
 
 func getRestartPolicy(restartPolicy corev1.RestartPolicy, isJob bool) corev1.RestartPolicy {
