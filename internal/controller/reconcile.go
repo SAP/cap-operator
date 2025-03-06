@@ -38,6 +38,7 @@ const (
 	LabelCAVVersion                     = "sme.sap.com/cav-version"
 	LabelRelevantDNSTarget              = "sme.sap.com/relevant-dns-target-hash"
 	LabelDisableKarydia                 = "x4.sap.com/disable-karydia"
+	LabelExposedWorkload                = "sme.sap.com/exposed-workload"
 	LabelSubdomainHash                  = "sme.sap.com/subdomain-hash"
 	AnnotationOwnerIdentifier           = "sme.sap.com/owner-identifier"
 	AnnotationBTPApplicationIdentifier  = "sme.sap.com/btp-app-identifier"

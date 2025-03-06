@@ -653,6 +653,8 @@ func getAppPodNetworkPolicySpec(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAp
 }
 
 func getAppIngressNetworkPolicySpec(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) networkingv1.NetworkPolicySpec {
+	labels := getLabels(ca, cav, CategoryWorkload, "", "", false)
+	labels[LabelExposedWorkload] = "true"
 	return networkingv1.NetworkPolicySpec{
 		PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		Ingress: []networkingv1.NetworkPolicyIngressRule{{
@@ -665,7 +667,7 @@ func getAppIngressNetworkPolicySpec(ca *v1alpha1.CAPApplication, cav *v1alpha1.C
 			},
 		}},
 		// Target all workloads of the app
-		PodSelector: metav1.LabelSelector{MatchLabels: getLabels(ca, cav, CategoryWorkload, string(v1alpha1.DeploymentRouter), "", false)},
+		PodSelector: metav1.LabelSelector{MatchLabels: labels},
 	}
 }
 
@@ -743,7 +745,9 @@ func createDeployment(params *DeploymentParameters) *appsv1.Deployment {
 	workloadName := getWorkloadName(params.CAV.Name, params.WorkloadDetails.Name)
 	annotations := copyMaps(params.WorkloadDetails.Annotations, getAnnotations(params.CA, params.CAV, true))
 	labels := copyMaps(params.WorkloadDetails.Labels, getLabels(params.CA, params.CAV, CategoryWorkload, string(params.WorkloadDetails.DeploymentDefinition.Type), workloadName, true))
-
+	if isExposedWorkload(params.WorkloadDetails, params.CAV) {
+		labels[LabelExposedWorkload] = "true"
+	}
 	util.LogInfo("Creating deployment", string(Processing), params.CAV, nil, "deploymentName", workloadName, "version", params.CAV.Spec.Version)
 
 	return &appsv1.Deployment{
@@ -1017,6 +1021,23 @@ func checkAndUpdateJobStatusFinishedJobs(contentDeployJob *batchv1.Job, cav *v1a
 		}
 	}
 	return nil
+}
+
+func isExposedWorkload(workloadDetails v1alpha1.WorkloadDetails, cav *v1alpha1.CAPApplicationVersion) bool {
+	// If the workload is of type router, it should be exposed
+	if workloadDetails.DeploymentDefinition.Type == v1alpha1.DeploymentRouter {
+		return true
+	}
+	// If the workload is in the serviceExposures list, it should be exposed
+	return slices.ContainsFunc(cav.Spec.ServiceExposures,
+		func(serviceExposure v1alpha1.ServiceExposure) bool {
+			return slices.ContainsFunc(serviceExposure.Routes,
+				func(route v1alpha1.Route) bool {
+					return route.WorkloadName == workloadDetails.Name
+				},
+			)
+		},
+	)
 }
 
 func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alpha1.CAPApplicationVersion) (bool, error) {

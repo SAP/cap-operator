@@ -57,6 +57,7 @@ metadata:
     sme.sap.com/category: Workload
     sme.sap.com/workload-name: test-cap-01-cav-v1-app-router
     sme.sap.com/workload-type: Router
+    sme.sap.com/exposed-workload: "true"
     sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
     sme.sap.com/cav-version: "1.2.3"
     sme.sap.com/owner-generation: "1"
