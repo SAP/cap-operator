@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 const PrimaryDnsSuffix = "primary-dns"
@@ -58,8 +59,6 @@ func (c *Controller) handleDomains(ctx context.Context, ca *v1alpha1.CAPApplicat
 	}
 	domainsHash := sha256Sum(string(domains))
 
-	requeue := NewReconcileResult()
-
 	commonName := strings.Join([]string{"*", ca.Spec.Domains.Primary}, ".")
 	secretName := strings.Join([]string{strings.Join([]string{ca.Namespace, ca.Name}, "--"), SecretSuffix}, "-")
 	c.handlePrimaryDomainGateway(ctx, ca, secretName, ca.Namespace)
@@ -73,6 +72,7 @@ func (c *Controller) handleDomains(ctx context.Context, ca *v1alpha1.CAPApplicat
 	c.handlePrimaryDomainDNSEntry(ctx, ca, commonName, ca.Namespace, sanitizeDNSTarget(istioIngressGatewayInfo.DNSTarget))
 
 	if domainsHash != ca.Status.DomainSpecHash {
+		requeue := NewReconcileResult()
 
 		// Reconcile Secondary domains via a dummy resource (separate reconciliation)
 		requeue.AddResource(ResourceOperatorDomains, "", metav1.NamespaceAll, 0)
@@ -518,22 +518,14 @@ func (c *Controller) detectDNSEntryChanges(ctx context.Context, ca *v1alpha1.CAP
 	return changeDetected, nil
 }
 
-func (c *Controller) reconcileDNSEntries(ctx context.Context, dnsEntryNamePrefix string, ownerRef metav1.OwnerReference, namespace string, caName string, subdomain string) error {
+func (c *Controller) reconcileDNSEntries(ctx context.Context, dnsEntryNamePrefix string, ownerRef metav1.OwnerReference, dnsLabels map[string]string, ca *v1alpha1.CAPApplication, subdomain string, dnsTarget string) error {
 	if dnsManager() != dnsManagerGardener {
 		// Not a gardener managed cluster -> return
 		return nil
 	}
-	// get owning CAPApplication
-	ca, _ := c.getCachedCAPApplication(namespace, caName)
-	ingressGatewayInfo, err := c.getIngressGatewayInfo(ctx, ca)
-	if err != nil {
-		return err
-	}
 
-	dnsTarget := sanitizeDNSTarget(ingressGatewayInfo.DNSTarget)
-	ownerHash := sha1Sum(ownerRef.Kind, namespace, ownerRef.Name)
 	hash := sha256Sum(dnsTarget, subdomain, strings.Join(ca.Spec.Domains.Secondary, ""))
-	labelSelector := labels.SelectorFromSet(map[string]string{LabelOwnerIdentifierHash: ownerHash}).String()
+	labelSelector := labels.SelectorFromSet(dnsLabels).String()
 	changeDetected, err := c.detectDNSEntryChanges(ctx, ca, hash, labelSelector)
 	if err != nil || !changeDetected {
 		return err
@@ -549,11 +541,9 @@ func (c *Controller) reconcileDNSEntries(ctx context.Context, dnsEntryNamePrefix
 					Annotations: map[string]string{
 						GardenerDNSClassIdentifier: GardenerDNSClassValue,
 						AnnotationResourceHash:     hash,
-						AnnotationOwnerIdentifier:  ownerRef.Kind + "." + namespace + "." + ownerRef.Name,
+						AnnotationOwnerIdentifier:  ownerRef.Kind + "." + ca.Namespace + "." + ownerRef.Name,
 					},
-					Labels: map[string]string{
-						LabelOwnerIdentifierHash: ownerHash,
-					},
+					Labels:          dnsLabels,
 					OwnerReferences: []metav1.OwnerReference{ownerRef},
 				},
 				Spec: dnsv1alpha1.DNSEntrySpec{
@@ -595,6 +585,28 @@ func (c *Controller) checkDNSEntries(ctx context.Context, kind string, ownerName
 	}
 	// Not a gardener managed cluster -or- DNSEntries Ready -> return
 	return false, nil
+}
+
+func (c *Controller) reconcileTenantDNSEntries(ctx context.Context, cat *v1alpha1.CAPTenant) error {
+	// get owning CAPApplication
+	ca, err := c.getCachedCAPApplication(cat.Namespace, cat.Spec.CAPApplicationInstance)
+	if err != nil {
+		return err
+	}
+
+	ingressGatewayInfo, err := c.getIngressGatewayInfo(ctx, ca)
+	if err != nil {
+		return err
+	}
+	dnsTarget := sanitizeDNSTarget(ingressGatewayInfo.DNSTarget)
+
+	ownerRef := *metav1.NewControllerRef(cat, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind))
+	labels := map[string]string{
+		LabelOwnerIdentifierHash: sha1Sum(ownerRef.Kind, cat.Namespace, cat.Name),
+	}
+
+	return c.reconcileDNSEntries(ctx, cat.Name, ownerRef, labels, ca, cat.Spec.SubDomain, dnsTarget)
+
 }
 
 func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
@@ -822,6 +834,84 @@ type OperatorGatewayMissingError struct{}
 
 func (err *OperatorGatewayMissingError) Error() string {
 	return "operator gateway for secondary domains missing"
+}
+
+func (c *Controller) reconcileServiceDNSEntires(ctx context.Context, ca *v1alpha1.CAPApplication) error {
+	// nothing to do here for non-gardener scenario because external-dns handles istio gateways automatically
+	if dnsManager() != dnsManagerGardener {
+		return nil
+	}
+
+	// Extract all unique subdomains from all versions
+	aSubDomains, aSubDomainHashes, err := c.extractSubDomains(ctx, ca)
+	if err != nil {
+		return err
+	}
+
+	// Get Ingess Gateway Info to determine DNS Target
+	ingressGatewayInfo, err := c.getIngressGatewayInfo(ctx, ca)
+	if err != nil {
+		return err
+	}
+	dnsTarget := sanitizeDNSTarget(ingressGatewayInfo.DNSTarget)
+
+	// Create OwnerReference and update label with OwnerIdentifierHash
+	ownerRef := *metav1.NewControllerRef(ca, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationKind))
+	labels := map[string]string{
+		LabelOwnerIdentifierHash: sha1Sum(v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name),
+	}
+
+	// reconcile DNS Entries for all service subdomains
+	for index, subDomain := range aSubDomains {
+		labels[LabelSubdomainHash] = aSubDomainHashes[index]
+		c.reconcileDNSEntries(ctx, aSubDomainHashes[index], ownerRef, labels, ca, subDomain, dnsTarget)
+	}
+
+	// Remove unused DNS entries (e.g. delete versions with outdated service exposures)
+	return c.cleanupServiceDNSEntries(ctx, aSubDomainHashes, ca)
+}
+
+func (c *Controller) extractSubDomains(ctx context.Context, ca *v1alpha1.CAPApplication) ([]string, []string, error) {
+	cavs, err := c.getCachedCAPApplicationVersions(ctx, ca)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	mapSubDomains := map[string]struct{}{}
+	// Get all unique subdomains from all versions
+	for _, cav := range cavs {
+		for _, serviceExposure := range cav.Spec.ServiceExposures {
+			mapSubDomains[serviceExposure.SubDomain] = struct{}{}
+		}
+	}
+
+	aSubDomains := []string{}
+	aSubDomainHashes := []string{}
+	for subDomain := range mapSubDomains {
+		aSubDomains = append(aSubDomains, subDomain)
+		aSubDomainHashes = append(aSubDomainHashes, sha1Sum(subDomain))
+	}
+	return aSubDomains, aSubDomainHashes, nil
+}
+
+// Delete DNSEntries that are not in the current ServiceExposures list (TODO: may have to be done differently for service usage in multi-tenant scenarios)
+func (c *Controller) cleanupServiceDNSEntries(ctx context.Context, aSubDomainHashes []string, ca *v1alpha1.CAPApplication) (err error) {
+	// Add a requirement for OwnerIdentifierHash
+	ownerReq, _ := labels.NewRequirement(LabelOwnerIdentifierHash, selection.Equals, []string{sha1Sum(v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)})
+	// Create label selector based on the above requirement for filtering out all unused DNS entries
+	labelSelector := labels.NewSelector()
+	labelSelector = labelSelector.Add(*ownerReq)
+
+	if len(aSubDomainHashes) > 0 {
+		// Add all unused subdomain hashes to requirements for Label Selector
+		subDomainsReq, _ := labels.NewRequirement(LabelSubdomainHash, selection.NotIn, aSubDomainHashes)
+		labelSelector = labelSelector.Add(*subDomainsReq)
+	}
+
+	util.LogInfo("Deleting unused dns entries", string(Processing), ca, nil)
+
+	// Delete all unused DNS entries for service exposures
+	return c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ca.Namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labelSelector.String()})
 }
 
 func (c *Controller) updateVirtualServiceSpecWithSecondaryDomains(ctx context.Context, spec *networkingv1.VirtualService, subdomain string, ca *v1alpha1.CAPApplication) error {

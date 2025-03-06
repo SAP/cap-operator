@@ -94,7 +94,14 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 		return
 	}
 
-	// step 2 - check for valid versions
+	// step 2.1 Reconcile Service related DNS entries here --> This creates service exposure based DNS entries for all versions of the CAPApplication
+	// The version ready status needs these service related DNS entries to exist!
+	err = c.reconcileServiceDNSEntires(ctx, ca)
+	if err != nil {
+		return
+	}
+
+	// step 2.2 - check for valid versions
 	cav, err := c.getLatestReadyCAPApplicationVersion(ctx, ca, true)
 	if err != nil {
 		// do not update the CAPApplication status - this is not an error reported by the version, but error while fetching the version

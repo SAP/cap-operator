@@ -240,7 +240,7 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, att
 
 	if cat.DeletionTimestamp == nil {
 		// Create relevant DNSEntries for this tenant. DNS entries are checked before setting the tenant as ready
-		if err = c.reconcileDNSEntries(ctx, cat.Name, *metav1.NewControllerRef(cat, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind)), cat.Namespace, cat.Spec.CAPApplicationInstance, cat.Spec.SubDomain); err != nil {
+		if err = c.reconcileTenantDNSEntries(ctx, cat); err != nil {
 			return
 		}
 	}
