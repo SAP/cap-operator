@@ -114,6 +114,10 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 		ca.SetStatusCondition(string(v1alpha1.ConditionTypeLatestVersionReady), metav1.ConditionFalse, "WaitingForReadyCAPApplicationVersion", "")
 		return
 	}
+	// Check if this is a services only scenario and update the Status accordingly
+	if err = c.checkServicesOnly(ca, cav); err != nil {
+		return
+	}
 	// We can already update LatestVersionReady to "true" at this point in time, but as this method is called several times, we do not do it here (during initial Provisioning as CA itself is may not be Consistent)
 
 	// step 3 - queue domain handling
@@ -145,8 +149,11 @@ func (c *Controller) verifyApplicationConsistent(ctx context.Context, ca *v1alph
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateConsistent, metav1.ConditionTrue, "VersionExists", "")
 		// Update additional condition `LatestVersionReady` to True
 		ca.SetStatusCondition(string(v1alpha1.ConditionTypeLatestVersionReady), metav1.ConditionTrue, "VersionExists", "")
-		// Update additional condition `AllTenantsReady` to True
-		ca.SetStatusCondition(string(v1alpha1.ConditionTypeAllTenantsReady), metav1.ConditionTrue, "ProviderTenantReady", "")
+		// No tenants for services only scenario
+		if !ca.IsServicesOnly() {
+			// Update additional condition `AllTenantsReady` to True
+			ca.SetStatusCondition(string(v1alpha1.ConditionTypeAllTenantsReady), metav1.ConditionTrue, "ProviderTenantReady", "")
+		}
 	}
 
 	// Check for newer CAPApplicationVersion
@@ -224,6 +231,11 @@ func (c *Controller) checkAdditonalConditions(ctx context.Context, ca *v1alpha1.
 	// Update `LatestVersionReady` status condition
 	ca.SetStatusCondition(string(v1alpha1.ConditionTypeLatestVersionReady), readyCondition, readyReason, "")
 
+	// No tenants for services only scenario
+	if ca.IsServicesOnly() {
+		return nil, nil
+	}
+
 	// Reset ready Condition and Reason for Tenant check AllTenantsReady --> True
 	readyCondition = metav1.ConditionTrue
 	readyReason = string(v1alpha1.ConditionTypeAllTenantsReady)
@@ -289,6 +301,10 @@ func (c *Controller) validateSecrets(ctx context.Context, ca *v1alpha1.CAPApplic
 }
 
 func (c *Controller) getRelevantTenantsForCA(ca *v1alpha1.CAPApplication) ([]*v1alpha1.CAPTenant, error) {
+	// No tenants for services only scenario
+	if ca.IsServicesOnly() {
+		return []*v1alpha1.CAPTenant{}, nil
+	}
 	tenantLabels := map[string]string{
 		LabelBTPApplicationIdentifierHash: sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName),
 	}
@@ -301,6 +317,10 @@ func (c *Controller) getRelevantTenantsForCA(ca *v1alpha1.CAPApplication) ([]*v1
 }
 
 func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (bool, error) {
+	// No tenants for services only scenario
+	if ca.IsServicesOnly() {
+		return false, nil
+	}
 	providerTenantName := strings.Join([]string{ca.Name, ProviderTenantType}, "-")
 	tenant, err := c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(ca.Namespace).Get(providerTenantName)
 	if err != nil {
@@ -416,13 +436,14 @@ func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alp
 	if err = c.deletePrimaryDomainCertificate(ctx, ca); err != nil && !k8sErrors.IsNotFound(err) {
 		return nil, err
 	}
-
-	// delete CAPTenants - return if found in this loop, to verify deletion
-	var tenantFound bool
-	util.LogInfo("Deleting dependent tenants", string(Deleting), ca, nil)
-	if tenantFound, err = c.deleteTenants(ctx, ca); tenantFound || err != nil {
-		util.LogError(err, "Could not delete dependent tenant", string(Deleting), ca, nil)
-		return nil, err
+	if !ca.IsServicesOnly() {
+		// delete CAPTenants - return if found in this loop, to verify deletion
+		var tenantFound bool
+		util.LogInfo("Deleting dependent tenants", string(Deleting), ca, nil)
+		if tenantFound, err = c.deleteTenants(ctx, ca); tenantFound || err != nil {
+			util.LogError(err, "Could not delete dependent tenant", string(Deleting), ca, nil)
+			return nil, err
+		}
 	}
 
 	util.LogInfo("Cleaning up secrets", string(Deleting), ca, nil)

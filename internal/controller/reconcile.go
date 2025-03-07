@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/sap/cap-operator/internal/util"
@@ -334,6 +335,31 @@ func (c *Controller) cleanupPreservedSecrets(serviceInfos []v1alpha1.ServiceInfo
 		}
 	}
 	return err
+}
+
+func (c *Controller) checkServicesOnly(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) error {
+	servicesOnly := !slices.ContainsFunc(cav.Spec.Workloads, func(wd v1alpha1.WorkloadDetails) bool {
+		if wd.JobDefinition != nil {
+			return wd.JobDefinition.Type != v1alpha1.JobContent
+		}
+		return wd.DeploymentDefinition != nil && wd.DeploymentDefinition.Type != v1alpha1.DeploymentService
+	})
+
+	// Check if the CAP Application is already marked with ServicesOnly from a previous version only once the Status is set!
+	if ca.Status.ServicesOnly != nil {
+		if ca.IsServicesOnly() != servicesOnly {
+			serviceErrorPrefix := "without"
+			if servicesOnly {
+				serviceErrorPrefix = "with"
+			}
+			return fmt.Errorf("Creating a new version %s only service workloads is not allowed. The CAP Application %s.%s is already marked with ServicesOnly %v from a previous version", serviceErrorPrefix, ca.Namespace, ca.Name, !servicesOnly)
+		}
+	}
+
+	// Set ServicesOnly status according to the first ready CAV workload configuration
+	ca.SetStatusServicesOnly(&servicesOnly)
+
+	return nil
 }
 
 // This method is called to handle NotFound error at the beginning of reconciliation to skip requeue on errors due to deletion of resource

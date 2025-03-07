@@ -48,6 +48,8 @@ type CAPApplicationStatus struct {
 	// +kubebuilder:validation:Enum="";Consistent;Processing;Error;Deleting
 	// State of CAPApplication
 	State CAPApplicationState `json:"state"`
+	// Represents whether this is a services only scenario
+	ServicesOnly *bool `json:"servicesOnly,omitempty"`
 	// Hash representing last known application domains
 	DomainSpecHash string `json:"domainSpecHash,omitempty"`
 	// The last time a full reconciliation was completed

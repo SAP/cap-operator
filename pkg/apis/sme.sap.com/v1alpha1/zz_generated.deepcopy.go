@@ -168,6 +168,11 @@ func (in *CAPApplicationSpec) DeepCopy() *CAPApplicationSpec {
 func (in *CAPApplicationStatus) DeepCopyInto(out *CAPApplicationStatus) {
 	*out = *in
 	in.GenericStatus.DeepCopyInto(&out.GenericStatus)
+	if in.ServicesOnly != nil {
+		in, out := &in.ServicesOnly, &out.ServicesOnly
+		*out = new(bool)
+		**out = **in
+	}
 	in.LastFullReconciliationTime.DeepCopyInto(&out.LastFullReconciliationTime)
 	return
 }
