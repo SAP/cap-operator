@@ -30,6 +30,14 @@ func (ca *CAPApplication) SetStatusDomainSpecHash(hash string) {
 	ca.Status.DomainSpecHash = hash
 }
 
+func (ca *CAPApplication) SetStatusServicesOnly(val *bool) {
+	ca.Status.ServicesOnly = val
+}
+
+func (ca *CAPApplication) IsServicesOnly() bool {
+	return ca.Status.ServicesOnly != nil && *ca.Status.ServicesOnly
+}
+
 // SetStatusCondition updates/sets the conditions in the Status of the resource.
 func (ca *CAPApplication) SetStatusCondition(conditionType string, readyStatus metav1.ConditionStatus, reason string, message string) {
 	ca.Status.SetStatusCondition(metav1.Condition{Type: conditionType, Status: readyStatus, Reason: reason, Message: message, ObservedGeneration: ca.Generation})

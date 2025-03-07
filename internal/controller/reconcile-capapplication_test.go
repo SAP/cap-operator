@@ -65,6 +65,7 @@ func TestCAPApplicationWithValidSecret(t *testing.T) {
 			initialResources: []string{
 				"testdata/capapplication/ca-03.initial.yaml",
 				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplication/istio-ingress-with-cert.yaml",
 			},
 			expectedResources: "testdata/capapplication/ca-03.expected.yaml",
 			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplication: {{Namespace: "default", Name: "test-cap-01"}}},
@@ -100,6 +101,7 @@ func TestValidationOfBtpServicesWithSecrets(t *testing.T) {
 			initialResources: []string{
 				"testdata/capapplication/ca-03.initial.yaml",
 				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplication/istio-ingress-with-cert.yaml",
 			},
 			expectedResources: "testdata/capapplication/ca-03.expected.yaml",
 			attempts:          9999,

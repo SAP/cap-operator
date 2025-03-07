@@ -154,12 +154,13 @@ var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *C
 	// check for dns entries only when there are secondary domains
 	if len(ca.Spec.Domains.Secondary) > 0 {
 		// Check if all Tenant DNSEntries are Ready
-		processing, err := c.checkTenantDNSEntries(ctx, cat)
+		processing, err := c.checkDNSEntries(ctx, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name)
 		if err != nil {
 			util.LogError(err, "DNS entries error", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 			return nil, err
 		}
 		if processing {
+			util.LogInfo("DNS entry resource not ready", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 			// requeue to iterate this check after a delay
 			return NewReconcileResultWithResource(ResourceCAPTenant, cat.Name, cat.Namespace, 10*time.Second), nil
 		}
