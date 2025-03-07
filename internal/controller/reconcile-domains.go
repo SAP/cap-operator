@@ -896,11 +896,12 @@ func (c *Controller) extractSubDomains(ctx context.Context, ca *v1alpha1.CAPAppl
 
 // Delete DNSEntries that are not in the current ServiceExposures list (TODO: may have to be done differently for service usage in multi-tenant scenarios)
 func (c *Controller) cleanupServiceDNSEntries(ctx context.Context, aSubDomainHashes []string, ca *v1alpha1.CAPApplication) (err error) {
-	// Add a requirement for OwnerIdentifierHash
+	// Add a requirement for OwnerIdentifierHash and SubdomainHash
 	ownerReq, _ := labels.NewRequirement(LabelOwnerIdentifierHash, selection.Equals, []string{sha1Sum(v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)})
-	// Create label selector based on the above requirement for filtering out all unused DNS entries
+	subDomainExistsReq, _ := labels.NewRequirement(LabelSubdomainHash, selection.Exists, []string{})
+	// Create label selector based on the above requirement for filtering out all unused service related DNS entries
 	labelSelector := labels.NewSelector()
-	labelSelector = labelSelector.Add(*ownerReq)
+	labelSelector = labelSelector.Add(*ownerReq, *subDomainExistsReq)
 
 	if len(aSubDomainHashes) > 0 {
 		// Add all unused subdomain hashes to requirements for Label Selector
