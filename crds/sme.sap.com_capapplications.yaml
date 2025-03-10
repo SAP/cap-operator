@@ -120,7 +120,6 @@ spec:
             - btpAppName
             - domains
             - globalAccountId
-            - provider
             type: object
           status:
             properties:

@@ -160,7 +160,9 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInAppRouterDeployment", Message: err.Error()})
 		return nil, err
 	}
-	overallDeployments = append(overallDeployments, approuterDeployment)
+	if approuterDeployment != nil {
+		overallDeployments = append(overallDeployments, approuterDeployment)
+	}
 
 	// Create Server Deployment
 	serverDeployments, err := c.updateServerDeployment(ca, cav)
@@ -168,7 +170,9 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInServerDeployment", Message: err.Error()})
 		return nil, err
 	}
-	overallDeployments = append(overallDeployments, serverDeployments...)
+	if len(serverDeployments) > 0 {
+		overallDeployments = append(overallDeployments, serverDeployments...)
+	}
 
 	// Create All Services
 	err = c.updateServices(ca, cav)
@@ -391,7 +395,10 @@ func (c *Controller) updateServerDeployment(ca *v1alpha1.CAPApplication, cav *v1
 // #region AppRouter
 func (c *Controller) updateApprouterDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (*appsv1.Deployment, error) {
 	routerWorkload := getRelevantDeployment(v1alpha1.DeploymentRouter, cav)
-	return c.updateDeployment(ca, cav, routerWorkload)
+	if routerWorkload != nil {
+		return c.updateDeployment(ca, cav, routerWorkload)
+	}
+	return nil, nil
 }
 
 //#endregion
