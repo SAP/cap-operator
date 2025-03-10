@@ -116,6 +116,8 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 	}
 	// Check if this is a services only scenario and update the Status accordingly
 	if err = c.checkServicesOnly(ca, cav); err != nil {
+		// Update additional condition `LatestVersionReady` to False with error from checkServicesOnly
+		ca.SetStatusCondition(string(v1alpha1.ConditionTypeLatestVersionReady), metav1.ConditionFalse, "WaitingForReadyCAPApplicationVersion", err.Error())
 		return
 	}
 	// We can already update LatestVersionReady to "true" at this point in time, but as this method is called several times, we do not do it here (during initial Provisioning as CA itself is may not be Consistent)
