@@ -844,6 +844,93 @@ func TestCAV_InvalidMonitoringConfig(t *testing.T) {
 		},
 	)
 	if err == nil || err.Error() != fmt.Sprintf("invalid port reference in workload %s monitoring config of version %s", "app-router", "test-cap-01-cav-v1") {
-
+		t.FailNow()
 	}
+}
+
+func TestCAV_ServicesOnlyNoDNSEntries(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01-cav-v1"}},
+		TestData{
+			description: "capapplication version - services only workload",
+			initialResources: []string{
+				"testdata/common/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/common/cav-services.yaml",
+				"testdata/capapplicationversion/services-ready.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems:      []string{},
+			expectError:       true,
+			expectedResources: "testdata/capapplicationversion/expected/cav-services-missing-dns.yaml",
+		},
+	)
+	if err == nil || err.Error() != "No DNS entry found for CAPApplicationVersion default.test-ca-01-cav-v1" {
+		t.FailNow()
+	}
+}
+
+func TestCAV_ServicesOnly_DNSError(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01-cav-v1"}},
+		TestData{
+			description: "capapplication version - services only workload",
+			initialResources: []string{
+				"testdata/common/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/common/cav-services.yaml",
+				"testdata/common/service-dns-entries-error.yaml",
+				"testdata/capapplicationversion/services-ready.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems:      []string{},
+			expectError:       true,
+			expectedResources: "testdata/capapplicationversion/expected/cav-services-missing-dns.yaml",
+		},
+	)
+}
+
+func TestCAV_ServicesOnly_DNSPending(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01-cav-v1"}},
+		TestData{
+			description: "capapplication version - services only workload",
+			initialResources: []string{
+				"testdata/common/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/common/cav-services.yaml",
+				"testdata/common/service-dns-entries-pending.yaml",
+				"testdata/capapplicationversion/services-ready.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems:      []string{},
+			expectError:       false,
+			expectedResources: "testdata/capapplicationversion/expected/cav-services-missing-dns.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-ca-01-cav-v1"}}},
+		},
+	)
+}
+
+func TestCAV_ServicesOnlySuccess(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01-cav-v1"}},
+		TestData{
+			description: "capapplication version - services only workload",
+			initialResources: []string{
+				"testdata/common/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/common/cav-services.yaml",
+				"testdata/common/service-dns-entries.yaml",
+				"testdata/capapplicationversion/services-ready.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems:      []string{},
+			expectError:       false,
+			expectedResources: "testdata/capapplicationversion/expected/cav-services-ready.yaml",
+		},
+	)
 }

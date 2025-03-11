@@ -1,0 +1,67 @@
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  annotations:
+    sme.sap.com/resource-hash: "2309c27d407c5e1d71529d3448da227ab25f63fb5f9d631d7c8a3e9fd0a1ff34"
+    sme.sap.com/owner-identifier: CAPApplication.default.test-ca-01
+  labels:
+     sme.sap.com/owner-identifier-hash: 489b013844088de243023d895aa4c674e90a4aad
+  name: test-ca-01-router
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplication
+      name: test-ca-01
+spec:
+  gateways:
+    - test-cap-01-gw
+    - istio-system/cap-operator-domains-gen
+  hosts:
+    - router.app-domain.test.local
+    - router.foo.bar.local
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: test-ca-01-cav-v1-app-router-svc.default.svc.cluster.local
+            port:
+              number: 5000
+          weight: 100
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  annotations:
+    sme.sap.com/resource-hash: "2309c27d407c5e1d71529d3448da227ab25f63fb5f9d631d7c8a3e9fd0a1ff34"
+    sme.sap.com/owner-identifier: CAPApplication.default.test-ca-01
+  labels:
+     sme.sap.com/owner-identifier-hash: 489b013844088de243023d895aa4c674e90a4aad
+  name: test-ca-01-cap-backend-service
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplication
+      name: test-ca-01
+spec:
+  gateways:
+    - test-cap-01-gw
+    - istio-system/cap-operator-domains-gen
+  hosts:
+    - cap-backend-service.app-domain.test.local
+    - cap-backend-service.foo.bar.local
+  http:
+    - match:
+        - uri:
+            prefix: /api
+      route:
+        - destination:
+            host: test-ca-01-cav-v1-cap-backend-service-svc.default.svc.cluster.local
+            port:
+              number: 8000
+          weight: 100

@@ -209,6 +209,7 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 
 	requeue, err := c.checkServiceDNSEntries(ctx, ca, cav)
 	if requeue != nil || err != nil {
+		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "WaitingForServiceDNSEntries"})
 		return requeue, err
 	}
 
@@ -226,7 +227,11 @@ func (c *Controller) checkServiceDNSEntries(ctx context.Context, ca *v1alpha1.CA
 	if checkNeeded {
 		processing, err := c.checkDNSEntries(ctx, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
 		if err != nil {
+			if err.Error() == fmt.Sprintf("could not find DNSEntry for %s %s.%s", v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name) {
+				err = fmt.Errorf("No DNS entry found for %s %s.%s", v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name)
+			}
 			util.LogError(err, "DNS entries error", string(Processing), cav, nil, "version", cav.Spec.Version)
+
 			return nil, err
 		}
 		if processing {
