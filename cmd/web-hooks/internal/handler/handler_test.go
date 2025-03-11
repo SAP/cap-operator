@@ -763,30 +763,31 @@ func TestCavInvalidity(t *testing.T) {
 		CrdClient: fakeCrdClient.NewSimpleClientset(Ca),
 	}
 	tests := []struct {
-		operation                          admissionv1.Operation
-		duplicateWorkloadName              bool
-		invalidDeploymentType              bool
-		invalidJobType                     bool
-		onlyOneCAPTypeAllowed              bool
-		onlyOneRouterTypeAllowed           bool
-		duplicatePortName                  bool
-		duplicatePortNumber                bool
-		routerDestNameCAPChk               bool
-		routerDestNameRouterChk            bool
-		customTenantOpWithoutSequence      bool
-		tenantOperationSequenceInvalid     bool
-		invalidWorkloadInTenantOpSeq       bool
-		missingTenantOpInSeqProvisioning   bool
-		missingTenantOpInSeqUpgrade        bool
-		missingTenantOpInSeqDeprovisioning bool
-		multipleContentJobsWithNoOrder     bool
-		missingContentJobinContentJobs     bool
-		invalidJobinContentJobs            bool
-		invalidWorkloadName                bool
-		longWorkloadName                   bool
-		onlyServiceWorkloads               bool
-		serviceExposureWrongWorkloadName   bool
-		backlogItems                       []string
+		operation                           admissionv1.Operation
+		duplicateWorkloadName               bool
+		invalidDeploymentType               bool
+		invalidJobType                      bool
+		onlyOneCAPTypeAllowed               bool
+		onlyOneRouterTypeAllowed            bool
+		duplicatePortName                   bool
+		duplicatePortNumber                 bool
+		routerDestNameCAPChk                bool
+		routerDestNameRouterChk             bool
+		customTenantOpWithoutSequence       bool
+		tenantOperationSequenceInvalid      bool
+		invalidWorkloadInTenantOpSeq        bool
+		missingTenantOpInSeqProvisioning    bool
+		missingTenantOpInSeqUpgrade         bool
+		missingTenantOpInSeqDeprovisioning  bool
+		multipleContentJobsWithNoOrder      bool
+		missingContentJobinContentJobs      bool
+		invalidJobinContentJobs             bool
+		invalidWorkloadName                 bool
+		longWorkloadName                    bool
+		onlyServiceWorkloads                bool
+		serviceExposureWrongWorkloadName    bool
+		duplicateSubDomainInServiceExposure bool
+		backlogItems                        []string
 	}{
 		{
 			operation:             admissionv1.Create,
@@ -897,6 +898,11 @@ func TestCavInvalidity(t *testing.T) {
 			operation:                        admissionv1.Create,
 			serviceExposureWrongWorkloadName: true,
 			backlogItems:                     []string{},
+		},
+		{
+			operation:                           admissionv1.Create,
+			duplicateSubDomainInServiceExposure: true,
+			backlogItems:                        []string{},
 		},
 	}
 	for _, test := range tests {
@@ -1214,12 +1220,44 @@ func TestCavInvalidity(t *testing.T) {
 				})
 
 				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
-					SubDomain: "abc.com",
+					SubDomain: "svc-subdomain",
 					Routes: []v1alpha1.Route{
 						{
 							WorkloadName: "wrong-name",
 							Port:         4004,
 							Path:         "abc",
+						},
+					},
+				})
+			} else if test.duplicateSubDomainInServiceExposure == true {
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "service-1",
+					ConsumedBTPServices: []string{},
+					DeploymentDefinition: &v1alpha1.DeploymentDetails{
+						Type: v1alpha1.DeploymentService,
+						CommonDetails: v1alpha1.CommonDetails{
+							Image: "foo",
+						},
+					},
+				})
+
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+					SubDomain: "svc-subdomain",
+					Routes: []v1alpha1.Route{
+						{
+							WorkloadName: "service-1",
+							Port:         4004,
+							Path:         "api",
+						},
+					},
+				})
+
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+					SubDomain: "svc-subdomain",
+					Routes: []v1alpha1.Route{
+						{
+							WorkloadName: "service-1",
+							Port:         4004,
 						},
 					},
 				})
@@ -1288,6 +1326,8 @@ func TestCavInvalidity(t *testing.T) {
 				errorMessage = fmt.Sprintf(TenantOpJobWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.JobTenantOperation, v1alpha1.JobCustomTenantOperation, v1alpha1.DeploymentService)
 			} else if test.serviceExposureWrongWorkloadName == true {
 				errorMessage = fmt.Sprintf(ServiceExposureWorkloadNameErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].Routes[0].WorkloadName, crd.Spec.ServiceExposures[0].SubDomain)
+			} else if test.duplicateSubDomainInServiceExposure == true {
+				errorMessage = fmt.Sprintf(DuplicateServiceExposureSubDomainErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].SubDomain)
 			}
 
 			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
