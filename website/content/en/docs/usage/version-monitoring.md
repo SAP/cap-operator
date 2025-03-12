@@ -1,7 +1,7 @@
 ---
 title: "Version Monitoring"
 linkTitle: "Version Monitoring"
-weight: 50
+weight: 60
 type: "docs"
 description: >
   How to monitor versions for automatic cleanup
