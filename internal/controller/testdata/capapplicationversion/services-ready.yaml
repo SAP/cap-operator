@@ -3,25 +3,26 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: test-cap-01
+    app: test-ca-01
     sme.sap.com/category: Workload
-    sme.sap.com/workload-name: test-cap-01-cav-v1-cap-backend-srv
-    sme.sap.com/workload-type: CAP
+    sme.sap.com/workload-name: test-ca-01-cav-v1-cap-backend-service
+    sme.sap.com/workload-type: Service
+    sme.sap.com/exposed-workload: "true"
     sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
-    sme.sap.com/cav-version: "1.2.3"
+    sme.sap.com/cav-version: "0.0.1"
     sme.sap.com/owner-generation: "1"
     sme.sap.com/owner-identifier-hash: e95e0682f33a657e75e1fc435972d19bd407ba3b
   annotations:
-    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
-    sme.sap.com/owner-identifier: default.test-cap-01-cav-v1
-  name: test-cap-01-cav-v1-cap-backend-srv
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-ca-01
+    sme.sap.com/owner-identifier: default.test-ca-01-cav-v1
+  name: test-ca-01-cav-v1-cap-backend-service
   namespace: default
   ownerReferences:
     - apiVersion: sme.sap.com/v1alpha1
       blockOwnerDeletion: true
       controller: true
       kind: CAPApplicationVersion
-      name: test-cap-01-cav-v1
+      name: test-ca-01-cav-v1
       uid: 5e64489b-7346-4984-8617-e8c37338b3d8
 spec:
 status:
@@ -32,47 +33,35 @@ status:
   conditions:
     - lastTransitionTime: "2022-07-18T12:16:41Z"
       lastUpdateTime: "2022-07-18T12:16:41Z"
-      reason: MinimumReplicasUnavailable
-      message: Deployment does not have minimum availability.
-      status: "False"
-      type: Available
-    - lastTransitionTime: "2022-07-18T12:16:41Z"
-      lastUpdateTime: "2022-07-18T12:16:41Z"
-      message: ReplicaSet has successfully progressed.
-      reason: NewReplicaSetAvailable
-      status: "False"
-      type: Progressing
-    - lastTransitionTime: "2022-07-18T12:16:41Z"
-      lastUpdateTime: "2022-07-18T12:16:41Z"
-      message: Error creating replica set...
-      reason: FailedCreate
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
       status: "True"
-      type: ReplicaFailure
+      type: Available
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: test-cap-01
+    app: test-ca-01
     sme.sap.com/category: Workload
-    sme.sap.com/workload-name: test-cap-01-cav-v1-app-router
-    sme.sap.com/workload-type: Router
+    sme.sap.com/workload-name: test-ca-01-cav-v1-app-router
+    sme.sap.com/workload-type: Service
     sme.sap.com/exposed-workload: "true"
     sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
-    sme.sap.com/cav-version: "1.2.3"
+    sme.sap.com/cav-version: "0.0.1"
     sme.sap.com/owner-generation: "1"
     sme.sap.com/owner-identifier-hash: e95e0682f33a657e75e1fc435972d19bd407ba3b
   annotations:
-    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
-    sme.sap.com/owner-identifier: default.test-cap-01-cav-v1
-  name: test-cap-01-cav-v1-app-router
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-ca-01
+    sme.sap.com/owner-identifier: default.test-ca-01-cav-v1
+  name: test-ca-01-cav-v1-app-router
   namespace: default
   ownerReferences:
     - apiVersion: sme.sap.com/v1alpha1
       blockOwnerDeletion: true
       controller: true
       kind: CAPApplicationVersion
-      name: test-cap-01-cav-v1
+      name: test-ca-01-cav-v1
       uid: 5e64489b-7346-4984-8617-e8c37338b3d8
 spec:
 status:

@@ -48,6 +48,8 @@ type CAPApplicationStatus struct {
 	// +kubebuilder:validation:Enum="";Consistent;Processing;Error;Deleting
 	// State of CAPApplication
 	State CAPApplicationState `json:"state"`
+	// Represents whether this is a services only scenario
+	ServicesOnly *bool `json:"servicesOnly,omitempty"`
 	// Hash representing last known application domains
 	DomainSpecHash string `json:"domainSpecHash,omitempty"`
 	// The last time a full reconciliation was completed
@@ -87,7 +89,7 @@ type CAPApplicationSpec struct {
 	// Short name for the application (similar to BTP XSAPPNAME)
 	BTPAppName string `json:"btpAppName"`
 	// Provider subaccount where application services are created
-	Provider BTPTenantIdentification `json:"provider"`
+	Provider BTPTenantIdentification `json:"provider,omitempty"`
 	// SAP BTP Services consumed by the application
 	BTP BTP `json:"btp"`
 }

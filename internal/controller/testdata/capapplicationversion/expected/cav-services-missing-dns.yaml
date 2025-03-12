@@ -1,0 +1,86 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPApplicationVersion
+metadata:
+  creationTimestamp: "2022-03-18T22:14:33Z"
+  generation: 1
+  annotations:
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+    sme.sap.com/owner-identifier: default.test-cap-01
+  labels:
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/owner-generation: "2"
+    sme.sap.com/owner-identifier-hash: 66ee9c21adb3f78f19a2c376acc179437a96b5cb
+  finalizers:
+    - sme.sap.com/capapplicationversion
+  name: test-ca-01-cav-v1
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplication
+      name: test-ca-01
+      uid: 3c7ba7cb-dc04-4fd1-be86-3eb3a5c64a98
+  resourceVersion: "11371108"
+  uid: 5e64489b-7346-4984-8617-e8c37338b3d8
+spec:
+  capApplicationInstance: test-ca-01
+  registrySecrets:
+    - regcred
+  version: 0.0.1
+  workloads:
+    - name: cap-backend-service
+      consumedBTPServices:
+        - cap-uaa
+        - cap-service-manager
+        - cap-saas-registry
+      deploymentDefinition:
+        type: Service
+        image: docker.image.repo/srv/server:latest
+        ports:
+          - name: server
+            port: 4004
+            appProtocol: http
+          - name: api
+            port: 8000
+            appProtocol: http
+          - name: metrics
+            port: 4005
+            appProtocol: http
+    - name: content-job
+      consumedBTPServices:
+        - cap-uaa
+      jobDefinition:
+        type: Content
+        image: docker.image.repo/content/cap-content:latest
+    - name: app-router
+      consumedBTPServices:
+        - cap-uaa
+        - cap-saas-registry
+      deploymentDefinition:
+        type: Service
+        image: docker.image.repo/approuter/approuter:latest
+        ports:
+          - name: server
+            port: 5000
+            appProtocol: http
+  serviceExposures:
+    - subDomain: router
+      routes:
+        - workloadName: app-router
+          port: 5000
+    - subDomain: api
+      routes:
+        - workloadName: cap-backend-service
+          port: 8000
+          path: /api
+status:
+  conditions:
+    - reason: WaitingForServiceDNSEntries
+      observedGeneration: 1
+      status: "False"
+      type: Ready
+  observedGeneration: 1
+  finishedJobs:
+    - test-ca-01-cav-v1-content
+  state: Processing

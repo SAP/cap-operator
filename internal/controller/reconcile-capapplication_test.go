@@ -65,6 +65,7 @@ func TestCAPApplicationWithValidSecret(t *testing.T) {
 			initialResources: []string{
 				"testdata/capapplication/ca-03.initial.yaml",
 				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplication/istio-ingress-with-cert.yaml",
 			},
 			expectedResources: "testdata/capapplication/ca-03.expected.yaml",
 			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplication: {{Namespace: "default", Name: "test-cap-01"}}},
@@ -100,6 +101,7 @@ func TestValidationOfBtpServicesWithSecrets(t *testing.T) {
 			initialResources: []string{
 				"testdata/capapplication/ca-03.initial.yaml",
 				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplication/istio-ingress-with-cert.yaml",
 			},
 			expectedResources: "testdata/capapplication/ca-03.expected.yaml",
 			attempts:          9999,
@@ -1146,6 +1148,82 @@ func TestController_handleCAPApplicationConsistent_versionUpgrade(t *testing.T) 
 				"testdata/capapplication/ca-dns.yaml",
 			},
 			expectedResources: "testdata/capapplication/ca-31.expected.yaml",
+		},
+	)
+}
+
+func TestCA_ServicesOnly_Reconcile(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01"}},
+		TestData{
+			description: "capapplication - version with services only workload",
+			initialResources: []string{
+				"testdata/capapplication/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplication/gateway.yaml",
+				"testdata/capapplication/istio-ingress-with-cert.yaml",
+				"testdata/capapplication/ca-dns.yaml",
+				"testdata/capapplicationversion/expected/cav-services-ready.yaml",
+				"testdata/common/service-dns-entries.yaml",
+				"testdata/capapplicationversion/services-ready.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems:      []string{},
+			expectError:       false,
+			expectedResources: "testdata/capapplication/ca-services-dns.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplication: {{Namespace: "default", Name: "test-ca-01"}}},
+		},
+	)
+}
+
+func TestCA_ServicesOnlyÈrror(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01"}},
+		TestData{
+			description: "capapplication - version with services only workload",
+			initialResources: []string{
+				"testdata/capapplication/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/common/operator-gateway.yaml",
+				"testdata/capapplication/gateway.yaml",
+				"testdata/capapplication/istio-ingress-with-cert.yaml",
+				"testdata/capapplication/ca-dns.yaml",
+				"testdata/capapplicationversion/expected/cav-services-ready.yaml",
+				"testdata/common/service-dns-entries.yaml",
+				"testdata/capapplicationversion/services-ready.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems:      []string{},
+			expectError:       true,
+			expectedResources: "testdata/capapplication/ca-services-dns.yaml",
+		},
+	)
+}
+
+func TestCA_ServicesOnly_Consistent(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01"}},
+		TestData{
+			description: "capapplication - version with services only workload",
+			initialResources: []string{
+				"testdata/capapplication/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/common/operator-gateway.yaml",
+				"testdata/capapplication/gateway.yaml",
+				"testdata/capapplication/istio-ingress-with-cert.yaml",
+				"testdata/capapplication/ca-dns.yaml",
+				"testdata/capapplicationversion/expected/cav-services-ready.yaml",
+				"testdata/common/service-dns-entries.yaml",
+				"testdata/common/service-virtualservices.yaml",
+				"testdata/capapplicationversion/services-ready.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems:      []string{},
+			expectError:       false,
+			expectedResources: "testdata/capapplication/ca-services-dns-ready.yaml",
 		},
 	)
 }

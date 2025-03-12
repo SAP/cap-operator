@@ -120,7 +120,6 @@ spec:
             - btpAppName
             - domains
             - globalAccountId
-            - provider
             type: object
           status:
             properties:
@@ -168,6 +167,8 @@ spec:
               observedGeneration:
                 format: int64
                 type: integer
+              servicesOnly:
+                type: boolean
               state:
                 enum:
                 - ""

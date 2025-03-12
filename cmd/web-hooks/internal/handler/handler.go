@@ -28,18 +28,19 @@ import (
 )
 
 const (
-	LabelTenantType             = "sme.sap.com/tenant-type"
-	LabelTenantId               = "sme.sap.com/btp-tenant-id"
-	ProviderTenantType          = "provider"
-	SideCarEnv                  = "WEBHOOK_SIDE_CAR"
-	AdmissionError              = "admission error:"
-	InvalidResource             = "invalid resource"
-	InvalidationMessage         = "invalidated from webhook"
-	ValidationMessage           = "validated from webhook"
-	RequestPath                 = "/request"
-	DeploymentWorkloadCountErr  = "%s %s there should always be one workload deployment definition of type %s. Currently, there are %d workloads of type %s"
-	JobWorkloadCountErr         = "%s %s there should always be one workload job definition of type %s. Currently, there are %d workloads of type %s"
-	TenantOpJobWorkloadCountErr = "%s %s there should not be more than one workload job definition of type %s. Currently, there are %d workloads of type %s"
+	LabelTenantType                      = "sme.sap.com/tenant-type"
+	LabelTenantId                        = "sme.sap.com/btp-tenant-id"
+	ProviderTenantType                   = "provider"
+	SideCarEnv                           = "WEBHOOK_SIDE_CAR"
+	AdmissionError                       = "admission error:"
+	InvalidResource                      = "invalid resource"
+	InvalidationMessage                  = "invalidated from webhook"
+	ValidationMessage                    = "validated from webhook"
+	RequestPath                          = "/request"
+	DeploymentWorkloadCountErr           = "%s %s there should always be one workload deployment definition of type %s. Currently, there are %d workloads of type %s"
+	TenantOpJobWorkloadCountErr          = "%s %s there should not be any job workload of type %s or %s defined if all the deployment workloads are of type %s."
+	ServiceExposureWorkloadNameErr       = "%s %s workload name %s mentioned as part of routes in service exposure with subDomain %s is not a valid workload of type Service."
+	DuplicateServiceExposureSubDomainErr = "%s %s duplicate subDomain %s in service exposure"
 )
 
 type validateResource struct {
@@ -155,10 +156,10 @@ func checkWorkloadPort(workload *v1alpha1.WorkloadDetails) validateResource {
 }
 
 func checkWorkloadType(workload *v1alpha1.WorkloadDetails) validateResource {
-	if workload.DeploymentDefinition != nil && workload.DeploymentDefinition.Type != v1alpha1.DeploymentCAP && workload.DeploymentDefinition.Type != v1alpha1.DeploymentRouter && workload.DeploymentDefinition.Type != v1alpha1.DeploymentAdditional {
+	if workload.DeploymentDefinition != nil && workload.DeploymentDefinition.Type != v1alpha1.DeploymentCAP && workload.DeploymentDefinition.Type != v1alpha1.DeploymentRouter && workload.DeploymentDefinition.Type != v1alpha1.DeploymentAdditional && workload.DeploymentDefinition.Type != v1alpha1.DeploymentService {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf("%s %s invalid deployment definition type. Only supported - CAP, Router and Additional", InvalidationMessage, v1alpha1.CAPApplicationVersionKind),
+			message: fmt.Sprintf("%s %s invalid deployment definition type. Only supported - CAP, Router, Additional and Service", InvalidationMessage, v1alpha1.CAPApplicationVersionKind),
 		}
 	}
 
@@ -172,15 +173,26 @@ func checkWorkloadType(workload *v1alpha1.WorkloadDetails) validateResource {
 	return validAdmissionReviewObj()
 }
 
-func getWorkloadTypeCount(workloads []v1alpha1.WorkloadDetails) map[string]int {
+func getWorkloadTypeCount(workloads []v1alpha1.WorkloadDetails) (map[string]int, int) {
 	workloadTypeCount := make(map[string]int)
+	deploymentWorkloadCnt := 0
+
 	for _, workload := range workloads {
+
+		if workload.DeploymentDefinition != nil {
+			deploymentWorkloadCnt += 1
+		}
+
 		if workload.DeploymentDefinition != nil && workload.DeploymentDefinition.Type == v1alpha1.DeploymentCAP {
 			workloadTypeCount[string(v1alpha1.DeploymentCAP)] += 1
 		}
 
 		if workload.DeploymentDefinition != nil && workload.DeploymentDefinition.Type == v1alpha1.DeploymentRouter {
 			workloadTypeCount[string(v1alpha1.DeploymentRouter)] += 1
+		}
+
+		if workload.DeploymentDefinition != nil && workload.DeploymentDefinition.Type == v1alpha1.DeploymentService {
+			workloadTypeCount[string(v1alpha1.DeploymentService)] += 1
 		}
 
 		if workload.JobDefinition != nil && workload.JobDefinition.Type == v1alpha1.JobContent {
@@ -190,14 +202,30 @@ func getWorkloadTypeCount(workloads []v1alpha1.WorkloadDetails) map[string]int {
 		if workload.JobDefinition != nil && workload.JobDefinition.Type == v1alpha1.JobTenantOperation {
 			workloadTypeCount[string(v1alpha1.JobTenantOperation)] += 1
 		}
+
+		if workload.JobDefinition != nil && workload.JobDefinition.Type == v1alpha1.JobCustomTenantOperation {
+			workloadTypeCount[string(v1alpha1.JobCustomTenantOperation)] += 1
+		}
 	}
 
-	return workloadTypeCount
+	return workloadTypeCount, deploymentWorkloadCnt
 }
 
 func checkWorkloadTypeCount(cavObjNew *ResponseCav) validateResource {
 
-	workloadTypeCount := getWorkloadTypeCount(cavObjNew.Spec.Workloads)
+	workloadTypeCount, deploymentWorkloadCnt := getWorkloadTypeCount(cavObjNew.Spec.Workloads)
+
+	if workloadTypeCount[string(v1alpha1.DeploymentService)] == deploymentWorkloadCnt && (workloadTypeCount[string(v1alpha1.JobTenantOperation)] != 0 || workloadTypeCount[string(v1alpha1.JobCustomTenantOperation)] != 0) {
+		return validateResource{
+			allowed: false,
+			message: fmt.Sprintf(TenantOpJobWorkloadCountErr, InvalidationMessage, cavObjNew.Kind, v1alpha1.JobTenantOperation, v1alpha1.JobCustomTenantOperation, v1alpha1.DeploymentService),
+		}
+	}
+
+	// If there is atleast one service workload, no need to check for CAP and Router
+	if workloadTypeCount[string(v1alpha1.DeploymentService)] != 0 {
+		return validAdmissionReviewObj()
+	}
 
 	if workloadTypeCount[string(v1alpha1.DeploymentCAP)] != 1 {
 		return validateResource{
@@ -264,13 +292,46 @@ func checkWorkloadContentJob(cavObjNew *ResponseCav) validateResource {
 	return validAdmissionReviewObj()
 }
 
+func checkServiceExposure(cavObjNew *ResponseCav) validateResource {
+	serviceDeploymentWorkloadNames := []string{}
+	serviceExposureSubDomainCntMap := make(map[string]bool)
+
+	for _, workload := range cavObjNew.Spec.Workloads {
+		if workload.DeploymentDefinition != nil && workload.DeploymentDefinition.Type == v1alpha1.DeploymentService {
+			serviceDeploymentWorkloadNames = append(serviceDeploymentWorkloadNames, workload.Name)
+		}
+	}
+
+	for _, serviceExposure := range cavObjNew.Spec.ServiceExposures {
+		if _, ok := serviceExposureSubDomainCntMap[serviceExposure.SubDomain]; ok {
+			return validateResource{
+				allowed: false,
+				message: fmt.Sprintf(DuplicateServiceExposureSubDomainErr, InvalidationMessage, cavObjNew.Kind, serviceExposure.SubDomain),
+			}
+		}
+
+		serviceExposureSubDomainCntMap[serviceExposure.SubDomain] = true
+
+		for _, route := range serviceExposure.Routes {
+			if !slices.Contains(serviceDeploymentWorkloadNames, route.WorkloadName) {
+				return validateResource{
+					allowed: false,
+					message: fmt.Sprintf(ServiceExposureWorkloadNameErr, InvalidationMessage, cavObjNew.Kind, route.WorkloadName, serviceExposure.SubDomain),
+				}
+			}
+		}
+	}
+
+	return validAdmissionReviewObj()
+}
+
 func validateWorkloads(cavObjNew *ResponseCav) validateResource {
 	//  regex pattern for workload name - based on RFC 1123 label
 	regex, _ := regexp.Compile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
 
 	// Check: Workload name should be unique
 	//		  Only one workload deployment of type CAP, router and content is allowed
-	uniqueWorkloadNameCountMap := make(map[string]int)
+	uniqueWorkloadNameCountMap := make(map[string]bool)
 	for _, workload := range cavObjNew.Spec.Workloads {
 
 		// check workload name matches the regex pattern
@@ -298,16 +359,14 @@ func validateWorkloads(cavObjNew *ResponseCav) validateResource {
 		}
 
 		// get count of workload names
-		uniqueWorkloadNameCountMap[workload.Name] += 1
-	}
-
-	for workloadName, cnt := range uniqueWorkloadNameCountMap {
-		if cnt > 1 {
+		if _, ok := uniqueWorkloadNameCountMap[workload.Name]; ok {
 			return validateResource{
 				allowed: false,
-				message: fmt.Sprintf("%s %s duplicate workload name: %s", InvalidationMessage, cavObjNew.Kind, workloadName),
+				message: fmt.Sprintf("%s %s duplicate workload name: %s", InvalidationMessage, cavObjNew.Kind, workload.Name),
 			}
 		}
+
+		uniqueWorkloadNameCountMap[workload.Name] = true
 	}
 
 	if workloadTypeCntValidate := checkWorkloadTypeCount(cavObjNew); !workloadTypeCntValidate.allowed {
@@ -478,6 +537,10 @@ func (wh *WebhookHandler) validateCAPApplicationVersion(w http.ResponseWriter, a
 
 		if workloadValidate := validateWorkloads(&cavObjNew); !workloadValidate.allowed {
 			return workloadValidate
+		}
+
+		if serviceExposureValidate := checkServiceExposure(&cavObjNew); !serviceExposureValidate.allowed {
+			return serviceExposureValidate
 		}
 
 		return validateTenantOperations(&cavObjNew)

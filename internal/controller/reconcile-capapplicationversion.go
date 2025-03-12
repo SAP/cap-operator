@@ -146,13 +146,23 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 		return nil, err
 	}
 
+	// Create Service Deployments
+	serviceDeployments, err := c.updateServiceDeployment(ca, cav)
+	if err != nil {
+		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInServiceDeployment", Message: err.Error()})
+		return nil, err
+	}
+	overallDeployments = append(overallDeployments, serviceDeployments...)
+
 	// Create AppRouter Deployment
 	approuterDeployment, err := c.updateApprouterDeployment(ca, cav)
 	if err != nil {
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInAppRouterDeployment", Message: err.Error()})
 		return nil, err
 	}
-	overallDeployments = append(overallDeployments, approuterDeployment)
+	if approuterDeployment != nil {
+		overallDeployments = append(overallDeployments, approuterDeployment)
+	}
 
 	// Create Server Deployment
 	serverDeployments, err := c.updateServerDeployment(ca, cav)
@@ -160,7 +170,9 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInServerDeployment", Message: err.Error()})
 		return nil, err
 	}
-	overallDeployments = append(overallDeployments, serverDeployments...)
+	if len(serverDeployments) > 0 {
+		overallDeployments = append(overallDeployments, serverDeployments...)
+	}
 
 	// Create All Services
 	err = c.updateServices(ca, cav)
@@ -195,12 +207,40 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 		return nil, err
 	}
 
+	requeue, err := c.checkServiceDNSEntries(ctx, ca, cav)
+	if requeue != nil || err != nil {
+		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "WaitingForServiceDNSEntries"})
+		return requeue, err
+	}
+
 	// We now wait until all the deployments are actually "Ready", apart from relying on Content Job completing successfully!
 	if cav.Status.State == v1alpha1.CAPApplicationVersionStateProcessing {
 		// Only log if the state is still processing as cav might be reconciled again
 		util.LogInfo("All deployments and other resources created successfully", string(Ready), cav, nil, "version", cav.Spec.Version)
 	}
 	return nil, c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateReady, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "True", Reason: "WorkloadsReady"})
+}
+
+func (c *Controller) checkServiceDNSEntries(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (*ReconcileResult, error) {
+	checkNeeded := len(ca.Spec.Domains.Secondary) > 0 && len(cav.Spec.ServiceExposures) > 0
+	// Check for DNS entries
+	if checkNeeded {
+		processing, err := c.checkDNSEntries(ctx, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
+		if err != nil {
+			if err.Error() == fmt.Sprintf("could not find DNSEntry for %s %s.%s", v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name) {
+				err = fmt.Errorf("No DNS entry found for %s %s.%s", v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name)
+			}
+			util.LogError(err, "DNS entries error", string(Processing), cav, nil, "version", cav.Spec.Version)
+
+			return nil, err
+		}
+		if processing {
+			util.LogInfo("DNS entry resource not yet ready", string(Processing), cav, nil, "version", cav.Spec.Version)
+			// requeue to iterate this check after a delay
+			return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second), nil
+		}
+	}
+	return nil, nil
 }
 
 func getContentJobName(contentJobWorkloadName string, cav *v1alpha1.CAPApplicationVersion) string {
@@ -343,6 +383,13 @@ func newContentDeploymentJob(cav *v1alpha1.CAPApplicationVersion, workload *v1al
 
 //#endregion
 
+// #region Service Deployment
+func (c *Controller) updateServiceDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) ([]*appsv1.Deployment, error) {
+	return c.updateDeployments(v1alpha1.DeploymentService, ca, cav)
+}
+
+//#endregion
+
 // #region Server
 func (c *Controller) updateServerDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) ([]*appsv1.Deployment, error) {
 	return c.updateDeployments(v1alpha1.DeploymentCAP, ca, cav)
@@ -353,7 +400,10 @@ func (c *Controller) updateServerDeployment(ca *v1alpha1.CAPApplication, cav *v1
 // #region AppRouter
 func (c *Controller) updateApprouterDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (*appsv1.Deployment, error) {
 	routerWorkload := getRelevantDeployment(v1alpha1.DeploymentRouter, cav)
-	return c.updateDeployment(ca, cav, routerWorkload)
+	if routerWorkload != nil {
+		return c.updateDeployment(ca, cav, routerWorkload)
+	}
+	return nil, nil
 }
 
 //#endregion
@@ -615,6 +665,8 @@ func getAppPodNetworkPolicySpec(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAp
 }
 
 func getAppIngressNetworkPolicySpec(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) networkingv1.NetworkPolicySpec {
+	labels := getLabels(ca, cav, CategoryWorkload, "", "", false)
+	labels[LabelExposedWorkload] = "true"
 	return networkingv1.NetworkPolicySpec{
 		PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
 		Ingress: []networkingv1.NetworkPolicyIngressRule{{
@@ -627,7 +679,7 @@ func getAppIngressNetworkPolicySpec(ca *v1alpha1.CAPApplication, cav *v1alpha1.C
 			},
 		}},
 		// Target all workloads of the app
-		PodSelector: metav1.LabelSelector{MatchLabels: getLabels(ca, cav, CategoryWorkload, string(v1alpha1.DeploymentRouter), "", false)},
+		PodSelector: metav1.LabelSelector{MatchLabels: labels},
 	}
 }
 
@@ -705,7 +757,9 @@ func createDeployment(params *DeploymentParameters) *appsv1.Deployment {
 	workloadName := getWorkloadName(params.CAV.Name, params.WorkloadDetails.Name)
 	annotations := copyMaps(params.WorkloadDetails.Annotations, getAnnotations(params.CA, params.CAV, true))
 	labels := copyMaps(params.WorkloadDetails.Labels, getLabels(params.CA, params.CAV, CategoryWorkload, string(params.WorkloadDetails.DeploymentDefinition.Type), workloadName, true))
-
+	if isExposedWorkload(params.WorkloadDetails, params.CAV) {
+		labels[LabelExposedWorkload] = "true"
+	}
 	util.LogInfo("Creating deployment", string(Processing), params.CAV, nil, "deploymentName", workloadName, "version", params.CAV.Spec.Version)
 
 	return &appsv1.Deployment{
@@ -979,6 +1033,23 @@ func checkAndUpdateJobStatusFinishedJobs(contentDeployJob *batchv1.Job, cav *v1a
 		}
 	}
 	return nil
+}
+
+func isExposedWorkload(workloadDetails v1alpha1.WorkloadDetails, cav *v1alpha1.CAPApplicationVersion) bool {
+	// If the workload is of type router, it should be exposed
+	if workloadDetails.DeploymentDefinition.Type == v1alpha1.DeploymentRouter {
+		return true
+	}
+	// If the workload is in the serviceExposures list, it should be exposed
+	return slices.ContainsFunc(cav.Spec.ServiceExposures,
+		func(serviceExposure v1alpha1.ServiceExposure) bool {
+			return slices.ContainsFunc(serviceExposure.Routes,
+				func(route v1alpha1.Route) bool {
+					return route.WorkloadName == workloadDetails.Name
+				},
+			)
+		},
+	)
 }
 
 func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alpha1.CAPApplicationVersion) (bool, error) {

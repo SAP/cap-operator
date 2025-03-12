@@ -55,4 +55,5 @@ status:
       status: "False"
   observedGeneration: 0
   state: Processing
+  servicesOnly: false
   domainSpecHash: 84fdeebf558412817f54b17a0158c6b6d53dda98e8bc7a887aaa7170296841f8

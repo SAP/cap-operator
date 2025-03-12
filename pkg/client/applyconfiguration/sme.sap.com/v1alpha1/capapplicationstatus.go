@@ -18,6 +18,7 @@ import (
 type CAPApplicationStatusApplyConfiguration struct {
 	GenericStatusApplyConfiguration `json:",inline"`
 	State                           *smesapcomv1alpha1.CAPApplicationState `json:"state,omitempty"`
+	ServicesOnly                    *bool                                  `json:"servicesOnly,omitempty"`
 	DomainSpecHash                  *string                                `json:"domainSpecHash,omitempty"`
 	LastFullReconciliationTime      *v1.Time                               `json:"lastFullReconciliationTime,omitempty"`
 }
@@ -54,6 +55,14 @@ func (b *CAPApplicationStatusApplyConfiguration) WithConditions(values ...*metav
 // If called multiple times, the State field is set to the value of the last call.
 func (b *CAPApplicationStatusApplyConfiguration) WithState(value smesapcomv1alpha1.CAPApplicationState) *CAPApplicationStatusApplyConfiguration {
 	b.State = &value
+	return b
+}
+
+// WithServicesOnly sets the ServicesOnly field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ServicesOnly field is set to the value of the last call.
+func (b *CAPApplicationStatusApplyConfiguration) WithServicesOnly(value bool) *CAPApplicationStatusApplyConfiguration {
+	b.ServicesOnly = &value
 	return b
 }
 
