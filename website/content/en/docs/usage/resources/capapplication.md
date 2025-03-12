@@ -66,3 +66,5 @@ The `domains` section provides details of where the application routes are expos
 > NOTE: While the same secondary domain can technically be used across applications; the consumers need to ensure that the tenant sub-domains are unique across such applications that share the same domain!
 
 `istioIngressGatewayLabels` are key-value pairs (string) used to identify the ingress controller component of Istio and the related load balancer service. These values are configured during the installation of Istio service mesh in the cluster.
+
+> NOTE: The `provider` section is omitted for [Services Only Applications](../services-workload.md)

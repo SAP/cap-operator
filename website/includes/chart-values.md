@@ -13,8 +13,9 @@
 | topologySpreadConstraints | list | `[]` | Default topology spread constraints (can be overwritten on component level) |
 | podLabels | object | `{}` | Additional pod labels for all components |
 | podAnnotations | object | `{}` | Additional pod annotations for all components |
-| monitoring | object | `{"enabled":false,"grafana":{"dashboard":{"configMapLabels":{"grafana_dashboard":"1"}}}}` | Monitoring configuration for all components |
+| monitoring | object | `{"enabled":false,"grafana":{"dashboard":{"configMapLabels":{"grafana_dashboard":"1"}}},"serviceMonitorSelectorLabels":{}}` | Monitoring configuration for all components |
 | monitoring.enabled | bool | `false` | Optionally enable Prometheus monitoring for all components (disabled by default) |
+| monitoring.serviceMonitorSelectorLabels | object | `{}` | Prometheus service monitor selector labels |
 | monitoring.grafana | object | `{"dashboard":{"configMapLabels":{"grafana_dashboard":"1"}}}` | Grafana configuration |
 | monitoring.grafana.dashboard.configMapLabels | object | `{"grafana_dashboard":"1"}` | Labels for selecting ConfigMaps with dashboards in Grafana |
 | controller.replicas | int | `1` | Replicas |
