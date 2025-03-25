@@ -118,7 +118,6 @@ spec:
             required:
             - btp
             - btpAppName
-            - domains
             - globalAccountId
             type: object
           status:

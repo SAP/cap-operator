@@ -82,8 +82,8 @@ type CAPApplicationList struct {
 type CAPApplicationSpec struct {
 	// Domains used by the application (new) // TODO: remove optional once the new field is meant to be used
 	DomainRefs []DomainRefs `json:"domainRefs,omitempty"`
-	// Domains used by the application
-	Domains ApplicationDomains `json:"domains"`
+	// [DEPRECATED] Domains used by the application
+	Domains ApplicationDomains `json:"domains,omitempty"`
 	// SAP BTP Global Account Identifier where services are entitles for the current application
 	GlobalAccountId string `json:"globalAccountId"`
 	// Short name for the application (similar to BTP XSAPPNAME)
@@ -679,6 +679,7 @@ type CAPTenantOutputSpec struct {
 
 // +kubebuilder:resource:shortName=dom
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Domain",type="string",JSONPath=".spec.domain"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +genclient
@@ -706,16 +707,22 @@ type DomainList struct {
 
 type DomainSpec struct {
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
-	Domain          string            `json:"domain"`
+	// Domain used by an application
+	Domain string `json:"domain"`
+	// Selector is the set of labels used to select the ingress pods handling the domain
 	IngressSelector map[string]string `json:"ingressSelector"`
-	// +kubebuilder:validation:Enum=Simple;Mutual
+	// +kubebuilder:default:=Simple
+	// TLS mode for the generated (Istio) Gateway resource. Set this to Mutual when using mTLS with an external gateway.
 	TLSMode TLSMode `json:"tlsMode"`
-	// +kubebuilder:validation:Enum=Node;Wildcard;Subdomain
+	// +kubebuilder:default:=None
+	// DNS mode controls the creation of DNS entries related to the domain
 	DNSMode DNSMode `json:"dnsMode"`
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
-	DNSTarget string `json:"dnsTarget"`
+	// DNS Target for traffic to this domain
+	DNSTarget string `json:"dnsTarget,omitempty"`
 }
 
+// +kubebuilder:validation:Enum=Simple;Mutual
 type TLSMode string
 
 const (
@@ -725,24 +732,27 @@ const (
 	MutualTLSMode TLSMode = "Mutual"
 )
 
+// +kubebuilder:validation:Enum=Node;Wildcard;Subdomain
 type DNSMode string
 
 const (
-	// No DNS (Default)
+	// No DNS entries will be created (Default)
 	NoDNS DNSMode = "None"
-	// Wildcard DNS mode
+	// Wildcard DNS entry will be created
 	WildCardDNS DNSMode = "Wildcard"
-	// Subdomain DNS mode
+	// A DNS entry will be created for each subdomain specified by the applications using this domain
 	Subdomain DNSMode = "Subdomain"
 )
 
 type DomainStatus struct {
 	GenericStatus `json:",inline"`
-	// +kubebuilder:validation:Enum="";Ready;Error;Processing;Deleting
-	// State of Domain
+	// State of the Domain
 	State DomainState `json:"state"`
+	// Effective DNS Target identified for this domain
+	DnsTarget string `json:"dnsTarget,omitempty"`
 }
 
+// +kubebuilder:validation:Enum="";Ready;Error;Processing;Deleting
 type DomainState string
 
 const (
@@ -752,8 +762,9 @@ const (
 	DomainStateReady      DomainState = "Ready"
 )
 
-// +kubebuilder:resource:scope=Cluster,shortName=cldom
+// +kubebuilder:resource:scope=Cluster,shortName=cdom
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Domain",type="string",JSONPath=".spec.domain"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +genclient
@@ -763,10 +774,10 @@ const (
 type ClusterDomain struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
-	// Domains spec
+	// ClusterDomains spec
 	Spec DomainSpec `json:"spec"`
 	// +kubebuilder:validation:Optional
-	// Domain status
+	// ClusterDomain status
 	Status DomainStatus `json:"status"`
 }
 
