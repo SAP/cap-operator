@@ -12,11 +12,14 @@ spec:
     listKind: ClusterDomainList
     plural: clusterdomains
     shortNames:
-    - cldom
+    - cdom
     singular: clusterdomain
   scope: Cluster
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .spec.domain
+      name: Domain
+      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
@@ -36,6 +39,7 @@ spec:
           spec:
             properties:
               dnsMode:
+                default: None
                 enum:
                 - Node
                 - Wildcard
@@ -52,13 +56,13 @@ spec:
                   type: string
                 type: object
               tlsMode:
+                default: Simple
                 enum:
                 - Simple
                 - Mutual
                 type: string
             required:
             - dnsMode
-            - dnsTarget
             - domain
             - ingressSelector
             - tlsMode
@@ -101,6 +105,8 @@ spec:
                   - type
                   type: object
                 type: array
+              dnsTarget:
+                type: string
               observedGeneration:
                 format: int64
                 type: integer
