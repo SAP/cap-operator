@@ -10,11 +10,12 @@ package v1alpha1
 // CAPApplicationSpecApplyConfiguration represents a declarative configuration of the CAPApplicationSpec type for use
 // with apply.
 type CAPApplicationSpecApplyConfiguration struct {
-	Domains         *ApplicationDomainsApplyConfiguration      `json:"domains,omitempty"`
-	GlobalAccountId *string                                    `json:"globalAccountId,omitempty"`
-	BTPAppName      *string                                    `json:"btpAppName,omitempty"`
-	Provider        *BTPTenantIdentificationApplyConfiguration `json:"provider,omitempty"`
-	BTP             *BTPApplyConfiguration                     `json:"btp,omitempty"`
+	Domains          *ApplicationDomainsApplyConfiguration      `json:"domains,omitempty"`
+	DomainReferences []DomainReferenceApplyConfiguration        `json:"domainRefs,omitempty"`
+	GlobalAccountId  *string                                    `json:"globalAccountId,omitempty"`
+	BTPAppName       *string                                    `json:"btpAppName,omitempty"`
+	Provider         *BTPTenantIdentificationApplyConfiguration `json:"provider,omitempty"`
+	BTP              *BTPApplyConfiguration                     `json:"btp,omitempty"`
 }
 
 // CAPApplicationSpecApplyConfiguration constructs a declarative configuration of the CAPApplicationSpec type for use with
@@ -28,6 +29,19 @@ func CAPApplicationSpec() *CAPApplicationSpecApplyConfiguration {
 // If called multiple times, the Domains field is set to the value of the last call.
 func (b *CAPApplicationSpecApplyConfiguration) WithDomains(value *ApplicationDomainsApplyConfiguration) *CAPApplicationSpecApplyConfiguration {
 	b.Domains = value
+	return b
+}
+
+// WithDomainReferences adds the given value to the DomainReferences field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the DomainReferences field.
+func (b *CAPApplicationSpecApplyConfiguration) WithDomainReferences(values ...*DomainReferenceApplyConfiguration) *CAPApplicationSpecApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithDomainReferences")
+		}
+		b.DomainReferences = append(b.DomainReferences, *values[i])
+	}
 	return b
 }
 

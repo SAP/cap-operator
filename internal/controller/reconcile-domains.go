@@ -547,7 +547,7 @@ func (c *Controller) getIngressGatewayInfo(ctx context.Context, ca *v1alpha1.CAP
 	}
 	// Finally attempt to get dnsTarget from Service via annotation(s)
 	if dnsTarget == "" {
-		ingressGWSvc, err := c.getIngressGatewayService(ctx, namespace, relevantPodsNames, ca)
+		ingressGWSvc, err := c.getIngressGatewayService(ctx, namespace, relevantPodsNames, v1alpha1.CAPApplicationKind, &ca.ObjectMeta)
 		if err != nil {
 			return nil, err
 		}
@@ -593,7 +593,7 @@ func (c *Controller) getLoadBalancerSvcs(ctx context.Context, istioIngressGWName
 	return loadBalancerSvcs, nil
 }
 
-func (c *Controller) getIngressGatewayService(ctx context.Context, istioIngressGWNamespace string, relevantPodNames map[string]struct{}, ca *v1alpha1.CAPApplication) (*corev1.Service, error) {
+func (c *Controller) getIngressGatewayService(ctx context.Context, istioIngressGWNamespace string, relevantPodNames map[string]struct{}, refKind string, refObjectMeta *metav1.ObjectMeta) (*corev1.Service, error) {
 	loadBalancerSvcs, err := c.getLoadBalancerSvcs(ctx, istioIngressGWNamespace)
 	if err != nil {
 		return nil, err
@@ -613,14 +613,14 @@ func (c *Controller) getIngressGatewayService(ctx context.Context, istioIngressG
 					ingressGwSvc = svc
 					break
 				} else if ingressGwSvc.Name != svc.Name {
-					return nil, fmt.Errorf("more than one matching ingress gateway service found for %s %s.%s", v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
+					return nil, fmt.Errorf("more than one matching ingress gateway service found for %s %s.%s", refKind, refObjectMeta.Namespace, refObjectMeta.Name)
 				}
 			}
 		}
 	}
 
 	if ingressGwSvc.Name == "" {
-		return nil, fmt.Errorf("unable to find a matching ingress gateway service for %s %s.%s", v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
+		return nil, fmt.Errorf("unable to find a matching ingress gateway service for %s %s.%s", refKind, refObjectMeta.Namespace, refObjectMeta.Name)
 	}
 	return &ingressGwSvc, nil
 }

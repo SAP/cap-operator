@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -186,6 +187,14 @@ func sha256Sum(source ...string) string {
 func sha1Sum(source ...string) string {
 	sum := sha1.Sum([]byte(strings.Join(source, "")))
 	return fmt.Sprintf("%x", sum)
+}
+
+func serializeAndHash[T any](v T) (string, error) {
+	serialized, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return sha256Sum(string(serialized)), nil
 }
 
 func amendObjectMetadata(object *metav1.ObjectMeta, annotation string, hashLabel string, annotationValue string, hashedValue string) (updated bool) {

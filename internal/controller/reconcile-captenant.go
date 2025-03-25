@@ -652,15 +652,14 @@ func (c *Controller) prepareCAPTenant(ctx context.Context, cat *v1alpha1.CAPTena
 		update = true
 	}
 
-	if cat.DeletionTimestamp == nil {
-		// set finalizers if not added
-		if cat.Finalizers == nil {
-			cat.Finalizers = []string{}
-		}
-		if addFinalizer(&cat.Finalizers, FinalizerCAPTenant) {
-			update = true
-		}
+	// set finalizers if not added
+	if cat.Finalizers == nil {
+		cat.Finalizers = []string{}
 	}
+	if addFinalizer(&cat.Finalizers, FinalizerCAPTenant) {
+		update = true
+	}
+
 	return update, nil
 }
 

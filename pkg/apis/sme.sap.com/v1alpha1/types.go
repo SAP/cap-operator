@@ -23,6 +23,10 @@ const (
 	CAPTenantOperationResource    = "captenantoperations"
 	CAPTenantOutputKind           = "CAPTenantOutput"
 	CAPTenantOutputResource       = "captenantouputs"
+	DomainKind                    = "Domain"
+	DomainResource                = "domains"
+	ClusterDomainKind             = "ClusterDomain"
+	ClusterDomainResource         = "clusterdomains"
 )
 
 // +kubebuilder:resource:shortName=ca
@@ -80,6 +84,9 @@ type CAPApplicationList struct {
 type CAPApplicationSpec struct {
 	// Domains used by the application
 	Domains ApplicationDomains `json:"domains"`
+	// Domain resources used by the application
+	DomainReferences []DomainReference `json:"domainRefs,omitempty"`
+
 	// SAP BTP Global Account Identifier where services are entitles for the current application
 	GlobalAccountId string `json:"globalAccountId"`
 	// Short name for the application (similar to BTP XSAPPNAME)
@@ -88,6 +95,15 @@ type CAPApplicationSpec struct {
 	Provider BTPTenantIdentification `json:"provider"`
 	// SAP BTP Services consumed by the application
 	BTP BTP `json:"btp"`
+}
+
+type DomainReference struct {
+	// +kubebuilder:validation:Enum=Domain;ClusterDomain
+	// +kubebuilder:default:=Domain
+	// Kind of domain resourced used by the application
+	Kind string `json:"kind"`
+	// Name of the referenced domain resource
+	Name string `json:"name"`
 }
 
 // Application domains
@@ -632,3 +648,113 @@ type CAPTenantOutputSpec struct {
 	// +kubebuilder:validation:nullable
 	SubscriptionCallbackData string `json:"subscriptionCallbackData,omitempty"`
 }
+
+// +kubebuilder:resource:shortName=dom
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Domain",type="string",JSONPath=".spec.domain"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Domain defines the schema for domains API
+type Domain struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	// Domain spec
+	Spec DomainSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
+	// Domain status
+	Status DomainStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// DomainList contains a list of Domain
+type DomainList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []Domain `json:"items"`
+}
+
+// +kubebuilder:resource:scope=Cluster,shortName=cdom
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Domain",type="string",JSONPath=".spec.domain"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ClusterDomain defines the schema for clusterdomains API
+type ClusterDomain struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	// ClusterDomain spec
+	Spec DomainSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
+	// ClusterDomain status
+	Status DomainStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// ClusterDomainList contains a list of ClusterDomain
+type ClusterDomainList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []ClusterDomain `json:"items"`
+}
+
+type DomainSpec struct {
+	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
+	// Domain used by an application
+	Domain string `json:"domain"`
+
+	// Selector is the set of labels used to select the ingress pods handling the domain
+	IngressSelector map[string]string `json:"ingressSelector"`
+
+	// +kubebuilder:default:=SIMPLE
+	// TLS mode for the generated (Istio) Gateway resource. Set this to MUTUAL when using mTLS with an external gateway.
+	TlsMode TlsMode `json:"tlsMode"`
+
+	// +kubebuilder:default:=None
+	// DNS mode controls the creation of DNS entries
+	DnsMode DnsMode `json:"dnsMode"`
+	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
+	// DNS Target for traffic to this domain
+	DnsTarget string `json:"dnsTarget,omitempty"`
+}
+
+// +kubebuilder:validation:Enum=SIMPLE;MUTUAL
+type TlsMode string
+
+const (
+	TlsModeSimple TlsMode = "SIMPLE"
+	TlsModeMutual TlsMode = "MUTUAL"
+)
+
+// +kubebuilder:validation:Enum=Wildcard;Specific;None
+type DnsMode string
+
+const (
+	DnsModeWildcard DnsMode = "Wildcard"
+	DnsModeSpecific DnsMode = "Specific"
+	DnsModeNode     DnsMode = "None"
+)
+
+type DomainStatus struct {
+	GenericStatus `json:",inline"`
+
+	// State of CAPDomain
+	State DomainState `json:"state"`
+
+	// Effective DNS Target identified for this domain
+	DnsTarget string `json:"dnsTarget,omitempty"`
+}
+
+// +kubebuilder:validation:Enum="";Processing;Ready;Error
+type DomainState string
+
+const (
+	DomainStateProcessing DomainState = "Processing"
+	DomainStateReady      DomainState = "Ready"
+	DomainStateError      DomainState = "Error"
+)

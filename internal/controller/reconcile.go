@@ -38,6 +38,8 @@ const (
 	LabelCAVVersion                     = "sme.sap.com/cav-version"
 	LabelRelevantDNSTarget              = "sme.sap.com/relevant-dns-target-hash"
 	LabelDisableKarydia                 = "x4.sap.com/disable-karydia"
+	LabelDomainIdentifierHash           = "sme.sap.com/domain-identifier-hash"
+	LabelGatewaySelectorHash            = "sme.sap.com/gateway-selector-hash"
 	AnnotationOwnerIdentifier           = "sme.sap.com/owner-identifier"
 	AnnotationBTPApplicationIdentifier  = "sme.sap.com/btp-app-identifier"
 	AnnotationResourceHash              = "sme.sap.com/resource-hash"
@@ -51,6 +53,7 @@ const (
 	FinalizerCAPApplication             = "sme.sap.com/capapplication"
 	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
 	FinalizerCAPTenant                  = "sme.sap.com/captenant"
+	FinalizerCAPDomain                  = "sme.sap.com/capdomain"
 	FinalizerCAPTenantOperation         = "sme.sap.com/captenantoperation"
 	GardenerDNSClassIdentifier          = "dns.gardener.cloud/class"
 )

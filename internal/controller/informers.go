@@ -21,6 +21,8 @@ const (
 	ResourceCAPApplicationVersion
 	ResourceCAPApplication
 	ResourceCAPTenantOperation
+	ResourceDomain
+	ResourceClusterDomain
 	ResourceJob
 	ResourceSecret
 	ResourceGateway
@@ -43,7 +45,8 @@ var (
 		ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind,
 		ResourceCAPApplication:        v1alpha1.CAPApplicationKind,
 		ResourceCAPTenantOperation:    v1alpha1.CAPTenantOperationKind,
-		ResourceOperatorDomains:       OperatorDomains,
+		ResourceDomain:                v1alpha1.DomainKind,
+		ResourceClusterDomain:         v1alpha1.ClusterDomainKind,
 	}
 )
 
@@ -64,7 +67,8 @@ var QueueMapping map[int]map[int]string = map[int]map[int]string{
 	ResourceDestinationRule:       {ResourceCAPTenant: v1alpha1.CAPTenantKind},
 	ResourceCAPApplicationVersion: {ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind, ResourceCAPApplication: v1alpha1.CAPApplicationKind},
 	ResourceCAPApplication:        {ResourceCAPApplication: v1alpha1.CAPApplicationKind},
-	ResourceOperatorDomains:       {ResourceOperatorDomains: OperatorDomains},
+	ResourceDomain:                {ResourceDomain: v1alpha1.DomainKind},
+	ResourceClusterDomain:         {ResourceClusterDomain: v1alpha1.ClusterDomainKind},
 }
 
 type QueueItem struct {
@@ -77,6 +81,8 @@ func (c *Controller) initializeInformers() {
 	c.registerCAPApplicationListeners()
 	c.registerCAPApplicationVersionListeners()
 	c.registerCAPTenantOperationListeners()
+	c.registerDomainListeners()
+	c.registerClusterDomainListeners()
 	c.registerJobListeners()
 	c.registerSecretListeners()
 	c.registerGatewayListeners()
@@ -129,6 +135,16 @@ func (c *Controller) registerCAPTenantListeners() {
 func (c *Controller) registerCAPTenantOperationListeners() {
 	c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceCAPTenantOperation))
+}
+
+func (c *Controller) registerDomainListeners() {
+	c.crdInformerFactory.Sme().V1alpha1().Domains().Informer().
+		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceDomain))
+}
+
+func (c *Controller) registerClusterDomainListeners() {
+	c.crdInformerFactory.Sme().V1alpha1().ClusterDomains().Informer().
+		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceClusterDomain))
 }
 
 func (c *Controller) registerJobListeners() {

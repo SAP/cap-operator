@@ -88,6 +88,11 @@ func (ctop *CAPTenantOperation) SetStatusCurrentStep(step *uint32, job *string) 
 	ctop.Status.ActiveJob = job
 }
 
+func (dom *ClusterDomain) SetStatusWithReadyCondition(state DomainState, readyStatus metav1.ConditionStatus, reason string, message string) {
+	dom.Status.State = state
+	dom.Status.SetStatusCondition(metav1.Condition{Type: readyType, Status: readyStatus, Reason: reason, Message: message, ObservedGeneration: dom.Generation})
+}
+
 func (status *GenericStatus) SetStatusCondition(condition metav1.Condition) {
 	status.ObservedGeneration = condition.ObservedGeneration
 	meta.SetStatusCondition(&status.Conditions, condition)

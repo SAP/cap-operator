@@ -23,6 +23,10 @@ type Interface interface {
 	CAPTenantOperations() CAPTenantOperationInformer
 	// CAPTenantOutputs returns a CAPTenantOutputInformer.
 	CAPTenantOutputs() CAPTenantOutputInformer
+	// ClusterDomains returns a ClusterDomainInformer.
+	ClusterDomains() ClusterDomainInformer
+	// Domains returns a DomainInformer.
+	Domains() DomainInformer
 }
 
 type version struct {
@@ -59,4 +63,14 @@ func (v *version) CAPTenantOperations() CAPTenantOperationInformer {
 // CAPTenantOutputs returns a CAPTenantOutputInformer.
 func (v *version) CAPTenantOutputs() CAPTenantOutputInformer {
 	return &cAPTenantOutputInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// ClusterDomains returns a ClusterDomainInformer.
+func (v *version) ClusterDomains() ClusterDomainInformer {
+	return &clusterDomainInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// Domains returns a DomainInformer.
+func (v *version) Domains() DomainInformer {
+	return &domainInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
