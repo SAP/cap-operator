@@ -660,6 +660,14 @@ func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissio
 		if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &caObjNew, v1alpha1.CAPApplicationKind); !validatedResource.allowed {
 			return validatedResource
 		}
+		// Domains are DEPRECATED
+		if caObjNew.Spec.Domains.Primary != "" || len(caObjNew.Spec.Domains.Secondary) > 0 || caObjNew.Spec.Domains.DnsTarget != "" || len(caObjNew.Spec.Domains.IstioIngressGatewayLabels) > 0 {
+			return validateResource{
+				allowed: false,
+				message: fmt.Sprintf("%s %s domains are deprecated. Use domainRefs instead in: %s.%s", InvalidationMessage, caObjNew.Kind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
+			}
+		}
+
 		// check: update on .Spec.Provider
 		if admissionReview.Request.Operation == admissionv1.Update && !cmp.Equal(caObjNew.Spec.Provider, caObjOld.Spec.Provider) {
 			return validateResource{

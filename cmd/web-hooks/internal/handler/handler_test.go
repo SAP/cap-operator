@@ -155,6 +155,11 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 				Kind: crdType,
 			}
 		}
+
+		if operation == admissionv1.Create {
+			crd.Spec.Domains = v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}}
+		}
+
 		rawBytes, err = json.Marshal(crd)
 		rawBytesOld = rawBytes
 		if operation == admissionv1.Update && err == nil {
@@ -719,6 +724,10 @@ func TestCaInvalidity(t *testing.T) {
 		update    updateType
 	}{
 		{
+			operation: admissionv1.Create,
+			update:    noUpdate,
+		},
+		{
 			operation: admissionv1.Update,
 			update:    providerUpdate,
 		},
@@ -743,7 +752,9 @@ func TestCaInvalidity(t *testing.T) {
 			universalDeserializer.Decode(bytes, nil, &admissionReview)
 
 			var errorMessage string
-			if test.update == providerUpdate {
+			if test.operation == admissionv1.Create {
+				errorMessage = fmt.Sprintf("%s %s domains are deprecated. Use domainRefs instead in: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
+			} else if test.update == providerUpdate {
 				errorMessage = fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
 			}
 
