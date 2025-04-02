@@ -58,6 +58,16 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&CAPTenantOutput{},
 		&CAPTenantOutputList{},
 	)
+	scheme.AddKnownTypes(
+		SchemeGroupVersion,
+		&Domain{},
+		&DomainList{},
+	)
+	scheme.AddKnownTypes(
+		SchemeGroupVersion,
+		&ClusterDomain{},
+		&ClusterDomainList{},
+	)
 	metaV1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
 }
