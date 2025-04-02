@@ -23,6 +23,10 @@ const (
 	CAPTenantOperationResource    = "captenantoperations"
 	CAPTenantOutputKind           = "CAPTenantOutput"
 	CAPTenantOutputResource       = "captenantouputs"
+	DomainKind                    = "Domain"
+	DomainResource                = "domains"
+	ClusterDomainKind             = "ClusterDomain"
+	ClusterDomainResource         = "clusterdomains"
 )
 
 // +kubebuilder:resource:shortName=ca
@@ -54,6 +58,8 @@ type CAPApplicationStatus struct {
 	DomainSpecHash string `json:"domainSpecHash,omitempty"`
 	// The last time a full reconciliation was completed
 	LastFullReconciliationTime metav1.Time `json:"lastFullReconciliationTime,omitempty"`
+	// Last known application subdomains
+	ObservedSubdomains []string `json:"observedSubdomains,omitempty"`
 }
 
 type CAPApplicationState string
@@ -82,8 +88,8 @@ type CAPApplicationList struct {
 type CAPApplicationSpec struct {
 	// Domains used by the application (new) // TODO: remove optional once the new field is meant to be used
 	DomainRefs []DomainRefs `json:"domainRefs,omitempty"`
-	// Domains used by the application
-	Domains ApplicationDomains `json:"domains"`
+	// [DEPRECATED] Domains used by the application
+	Domains ApplicationDomains `json:"domains,omitempty"`
 	// SAP BTP Global Account Identifier where services are entitles for the current application
 	GlobalAccountId string `json:"globalAccountId"`
 	// Short name for the application (similar to BTP XSAPPNAME)
@@ -97,25 +103,16 @@ type CAPApplicationSpec struct {
 // Domain references
 type DomainRefs struct {
 	// +kubebuilder:validation:Enum=Domain;ClusterDomain
-	Kind DomainType `json:"kind"`
-	Name string     `json:"name"`
+	Kind string `json:"kind"`
+	Name string `json:"name"`
 }
-
-type DomainType string
-
-const (
-	// Domain
-	DomainKind DomainType = "Domain"
-	// Cluster Domain
-	ClusterDomainKind DomainType = "ClusterDomain"
-)
 
 // Application domains
 type ApplicationDomains struct {
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
 	// +kubebuilder:validation:MaxLength=62
 	// Primary application domain will be used to generate a wildcard TLS certificate. In project "Gardener" managed clusters this is (usually) a subdomain of the cluster domain
-	Primary string `json:"primary"`
+	Primary string `json:"primary,omitempty"`
 	// +kubebuilder:validation:items:Pattern=^[a-z0-9-.]+$
 	// Customer specific domains to serve application endpoints (optional)
 	Secondary []string `json:"secondary,omitempty"`
@@ -124,7 +121,7 @@ type ApplicationDomains struct {
 	DnsTarget string `json:"dnsTarget,omitempty"`
 	// +kubebuilder:validation:MinItems=1
 	// Labels used to identify the istio ingress-gateway component and its corresponding namespace. Usually {"app":"istio-ingressgateway","istio":"ingressgateway"}
-	IstioIngressGatewayLabels []NameValue `json:"istioIngressGatewayLabels"`
+	IstioIngressGatewayLabels []NameValue `json:"istioIngressGatewayLabels,omitempty"`
 }
 
 //Workaround for pattern for string items +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
@@ -679,6 +676,7 @@ type CAPTenantOutputSpec struct {
 
 // +kubebuilder:resource:shortName=dom
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Domain",type="string",JSONPath=".spec.domain"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +genclient
@@ -706,43 +704,54 @@ type DomainList struct {
 
 type DomainSpec struct {
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
-	Domain          string            `json:"domain"`
+	// Domain used by an application
+	Domain string `json:"domain"`
+	// Selector is the set of labels used to select the ingress pods handling the domain
 	IngressSelector map[string]string `json:"ingressSelector"`
-	// +kubebuilder:validation:Enum=Simple;Mutual
+	// +kubebuilder:default:=Simple
+	// TLS mode for the generated (Istio) Gateway resource. Set this to Mutual when using mTLS with an external gateway.
 	TLSMode TLSMode `json:"tlsMode"`
-	// +kubebuilder:validation:Enum=Node;Wildcard;Subdomain
+	// +kubebuilder:default:=None
+	// DNS mode controls the creation of DNS entries related to the domain
 	DNSMode DNSMode `json:"dnsMode"`
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
-	DNSTarget string `json:"dnsTarget"`
+	// DNS Target for traffic to this domain
+	DNSTarget string `json:"dnsTarget,omitempty"`
 }
 
+// +kubebuilder:validation:Enum=Simple;Mutual
 type TLSMode string
 
 const (
 	// Simple TLS Mode (Default)
-	SimpleTLSMode TLSMode = "Simple"
+	TlsModeSimple TLSMode = "Simple"
 	// Mutual TLS Mode
-	MutualTLSMode TLSMode = "Mutual"
+	TlsModeMutual TLSMode = "Mutual"
 )
 
+// +kubebuilder:validation:Enum=None;Wildcard;Subdomain
 type DNSMode string
 
 const (
-	// No DNS (Default)
-	NoDNS DNSMode = "None"
-	// Wildcard DNS mode
-	WildCardDNS DNSMode = "Wildcard"
-	// Subdomain DNS mode
-	Subdomain DNSMode = "Subdomain"
+	// No DNS entries will be created (Default)
+	DnsModeNone DNSMode = "None"
+	// Wildcard DNS entry will be created
+	DnsModeWildcard DNSMode = "Wildcard"
+	// A DNS entry will be created for each subdomain specified by the applications using this domain
+	DnsModeSubdomain DNSMode = "Subdomain"
 )
 
 type DomainStatus struct {
 	GenericStatus `json:",inline"`
-	// +kubebuilder:validation:Enum="";Ready;Error;Processing;Deleting
-	// State of Domain
+	// State of the Domain
 	State DomainState `json:"state"`
+	// Effective DNS Target identified for this domain
+	DnsTarget string `json:"dnsTarget,omitempty"`
+	// domain observed during last reconciliation
+	ObservedDomain string `json:"observedDomain,omitempty"`
 }
 
+// +kubebuilder:validation:Enum="";Ready;Error;Processing;Deleting
 type DomainState string
 
 const (
@@ -752,8 +761,9 @@ const (
 	DomainStateReady      DomainState = "Ready"
 )
 
-// +kubebuilder:resource:scope=Cluster,shortName=cldom
+// +kubebuilder:resource:scope=Cluster,shortName=cdom
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Domain",type="string",JSONPath=".spec.domain"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +genclient
@@ -763,10 +773,10 @@ const (
 type ClusterDomain struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
-	// Domains spec
+	// ClusterDomains spec
 	Spec DomainSpec `json:"spec"`
 	// +kubebuilder:validation:Optional
-	// Domain status
+	// ClusterDomain status
 	Status DomainStatus `json:"status"`
 }
 

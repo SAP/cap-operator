@@ -99,9 +99,6 @@ spec:
                       pattern: ^[a-z0-9-.]+$
                       type: string
                     type: array
-                required:
-                - istioIngressGatewayLabels
-                - primary
                 type: object
               globalAccountId:
                 type: string
@@ -118,7 +115,6 @@ spec:
             required:
             - btp
             - btpAppName
-            - domains
             - globalAccountId
             type: object
           status:
@@ -167,6 +163,10 @@ spec:
               observedGeneration:
                 format: int64
                 type: integer
+              observedSubdomains:
+                items:
+                  type: string
+                type: array
               servicesOnly:
                 type: boolean
               state:
