@@ -21,6 +21,7 @@ type CAPApplicationStatusApplyConfiguration struct {
 	ServicesOnly                    *bool                                  `json:"servicesOnly,omitempty"`
 	DomainSpecHash                  *string                                `json:"domainSpecHash,omitempty"`
 	LastFullReconciliationTime      *v1.Time                               `json:"lastFullReconciliationTime,omitempty"`
+	ObservedSubdomains              []string                               `json:"observedSubdomains,omitempty"`
 }
 
 // CAPApplicationStatusApplyConfiguration constructs a declarative configuration of the CAPApplicationStatus type for use with
@@ -79,5 +80,15 @@ func (b *CAPApplicationStatusApplyConfiguration) WithDomainSpecHash(value string
 // If called multiple times, the LastFullReconciliationTime field is set to the value of the last call.
 func (b *CAPApplicationStatusApplyConfiguration) WithLastFullReconciliationTime(value v1.Time) *CAPApplicationStatusApplyConfiguration {
 	b.LastFullReconciliationTime = &value
+	return b
+}
+
+// WithObservedSubdomains adds the given value to the ObservedSubdomains field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the ObservedSubdomains field.
+func (b *CAPApplicationStatusApplyConfiguration) WithObservedSubdomains(values ...string) *CAPApplicationStatusApplyConfiguration {
+	for i := range values {
+		b.ObservedSubdomains = append(b.ObservedSubdomains, values[i])
+	}
 	return b
 }
