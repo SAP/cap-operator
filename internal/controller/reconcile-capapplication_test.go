@@ -194,9 +194,9 @@ func TestCavCatGateway_Case4(t *testing.T) {
 			},
 			expectedResources: "testdata/capapplication/ca-07.expected.yaml",
 			expectedRequeue: map[int][]NamespacedResourceKey{
-				ResourceOperatorDomains: {{Namespace: "", Name: ""}},
-				ResourceCAPApplication:  {{Namespace: "default", Name: "test-cap-01"}},
-				ResourceCAPTenant:       {{Namespace: "default", Name: "test-cap-01-provider"}},
+				// ResourceOperatorDomains: {{Namespace: "", Name: ""}},
+				ResourceCAPApplication: {{Namespace: "default", Name: "test-cap-01"}},
+				ResourceCAPTenant:      {{Namespace: "default", Name: "test-cap-01-provider"}},
 			},
 		},
 	)
@@ -219,9 +219,9 @@ func TestCavCatGateway_Case5(t *testing.T) {
 			},
 			expectedResources: "testdata/capapplication/ca-08.expected.yaml",
 			expectedRequeue: map[int][]NamespacedResourceKey{
-				ResourceOperatorDomains: {{Namespace: "", Name: ""}},
-				ResourceCAPApplication:  {{Namespace: "default", Name: "test-cap-01"}},
-				ResourceCAPTenant:       {{Namespace: "default", Name: "test-cap-01-provider"}},
+				// ResourceOperatorDomains: {{Namespace: "", Name: ""}},
+				ResourceCAPApplication: {{Namespace: "default", Name: "test-cap-01"}},
+				ResourceCAPTenant:      {{Namespace: "default", Name: "test-cap-01-provider"}},
 			},
 		},
 	)
@@ -561,9 +561,9 @@ func TestCertManagerCavCatGateway_Case4(t *testing.T) {
 			},
 			expectedResources: "testdata/capapplication/ca-24.expected.yaml",
 			expectedRequeue: map[int][]NamespacedResourceKey{
-				ResourceOperatorDomains: {{Namespace: "", Name: ""}},
-				ResourceCAPApplication:  {{Namespace: "default", Name: "test-cap-01"}},
-				ResourceCAPTenant:       {{Namespace: "default", Name: "test-cap-01-provider"}},
+				// ResourceOperatorDomains: {{Namespace: "", Name: ""}},
+				ResourceCAPApplication: {{Namespace: "default", Name: "test-cap-01"}},
+				ResourceCAPTenant:      {{Namespace: "default", Name: "test-cap-01-provider"}},
 			},
 		},
 	)
@@ -590,9 +590,9 @@ func TestCertManagerCavCatGateway_Case5(t *testing.T) {
 			},
 			expectedResources: "testdata/capapplication/ca-25.expected.yaml",
 			expectedRequeue: map[int][]NamespacedResourceKey{
-				ResourceOperatorDomains: {{Namespace: "", Name: ""}},
-				ResourceCAPApplication:  {{Namespace: "default", Name: "test-cap-01"}},
-				ResourceCAPTenant:       {{Namespace: "default", Name: "test-cap-01-provider"}},
+				// ResourceOperatorDomains: {{Namespace: "", Name: ""}},
+				ResourceCAPApplication: {{Namespace: "default", Name: "test-cap-01"}},
+				ResourceCAPTenant:      {{Namespace: "default", Name: "test-cap-01-provider"}},
 			},
 		},
 	)

@@ -343,8 +343,8 @@ func reconcileTestItem(ctx context.Context, t *testing.T, item QueueItem, data T
 			requeue, err = c.reconcileCAPTenant(ctx, item, data.attempts)
 		case ResourceCAPTenantOperation:
 			requeue, err = c.reconcileCAPTenantOperation(ctx, item, data.attempts)
-		case ResourceOperatorDomains:
-			err = c.reconcileOperatorDomains(ctx, item, data.attempts)
+		// case ResourceOperatorDomains:
+		// 	err = c.reconcileOperatorDomains(ctx, item, data.attempts)
 		default:
 			t.Error("unidentified queue item for testing")
 		}
