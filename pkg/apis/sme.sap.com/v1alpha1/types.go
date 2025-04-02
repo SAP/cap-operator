@@ -23,6 +23,10 @@ const (
 	CAPTenantOperationResource    = "captenantoperations"
 	CAPTenantOutputKind           = "CAPTenantOutput"
 	CAPTenantOutputResource       = "captenantouputs"
+	DomainKind                    = "Domain"
+	DomainResource                = "domains"
+	ClusterDomainKind             = "ClusterDomain"
+	ClusterDomainResource         = "clusterdomains"
 )
 
 // +kubebuilder:resource:shortName=ca
@@ -54,6 +58,8 @@ type CAPApplicationStatus struct {
 	DomainSpecHash string `json:"domainSpecHash,omitempty"`
 	// The last time a full reconciliation was completed
 	LastFullReconciliationTime metav1.Time `json:"lastFullReconciliationTime,omitempty"`
+	// Last known application subdomains
+	ObservedSubdomains []string `json:"observedSubdomains,omitempty"`
 }
 
 type CAPApplicationState string
@@ -97,18 +103,9 @@ type CAPApplicationSpec struct {
 // Domain references
 type DomainRefs struct {
 	// +kubebuilder:validation:Enum=Domain;ClusterDomain
-	Kind DomainType `json:"kind"`
-	Name string     `json:"name"`
+	Kind string `json:"kind"`
+	Name string `json:"name"`
 }
-
-type DomainType string
-
-const (
-	// Domain
-	DomainKind DomainType = "Domain"
-	// Cluster Domain
-	ClusterDomainKind DomainType = "ClusterDomain"
-)
 
 // Application domains
 type ApplicationDomains struct {

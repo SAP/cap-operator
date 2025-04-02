@@ -98,3 +98,63 @@ func (status *GenericStatus) SetStatusCondition(condition metav1.Condition) {
 	status.ObservedGeneration = condition.ObservedGeneration
 	meta.SetStatusCondition(&status.Conditions, condition)
 }
+
+type DomainEntity interface {
+	*Domain | *ClusterDomain
+	SetStatusWithReadyCondition(state DomainState, readyStatus metav1.ConditionStatus, reason string, message string)
+	GetKind() string
+	GetName() string
+	GetNamespace() string
+	GetMetadata() *metav1.ObjectMeta
+	GetStatus() *DomainStatus
+}
+
+func (dom *Domain) SetStatusWithReadyCondition(state DomainState, readyStatus metav1.ConditionStatus, reason string, message string) {
+	dom.Status.State = state
+	dom.Status.SetStatusCondition(metav1.Condition{Type: readyType, Status: readyStatus, Reason: reason, Message: message, ObservedGeneration: dom.Generation})
+}
+
+func (dom *Domain) GetKind() string {
+	return dom.Kind
+}
+
+func (dom *Domain) GetName() string {
+	return dom.Name
+}
+
+func (dom *Domain) GetNamespace() string {
+	return dom.Namespace
+}
+
+func (dom *Domain) GetMetadata() *metav1.ObjectMeta {
+	return &dom.ObjectMeta
+}
+
+func (dom *Domain) GetStatus() *DomainStatus {
+	return &dom.Status
+}
+
+func (cdom *ClusterDomain) SetStatusWithReadyCondition(state DomainState, readyStatus metav1.ConditionStatus, reason string, message string) {
+	cdom.Status.State = state
+	cdom.Status.SetStatusCondition(metav1.Condition{Type: readyType, Status: readyStatus, Reason: reason, Message: message, ObservedGeneration: cdom.Generation})
+}
+
+func (cdom *ClusterDomain) GetKind() string {
+	return cdom.Kind
+}
+
+func (cdom *ClusterDomain) GetName() string {
+	return cdom.Name
+}
+
+func (cdom *ClusterDomain) GetNamespace() string {
+	return cdom.Namespace
+}
+
+func (cdom *ClusterDomain) GetMetadata() *metav1.ObjectMeta {
+	return &cdom.ObjectMeta
+}
+
+func (cdom *ClusterDomain) GetStatus() *DomainStatus {
+	return &cdom.Status
+}
