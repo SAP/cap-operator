@@ -75,7 +75,7 @@ func (c *Controller) handleDomains(ctx context.Context, ca *v1alpha1.CAPApplicat
 		requeue := NewReconcileResult()
 
 		// Reconcile Secondary domains via a dummy resource (separate reconciliation)
-		requeue.AddResource(ResourceOperatorDomains, "", metav1.NamespaceAll, 0)
+		// requeue.AddResource(ResourceOperatorDomains, "", metav1.NamespaceAll, 0)
 		requeue.AddResource(ResourceCAPApplication, ca.Name, ca.Namespace, 3*time.Second) // requeue CAPApplication for further processing
 
 		// notify tenants of domain specification change (dns entries, virtual services)
