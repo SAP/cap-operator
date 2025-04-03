@@ -44,6 +44,7 @@ const (
 	versionUpdate
 	imageUpdate
 	emptyUpdate
+	domainsUpdate
 )
 
 func createCaCRO() *v1alpha1.CAPApplication {
@@ -53,7 +54,16 @@ func createCaCRO() *v1alpha1.CAPApplication {
 			Namespace: metav1.NamespaceDefault,
 		},
 		Spec: v1alpha1.CAPApplicationSpec{
-			Domains:         v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}},
+			DomainRefs: []v1alpha1.DomainRefs{
+				{
+					Kind: "Domain",
+					Name: "primaryDomain",
+				},
+				{
+					Kind: "ClusterDomain",
+					Name: "secondaryDomain",
+				},
+			},
 			GlobalAccountId: "globalAccountId",
 			BTPAppName:      "btpApplicationName",
 			Provider: v1alpha1.BTPTenantIdentification{
@@ -151,13 +161,19 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 						TenantId:  tenantId,
 					},
 					BTP: v1alpha1.BTP{},
+					DomainRefs: []v1alpha1.DomainRefs{
+						{
+							Kind: "Domain",
+							Name: "primaryDomain",
+						},
+						{
+							Kind: "ClusterDomain",
+							Name: "secondaryDomain",
+						},
+					},
 				},
 				Kind: crdType,
 			}
-		}
-
-		if operation == admissionv1.Create {
-			crd.Spec.Domains = v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}}
 		}
 
 		rawBytes, err = json.Marshal(crd)
@@ -168,6 +184,10 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 				crdOld.Spec.Provider.SubDomain = crdOld.Spec.Provider.SubDomain + "modified"
 				crdOld.Spec.Provider.TenantId = crdOld.Spec.Provider.TenantId + "modified"
 				rawBytesOld, err = json.Marshal(crdOld)
+			} else if change == domainsUpdate {
+				crd.Spec.DomainRefs = []v1alpha1.DomainRefs{}
+				crd.Spec.Domains = v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}}
+				rawBytes, err = json.Marshal(crd)
 			}
 		}
 	case v1alpha1.CAPApplicationVersionKind:
@@ -724,12 +744,12 @@ func TestCaInvalidity(t *testing.T) {
 		update    updateType
 	}{
 		{
-			operation: admissionv1.Create,
-			update:    noUpdate,
+			operation: admissionv1.Update,
+			update:    providerUpdate,
 		},
 		{
 			operation: admissionv1.Update,
-			update:    providerUpdate,
+			update:    domainsUpdate,
 		},
 	}
 	for _, test := range tests {
@@ -752,10 +772,10 @@ func TestCaInvalidity(t *testing.T) {
 			universalDeserializer.Decode(bytes, nil, &admissionReview)
 
 			var errorMessage string
-			if test.operation == admissionv1.Create {
-				errorMessage = fmt.Sprintf("%s %s domains are deprecated. Use domainRefs instead in: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
-			} else if test.update == providerUpdate {
+			if test.update == providerUpdate {
 				errorMessage = fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
+			} else if test.update == domainsUpdate {
+				errorMessage = fmt.Sprintf("%s %s domains are deprecated. Use domainRefs instead in: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
 			}
 
 			if admissionReview.Response.Allowed ||
@@ -1425,6 +1445,192 @@ func TestCtoutInvalidity(t *testing.T) {
 				if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != fmt.Sprintf("%s %s label %s missing on CAP tenant output %s", InvalidationMessage, v1alpha1.CAPTenantOutputKind, LabelTenantId, "some-ctout") {
 					t.Fatal("validation response error")
 				}
+			}
+		})
+	}
+}
+
+func TestClusterDomainInvalidity(t *testing.T) {
+	tests := []struct {
+		operation              admissionv1.Operation
+		duplicateClusterDomain bool
+		duplicateDomain        bool
+	}{
+		{
+			operation:              admissionv1.Create,
+			duplicateClusterDomain: true,
+		},
+		{
+			operation:       admissionv1.Create,
+			duplicateDomain: true,
+		},
+	}
+	for _, test := range tests {
+		t.Run("Testing ClusterDomain invalidity during "+string(test.operation), func(t *testing.T) {
+			clusterDomain := &v1alpha1.ClusterDomain{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-domain",
+				},
+				Spec: v1alpha1.DomainSpec{
+					Domain: "foo-cluster-domain.com",
+					IngressSelector: map[string]string{
+						"app":   "istio-ingressgateway",
+						"istio": "ingressgateway",
+					},
+				},
+			}
+			domain := &v1alpha1.Domain{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "domain",
+					Namespace: metav1.NamespaceDefault,
+				},
+				Spec: v1alpha1.DomainSpec{
+					Domain: "foo-domain.com",
+					IngressSelector: map[string]string{
+						"app":   "istio-ingressgateway",
+						"istio": "ingressgateway",
+					},
+				},
+			}
+
+			wh := &WebhookHandler{
+				CrdClient: fakeCrdClient.NewSimpleClientset(clusterDomain, domain),
+			}
+
+			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.ClusterDomainKind, clusterDomain.Name, noUpdate)
+			if err != nil {
+				t.Fatal("admission review error")
+			}
+
+			var clusterDomainDup *v1alpha1.ClusterDomain
+			clusterDomainDup = clusterDomain.DeepCopy()
+			if test.duplicateClusterDomain {
+				clusterDomainDup.Name = clusterDomainDup.Name + "-duplicate"
+			} else if test.duplicateDomain {
+				clusterDomainDup.Name = clusterDomainDup.Name + "-duplicate"
+				clusterDomainDup.Spec.Domain = domain.Spec.Domain
+			}
+
+			rawBytes, _ := json.Marshal(clusterDomainDup)
+			admissionReview.Request.Object.Raw = rawBytes
+			bytesRequest, err := json.Marshal(admissionReview)
+			if err != nil {
+				t.Fatal("marshal error")
+			}
+			request := httptest.NewRequest(http.MethodGet, "/validate", bytes.NewBuffer(bytesRequest))
+			recorder := httptest.NewRecorder()
+
+			wh.Validate(recorder, request)
+
+			admissionReviewRes := admissionv1.AdmissionReview{}
+			bytes, err := io.ReadAll(recorder.Body)
+			if err != nil {
+				t.Fatal("io read error")
+			}
+			universalDeserializer.Decode(bytes, nil, &admissionReviewRes)
+
+			var errorMessage string
+			if test.duplicateClusterDomain {
+				errorMessage = fmt.Sprintf("%s %s %s already exist with domain %s", InvalidationMessage, v1alpha1.ClusterDomainKind, clusterDomain.Name, clusterDomain.Spec.Domain)
+			} else if test.duplicateDomain {
+				errorMessage = fmt.Sprintf("%s %s %s already exist in namespace %s with domain %s", InvalidationMessage, v1alpha1.DomainKind, domain.Name, domain.Namespace, domain.Spec.Domain)
+			}
+
+			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
+				t.Fatal("validation response error")
+			}
+		})
+	}
+}
+
+func TestDomainInvalidity(t *testing.T) {
+	tests := []struct {
+		operation              admissionv1.Operation
+		duplicateClusterDomain bool
+		duplicateDomain        bool
+	}{
+		{
+			operation:              admissionv1.Create,
+			duplicateClusterDomain: true,
+		},
+		{
+			operation:       admissionv1.Create,
+			duplicateDomain: true,
+		},
+	}
+	for _, test := range tests {
+		t.Run("Testing Domain invalidity during "+string(test.operation), func(t *testing.T) {
+			clusterDomain := &v1alpha1.ClusterDomain{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-domain",
+				},
+				Spec: v1alpha1.DomainSpec{
+					Domain: "foo-cluster-domain.com",
+					IngressSelector: map[string]string{
+						"app":   "istio-ingressgateway",
+						"istio": "ingressgateway",
+					},
+				},
+			}
+			domain := &v1alpha1.Domain{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "domain",
+					Namespace: metav1.NamespaceDefault,
+				},
+				Spec: v1alpha1.DomainSpec{
+					Domain: "foo-domain.com",
+					IngressSelector: map[string]string{
+						"app":   "istio-ingressgateway",
+						"istio": "ingressgateway",
+					},
+				},
+			}
+
+			wh := &WebhookHandler{
+				CrdClient: fakeCrdClient.NewSimpleClientset(clusterDomain, domain),
+			}
+
+			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.ClusterDomainKind, clusterDomain.Name, noUpdate)
+			if err != nil {
+				t.Fatal("admission review error")
+			}
+
+			var domainDup *v1alpha1.Domain
+			domainDup = domain.DeepCopy()
+			if test.duplicateClusterDomain {
+				domainDup.Name = domainDup.Name + "-duplicate"
+				domainDup.Spec.Domain = clusterDomain.Spec.Domain
+			} else if test.duplicateDomain {
+				domainDup.Name = domainDup.Name + "-duplicate"
+			}
+
+			rawBytes, _ := json.Marshal(domainDup)
+			admissionReview.Request.Object.Raw = rawBytes
+			bytesRequest, err := json.Marshal(admissionReview)
+			if err != nil {
+				t.Fatal("marshal error")
+			}
+			request := httptest.NewRequest(http.MethodGet, "/validate", bytes.NewBuffer(bytesRequest))
+			recorder := httptest.NewRecorder()
+
+			wh.Validate(recorder, request)
+
+			admissionReviewRes := admissionv1.AdmissionReview{}
+			bytes, err := io.ReadAll(recorder.Body)
+			if err != nil {
+				t.Fatal("io read error")
+			}
+			universalDeserializer.Decode(bytes, nil, &admissionReviewRes)
+
+			var errorMessage string
+			if test.duplicateClusterDomain {
+				errorMessage = fmt.Sprintf("%s %s %s already exist with domain %s", InvalidationMessage, v1alpha1.ClusterDomainKind, clusterDomain.Name, clusterDomain.Spec.Domain)
+			} else if test.duplicateDomain {
+				errorMessage = fmt.Sprintf("%s %s %s already exist in namespace %s with domain %s", InvalidationMessage, v1alpha1.DomainKind, domain.Name, domain.Namespace, domain.Spec.Domain)
+			}
+
+			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
+				t.Fatal("validation response error")
 			}
 		})
 	}
