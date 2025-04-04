@@ -41,7 +41,7 @@ spec:
               dnsMode:
                 default: None
                 enum:
-                - Node
+                - None
                 - Wildcard
                 - Subdomain
                 type: string
