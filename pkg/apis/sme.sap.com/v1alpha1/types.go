@@ -729,7 +729,7 @@ const (
 	MutualTLSMode TLSMode = "Mutual"
 )
 
-// +kubebuilder:validation:Enum=Node;Wildcard;Subdomain
+// +kubebuilder:validation:Enum=None;Wildcard;Subdomain
 type DNSMode string
 
 const (
