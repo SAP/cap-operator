@@ -34,6 +34,10 @@ func (ca *CAPApplication) SetStatusServicesOnly(val *bool) {
 	ca.Status.ServicesOnly = val
 }
 
+func (ca *CAPApplication) SetStatusObservedSubdomains(values []string) {
+	ca.Status.ObservedSubdomains = values
+}
+
 func (ca *CAPApplication) IsServicesOnly() bool {
 	return ca.Status.ServicesOnly != nil && *ca.Status.ServicesOnly
 }
@@ -116,7 +120,7 @@ func (dom *Domain) SetStatusWithReadyCondition(state DomainState, readyStatus me
 }
 
 func (dom *Domain) GetKind() string {
-	return dom.Kind
+	return DomainKind
 }
 
 func (dom *Domain) GetName() string {
@@ -145,7 +149,7 @@ func (cdom *ClusterDomain) SetStatusWithReadyCondition(state DomainState, readyS
 }
 
 func (cdom *ClusterDomain) GetKind() string {
-	return cdom.Kind
+	return ClusterDomainKind
 }
 
 func (cdom *ClusterDomain) GetName() string {

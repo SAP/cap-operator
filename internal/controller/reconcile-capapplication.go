@@ -8,6 +8,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
 	"strings"
 	"time"
 
@@ -28,10 +30,9 @@ const (
 )
 
 const (
-	EventActionProcessingSecrets         = "ProcessingSecrets"
-	EventActionProcessingDomainResources = "ProcessingDomainResources"
-	EventActionProviderTenantProcessing  = "ProviderTenantProcessing"
-	EventActionCheckForVersion           = "CheckForVersion"
+	EventActionProcessingSecrets        = "ProcessingSecrets"
+	EventActionProviderTenantProcessing = "ProviderTenantProcessing"
+	EventActionCheckForVersion          = "CheckForVersion"
 )
 
 func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem, attempts int) (result *ReconcileResult, err error) {
@@ -51,6 +52,9 @@ func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem
 	}
 
 	defer func() {
+		// observe subdomains and queue domains (in case of changes)
+		c.observeCAPApplicationSubdomains(ctx, ca, result)
+
 		if statusErr := c.updateCAPApplicationStatus(ctx, ca); statusErr != nil && err == nil {
 			err = statusErr
 		}
@@ -74,7 +78,7 @@ func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem
 		result, err = c.handleCAPApplicationDependentResources(ctx, ca, attempts)
 	}
 
-	return c.checkAdditonalConditions(ctx, ca, result, err)
+	return c.checkAdditionalConditions(ctx, ca, result, err)
 }
 
 func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context, ca *v1alpha1.CAPApplication, attempts int) (requeue *ReconcileResult, err error) {
@@ -208,7 +212,7 @@ func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1al
 	return nil
 }
 
-func (c *Controller) checkAdditonalConditions(ctx context.Context, ca *v1alpha1.CAPApplication, result *ReconcileResult, err error) (*ReconcileResult, error) {
+func (c *Controller) checkAdditionalConditions(ctx context.Context, ca *v1alpha1.CAPApplication, result *ReconcileResult, err error) (*ReconcileResult, error) {
 	// In case of explicit Reconcile or errors return back with the original result
 	if result != nil || err != nil {
 		return result, err
@@ -280,6 +284,50 @@ func (c *Controller) updateCAPApplicationStatus(ctx context.Context, ca *v1alpha
 		*ca = *caUpdated
 	}
 	return err
+}
+
+func (c *Controller) observeCAPApplicationSubdomains(ctx context.Context, ca *v1alpha1.CAPApplication, result *ReconcileResult) error {
+	mapSubDomains := map[string]struct{}{}
+
+	// Get all versions
+	cavs, err := c.getCachedCAPApplicationVersions(ctx, ca)
+	if err != nil {
+		return err
+	}
+	// Get all unique subdomains from all versions
+	for _, cav := range cavs {
+		for _, serviceExposure := range cav.Spec.ServiceExposures {
+			mapSubDomains[serviceExposure.SubDomain] = struct{}{}
+		}
+	}
+
+	// Get all tenants
+	tenants, err := c.getRelevantTenantsForCA(ca)
+	if err != nil {
+		return err
+	}
+	// Add tenant subdomains
+	for _, tenant := range tenants {
+		mapSubDomains[tenant.Spec.SubDomain] = struct{}{}
+	}
+
+	values := slices.Sorted(maps.Keys(mapSubDomains))
+	if sha256Sum(values...) != sha256Sum(ca.Status.ObservedSubdomains...) {
+		ca.SetStatusObservedSubdomains(values)
+		if result == nil {
+			result = NewReconcileResult()
+		}
+		for _, ref := range ca.Spec.DomainRefs {
+			switch ref.Kind {
+			case v1alpha1.DomainKind:
+				result.AddResource(ResourceDomain, ref.Name, ca.Namespace, 0)
+			case v1alpha1.ClusterDomainKind:
+				result.AddResource(ResourceClusterDomain, ref.Name, corev1.NamespaceAll, 0)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (c *Controller) validateSecrets(ctx context.Context, ca *v1alpha1.CAPApplication, attempts int) (bool, error) {
