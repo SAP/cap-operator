@@ -193,7 +193,7 @@ func TestController_reconcileOperatorDomains(t *testing.T) {
 			})
 
 			q := QueueItem{
-				Key: ResourceOperatorDomains,
+				// Key: ResourceOperatorDomains,
 				ResourceKey: NamespacedResourceKey{
 					Namespace: metav1.NamespaceAll,
 					Name:      "",

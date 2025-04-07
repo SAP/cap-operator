@@ -1198,7 +1198,7 @@ func getDNSTarget(ingressGWSvc *corev1.Service) string {
 	return strings.Split(dnsTarget, ",")[0]
 }
 
-func (c *Controller) getLoadBalancerSvcs(ctx context.Context, istioIngressGWNamespace string) ([]corev1.Service, error) {
+func (c *Controller) getLoadBalancerServices(ctx context.Context, istioIngressGWNamespace string) ([]corev1.Service, error) {
 	// List all services in the same namespace as the istio-ingressgateway pod namespace
 	allServices, err := c.kubeClient.CoreV1().Services(istioIngressGWNamespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
@@ -1215,7 +1215,7 @@ func (c *Controller) getLoadBalancerSvcs(ctx context.Context, istioIngressGWName
 }
 
 func (c *Controller) getIngressGatewayService(ctx context.Context, istioIngressGWNamespace string, relevantPodNames map[string]struct{}, ca *v1alpha1.CAPApplication) (*corev1.Service, error) {
-	loadBalancerSvcs, err := c.getLoadBalancerSvcs(ctx, istioIngressGWNamespace)
+	loadBalancerSvcs, err := c.getLoadBalancerServices(ctx, istioIngressGWNamespace)
 	if err != nil {
 		return nil, err
 	}
