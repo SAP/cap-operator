@@ -256,7 +256,9 @@ func (c *Controller) processQueueItem(ctx context.Context, key int) error {
 	case ResourceCAPTenantOperation:
 		result, err = c.reconcileCAPTenantOperation(ctx, item, attempts)
 	case ResourceDomain:
-		err = c.reconcileOperatorDomains(ctx, item, attempts)
+		result, err = c.reconcileDomain(ctx, item, attempts)
+	case ResourceClusterDomain:
+		result, err = c.reconcileClusterDomain(ctx, item, attempts)
 	default:
 		err = errors.New("unidentified queue item")
 		skipItem = true
