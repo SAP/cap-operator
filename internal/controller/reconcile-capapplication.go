@@ -100,10 +100,10 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 
 	// step 2.1 Reconcile Service related DNS entries here --> This creates service exposure based DNS entries for all versions of the CAPApplication
 	// The version ready status needs these service related DNS entries to exist!
-	err = c.reconcileServiceDNSEntires(ctx, ca)
-	if err != nil {
-		return
-	}
+	// err = c.reconcileServiceDNSEntires(ctx, ca)
+	// if err != nil {
+	// 	return
+	// }
 
 	// step 2.2 - check for valid versions
 	cav, err := c.getLatestReadyCAPApplicationVersion(ctx, ca, true)
@@ -127,24 +127,24 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 	// We can already update LatestVersionReady to "true" at this point in time, but as this method is called several times, we do not do it here (during initial Provisioning as CA itself is may not be Consistent)
 
 	// step 3 - queue domain handling
-	if requeue, err = c.handleDomains(ctx, ca); requeue != nil || err != nil {
-		return
-	}
+	// if requeue, err = c.handleDomains(ctx, ca); requeue != nil || err != nil {
+	// 	return
+	// }
 
 	// step 4 - validate provider tenant, create if not available
 	if processing, err = c.reconcileCAPApplicationProviderTenant(ctx, ca, cav); err != nil || processing {
 		return
 	}
 
-	// step 5 - reconile service exposure, create/update services based on the latest CAV
+	// step 5 - reconcile service exposure, create/update services based on the latest CAV
 	if requeue, err = c.reconcileServiceNetworking(ctx, ca, cav); requeue != nil || err != nil {
 		return
 	}
 
 	// step 6 - check state of dependent resources
-	if processing, err = c.checkPrimaryDomainResources(ctx, ca); err != nil || processing {
-		return
-	}
+	// if processing, err = c.checkPrimaryDomainResources(ctx, ca); err != nil || processing {
+	// 	return
+	// }
 
 	// step 7 - check and set consistent status
 	return c.verifyApplicationConsistent(ctx, ca)
