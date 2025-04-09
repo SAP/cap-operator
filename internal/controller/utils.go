@@ -242,7 +242,7 @@ func updateLabelAnnotationMetadata(object *metav1.ObjectMeta, appMetadata *appMe
 
 func convertTlsMode(m v1alpha1.TLSMode) networkingv1.ServerTLSSettings_TLSmode {
 	switch m {
-	case v1alpha1.MutualTLSMode:
+	case v1alpha1.TlsModeMutual:
 		return networkingv1.ServerTLSSettings_MUTUAL
 	default:
 		return networkingv1.ServerTLSSettings_SIMPLE
