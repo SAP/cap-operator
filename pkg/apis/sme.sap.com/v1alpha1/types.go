@@ -724,9 +724,9 @@ type TLSMode string
 
 const (
 	// Simple TLS Mode (Default)
-	SimpleTLSMode TLSMode = "Simple"
+	TlsModeSimple TLSMode = "Simple"
 	// Mutual TLS Mode
-	MutualTLSMode TLSMode = "Mutual"
+	TlsModeMutual TLSMode = "Mutual"
 )
 
 // +kubebuilder:validation:Enum=None;Wildcard;Subdomain
@@ -734,11 +734,11 @@ type DNSMode string
 
 const (
 	// No DNS entries will be created (Default)
-	NoDNS DNSMode = "None"
+	DnsModeNone DNSMode = "None"
 	// Wildcard DNS entry will be created
-	WildCardDNS DNSMode = "Wildcard"
+	DnsModeWildcard DNSMode = "Wildcard"
 	// A DNS entry will be created for each subdomain specified by the applications using this domain
-	Subdomain DNSMode = "Subdomain"
+	DnsModeSubdomain DNSMode = "Subdomain"
 )
 
 type DomainStatus struct {

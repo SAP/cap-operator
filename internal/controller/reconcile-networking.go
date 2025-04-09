@@ -563,26 +563,26 @@ func (c *Controller) reconcileDNSEntries(ctx context.Context, dnsEntryNamePrefix
 }
 
 func (c *Controller) checkDNSEntries(ctx context.Context, kind string, ownerNamespace string, ownerName string) (bool, error) {
-	if dnsManager() == dnsManagerGardener {
-		// get relevant DNSEntries
-		dnsEntries, err := c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ownerNamespace).List(ctx, metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(kind, ownerNamespace, ownerName)}).String()})
-		if err != nil {
-			return false, err
-		}
+	// if dnsManager() == dnsManagerGardener {
+	// 	// get relevant DNSEntries
+	// 	dnsEntries, err := c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ownerNamespace).List(ctx, metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(kind, ownerNamespace, ownerName)}).String()})
+	// 	if err != nil {
+	// 		return false, err
+	// 	}
 
-		if len(dnsEntries.Items) == 0 {
-			return false, fmt.Errorf("could not find DNSEntry for %s %s.%s", kind, ownerNamespace, ownerName)
-		}
+	// 	if len(dnsEntries.Items) == 0 {
+	// 		return false, fmt.Errorf("could not find DNSEntry for %s %s.%s", kind, ownerNamespace, ownerName)
+	// 	}
 
-		for _, dnsEntry := range dnsEntries.Items {
-			// check for ready state
-			if dnsEntry.Status.State == dnsv1alpha1.STATE_ERROR {
-				return false, fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, kind, ownerNamespace, ownerName, *dnsEntry.Status.Message)
-			} else if dnsEntry.Status.State != dnsv1alpha1.STATE_READY {
-				return true, nil
-			}
-		}
-	}
+	// 	for _, dnsEntry := range dnsEntries.Items {
+	// 		// check for ready state
+	// 		if dnsEntry.Status.State == dnsv1alpha1.STATE_ERROR {
+	// 			return false, fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, kind, ownerNamespace, ownerName, *dnsEntry.Status.Message)
+	// 		} else if dnsEntry.Status.State != dnsv1alpha1.STATE_READY {
+	// 			return true, nil
+	// 		}
+	// 	}
+	// }
 	// Not a gardener managed cluster -or- DNSEntries Ready -> return
 	return false, nil
 }
@@ -795,8 +795,6 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 	}
 
 	spec := &networkingv1.VirtualService{
-		Gateways: []string{ca.Spec.BTPAppName + "-gw"},
-		Hosts:    []string{cat.Spec.SubDomain + "." + ca.Spec.Domains.Primary},
 		Http: []*networkingv1.HTTPRoute{{
 			Match: []*networkingv1.HTTPMatchRequest{
 				{Uri: &networkingv1.StringMatch{MatchType: &networkingv1.StringMatch_Prefix{Prefix: "/"}}},
@@ -810,7 +808,7 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 			}},
 		}},
 	}
-	err = c.updateVirtualServiceSpecWithSecondaryDomains(ctx, spec, cat.Spec.SubDomain, ca)
+	err = c.updateVirtualServiceSpecFromDomainReferences(ctx, spec, cat.Spec.SubDomain, ca)
 	if err != nil {
 		return modified, err
 	}
@@ -915,30 +913,21 @@ func (c *Controller) cleanupServiceDNSEntries(ctx context.Context, aSubDomainHas
 	return c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ca.Namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labelSelector.String()})
 }
 
-func (c *Controller) updateVirtualServiceSpecWithSecondaryDomains(ctx context.Context, spec *networkingv1.VirtualService, subdomain string, ca *v1alpha1.CAPApplication) error {
-	secondaryDomainsExist := ca.Spec.Domains.Secondary != nil && len(ca.Spec.Domains.Secondary) > 0
-	if !secondaryDomainsExist {
-		return nil
-	}
-
-	// add customer specific domains
-	for _, domain := range ca.Spec.Domains.Secondary {
-		spec.Hosts = append(spec.Hosts, subdomain+"."+domain)
-	}
-
-	// Determine Ingress GW service for this app
-	gwInfo, err := c.getIngressGatewayInfo(ctx, ca)
+func (c *Controller) updateVirtualServiceSpecFromDomainReferences(ctx context.Context, spec *networkingv1.VirtualService, subdomain string, ca *v1alpha1.CAPApplication) error {
+	doms, cdoms, err := fetchDomainResourcesFromCache(ctx, c, ca.Spec.DomainRefs, ca.Namespace)
 	if err != nil {
 		return err
 	}
 
-	// Get the relevant central operator GW for this ingress GW
-	operatorGW, _ := c.getOperatorGateway(ctx, gwInfo.Namespace, sha1Sum(gwInfo.DNSTarget))
-	if operatorGW == nil {
-		// requeue for later reconciliation
-		return &OperatorGatewayMissingError{}
-	}
-	spec.Gateways = append(spec.Gateways, operatorGW.Namespace+"/"+operatorGW.Name)
+	hosts := []string{}
+	hosts = append(hosts, getDomainHosts(doms, subdomain)...)
+	hosts = append(hosts, getDomainHosts(cdoms, subdomain)...)
+	spec.Hosts = hosts
+
+	gateways := []string{}
+	gateways = append(gateways, getDomainGatewayReferences(doms)...)
+	gateways = append(gateways, getDomainGatewayReferences(cdoms)...)
+	spec.Gateways = gateways
 
 	return nil
 }
@@ -971,7 +960,7 @@ func (c *Controller) reconcileServiceNetworking(ctx context.Context, ca *v1alpha
 	}
 	// update event reason
 	if vsModified {
-		message = fmt.Sprintf("VirtualService(s) for app %s.%s reconciled", cav.Namespace, cav.Name)
+		message = fmt.Sprintf("VirtualService(s) for application %s.%s reconciled", cav.Namespace, cav.Name)
 		reason = EventServiceNetworkingModified
 	}
 
@@ -1089,11 +1078,9 @@ func (c *Controller) getUpdatedServiceVirtualServiceObject(ctx context.Context, 
 	}
 
 	spec := &networkingv1.VirtualService{
-		Gateways: []string{ca.Spec.BTPAppName + "-gw"},
-		Hosts:    []string{serviceExposure.SubDomain + "." + ca.Spec.Domains.Primary},
-		Http:     httpRoutes,
+		Http: httpRoutes,
 	}
-	err = c.updateVirtualServiceSpecWithSecondaryDomains(ctx, spec, serviceExposure.SubDomain, ca)
+	err = c.updateVirtualServiceSpecFromDomainReferences(ctx, spec, serviceExposure.SubDomain, ca)
 	if err != nil {
 		return modified, err
 	}
