@@ -17,6 +17,7 @@ import (
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -24,6 +25,7 @@ import (
 
 const (
 	CAPApplicationEventMissingSecrets               = "MissingSecrets"
+	CAPApplicationEventMissingDomainReferences      = "MissingDomainReferences"
 	CAPApplicationEventPrimaryGatewayModified       = "PrimaryGatewayModified"
 	CAPApplicationEventMissingIngressGatewayInfo    = "MissingIngressGatewayInfo"
 	CAPApplicationEventProviderTenantCreated        = "ProviderTenantCreated"
@@ -53,8 +55,10 @@ func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem
 	}
 
 	defer func() {
-		// observe subdomains and queue domains (in case of changes)
-		c.observeCAPApplicationSubdomains(ctx, ca, result)
+		if err == nil {
+			// observe subdomains and queue domains (in case of changes)
+			result, err = c.observeCAPApplicationSubdomains(ctx, ca, result)
+		}
 
 		if statusErr := c.updateCAPApplicationStatus(ctx, ca); statusErr != nil && err == nil {
 			err = statusErr
@@ -276,13 +280,13 @@ func (c *Controller) updateCAPApplicationStatus(ctx context.Context, ca *v1alpha
 	return err
 }
 
-func (c *Controller) observeCAPApplicationSubdomains(ctx context.Context, ca *v1alpha1.CAPApplication, result *ReconcileResult) error {
+func (c *Controller) observeCAPApplicationSubdomains(ctx context.Context, ca *v1alpha1.CAPApplication, result *ReconcileResult) (*ReconcileResult, error) {
 	mapSubDomains := map[string]struct{}{}
 
 	// Get all versions
 	cavs, err := c.getCachedCAPApplicationVersions(ctx, ca)
 	if err != nil {
-		return err
+		return result, err
 	}
 	// Get all unique subdomains from all versions
 	for _, cav := range cavs {
@@ -294,7 +298,7 @@ func (c *Controller) observeCAPApplicationSubdomains(ctx context.Context, ca *v1
 	// Get all tenants
 	tenants, err := c.getRelevantTenantsForCA(ca)
 	if err != nil {
-		return err
+		return result, err
 	}
 	// Add tenant subdomains
 	for _, tenant := range tenants {
@@ -310,7 +314,7 @@ func (c *Controller) observeCAPApplicationSubdomains(ctx context.Context, ca *v1
 		addDomainReferencesToReconcileResult(ca.Spec.DomainRefs, result, ca.Namespace)
 	}
 
-	return nil
+	return result, nil
 }
 
 func addDomainReferencesToReconcileResult(refs []v1alpha1.DomainRefs, result *ReconcileResult, namespace string) {
@@ -583,11 +587,19 @@ func (c *Controller) handleApplicationDomainReferences(ctx context.Context, ca *
 	}
 
 	var ready bool
-	if ready, err = c.areApplicationDomainReferencesReady(ctx, ca); err == nil && !ready {
+	ready, err = c.areApplicationDomainReferencesReady(ctx, ca)
+	if errors.IsNotFound(err) {
+		// ignore error and wait for domain resources by requeue
+		c.Event(ca, nil, corev1.EventTypeWarning, CAPApplicationEventMissingDomainReferences, EventActionProcessingDomainResources, err.Error())
+		err = nil
+		ready = false
+	}
+	if err == nil && !ready {
 		// Not all domain resources are ready
 		ca.SetStatusWithReadyCondition(ca.Status.State, metav1.ConditionFalse, "ProcessingDomainReferences", "Waiting for domain references to be ready")
 		requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 5*time.Second)
 	}
+
 	return
 }
 
