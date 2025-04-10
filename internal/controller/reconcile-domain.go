@@ -122,14 +122,17 @@ func (c *Controller) updateClusterDomainStatus(ctx context.Context, dom *v1alpha
 }
 
 func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, subResourceNamespace string) (result *ReconcileResult, err error) {
-	// set processing status
-	dom.SetStatusWithReadyCondition(v1alpha1.DomainStateProcessing, metav1.ConditionFalse, "Processing", "Processing domain resources")
-
 	defer func() {
 		if err != nil {
-			dom.SetStatusWithReadyCondition(v1alpha1.DomainStateError, metav1.ConditionFalse, "Processing", err.Error())
+			dom.SetStatusWithReadyCondition(v1alpha1.DomainStateError, metav1.ConditionFalse, "ProcessingError", err.Error())
 		}
 	}()
+
+	if dom.GetStatus().State == v1alpha1.DomainStateReady {
+		// set processing status
+		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateProcessing, metav1.ConditionFalse, "Processing", "Processing domain resources")
+		return NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0), nil
+	}
 
 	ownerId := formOwnerIdFromDomain(dom)
 	subResourceName := fmt.Sprintf("%s-%s", subResourceNamespace, dom.GetName())
@@ -530,6 +533,20 @@ func handleDnsEntries[T v1alpha1.DomainEntity](ctx context.Context, c *Controlle
 			return fmt.Errorf("failed to list CAPApplications: %w", err)
 		}
 		for _, ca := range cas {
+			if len(ca.Spec.DomainRefs) == 0 {
+				continue
+			}
+			referenced := false
+			for _, ref := range ca.Spec.DomainRefs {
+				if ref.Kind == dom.GetKind() && ref.Name == dom.GetName() {
+					referenced = true
+					break
+				}
+			}
+			if !referenced {
+				continue
+			}
+
 			if len(ca.Status.ObservedSubdomains) > 0 {
 				for _, subdomain := range ca.Status.ObservedSubdomains {
 					if deLabels, ok := subdomains[subdomain]; !ok {
@@ -694,6 +711,7 @@ func areDnsEntriesReady[T v1alpha1.DomainEntity](ctx context.Context, c *Control
 		subdomainReq, _ := labels.NewRequirement(LabelSubdomainHash, selection.Equals, []string{subdomainHash})
 		selector = selector.Add(*subdomainReq)
 	}
+
 	// list all dns entries which match the the domains (and subdomain, if supplied)
 	dnsEntries, err := c.gardenerDNSClient.DnsV1alpha1().DNSEntries(corev1.NamespaceAll).List(ctx, metav1.ListOptions{
 		LabelSelector: selector.String(),
@@ -769,4 +787,17 @@ func getDomainGatewayReferences[T v1alpha1.DomainEntity](s []T) []string {
 		}
 	}
 	return gateways
+}
+
+func areDomainResourcesReady[T v1alpha1.DomainEntity](doms []T) bool {
+	if len(doms) == 0 {
+		return true
+	}
+	for _, dom := range doms {
+		s := dom.GetStatus()
+		if s.State != v1alpha1.DomainStateReady || !isCROConditionReady(s.GenericStatus) {
+			return false
+		}
+	}
+	return true
 }
