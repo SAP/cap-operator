@@ -747,6 +747,8 @@ type DomainStatus struct {
 	State DomainState `json:"state"`
 	// Effective DNS Target identified for this domain
 	DnsTarget string `json:"dnsTarget,omitempty"`
+	// domain observed during last reconciliation
+	ObservedDomain string `json:"observedDomain,omitempty"`
 }
 
 // +kubebuilder:validation:Enum="";Ready;Error;Processing;Deleting

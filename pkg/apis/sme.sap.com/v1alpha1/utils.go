@@ -106,6 +106,7 @@ func (status *GenericStatus) SetStatusCondition(condition metav1.Condition) {
 type DomainEntity interface {
 	*Domain | *ClusterDomain
 	SetStatusWithReadyCondition(state DomainState, readyStatus metav1.ConditionStatus, reason string, message string)
+	SetStatusObservedDomain(v string)
 	GetKind() string
 	GetName() string
 	GetNamespace() string
@@ -117,6 +118,10 @@ type DomainEntity interface {
 func (dom *Domain) SetStatusWithReadyCondition(state DomainState, readyStatus metav1.ConditionStatus, reason string, message string) {
 	dom.Status.State = state
 	dom.Status.SetStatusCondition(metav1.Condition{Type: readyType, Status: readyStatus, Reason: reason, Message: message, ObservedGeneration: dom.Generation})
+}
+
+func (dom *Domain) SetStatusObservedDomain(v string) {
+	dom.Status.ObservedDomain = v
 }
 
 func (dom *Domain) GetKind() string {
@@ -146,6 +151,10 @@ func (dom *Domain) GetSpec() *DomainSpec {
 func (cdom *ClusterDomain) SetStatusWithReadyCondition(state DomainState, readyStatus metav1.ConditionStatus, reason string, message string) {
 	cdom.Status.State = state
 	cdom.Status.SetStatusCondition(metav1.Condition{Type: readyType, Status: readyStatus, Reason: reason, Message: message, ObservedGeneration: cdom.Generation})
+}
+
+func (cdom *ClusterDomain) SetStatusObservedDomain(v string) {
+	cdom.Status.ObservedDomain = v
 }
 
 func (cdom *ClusterDomain) GetKind() string {
