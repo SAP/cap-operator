@@ -41,6 +41,7 @@ const (
 	TenantOpJobWorkloadCountErr          = "%s %s there should not be any job workload of type %s or %s defined if all the deployment workloads are of type %s."
 	ServiceExposureWorkloadNameErr       = "%s %s workload name %s mentioned as part of routes in service exposure with subDomain %s is not a valid workload of type Service."
 	DuplicateServiceExposureSubDomainErr = "%s %s duplicate subDomain %s in service exposure"
+	DomainsDeprecated                    = "%s %s domains are deprecated. Use domainRefs instead in: %s.%s"
 )
 
 type validateResource struct {
@@ -734,18 +735,18 @@ func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissio
 		}
 
 		// Domains are DEPRECATED
-		if admissionReview.Request.Operation == admissionv1.Create && (caObjNew.Spec.Domains.Primary != "" || len(caObjNew.Spec.Domains.Secondary) > 0 || caObjNew.Spec.Domains.DnsTarget != "" || len(caObjNew.Spec.Domains.IstioIngressGatewayLabels) > 0) {
+		if admissionReview.Request.Operation == admissionv1.Create && !cmp.Equal(caObjNew.Spec.Domains, v1alpha1.ApplicationDomains{}) {
 			return validateResource{
 				allowed: false,
-				message: fmt.Sprintf("%s %s domains are deprecated. Use domainRefs instead in: %s.%s", InvalidationMessage, caObjNew.Kind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
+				message: fmt.Sprintf(DomainsDeprecated, InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
 			}
 		}
 
 		// check: cannot switch from domainRefs to domains
-		if admissionReview.Request.Operation == admissionv1.Update && (len(caObjOld.Spec.DomainRefs) > 0 && (caObjNew.Spec.Domains.Primary != "" || len(caObjNew.Spec.Domains.Secondary) > 0 || caObjNew.Spec.Domains.DnsTarget != "" || len(caObjNew.Spec.Domains.IstioIngressGatewayLabels) > 0)) {
+		if admissionReview.Request.Operation == admissionv1.Update && (len(caObjOld.Spec.DomainRefs) > 0 && !cmp.Equal(caObjNew.Spec.Domains, v1alpha1.ApplicationDomains{})) {
 			return validateResource{
 				allowed: false,
-				message: fmt.Sprintf("%s %s domains are deprecated. Use domainRefs instead in: %s.%s", InvalidationMessage, caObjNew.Kind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
+				message: fmt.Sprintf(DomainsDeprecated, InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
 			}
 		}
 	}

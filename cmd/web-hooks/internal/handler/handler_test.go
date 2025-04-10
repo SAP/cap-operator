@@ -45,6 +45,7 @@ const (
 	imageUpdate
 	emptyUpdate
 	domainsUpdate
+	useDomains
 )
 
 func createCaCRO() *v1alpha1.CAPApplication {
@@ -189,6 +190,12 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 				crd.Spec.Domains = v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}}
 				rawBytes, err = json.Marshal(crd)
 			}
+		}
+
+		if operation == admissionv1.Create && change == useDomains && err == nil {
+			crd.Spec.DomainRefs = []v1alpha1.DomainRefs{}
+			crd.Spec.Domains = v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}}
+			rawBytes, err = json.Marshal(crd)
 		}
 	case v1alpha1.CAPApplicationVersionKind:
 		crd := &ResponseCav{}
@@ -751,6 +758,10 @@ func TestCaInvalidity(t *testing.T) {
 			operation: admissionv1.Update,
 			update:    domainsUpdate,
 		},
+		{
+			operation: admissionv1.Create,
+			update:    useDomains,
+		},
 	}
 	for _, test := range tests {
 		t.Run("Testing CAPApplication invalidity for operation "+string(test.operation), func(t *testing.T) {
@@ -774,7 +785,7 @@ func TestCaInvalidity(t *testing.T) {
 			var errorMessage string
 			if test.update == providerUpdate {
 				errorMessage = fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
-			} else if test.update == domainsUpdate {
+			} else if test.update == domainsUpdate || test.update == useDomains {
 				errorMessage = fmt.Sprintf("%s %s domains are deprecated. Use domainRefs instead in: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
 			}
 
