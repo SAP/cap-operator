@@ -222,20 +222,16 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 }
 
 func (c *Controller) checkServiceDNSEntries(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (*ReconcileResult, error) {
-	checkNeeded := len(ca.Spec.Domains.Secondary) > 0 && len(cav.Spec.ServiceExposures) > 0
-	// Check for DNS entries
+	checkNeeded := len(cav.Spec.ServiceExposures) > 0
+	// check application domain references to ensure dns entries are ready
 	if checkNeeded {
-		processing, err := c.checkDNSEntries(ctx, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
+		ready, err := c.areApplicationDomainReferencesReady(ctx, ca)
 		if err != nil {
-			if err.Error() == fmt.Sprintf("could not find DNSEntry for %s %s.%s", v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name) {
-				err = fmt.Errorf("No DNS entry found for %s %s.%s", v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name)
-			}
-			util.LogError(err, "DNS entries error", string(Processing), cav, nil, "version", cav.Spec.Version)
-
+			util.LogError(err, "error reading application domain references", string(Processing), cav, nil, "version", cav.Spec.Version)
 			return nil, err
 		}
-		if processing {
-			util.LogInfo("DNS entry resource not yet ready", string(Processing), cav, nil, "version", cav.Spec.Version)
+		if !ready {
+			util.LogInfo("Domain references are not yet ready", string(Processing), cav, nil, "version", cav.Spec.Version)
 			// requeue to iterate this check after a delay
 			return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second), nil
 		}
