@@ -18,6 +18,7 @@ type DomainStatusApplyConfiguration struct {
 	GenericStatusApplyConfiguration `json:",inline"`
 	State                           *smesapcomv1alpha1.DomainState `json:"state,omitempty"`
 	DnsTarget                       *string                        `json:"dnsTarget,omitempty"`
+	ObservedDomain                  *string                        `json:"observedDomain,omitempty"`
 }
 
 // DomainStatusApplyConfiguration constructs a declarative configuration of the DomainStatus type for use with
@@ -60,5 +61,13 @@ func (b *DomainStatusApplyConfiguration) WithState(value smesapcomv1alpha1.Domai
 // If called multiple times, the DnsTarget field is set to the value of the last call.
 func (b *DomainStatusApplyConfiguration) WithDnsTarget(value string) *DomainStatusApplyConfiguration {
 	b.DnsTarget = &value
+	return b
+}
+
+// WithObservedDomain sets the ObservedDomain field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ObservedDomain field is set to the value of the last call.
+func (b *DomainStatusApplyConfiguration) WithObservedDomain(value string) *DomainStatusApplyConfiguration {
+	b.ObservedDomain = &value
 	return b
 }

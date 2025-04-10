@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"slices"
+	"strings"
 	"time"
 
 	certv1alpha1 "github.com/gardener/cert-management/pkg/apis/cert/v1alpha1"
@@ -167,13 +168,18 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 		return nil, fmt.Errorf("failed to reconcile domain gateway for %s: %w", ownerId, err)
 	}
 
-	// (4) handle dns entries
+	// (4) notify applications in case of domain changes
+	if result, err = notifyReferencingApplications(ctx, c, dom); err != nil || result != nil {
+		return
+	}
+
+	// (5) handle dns entries
 	err = handleDnsEntries(ctx, c, dom, ownerId, subResourceNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reconcile domain dns entries for %s: %w", ownerId, err)
 	}
 
-	// (5) wait for certificate to be ready
+	// (6) wait for certificate to be ready
 	if ready, err := areCertificatesReady(ctx, c, []T{dom}); err != nil || !ready {
 		if err == nil {
 			result = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 3*time.Second)
@@ -181,7 +187,7 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 		return result, err
 	}
 
-	// (6) wait for dns entries to be ready
+	// (7) wait for dns entries to be ready
 	if ready, err := areDnsEntriesReady(ctx, c, []T{dom}, ""); err != nil || !ready {
 		if err == nil {
 			result = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 3*time.Second)
@@ -190,6 +196,30 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 	}
 
 	dom.SetStatusWithReadyCondition(v1alpha1.DomainStateReady, metav1.ConditionTrue, "Ready", "Domain resources are ready")
+	return
+}
+
+func notifyReferencingApplications[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T) (requeue *ReconcileResult, err error) {
+	if dom.GetSpec().Domain != dom.GetStatus().ObservedDomain {
+
+		cas, err := getReferencingApplications(ctx, c, dom)
+		if err != nil {
+			return nil, err
+		}
+		if len(cas) == 0 {
+			// no applications are referencing this domain
+			return nil, nil
+		}
+
+		requeue = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0)
+		for _, ca := range cas {
+			requeue.AddResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0)
+		}
+
+		// set the observed domain in the status
+		dom.SetStatusObservedDomain(dom.GetSpec().Domain)
+	}
+
 	return
 }
 
@@ -506,6 +536,32 @@ func getResourceKeyFromKind[T v1alpha1.DomainEntity](dom T) int {
 	}
 }
 
+func getReferencingApplications[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T) ([]*v1alpha1.CAPApplication, error) {
+	cas, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister().List(labels.Everything())
+	if err != nil {
+		return nil, fmt.Errorf("failed to list CAPApplications: %w", err)
+	}
+	sources := []*v1alpha1.CAPApplication{}
+	for i := range cas {
+		ca := cas[i]
+		if len(ca.Spec.DomainRefs) == 0 {
+			continue
+		}
+		referenced := false
+		for _, ref := range ca.Spec.DomainRefs {
+			if ref.Kind == dom.GetKind() && ref.Name == dom.GetName() {
+				referenced = true
+				break
+			}
+		}
+		if !referenced {
+			continue
+		}
+		sources = append(sources, ca)
+	}
+	return sources, nil
+}
+
 func handleDnsEntries[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, ownerId, subResourceNamespace string) (err error) {
 	list, err := c.gardenerDNSClient.DnsV1alpha1().DNSEntries(subResourceNamespace).List(ctx, metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set{
@@ -536,25 +592,11 @@ func handleDnsEntries[T v1alpha1.DomainEntity](ctx context.Context, c *Controlle
 	}
 
 	if !listComplete {
-		cas, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister().List(labels.Everything())
+		cas, err := getReferencingApplications(ctx, c, dom)
 		if err != nil {
 			return fmt.Errorf("failed to list CAPApplications: %w", err)
 		}
 		for _, ca := range cas {
-			if len(ca.Spec.DomainRefs) == 0 {
-				continue
-			}
-			referenced := false
-			for _, ref := range ca.Spec.DomainRefs {
-				if ref.Kind == dom.GetKind() && ref.Name == dom.GetName() {
-					referenced = true
-					break
-				}
-			}
-			if !referenced {
-				continue
-			}
-
 			if len(ca.Status.ObservedSubdomains) > 0 {
 				for _, subdomain := range ca.Status.ObservedSubdomains {
 					if deLabels, ok := subdomains[subdomain]; !ok {
@@ -882,4 +924,29 @@ func handleDomainResourceDeletion[T v1alpha1.DomainEntity](ctx context.Context, 
 	}
 
 	return nil, err
+}
+
+func createDomainMap[T v1alpha1.DomainEntity](doms []T, in map[string]string) (out map[string]string) {
+	out = in
+	if out == nil {
+		out = map[string]string{}
+	}
+	for _, dom := range doms {
+		out[formOwnerIdFromDomain(dom)] = dom.GetSpec().Domain
+	}
+	return
+}
+
+func convertOwnerIdsToDomainReferences(ownerIds []string) (refs []v1alpha1.DomainRefs) {
+	refs = []v1alpha1.DomainRefs{}
+	for _, id := range ownerIds {
+		parts := strings.Split(id, ".")
+		switch len(parts) {
+		case 2:
+			refs = append(refs, v1alpha1.DomainRefs{Kind: parts[0], Name: parts[1]})
+		default: // case 3:
+			refs = append(refs, v1alpha1.DomainRefs{Kind: parts[0], Name: parts[2]})
+		}
+	}
+	return
 }
