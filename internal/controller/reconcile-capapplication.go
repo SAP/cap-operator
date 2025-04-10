@@ -105,7 +105,7 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 
 	// step 2 - wait for domain references to be ready
 	// The version ready status needs relevant service related DNS entries to exist!
-	if requeue, err = c.handleApplicationDomainReferences(ctx, ca); requeue != nil || err != nil {
+	if requeue, err = c.reconcileApplicationDomainReferences(ctx, ca); requeue != nil || err != nil {
 		return
 	}
 
@@ -283,11 +283,12 @@ func (c *Controller) updateCAPApplicationStatus(ctx context.Context, ca *v1alpha
 func (c *Controller) observeCAPApplicationSubdomains(ctx context.Context, ca *v1alpha1.CAPApplication, result *ReconcileResult) (*ReconcileResult, error) {
 	mapSubDomains := map[string]struct{}{}
 
-	// Get all versions
-	cavs, err := c.getCachedCAPApplicationVersions(ctx, ca)
+	// Get all versions and tenants
+	cavs, tenants, err := c.getCachedApplicationResources(ctx, ca)
 	if err != nil {
 		return result, err
 	}
+
 	// Get all unique subdomains from all versions
 	for _, cav := range cavs {
 		for _, serviceExposure := range cav.Spec.ServiceExposures {
@@ -295,11 +296,6 @@ func (c *Controller) observeCAPApplicationSubdomains(ctx context.Context, ca *v1
 		}
 	}
 
-	// Get all tenants
-	tenants, err := c.getRelevantTenantsForCA(ca)
-	if err != nil {
-		return result, err
-	}
 	// Add tenant subdomains
 	for _, tenant := range tenants {
 		mapSubDomains[tenant.Spec.SubDomain] = struct{}{}
@@ -315,6 +311,18 @@ func (c *Controller) observeCAPApplicationSubdomains(ctx context.Context, ca *v1
 	}
 
 	return result, nil
+}
+
+func (c *Controller) getCachedApplicationResources(ctx context.Context, ca *v1alpha1.CAPApplication) (versions []*v1alpha1.CAPApplicationVersion, tenants []*v1alpha1.CAPTenant, err error) {
+	versions, err = c.getCachedCAPApplicationVersions(ctx, ca)
+	if err != nil {
+		return nil, nil, err
+	}
+	tenants, err = c.getRelevantTenantsForCA(ca)
+	if err != nil {
+		return nil, nil, err
+	}
+	return versions, tenants, nil
 }
 
 func addDomainReferencesToReconcileResult(refs []v1alpha1.DomainRefs, result *ReconcileResult, namespace string) {
@@ -561,48 +569,6 @@ func (c *Controller) prepareCAPApplication(ctx context.Context, ca *v1alpha1.CAP
 	return update
 }
 
-func (c *Controller) handleApplicationDomainReferences(ctx context.Context, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
-	// check for changes
-	refs := slices.Clone(ca.Spec.DomainRefs)
-	if refs == nil {
-		refs = []v1alpha1.DomainRefs{}
-	}
-
-	serialized, err := json.Marshal(refs)
-	if err != nil {
-		return nil, fmt.Errorf("could not serialize domain references: %w", err)
-	}
-
-	var outdatedRefs []v1alpha1.DomainRefs
-	json.Unmarshal([]byte(ca.Status.DomainSpecHash), &outdatedRefs) // ignore errors (considering older versions)
-
-	if ca.Status.DomainSpecHash != string(serialized) {
-		ca.SetStatusDomainSpecHash(string(serialized))
-		requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 1*time.Second)
-		addDomainReferencesToReconcileResult(refs, requeue, ca.Namespace)
-		if outdatedRefs != nil {
-			addDomainReferencesToReconcileResult(outdatedRefs, requeue, ca.Namespace) // reconcile for cleanup
-		}
-		return
-	}
-
-	var ready bool
-	ready, err = c.areApplicationDomainReferencesReady(ctx, ca)
-	if errors.IsNotFound(err) {
-		// ignore error and wait for domain resources by requeue
-		c.Event(ca, nil, corev1.EventTypeWarning, CAPApplicationEventMissingDomainReferences, EventActionProcessingDomainResources, err.Error())
-		err = nil
-		ready = false
-	}
-	if err == nil && !ready {
-		// Not all domain resources are ready
-		ca.SetStatusWithReadyCondition(ca.Status.State, metav1.ConditionFalse, "ProcessingDomainReferences", "Waiting for domain references to be ready")
-		requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 5*time.Second)
-	}
-
-	return
-}
-
 func (c *Controller) areApplicationDomainReferencesReady(ctx context.Context, ca *v1alpha1.CAPApplication) (bool, error) {
 	// check if all domain references are ready
 	doms, cdoms, err := fetchDomainResourcesFromCache(ctx, c, ca.Spec.DomainRefs, ca.Namespace)
@@ -611,4 +577,82 @@ func (c *Controller) areApplicationDomainReferencesReady(ctx context.Context, ca
 	}
 
 	return areDomainResourcesReady(doms) && areDomainResourcesReady(cdoms), nil
+}
+
+func (c *Controller) reconcileApplicationDomainReferences(ctx context.Context, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
+	// fetch references domain resources
+	var (
+		doms  []*v1alpha1.Domain
+		cdoms []*v1alpha1.ClusterDomain
+	)
+	doms, cdoms, err = fetchDomainResourcesFromCache(ctx, c, ca.Spec.DomainRefs, ca.Namespace)
+	if errors.IsNotFound(err) {
+		// ignore error and wait for domain resources to be created
+		c.Event(ca, nil, corev1.EventTypeWarning, CAPApplicationEventMissingDomainReferences, EventActionProcessingDomainResources, err.Error())
+		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, "ProcessingDomainReferences", "Waiting for all domain references to be created")
+		requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 5*time.Second)
+		return requeue, nil
+	} else if err != nil {
+		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProcessingDomainReferences", err.Error())
+		return nil, err
+	}
+
+	m := map[string]string{}
+	m = createDomainMap(doms, m)
+	m = createDomainMap(cdoms, m)
+
+	serialized, err := json.Marshal(m)
+	if err != nil {
+		return nil, fmt.Errorf("could not serialize domain references: %w", err)
+	}
+
+	if ca.Status.DomainSpecHash != string(serialized) {
+		requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 1*time.Second)
+		addDomainReferencesToReconcileResult(ca.Spec.DomainRefs, requeue, ca.Namespace)
+
+		var outdated map[string]string
+		json.Unmarshal([]byte(ca.Status.DomainSpecHash), &outdated) // ignore errors (considering older versions)
+		if outdated != nil {
+			outdatedRefs := convertOwnerIdsToDomainReferences(slices.Collect(maps.Keys(outdated)))
+			addDomainReferencesToReconcileResult(outdatedRefs, requeue, ca.Namespace) // reconcile for cleanup of removed references
+		}
+
+		// requeue versions and tenants for adjusting virtual services
+		err = c.addApplicationResourcesToReconcileResult(ctx, ca, requeue)
+		if err != nil {
+			return nil, err
+		}
+		// update observed domain references
+		ca.SetStatusDomainSpecHash(string(serialized))
+		return
+	}
+
+	if !areDomainResourcesReady(doms) || !areDomainResourcesReady(cdoms) {
+		// Not all domain resources are ready
+		ca.SetStatusWithReadyCondition(ca.Status.State, metav1.ConditionFalse, "ProcessingDomainReferences", "Waiting for domain references to be ready")
+		requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 5*time.Second)
+	}
+
+	return
+}
+
+func (c *Controller) addApplicationResourcesToReconcileResult(ctx context.Context, ca *v1alpha1.CAPApplication, requeue *ReconcileResult) error {
+	versions, tenants, err := c.getCachedApplicationResources(ctx, ca)
+	if err != nil {
+		return err
+	}
+
+	// add all versions with service exposure
+	for _, version := range versions {
+		if len(version.Spec.ServiceExposures) > 0 {
+			requeue.AddResource(ResourceCAPApplicationVersion, version.Name, version.Namespace, 0)
+		}
+	}
+
+	// add all tenants
+	for _, tenant := range tenants {
+		requeue.AddResource(ResourceCAPTenant, tenant.Name, tenant.Namespace, 0)
+	}
+
+	return nil
 }
