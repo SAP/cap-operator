@@ -51,6 +51,10 @@ func (c *Controller) reconcileDomain(ctx context.Context, item QueueItem, attemp
 		}
 	}()
 
+	if dom.DeletionTimestamp != nil {
+		return handleDomainResourceDeletion(ctx, c, dom)
+	}
+
 	return reconcileDomainEntity(ctx, c, dom, dom.Namespace)
 }
 
@@ -75,6 +79,10 @@ func (c *Controller) reconcileClusterDomain(ctx context.Context, item QueueItem,
 			err = statusErr
 		}
 	}()
+
+	if dom.DeletionTimestamp != nil {
+		return handleDomainResourceDeletion(ctx, c, dom)
+	}
 
 	return reconcileDomainEntity(ctx, c, dom, util.GetNamespace())
 }
@@ -800,4 +808,78 @@ func areDomainResourcesReady[T v1alpha1.DomainEntity](doms []T) bool {
 		}
 	}
 	return true
+}
+
+func deleteDomainCertificates[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, ownerId string) error {
+	selector := labels.SelectorFromSet(labels.Set{
+		LabelOwnerIdentifierHash: sha1Sum(ownerId),
+	})
+	certs, err := c.gardenerCertificateClient.CertV1alpha1().Certificates(corev1.NamespaceAll).List(ctx, metav1.ListOptions{
+		LabelSelector: selector.String(),
+	})
+	if err != nil {
+		return fmt.Errorf("failed to list certificates for %s: %w", ownerId, err)
+	}
+	if len(certs.Items) == 0 {
+		return nil
+	}
+
+	updGroup, updCtx := errgroup.WithContext(ctx)
+	for i := range certs.Items {
+		cert := &certs.Items[i]
+		updGroup.Go(func() error {
+			var err error
+			// remove Finalizer from Certificate
+			if removeFinalizer(&cert.Finalizers, FinalizerDomain) {
+				_, err = c.gardenerCertificateClient.CertV1alpha1().Certificates(cert.Namespace).Update(updCtx, cert, metav1.UpdateOptions{})
+			}
+			return err
+		})
+	}
+	err = updGroup.Wait()
+	if err != nil {
+		return fmt.Errorf("failed to remove finalizer from certificates for %s: %w", ownerId, err)
+	}
+
+	// delete certificates
+
+	// return c.gardenerCertificateClient.CertV1alpha1().Certificates(corev1.NamespaceAll).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
+	// 	LabelSelector: selector.String(),
+	// })  --> this did not work - @TODO: check why
+
+	delGroup, delCtx := errgroup.WithContext(ctx)
+	for i := range certs.Items {
+		cert := &certs.Items[i]
+		delGroup.Go(func() error {
+			// delete certificate
+			return c.gardenerCertificateClient.CertV1alpha1().Certificates(cert.Namespace).Delete(delCtx, cert.Name, metav1.DeleteOptions{})
+		})
+	}
+	return delGroup.Wait()
+}
+
+func handleDomainResourceDeletion[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T) (*ReconcileResult, error) {
+	if dom.GetStatus().State != v1alpha1.DomainStateDeleting {
+		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateDeleting, metav1.ConditionFalse, "Deleting", "Deleting domain resources")
+		return NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0), nil
+	}
+
+	ownerId := formOwnerIdFromDomain(dom)
+	err := deleteDomainCertificates(ctx, c, dom, ownerId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete domain certificates for %s: %w", ownerId, err)
+	}
+
+	// remove finalizer from domain
+	if removeFinalizer(&dom.GetMetadata().Finalizers, FinalizerDomain) {
+		switch v := any(dom).(type) {
+		case *v1alpha1.Domain:
+			err = c.updateDomain(ctx, v)
+		case *v1alpha1.ClusterDomain:
+			err = c.updateClusterDomain(ctx, v)
+
+		}
+	}
+
+	return nil, err
 }
