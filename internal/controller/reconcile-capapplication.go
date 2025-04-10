@@ -136,12 +136,7 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 		return
 	}
 
-	// step 6 - check state of dependent resources
-	// if processing, err = c.checkPrimaryDomainResources(ctx, ca); err != nil || processing {
-	// 	return
-	// }
-
-	// step 7 - check and set consistent status
+	// step 6 - check and set consistent status
 	return c.verifyApplicationConsistent(ctx, ca)
 }
 
@@ -481,10 +476,11 @@ func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alp
 	}
 
 	// TODO: cleanup domain resources via reconciliation
-	util.LogInfo("Removing primary domain certificate", string(Deleting), ca, nil)
-	if err = c.deletePrimaryDomainCertificate(ctx, ca); err != nil && !k8sErrors.IsNotFound(err) {
-		return nil, err
-	}
+	// util.LogInfo("Removing primary domain certificate", string(Deleting), ca, nil)
+	// if err = c.deletePrimaryDomainCertificate(ctx, ca); err != nil && !k8sErrors.IsNotFound(err) {
+	// 	return nil, err
+	// }
+
 	if !ca.IsServicesOnly() {
 		// delete CAPTenants - return if found in this loop, to verify deletion
 		var tenantFound bool
@@ -502,8 +498,17 @@ func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alp
 
 	// delete CAPApplication
 	if removeFinalizer(&ca.Finalizers, FinalizerCAPApplication) {
+		// requeue domain references for cleanup
+		var outdatedRefs []v1alpha1.DomainRefs
+		json.Unmarshal([]byte(ca.Status.DomainSpecHash), &outdatedRefs) // ignore errors (considering older versions)
+		var requeue *ReconcileResult
+		if outdatedRefs != nil {
+			requeue = NewReconcileResult()
+			addDomainReferencesToReconcileResult(outdatedRefs, requeue, ca.Namespace) // for cleanup
+		}
+
 		util.LogInfo("Removing Finalizer; finished deleting this application", string(Deleting), ca, nil)
-		return nil, c.updateCAPApplication(ctx, ca)
+		return requeue, c.updateCAPApplication(ctx, ca)
 	}
 
 	return nil, nil
@@ -565,7 +570,7 @@ func (c *Controller) handleApplicationDomainReferences(ctx context.Context, ca *
 	}
 
 	var outdatedRefs []v1alpha1.DomainRefs
-	json.Unmarshal([]byte(ca.Status.DomainSpecHash), &outdatedRefs) // ignore errors
+	json.Unmarshal([]byte(ca.Status.DomainSpecHash), &outdatedRefs) // ignore errors (considering older versions)
 
 	if ca.Status.DomainSpecHash != string(serialized) {
 		ca.SetStatusDomainSpecHash(string(serialized))
