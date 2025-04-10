@@ -151,19 +151,16 @@ var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *C
 	if err != nil {
 		return nil, err
 	}
-	// check for dns entries only when there are secondary domains
-	if len(ca.Spec.Domains.Secondary) > 0 {
-		// Check if all Tenant DNSEntries are Ready
-		processing, err := c.checkDNSEntries(ctx, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name)
-		if err != nil {
-			util.LogError(err, "DNS entries error", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
-			return nil, err
-		}
-		if processing {
-			util.LogInfo("DNS entry resource not ready", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
-			// requeue to iterate this check after a delay
-			return NewReconcileResultWithResource(ResourceCAPTenant, cat.Name, cat.Namespace, 10*time.Second), nil
-		}
+	// check domain references to ensure dns entries are ready
+	ready, err := c.areApplicationDomainReferencesReady(ctx, ca)
+	if err != nil {
+		util.LogError(err, "error reading application domain references", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
+		return nil, err
+	}
+	if !ready {
+		util.LogInfo("Domain references are not ready", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
+		// requeue to iterate this check after a delay
+		return NewReconcileResultWithResource(ResourceCAPTenant, cat.Name, cat.Namespace, 10*time.Second), nil
 	}
 
 	// check and reconcile tenant virtual service
