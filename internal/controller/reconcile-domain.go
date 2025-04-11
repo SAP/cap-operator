@@ -8,11 +8,9 @@ import (
 	"strings"
 	"time"
 
-	certv1alpha1 "github.com/gardener/cert-management/pkg/apis/cert/v1alpha1"
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	"golang.org/x/sync/errgroup"
 	networkingv1 "istio.io/api/networking/v1"
 	istionwv1 "istio.io/client-go/pkg/apis/networking/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +23,7 @@ import (
 
 const (
 	DomainEventMissingIngressGatewayInfo = "MissingIngressGatewayInfo"
+	DomainEventCertificateNotReady       = "CertificateNotReady"
 	DomainEventSubdomainAlreadyInUse     = "SubdomainAlreadyInUse"
 	EventActionProcessingDomainResources = "ProcessingDomainResources"
 	LabelKubernetesServiceName           = "kubernetes.io/service-name"
@@ -308,92 +307,62 @@ func handleDomainGateway[T v1alpha1.DomainEntity](ctx context.Context, c *Contro
 }
 
 func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, name, namespace, ownerId string) (err error) {
+	h := NewCertificateHandler(c)
 	selector := labels.SelectorFromSet(labels.Set{
 		LabelOwnerIdentifierHash: sha1Sum(ownerId),
 	})
-	certs, err := c.gardenerCertificateClient.CertV1alpha1().Certificates(corev1.NamespaceAll).List(ctx, metav1.ListOptions{
-		LabelSelector: selector.String(),
-	})
+	certs, err := h.ListCertificates(ctx, metav1.NamespaceAll, selector)
 	if err != nil {
 		return fmt.Errorf("failed to list certificates for %s: %w", ownerId, err)
 	}
 
-	certSpec := certv1alpha1.CertificateSpec{
-		DNSNames: []string{"*." + dom.GetSpec().Domain},
-		SecretRef: &corev1.SecretReference{
-			Name:      name,
-			Namespace: namespace,
-		},
+	spec := &ManagedCertificateSpec{
+		Domain:          dom.GetSpec().Domain,
+		Name:            name,
+		Namespace:       namespace,
+		OwnerId:         ownerId,
+		OwnerGeneration: dom.GetMetadata().Generation,
 	}
-	hash, err := serializeAndHash(certSpec)
-	if err != nil {
-		return err
-	}
+	hash := spec.Hash()
 
-	certsForDeletion := []certv1alpha1.Certificate{}
+	certsForDeletion := []ManagedCertificate{}
 	var (
-		selectedCert *certv1alpha1.Certificate
+		selectedCert ManagedCertificate
 		consistent   bool
 	)
-	for i := range certs.Items {
-		cert := certs.Items[i]
-		if cert.Namespace != namespace || consistent {
+	for i := range certs {
+		cert := certs[i]
+		if cert.GetNamespace() != namespace || consistent {
 			certsForDeletion = append(certsForDeletion, cert)
 			continue
 		}
-		if cert.Annotations[AnnotationResourceHash] == hash {
+		if cert.GetAnnotations()[AnnotationResourceHash] == hash {
 			// this certificate is already up to date
 			if selectedCert != nil {
-				certsForDeletion = append(certsForDeletion, *selectedCert)
+				certsForDeletion = append(certsForDeletion, selectedCert)
 			}
-			selectedCert = &cert
+			selectedCert = cert
 			consistent = true
 			continue
 		}
 		if selectedCert == nil {
 			// this is the first certificate that is not consistent
-			selectedCert = &cert
+			selectedCert = cert
 			continue
 		}
 		certsForDeletion = append(certsForDeletion, cert)
 	}
 
 	if len(certsForDeletion) > 0 {
-		delGroup, delCtx := errgroup.WithContext(ctx)
-		for i := range certsForDeletion {
-			delGroup.Go(func() error {
-				cert := &certsForDeletion[i]
-				return c.gardenerCertificateClient.CertV1alpha1().Certificates(cert.Namespace).Delete(delCtx, cert.Name, metav1.DeleteOptions{})
-			})
-		}
-		if err = delGroup.Wait(); err != nil {
+		if err = h.DeleteCertificates(ctx, certsForDeletion); err != nil {
 			return fmt.Errorf("failed to delete outdated certificates for %s: %w", ownerId, err)
 		}
 	}
 
 	if selectedCert == nil { // create
-		cert := &certv1alpha1.Certificate{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-				Labels: map[string]string{
-					LabelOwnerIdentifierHash: sha1Sum(ownerId),
-					LabelOwnerGeneration:     fmt.Sprintf("%d", dom.GetMetadata().Generation),
-				},
-				Annotations: map[string]string{
-					AnnotationResourceHash:    hash,
-					AnnotationOwnerIdentifier: ownerId,
-				},
-				Finalizers: []string{FinalizerDomain},
-			},
-			Spec: certSpec,
-		}
-		_, err = c.gardenerCertificateClient.CertV1alpha1().Certificates(namespace).Create(ctx, cert, metav1.CreateOptions{})
+		err = h.CreateCertificate(ctx, spec)
 	} else if !consistent { // update
-		updateResourceAnnotation(&selectedCert.ObjectMeta, hash)
-		selectedCert.Labels[LabelOwnerGeneration] = fmt.Sprintf("%d", dom.GetMetadata().Generation)
-		selectedCert.Spec = certSpec
-		_, err = c.gardenerCertificateClient.CertV1alpha1().Certificates(namespace).Update(ctx, selectedCert, metav1.UpdateOptions{})
+		err = h.UpdateCertificate(ctx, selectedCert, spec)
 	}
 
 	return
@@ -711,26 +680,28 @@ func areCertificatesReady[T v1alpha1.DomainEntity](ctx context.Context, c *Contr
 		domainMap[hash] = doms[i]
 	}
 	selector := newSelectorForOwnerIdentifierHashes(ownerIdHashes)
-	certs, err := c.gardenerCertificateClient.CertV1alpha1().Certificates(corev1.NamespaceAll).List(ctx, metav1.ListOptions{
-		LabelSelector: selector.String(),
-	})
+	h := NewCertificateHandler(c)
+	certs, err := h.ListCertificates(ctx, metav1.NamespaceAll, selector)
 	if err != nil {
 		return false, fmt.Errorf("failed to list certificates: %w", err)
 	}
 
-	for _, cert := range certs.Items {
-		if dom, ok := domainMap[cert.Labels[LabelOwnerIdentifierHash]]; ok {
-			// check for ready state
-			if cert.Status.State == certv1alpha1.StateError {
-				return false, fmt.Errorf("%s has state %s for %s: %s", certv1alpha1.CertificateKind, certv1alpha1.StateError, formOwnerIdFromDomain(dom), *cert.Status.Message)
-			} else if cert.Status.State != certv1alpha1.StateReady {
-				return false, nil
+	for i := range certs {
+		cert := certs[i]
+		oidHash := cert.GetLabels()[LabelOwnerIdentifierHash]
+		if dom, ok := domainMap[oidHash]; ok {
+			var ready bool
+			if ready, err = h.IsCertificateReady(cert); err != nil || !ready {
+				if err != nil {
+					c.Event(runtime.Object(dom), nil, corev1.EventTypeWarning, DomainEventCertificateNotReady, EventActionProcessingDomainResources, err.Error())
+				}
+				return ready, err
 			}
 		} else {
 			// expected related domain for the certificate
-			return false, fmt.Errorf("failed to match domain for certificate %s.%s", cert.Namespace, cert.Name)
+			return false, fmt.Errorf("failed to match domain for certificate %s.%s", cert.GetNamespace(), cert.GetName())
 		}
-		delete(domainMap, cert.Labels[LabelOwnerIdentifierHash])
+		delete(domainMap, oidHash)
 	}
 
 	if len(domainMap) > 0 {
@@ -866,48 +837,19 @@ func deleteDomainCertificates[T v1alpha1.DomainEntity](ctx context.Context, c *C
 	selector := labels.SelectorFromSet(labels.Set{
 		LabelOwnerIdentifierHash: sha1Sum(ownerId),
 	})
-	certs, err := c.gardenerCertificateClient.CertV1alpha1().Certificates(corev1.NamespaceAll).List(ctx, metav1.ListOptions{
-		LabelSelector: selector.String(),
-	})
+	h := NewCertificateHandler(c)
+	certs, err := h.ListCertificates(ctx, metav1.NamespaceAll, selector)
 	if err != nil {
 		return fmt.Errorf("failed to list certificates for %s: %w", ownerId, err)
 	}
-	if len(certs.Items) == 0 {
+	if len(certs) == 0 {
 		return nil
 	}
 
-	updGroup, updCtx := errgroup.WithContext(ctx)
-	for i := range certs.Items {
-		cert := &certs.Items[i]
-		updGroup.Go(func() error {
-			var err error
-			// remove Finalizer from Certificate
-			if removeFinalizer(&cert.Finalizers, FinalizerDomain) {
-				_, err = c.gardenerCertificateClient.CertV1alpha1().Certificates(cert.Namespace).Update(updCtx, cert, metav1.UpdateOptions{})
-			}
-			return err
-		})
+	if err = h.DeleteCertificates(ctx, certs); err != nil {
+		return fmt.Errorf("failed to delete certificates for %s: %w", ownerId, err)
 	}
-	err = updGroup.Wait()
-	if err != nil {
-		return fmt.Errorf("failed to remove finalizer from certificates for %s: %w", ownerId, err)
-	}
-
-	// delete certificates
-
-	// return c.gardenerCertificateClient.CertV1alpha1().Certificates(corev1.NamespaceAll).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{
-	// 	LabelSelector: selector.String(),
-	// })  --> this did not work - @TODO: check why
-
-	delGroup, delCtx := errgroup.WithContext(ctx)
-	for i := range certs.Items {
-		cert := &certs.Items[i]
-		delGroup.Go(func() error {
-			// delete certificate
-			return c.gardenerCertificateClient.CertV1alpha1().Certificates(cert.Namespace).Delete(delCtx, cert.Name, metav1.DeleteOptions{})
-		})
-	}
-	return delGroup.Wait()
+	return nil
 }
 
 func handleDomainResourceDeletion[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T) (*ReconcileResult, error) {
