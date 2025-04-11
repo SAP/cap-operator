@@ -218,7 +218,7 @@ func checkWorkloadTypeCount(cavObjNew *ResponseCav) validateResource {
 	if workloadTypeCount[string(v1alpha1.DeploymentService)] == deploymentWorkloadCnt && (workloadTypeCount[string(v1alpha1.JobTenantOperation)] != 0 || workloadTypeCount[string(v1alpha1.JobCustomTenantOperation)] != 0) {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf(TenantOpJobWorkloadCountErr, InvalidationMessage, cavObjNew.Kind, v1alpha1.JobTenantOperation, v1alpha1.JobCustomTenantOperation, v1alpha1.DeploymentService),
+			message: fmt.Sprintf(TenantOpJobWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.JobTenantOperation, v1alpha1.JobCustomTenantOperation, v1alpha1.DeploymentService),
 		}
 	}
 
@@ -230,14 +230,14 @@ func checkWorkloadTypeCount(cavObjNew *ResponseCav) validateResource {
 	if workloadTypeCount[string(v1alpha1.DeploymentCAP)] != 1 {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, cavObjNew.Kind, v1alpha1.DeploymentCAP, workloadTypeCount[string(v1alpha1.DeploymentCAP)], v1alpha1.DeploymentCAP),
+			message: fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.DeploymentCAP, workloadTypeCount[string(v1alpha1.DeploymentCAP)], v1alpha1.DeploymentCAP),
 		}
 	}
 
 	if workloadTypeCount[string(v1alpha1.DeploymentRouter)] != 1 {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, cavObjNew.Kind, v1alpha1.DeploymentRouter, workloadTypeCount[string(v1alpha1.DeploymentRouter)], v1alpha1.DeploymentRouter),
+			message: fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.DeploymentRouter, workloadTypeCount[string(v1alpha1.DeploymentRouter)], v1alpha1.DeploymentRouter),
 		}
 	}
 
@@ -261,7 +261,7 @@ func checkWorkloadContentJob(cavObjNew *ResponseCav) validateResource {
 	if len(contentJobWorkloads) > 1 && cavObjNew.Spec.ContentJobs == nil {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf("%s %s if there are more than one content job, contentJobs should be defined", InvalidationMessage, cavObjNew.Kind),
+			message: fmt.Sprintf("%s %s if there are more than one content job, contentJobs should be defined", InvalidationMessage, v1alpha1.CAPApplicationVersionKind),
 		}
 	}
 
@@ -271,7 +271,7 @@ func checkWorkloadContentJob(cavObjNew *ResponseCav) validateResource {
 			if !slices.Contains(cavObjNew.Spec.ContentJobs, name) {
 				return validateResource{
 					allowed: false,
-					message: fmt.Sprintf("%s %s content job %s is not specified as part of ContentJobs", InvalidationMessage, cavObjNew.Kind, name),
+					message: fmt.Sprintf("%s %s content job %s is not specified as part of ContentJobs", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, name),
 				}
 			}
 		}
@@ -283,7 +283,7 @@ func checkWorkloadContentJob(cavObjNew *ResponseCav) validateResource {
 			if !slices.Contains(contentJobWorkloads, job) {
 				return validateResource{
 					allowed: false,
-					message: fmt.Sprintf("%s %s job %s specified as part of ContentJobs is not a valid content job", InvalidationMessage, cavObjNew.Kind, job),
+					message: fmt.Sprintf("%s %s job %s specified as part of ContentJobs is not a valid content job", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, job),
 				}
 			}
 		}
@@ -306,7 +306,7 @@ func checkServiceExposure(cavObjNew *ResponseCav) validateResource {
 		if _, ok := serviceExposureSubDomainCntMap[serviceExposure.SubDomain]; ok {
 			return validateResource{
 				allowed: false,
-				message: fmt.Sprintf(DuplicateServiceExposureSubDomainErr, InvalidationMessage, cavObjNew.Kind, serviceExposure.SubDomain),
+				message: fmt.Sprintf(DuplicateServiceExposureSubDomainErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, serviceExposure.SubDomain),
 			}
 		}
 
@@ -316,7 +316,7 @@ func checkServiceExposure(cavObjNew *ResponseCav) validateResource {
 			if !slices.Contains(serviceDeploymentWorkloadNames, route.WorkloadName) {
 				return validateResource{
 					allowed: false,
-					message: fmt.Sprintf(ServiceExposureWorkloadNameErr, InvalidationMessage, cavObjNew.Kind, route.WorkloadName, serviceExposure.SubDomain),
+					message: fmt.Sprintf(ServiceExposureWorkloadNameErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, route.WorkloadName, serviceExposure.SubDomain),
 				}
 			}
 		}
@@ -338,7 +338,7 @@ func validateWorkloads(cavObjNew *ResponseCav) validateResource {
 		if !regex.MatchString(workload.Name) {
 			return validateResource{
 				allowed: false,
-				message: fmt.Sprintf("%s %s Invalid workload name: %s", InvalidationMessage, cavObjNew.Kind, workload.Name),
+				message: fmt.Sprintf("%s %s Invalid workload name: %s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, workload.Name),
 			}
 		}
 
@@ -346,7 +346,7 @@ func validateWorkloads(cavObjNew *ResponseCav) validateResource {
 		if len(cavObjNew.Name+"-"+workload.Name+"-svc") > 63 {
 			return validateResource{
 				allowed: false,
-				message: fmt.Sprintf("%s %s Derived service name: %s for workload %s will exceed 63 character limit. Adjust CAPApplicationVerion resource name or the workload name accordingly", InvalidationMessage, cavObjNew.Kind, cavObjNew.Name+"-"+workload.Name+"-svc", workload.Name),
+				message: fmt.Sprintf("%s %s Derived service name: %s for workload %s will exceed 63 character limit. Adjust CAPApplicationVerion resource name or the workload name accordingly", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, cavObjNew.Name+"-"+workload.Name+"-svc", workload.Name),
 			}
 		}
 
@@ -362,7 +362,7 @@ func validateWorkloads(cavObjNew *ResponseCav) validateResource {
 		if _, ok := uniqueWorkloadNameCountMap[workload.Name]; ok {
 			return validateResource{
 				allowed: false,
-				message: fmt.Sprintf("%s %s duplicate workload name: %s", InvalidationMessage, cavObjNew.Kind, workload.Name),
+				message: fmt.Sprintf("%s %s duplicate workload name: %s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, workload.Name),
 			}
 		}
 
@@ -484,7 +484,7 @@ func validateTenantOperations(cavObjNew *ResponseCav) validateResource {
 	if len(customTenantOpWorkloadCntMap) > 0 && cavObjNew.Spec.TenantOperations == nil {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf("%s %s - If a jobDefinition of type CustomTenantOperation is part of the workloads, then spec.tenantOperations must be specified", InvalidationMessage, cavObjNew.Kind),
+			message: fmt.Sprintf("%s %s - If a jobDefinition of type CustomTenantOperation is part of the workloads, then spec.tenantOperations must be specified", InvalidationMessage, v1alpha1.CAPApplicationVersionKind),
 		}
 	}
 
@@ -503,7 +503,7 @@ func (wh *WebhookHandler) checkCAPAppExists(cavObjNew *ResponseCav) validateReso
 	if app, err := wh.CrdClient.SmeV1alpha1().CAPApplications(cavObjNew.Metadata.Namespace).Get(context.TODO(), cavObjNew.Spec.CAPApplicationInstance, metav1.GetOptions{}); app == nil || err != nil {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf("%s %s no valid %s found for: %s.%s", InvalidationMessage, cavObjNew.Kind, v1alpha1.CAPApplicationKind, cavObjNew.Metadata.Namespace, cavObjNew.Metadata.Name),
+			message: fmt.Sprintf("%s %s no valid %s found for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.CAPApplicationKind, cavObjNew.Metadata.Namespace, cavObjNew.Metadata.Name),
 		}
 	}
 
@@ -551,7 +551,7 @@ func (wh *WebhookHandler) validateCAPApplicationVersion(w http.ResponseWriter, a
 	if admissionReview.Request.Operation == admissionv1.Update && !cmp.Equal(cavObjOld.Spec, cavObjNew.Spec) {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf("%s %s spec cannot be modified for: %s.%s", InvalidationMessage, cavObjNew.Kind, cavObjNew.Metadata.Namespace, cavObjNew.Metadata.Name),
+			message: fmt.Sprintf("%s %s spec cannot be modified for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, cavObjNew.Metadata.Namespace, cavObjNew.Metadata.Name),
 		}
 	}
 	return validAdmissionReviewObj()
@@ -564,7 +564,7 @@ func (wh *WebhookHandler) checkCaIsConsistent(catObjOld ResponseCat) validateRes
 	if ca != nil && err == nil && ca.Status.State == v1alpha1.CAPApplicationStateConsistent && catObjOld.Metadata.Labels[LabelTenantType] == ProviderTenantType && catObjOld.Status.State == v1alpha1.CAPTenantStateReady {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s instead to delete all tenants", InvalidationMessage, catObjOld.Kind, catObjOld.Name, v1alpha1.CAPApplicationKind, ca.Name, v1alpha1.CAPApplicationKind),
+			message: fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s instead to delete all tenants", InvalidationMessage, v1alpha1.CAPTenantKind, catObjOld.Name, v1alpha1.CAPApplicationKind, ca.Name, v1alpha1.CAPApplicationKind),
 		}
 	}
 	return validAdmissionReviewObj()
@@ -592,7 +592,7 @@ func (wh *WebhookHandler) validateCAPTenant(w http.ResponseWriter, admissionRevi
 		if app, err := wh.CrdClient.SmeV1alpha1().CAPApplications(catObjNew.Metadata.Namespace).Get(context.TODO(), catObjNew.Spec.CAPApplicationInstance, metav1.GetOptions{}); app == nil || err != nil {
 			return validateResource{
 				allowed: false,
-				message: fmt.Sprintf("%s %s no valid %s found for: %s.%s", InvalidationMessage, catObjNew.Kind, v1alpha1.CAPApplicationKind, catObjNew.Metadata.Namespace, catObjNew.Metadata.Name),
+				message: fmt.Sprintf("%s %s no valid %s found for: %s.%s", InvalidationMessage, v1alpha1.CAPTenantKind, v1alpha1.CAPApplicationKind, catObjNew.Metadata.Namespace, catObjNew.Metadata.Name),
 			}
 		}
 	}
@@ -600,7 +600,7 @@ func (wh *WebhookHandler) validateCAPTenant(w http.ResponseWriter, admissionRevi
 	if admissionReview.Request.Operation == admissionv1.Update && catObjOld.Spec.CAPApplicationInstance != catObjNew.Spec.CAPApplicationInstance {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf("%s %s capApplicationInstance value cannot be modified for: %s.%s", InvalidationMessage, catObjNew.Kind, catObjNew.Metadata.Namespace, catObjNew.Metadata.Name),
+			message: fmt.Sprintf("%s %s capApplicationInstance value cannot be modified for: %s.%s", InvalidationMessage, v1alpha1.CAPTenantKind, catObjNew.Metadata.Namespace, catObjNew.Metadata.Name),
 		}
 	}
 
@@ -664,7 +664,7 @@ func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissio
 		if admissionReview.Request.Operation == admissionv1.Update && !cmp.Equal(caObjNew.Spec.Provider, caObjOld.Spec.Provider) {
 			return validateResource{
 				allowed: false,
-				message: fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, caObjNew.Kind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
+				message: fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
 			}
 		}
 	}
