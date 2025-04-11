@@ -174,6 +174,11 @@ func (in *CAPApplicationStatus) DeepCopyInto(out *CAPApplicationStatus) {
 		**out = **in
 	}
 	in.LastFullReconciliationTime.DeepCopyInto(&out.LastFullReconciliationTime)
+	if in.ObservedSubdomains != nil {
+		in, out := &in.ObservedSubdomains, &out.ObservedSubdomains
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 
