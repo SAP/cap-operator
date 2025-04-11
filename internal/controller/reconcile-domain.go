@@ -563,6 +563,11 @@ func getReferencingApplications[T v1alpha1.DomainEntity](ctx context.Context, c 
 }
 
 func handleDnsEntries[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, ownerId, subResourceNamespace string) (err error) {
+	if dnsManager() != dnsManagerGardener {
+		// skip dns entry handling if not using gardener dns manager
+		return nil
+	}
+
 	list, err := c.gardenerDNSClient.DnsV1alpha1().DNSEntries(subResourceNamespace).List(ctx, metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labels.Set{
 			LabelOwnerIdentifierHash: sha1Sum(ownerId),
@@ -737,6 +742,11 @@ func areCertificatesReady[T v1alpha1.DomainEntity](ctx context.Context, c *Contr
 }
 
 func areDnsEntriesReady[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, doms []T, subdomain string) (ready bool, err error) {
+	if dnsManager() != dnsManagerGardener {
+		// assume ready if not using gardener dns manager
+		return true, nil
+	}
+
 	ownerIdHashes := []string{}
 	domainMap := map[string]T{}
 	for i := range doms {
