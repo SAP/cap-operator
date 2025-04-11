@@ -51,103 +51,6 @@ const (
 	formatResourceStateErr = formatResourceState + ": %s"
 )
 
-func (c *Controller) handleDomains(ctx context.Context, ca *v1alpha1.CAPApplication) (*ReconcileResult, error) {
-	domains, err := json.Marshal(ca.Spec.Domains)
-	if err != nil {
-		util.LogError(err, "Error occurred while encoding domains to json", string(Processing), ca, nil)
-		return nil, fmt.Errorf("error occurred while encoding domains to json: %w", err)
-	}
-	domainsHash := sha256Sum(string(domains))
-
-	commonName := strings.Join([]string{"*", ca.Spec.Domains.Primary}, ".")
-	secretName := strings.Join([]string{strings.Join([]string{ca.Namespace, ca.Name}, "--"), SecretSuffix}, "-")
-	c.handlePrimaryDomainGateway(ctx, ca, secretName, ca.Namespace)
-
-	istioIngressGatewayInfo, err := c.getIngressGatewayInfo(ctx, ca)
-	if err != nil {
-		return nil, err
-	}
-
-	c.handlePrimaryDomainCertificate(ctx, ca, commonName, secretName, istioIngressGatewayInfo.Namespace)
-	c.handlePrimaryDomainDNSEntry(ctx, ca, commonName, ca.Namespace, sanitizeDNSTarget(istioIngressGatewayInfo.DNSTarget))
-
-	if domainsHash != ca.Status.DomainSpecHash {
-		requeue := NewReconcileResult()
-
-		// Reconcile Secondary domains via a dummy resource (separate reconciliation)
-		// requeue.AddResource(ResourceOperatorDomains, "", metav1.NamespaceAll, 0)
-		requeue.AddResource(ResourceCAPApplication, ca.Name, ca.Namespace, 3*time.Second) // requeue CAPApplication for further processing
-
-		// notify tenants of domain specification change (dns entries, virtual services)
-		cats, err := c.getRelevantTenantsForCA(ca)
-		if err != nil {
-			return nil, err
-		}
-		for _, cat := range cats {
-			requeue.AddResource(ResourceCAPTenant, cat.Name, cat.Namespace, 2*time.Second)
-		}
-
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, EventActionProcessingDomainResources, "")
-		ca.SetStatusDomainSpecHash(domainsHash)
-		return requeue, nil
-	}
-
-	return nil, nil
-}
-
-func (c *Controller) handlePrimaryDomainGateway(ctx context.Context, ca *v1alpha1.CAPApplication, secretName string, namespace string) error {
-	gwName := getResourceName(ca.Spec.BTPAppName, GatewaySuffix)
-	ingressGWLabels := getIngressGatewayLabels(ca)
-	gwSpec := networkingv1.Gateway{
-		Selector: ingressGWLabels,
-		Servers: []*networkingv1.Server{
-			getGatewayServerSpec(ca.Spec.Domains.Primary, secretName),
-		},
-	}
-	// Calculate sha256 sum for GW spec
-	hash := sha256Sum(ca.Spec.Domains.Primary, secretName, fmt.Sprintf("%v", ingressGWLabels))
-
-	// check for existing gateway
-	gw, err := c.istioInformerFactory.Networking().V1().Gateways().Lister().Gateways(namespace).Get(gwName)
-
-	// create gateway
-	if errors.IsNotFound(err) {
-		util.LogInfo("Creating gateway for primary domain", string(Processing), ca, nil, "gatewayName", gwName)
-		_, err = c.istioClient.NetworkingV1().Gateways(namespace).Create(
-			ctx, &istionwv1.Gateway{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      gwName,
-					Namespace: namespace,
-					Annotations: map[string]string{
-						AnnotationResourceHash:             hash,
-						AnnotationBTPApplicationIdentifier: ca.Spec.GlobalAccountId + "." + ca.Spec.BTPAppName,
-					},
-					Labels: map[string]string{
-						LabelBTPApplicationIdentifierHash: sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName),
-					},
-					OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(ca, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationKind))},
-				},
-				Spec: gwSpec,
-			}, metav1.CreateOptions{},
-		)
-	} else if err == nil && gw != nil && gw.Annotations[AnnotationResourceHash] != hash {
-		// Update the relevant gw parts, if there are changes (detected via sha256 sum)
-		gw.Spec = gwSpec
-
-		// Update hash value on annotation
-		updateResourceAnnotation(&gw.ObjectMeta, hash)
-
-		// Trigger the actual update on the resource
-		util.LogInfo("Updating gateway for primary domain", string(Processing), ca, gw)
-		_, err = c.istioClient.NetworkingV1().Gateways(namespace).Update(ctx, gw, metav1.UpdateOptions{})
-	}
-
-	if err == nil {
-		c.Event(ca, nil, corev1.EventTypeNormal, CAPApplicationEventPrimaryGatewayModified, EventActionProcessingDomainResources, fmt.Sprintf("primary gateway %s has been modified", gwName))
-	}
-	return err
-}
-
 func (c *Controller) handlePrimaryDomainCertificate(ctx context.Context, ca *v1alpha1.CAPApplication, commonName string, secretName string, istioNamespace string) error {
 	var err error
 	certName := getResourceName(ca.Spec.BTPAppName, CertificateSuffix)
@@ -284,57 +187,6 @@ func (c *Controller) handlePrimaryDomainDNSEntry(ctx context.Context, ca *v1alph
 		return err
 	}
 	return nil
-}
-
-func (c *Controller) checkPrimaryDomainResources(ctx context.Context, ca *v1alpha1.CAPApplication) (processing bool, err error) {
-	defer func() {
-		if err != nil {
-			// set CAPApplication status - with error
-			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "DomainResourcesError", err.Error())
-		}
-	}()
-
-	// check for existing gateway
-	_, err = c.istioClient.NetworkingV1().Gateways(ca.Namespace).Get(ctx, getResourceName(ca.Spec.BTPAppName, GatewaySuffix), metav1.GetOptions{})
-	if err != nil {
-		return false, err
-	}
-
-	var istioIngressGatewayInfo *ingressGatewayInfo
-	istioIngressGatewayInfo, err = c.getIngressGatewayInfo(ctx, ca)
-	if err != nil {
-		util.LogError(err, "", string(Processing), ca, nil)
-		return false, err
-	}
-
-	certName := getResourceName(ca.Spec.BTPAppName, CertificateSuffix)
-	// check for certificate status
-	if processing, err := c.checkCertificateStatus(ctx, ca, istioIngressGatewayInfo.Namespace, certName); err != nil || processing {
-		util.LogError(err, "", string(Processing), ca, nil, "certificateName", certName)
-		return processing, err
-	}
-
-	dnsEntryName := strings.Join([]string{ca.Spec.BTPAppName, PrimaryDnsSuffix}, "-")
-	if dnsManager() == dnsManagerGardener {
-		// check for existing DNSEntry
-		dnsEntry, err := c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ca.Namespace).Get(context.TODO(), dnsEntryName, metav1.GetOptions{})
-		if err != nil {
-			return false, err
-		}
-
-		// check for ready state
-		if dnsEntry.Status.State == dnsv1alpha1.STATE_ERROR {
-			err := fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name, *dnsEntry.Status.Message)
-			util.LogError(err, "", string(Processing), ca, dnsEntry)
-			return false, err
-		} else if dnsEntry.Status.State != dnsv1alpha1.STATE_READY {
-			util.LogInfo("DNS entry resource not ready for primary domain", string(Processing), ca, dnsEntry)
-			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, "DomainResourcesProcessing", "")
-			return true, nil
-		}
-	}
-
-	return
 }
 
 func (c *Controller) deletePrimaryDomainCertificate(ctx context.Context, ca *v1alpha1.CAPApplication) error {
@@ -563,26 +415,26 @@ func (c *Controller) reconcileDNSEntries(ctx context.Context, dnsEntryNamePrefix
 }
 
 func (c *Controller) checkDNSEntries(ctx context.Context, kind string, ownerNamespace string, ownerName string) (bool, error) {
-	if dnsManager() == dnsManagerGardener {
-		// get relevant DNSEntries
-		dnsEntries, err := c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ownerNamespace).List(ctx, metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(kind, ownerNamespace, ownerName)}).String()})
-		if err != nil {
-			return false, err
-		}
+	// if dnsManager() == dnsManagerGardener {
+	// 	// get relevant DNSEntries
+	// 	dnsEntries, err := c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ownerNamespace).List(ctx, metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(kind, ownerNamespace, ownerName)}).String()})
+	// 	if err != nil {
+	// 		return false, err
+	// 	}
 
-		if len(dnsEntries.Items) == 0 {
-			return false, fmt.Errorf("could not find DNSEntry for %s %s.%s", kind, ownerNamespace, ownerName)
-		}
+	// 	if len(dnsEntries.Items) == 0 {
+	// 		return false, fmt.Errorf("could not find DNSEntry for %s %s.%s", kind, ownerNamespace, ownerName)
+	// 	}
 
-		for _, dnsEntry := range dnsEntries.Items {
-			// check for ready state
-			if dnsEntry.Status.State == dnsv1alpha1.STATE_ERROR {
-				return false, fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, kind, ownerNamespace, ownerName, *dnsEntry.Status.Message)
-			} else if dnsEntry.Status.State != dnsv1alpha1.STATE_READY {
-				return true, nil
-			}
-		}
-	}
+	// 	for _, dnsEntry := range dnsEntries.Items {
+	// 		// check for ready state
+	// 		if dnsEntry.Status.State == dnsv1alpha1.STATE_ERROR {
+	// 			return false, fmt.Errorf(formatResourceStateErr, dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, kind, ownerNamespace, ownerName, *dnsEntry.Status.Message)
+	// 		} else if dnsEntry.Status.State != dnsv1alpha1.STATE_READY {
+	// 			return true, nil
+	// 		}
+	// 	}
+	// }
 	// Not a gardener managed cluster -or- DNSEntries Ready -> return
 	return false, nil
 }
@@ -795,8 +647,6 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 	}
 
 	spec := &networkingv1.VirtualService{
-		Gateways: []string{ca.Spec.BTPAppName + "-gw"},
-		Hosts:    []string{cat.Spec.SubDomain + "." + ca.Spec.Domains.Primary},
 		Http: []*networkingv1.HTTPRoute{{
 			Match: []*networkingv1.HTTPMatchRequest{
 				{Uri: &networkingv1.StringMatch{MatchType: &networkingv1.StringMatch_Prefix{Prefix: "/"}}},
@@ -810,7 +660,7 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 			}},
 		}},
 	}
-	err = c.updateVirtualServiceSpecWithSecondaryDomains(ctx, spec, cat.Spec.SubDomain, ca)
+	err = c.updateVirtualServiceSpecFromDomainReferences(ctx, spec, cat.Spec.SubDomain, ca)
 	if err != nil {
 		return modified, err
 	}
@@ -915,30 +765,21 @@ func (c *Controller) cleanupServiceDNSEntries(ctx context.Context, aSubDomainHas
 	return c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ca.Namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labelSelector.String()})
 }
 
-func (c *Controller) updateVirtualServiceSpecWithSecondaryDomains(ctx context.Context, spec *networkingv1.VirtualService, subdomain string, ca *v1alpha1.CAPApplication) error {
-	secondaryDomainsExist := ca.Spec.Domains.Secondary != nil && len(ca.Spec.Domains.Secondary) > 0
-	if !secondaryDomainsExist {
-		return nil
-	}
-
-	// add customer specific domains
-	for _, domain := range ca.Spec.Domains.Secondary {
-		spec.Hosts = append(spec.Hosts, subdomain+"."+domain)
-	}
-
-	// Determine Ingress GW service for this app
-	gwInfo, err := c.getIngressGatewayInfo(ctx, ca)
+func (c *Controller) updateVirtualServiceSpecFromDomainReferences(ctx context.Context, spec *networkingv1.VirtualService, subdomain string, ca *v1alpha1.CAPApplication) error {
+	doms, cdoms, err := fetchDomainResourcesFromCache(ctx, c, ca.Spec.DomainRefs, ca.Namespace)
 	if err != nil {
 		return err
 	}
 
-	// Get the relevant central operator GW for this ingress GW
-	operatorGW, _ := c.getOperatorGateway(ctx, gwInfo.Namespace, sha1Sum(gwInfo.DNSTarget))
-	if operatorGW == nil {
-		// requeue for later reconciliation
-		return &OperatorGatewayMissingError{}
-	}
-	spec.Gateways = append(spec.Gateways, operatorGW.Namespace+"/"+operatorGW.Name)
+	hosts := []string{}
+	hosts = append(hosts, getDomainHosts(doms, subdomain)...)
+	hosts = append(hosts, getDomainHosts(cdoms, subdomain)...)
+	spec.Hosts = hosts
+
+	gateways := []string{}
+	gateways = append(gateways, getDomainGatewayReferences(doms)...)
+	gateways = append(gateways, getDomainGatewayReferences(cdoms)...)
+	spec.Gateways = gateways
 
 	return nil
 }
@@ -971,7 +812,7 @@ func (c *Controller) reconcileServiceNetworking(ctx context.Context, ca *v1alpha
 	}
 	// update event reason
 	if vsModified {
-		message = fmt.Sprintf("VirtualService(s) for app %s.%s reconciled", cav.Namespace, cav.Name)
+		message = fmt.Sprintf("VirtualService(s) for application %s.%s reconciled", cav.Namespace, cav.Name)
 		reason = EventServiceNetworkingModified
 	}
 
@@ -1089,11 +930,9 @@ func (c *Controller) getUpdatedServiceVirtualServiceObject(ctx context.Context, 
 	}
 
 	spec := &networkingv1.VirtualService{
-		Gateways: []string{ca.Spec.BTPAppName + "-gw"},
-		Hosts:    []string{serviceExposure.SubDomain + "." + ca.Spec.Domains.Primary},
-		Http:     httpRoutes,
+		Http: httpRoutes,
 	}
-	err = c.updateVirtualServiceSpecWithSecondaryDomains(ctx, spec, serviceExposure.SubDomain, ca)
+	err = c.updateVirtualServiceSpecFromDomainReferences(ctx, spec, serviceExposure.SubDomain, ca)
 	if err != nil {
 		return modified, err
 	}
@@ -1198,7 +1037,7 @@ func getDNSTarget(ingressGWSvc *corev1.Service) string {
 	return strings.Split(dnsTarget, ",")[0]
 }
 
-func (c *Controller) getLoadBalancerSvcs(ctx context.Context, istioIngressGWNamespace string) ([]corev1.Service, error) {
+func (c *Controller) getLoadBalancerServices(ctx context.Context, istioIngressGWNamespace string) ([]corev1.Service, error) {
 	// List all services in the same namespace as the istio-ingressgateway pod namespace
 	allServices, err := c.kubeClient.CoreV1().Services(istioIngressGWNamespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
@@ -1215,7 +1054,7 @@ func (c *Controller) getLoadBalancerSvcs(ctx context.Context, istioIngressGWName
 }
 
 func (c *Controller) getIngressGatewayService(ctx context.Context, istioIngressGWNamespace string, relevantPodNames map[string]struct{}, ca *v1alpha1.CAPApplication) (*corev1.Service, error) {
-	loadBalancerSvcs, err := c.getLoadBalancerSvcs(ctx, istioIngressGWNamespace)
+	loadBalancerSvcs, err := c.getLoadBalancerServices(ctx, istioIngressGWNamespace)
 	if err != nil {
 		return nil, err
 	}

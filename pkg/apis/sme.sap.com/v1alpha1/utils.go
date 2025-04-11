@@ -34,6 +34,10 @@ func (ca *CAPApplication) SetStatusServicesOnly(val *bool) {
 	ca.Status.ServicesOnly = val
 }
 
+func (ca *CAPApplication) SetStatusObservedSubdomains(values []string) {
+	ca.Status.ObservedSubdomains = values
+}
+
 func (ca *CAPApplication) IsServicesOnly() bool {
 	return ca.Status.ServicesOnly != nil && *ca.Status.ServicesOnly
 }
@@ -102,11 +106,13 @@ func (status *GenericStatus) SetStatusCondition(condition metav1.Condition) {
 type DomainEntity interface {
 	*Domain | *ClusterDomain
 	SetStatusWithReadyCondition(state DomainState, readyStatus metav1.ConditionStatus, reason string, message string)
+	SetStatusObservedDomain(v string)
 	GetKind() string
 	GetName() string
 	GetNamespace() string
 	GetMetadata() *metav1.ObjectMeta
 	GetStatus() *DomainStatus
+	GetSpec() *DomainSpec
 }
 
 func (dom *Domain) SetStatusWithReadyCondition(state DomainState, readyStatus metav1.ConditionStatus, reason string, message string) {
@@ -114,8 +120,12 @@ func (dom *Domain) SetStatusWithReadyCondition(state DomainState, readyStatus me
 	dom.Status.SetStatusCondition(metav1.Condition{Type: readyType, Status: readyStatus, Reason: reason, Message: message, ObservedGeneration: dom.Generation})
 }
 
+func (dom *Domain) SetStatusObservedDomain(v string) {
+	dom.Status.ObservedDomain = v
+}
+
 func (dom *Domain) GetKind() string {
-	return dom.Kind
+	return DomainKind
 }
 
 func (dom *Domain) GetName() string {
@@ -134,13 +144,21 @@ func (dom *Domain) GetStatus() *DomainStatus {
 	return &dom.Status
 }
 
+func (dom *Domain) GetSpec() *DomainSpec {
+	return &dom.Spec
+}
+
 func (cdom *ClusterDomain) SetStatusWithReadyCondition(state DomainState, readyStatus metav1.ConditionStatus, reason string, message string) {
 	cdom.Status.State = state
 	cdom.Status.SetStatusCondition(metav1.Condition{Type: readyType, Status: readyStatus, Reason: reason, Message: message, ObservedGeneration: cdom.Generation})
 }
 
+func (cdom *ClusterDomain) SetStatusObservedDomain(v string) {
+	cdom.Status.ObservedDomain = v
+}
+
 func (cdom *ClusterDomain) GetKind() string {
-	return cdom.Kind
+	return ClusterDomainKind
 }
 
 func (cdom *ClusterDomain) GetName() string {
@@ -157,4 +175,8 @@ func (cdom *ClusterDomain) GetMetadata() *metav1.ObjectMeta {
 
 func (cdom *ClusterDomain) GetStatus() *DomainStatus {
 	return &cdom.Status
+}
+
+func (cdom *ClusterDomain) GetSpec() *DomainSpec {
+	return &cdom.Spec
 }
