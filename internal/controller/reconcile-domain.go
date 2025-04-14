@@ -461,7 +461,7 @@ func getIngressLoadbalancerService[T v1alpha1.DomainEntity](ctx context.Context,
 		for _, ep := range slice.Endpoints {
 			if ep.TargetRef != nil && ep.TargetRef.Kind == "Pod" {
 				if _, ok := relevantPodNames[ep.TargetRef.Name]; !ok {
-					// this endpoint is targets pods outside the relevant selector
+					// this endpoint targets pods outside the relevant selector
 					irrelevantServiceNames[serviceName] = struct{}{}
 					break
 				}
