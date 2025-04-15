@@ -598,13 +598,6 @@ func (c *Controller) updateNetworkPolicies(ca *v1alpha1.CAPApplication, cav *v1a
 		return err
 	}
 
-	// The app ingress (to router) NetworkPolicy
-	spec = getAppIngressNetworkPolicySpec(ca, cav)
-	err = c.createNetworkPolicy(cav.Name+"--in", spec, cav)
-	if err != nil {
-		return err
-	}
-
 	// (Tech)Port specific network policy (just clusterWide for now)
 	// Get all the relevant service info (that includes ports exposed clusterwide)
 	workloadServicePortInfos := getRelevantServicePortInfo(cav)
@@ -657,25 +650,6 @@ func getAppPodNetworkPolicySpec(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPAp
 		}},
 		// Target all workloads of the app
 		PodSelector: metav1.LabelSelector{MatchLabels: getLabels(ca, cav, CategoryWorkload, "", "", false)},
-	}
-}
-
-func getAppIngressNetworkPolicySpec(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) networkingv1.NetworkPolicySpec {
-	labels := getLabels(ca, cav, CategoryWorkload, "", "", false)
-	labels[LabelExposedWorkload] = "true"
-	return networkingv1.NetworkPolicySpec{
-		PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},
-		Ingress: []networkingv1.NetworkPolicyIngressRule{{
-			From: []networkingv1.NetworkPolicyPeer{
-				// Enable ingress traffic to the router via istio-ingress gateway
-				{
-					NamespaceSelector: &metav1.LabelSelector{},
-					PodSelector:       &metav1.LabelSelector{MatchLabels: getIngressGatewayLabels(ca)},
-				},
-			},
-		}},
-		// Target all workloads of the app
-		PodSelector: metav1.LabelSelector{MatchLabels: labels},
 	}
 }
 
