@@ -19,6 +19,7 @@ import (
 	networkingv1 "istio.io/api/networking/v1"
 	istionwv1 "istio.io/client-go/pkg/apis/networking/v1"
 	corev1 "k8s.io/api/core/v1"
+	k8snwv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -32,6 +33,7 @@ const (
 	DomainEventSubdomainAlreadyInUse     = "SubdomainAlreadyInUse"
 	EventActionProcessingDomainResources = "ProcessingDomainResources"
 	LabelKubernetesServiceName           = "kubernetes.io/service-name"
+	LabelKubernetesMetadataName          = "kubernetes.io/metadata.name"
 )
 
 func (c *Controller) reconcileDomain(ctx context.Context, item QueueItem, attempts int) (result *ReconcileResult, err error) {
@@ -177,13 +179,19 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 		return
 	}
 
-	// (5) handle dns entries
+	// (5) handle network policy from the ingress gateway to the workloads
+	err = handleNetworkPolicies(ctx, c, dom, subResourceName, ingressInfo.Namespace, ownerId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reconcile domain network policies for %s: %w", ownerId, err)
+	}
+
+	// (6) handle dns entries
 	err = handleDnsEntries(ctx, c, dom, ownerId, subResourceNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reconcile domain dns entries for %s: %w", ownerId, err)
 	}
 
-	// (6) wait for certificate to be ready
+	// (7) wait for certificate to be ready
 	if ready, err := areCertificatesReady(ctx, c, []T{dom}); err != nil || !ready {
 		if err == nil {
 			result = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 3*time.Second)
@@ -191,7 +199,7 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 		return result, err
 	}
 
-	// (7) wait for dns entries to be ready
+	// (8) wait for dns entries to be ready
 	if ready, err := areDnsEntriesReady(ctx, c, []T{dom}, ""); err != nil || !ready {
 		if err == nil {
 			result = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 3*time.Second)
@@ -204,25 +212,26 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 }
 
 func notifyReferencingApplications[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T) (requeue *ReconcileResult, err error) {
-	if dom.GetSpec().Domain != dom.GetStatus().ObservedDomain {
-
-		cas, err := getReferencingApplications(ctx, c, dom)
-		if err != nil {
-			return nil, err
-		}
-		if len(cas) == 0 {
-			// no applications are referencing this domain
-			return nil, nil
-		}
-
-		requeue = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0)
-		for _, ca := range cas {
-			requeue.AddResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0)
-		}
-
-		// set the observed domain in the status
-		dom.SetStatusObservedDomain(dom.GetSpec().Domain)
+	if dom.GetSpec().Domain == dom.GetStatus().ObservedDomain {
+		return
 	}
+
+	cas, err := getReferencingApplications(ctx, c, dom)
+	if err != nil {
+		return nil, err
+	}
+	if len(cas) == 0 {
+		// no applications are referencing this domain
+		return nil, nil
+	}
+
+	requeue = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0)
+	for _, ca := range cas {
+		requeue.AddResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0)
+	}
+
+	// set the observed domain in the status
+	dom.SetStatusObservedDomain(dom.GetSpec().Domain)
 
 	return
 }
@@ -674,6 +683,86 @@ func handleDnsEntries[T v1alpha1.DomainEntity](ctx context.Context, c *Controlle
 	}
 
 	return c.gardenerDNSClient.DnsV1alpha1().DNSEntries(subResourceNamespace).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: deletionSelector.String()})
+}
+
+func handleNetworkPolicies[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, name, namespace, ownerId string) (err error) {
+	selector := labels.SelectorFromSet(labels.Set{
+		LabelOwnerIdentifierHash: sha1Sum(ownerId),
+	})
+	list, err := c.kubeClient.NetworkingV1().NetworkPolicies(metav1.NamespaceAll).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
+	if err != nil {
+		return fmt.Errorf("failed to list network policies for %s: %w", ownerId, err)
+	}
+
+	netpolsForDeletion := []k8snwv1.NetworkPolicy{}
+	var selected *k8snwv1.NetworkPolicy
+	for i := range list.Items {
+		netpol := list.Items[i]
+		if netpol.Namespace == namespace && selected == nil {
+			selected = &netpol
+			continue
+		}
+		netpolsForDeletion = append(netpolsForDeletion, netpol)
+	}
+
+	nsSelector := &metav1.LabelSelector{}
+	if dom.GetKind() == v1alpha1.DomainKind {
+		nsSelector.MatchLabels = map[string]string{
+			LabelKubernetesMetadataName: dom.GetNamespace(),
+		}
+	}
+
+	spec := k8snwv1.NetworkPolicySpec{
+		PolicyTypes: []k8snwv1.PolicyType{k8snwv1.PolicyTypeEgress},
+		PodSelector: metav1.LabelSelector{ // from the ingress pods matching the specified selector
+			MatchLabels: dom.GetSpec().IngressSelector,
+		},
+		Egress: []k8snwv1.NetworkPolicyEgressRule{ // to workload pods managed by the operator
+			{
+				To: []k8snwv1.NetworkPolicyPeer{
+					{
+						PodSelector: &metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								LabelExposedWorkload:  "true",
+								LabelResourceCategory: CategoryWorkload,
+							},
+						},
+						NamespaceSelector: nsSelector,
+					},
+				},
+			},
+		},
+	}
+
+	hash, err := serializeAndHash(spec)
+	if err != nil {
+		return fmt.Errorf("failed to serialize network policy spec for %s: %w", ownerId, err)
+	}
+
+	if selected == nil { // create network policy
+		_, err = c.kubeClient.NetworkingV1().NetworkPolicies(namespace).Create(ctx, &k8snwv1.NetworkPolicy{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Labels: map[string]string{
+					LabelOwnerIdentifierHash: sha1Sum(ownerId),
+					LabelOwnerGeneration:     fmt.Sprintf("%d", dom.GetMetadata().Generation),
+				},
+				Annotations: map[string]string{
+					AnnotationResourceHash:    hash,
+					AnnotationOwnerIdentifier: ownerId,
+				},
+			},
+			Spec: spec,
+		}, metav1.CreateOptions{})
+	} else { // update network policy
+		updateResourceAnnotation(&selected.ObjectMeta, hash)
+		selected.Labels[LabelOwnerGeneration] = fmt.Sprintf("%d", dom.GetMetadata().Generation)
+		selected.Spec = spec
+		_, err = c.kubeClient.NetworkingV1().NetworkPolicies(namespace).Update(ctx, selected, metav1.UpdateOptions{})
+	}
+
+	return err
 }
 
 func areCertificatesReady[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, doms []T) (ready bool, err error) {
