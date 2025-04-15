@@ -20,7 +20,7 @@ require (
 	github.com/prometheus/common v0.63.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/mod v0.24.0
-	golang.org/x/sync v0.12.0
+	golang.org/x/sync v0.13.0
 	google.golang.org/protobuf v1.36.6
 	istio.io/api v1.25.1
 	istio.io/client-go v1.25.1
