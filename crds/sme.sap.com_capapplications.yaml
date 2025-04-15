@@ -99,9 +99,6 @@ spec:
                       pattern: ^[a-z0-9-.]+$
                       type: string
                     type: array
-                required:
-                - istioIngressGatewayLabels
-                - primary
                 type: object
               globalAccountId:
                 type: string
