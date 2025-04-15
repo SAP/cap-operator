@@ -112,7 +112,7 @@ type ApplicationDomains struct {
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
 	// +kubebuilder:validation:MaxLength=62
 	// Primary application domain will be used to generate a wildcard TLS certificate. In project "Gardener" managed clusters this is (usually) a subdomain of the cluster domain
-	Primary string `json:"primary"`
+	Primary string `json:"primary,omitempty"`
 	// +kubebuilder:validation:items:Pattern=^[a-z0-9-.]+$
 	// Customer specific domains to serve application endpoints (optional)
 	Secondary []string `json:"secondary,omitempty"`
@@ -121,7 +121,7 @@ type ApplicationDomains struct {
 	DnsTarget string `json:"dnsTarget,omitempty"`
 	// +kubebuilder:validation:MinItems=1
 	// Labels used to identify the istio ingress-gateway component and its corresponding namespace. Usually {"app":"istio-ingressgateway","istio":"ingressgateway"}
-	IstioIngressGatewayLabels []NameValue `json:"istioIngressGatewayLabels"`
+	IstioIngressGatewayLabels []NameValue `json:"istioIngressGatewayLabels,omitempty"`
 }
 
 //Workaround for pattern for string items +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
