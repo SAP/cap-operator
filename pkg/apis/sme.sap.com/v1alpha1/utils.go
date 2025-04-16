@@ -103,6 +103,15 @@ func (status *GenericStatus) SetStatusCondition(condition metav1.Condition) {
 	meta.SetStatusCondition(&status.Conditions, condition)
 }
 
+func (status *GenericStatus) GetStatusReadyCondition() *metav1.Condition {
+	for i := range status.Conditions {
+		if status.Conditions[i].Type == readyType {
+			return &status.Conditions[i]
+		}
+	}
+	return nil
+}
+
 type DomainEntity interface {
 	*Domain | *ClusterDomain
 	SetStatusWithReadyCondition(state DomainState, readyStatus metav1.ConditionStatus, reason string, message string)
@@ -112,6 +121,7 @@ type DomainEntity interface {
 	GetNamespace() string
 	GetMetadata() *metav1.ObjectMeta
 	GetStatus() *DomainStatus
+	GetStatusReadyConditionMessage() string
 	GetSpec() *DomainSpec
 }
 
@@ -148,6 +158,14 @@ func (dom *Domain) GetSpec() *DomainSpec {
 	return &dom.Spec
 }
 
+func (dom *Domain) GetStatusReadyConditionMessage() string {
+	cond := dom.Status.GetStatusReadyCondition()
+	if cond != nil {
+		return cond.Message
+	}
+	return ""
+}
+
 func (cdom *ClusterDomain) SetStatusWithReadyCondition(state DomainState, readyStatus metav1.ConditionStatus, reason string, message string) {
 	cdom.Status.State = state
 	cdom.Status.SetStatusCondition(metav1.Condition{Type: readyType, Status: readyStatus, Reason: reason, Message: message, ObservedGeneration: cdom.Generation})
@@ -179,4 +197,12 @@ func (cdom *ClusterDomain) GetStatus() *DomainStatus {
 
 func (cdom *ClusterDomain) GetSpec() *DomainSpec {
 	return &cdom.Spec
+}
+
+func (cdom *ClusterDomain) GetStatusReadyConditionMessage() string {
+	cond := cdom.Status.GetStatusReadyCondition()
+	if cond != nil {
+		return cond.Message
+	}
+	return ""
 }

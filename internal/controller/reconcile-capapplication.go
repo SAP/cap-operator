@@ -576,7 +576,10 @@ func (c *Controller) areApplicationDomainReferencesReady(ctx context.Context, ca
 		return false, err
 	}
 
-	return areDomainResourcesReady(doms) && areDomainResourcesReady(cdoms), nil
+	if r, err := areDomainResourcesReady(doms); err != nil || !r {
+		return false, err
+	}
+	return areDomainResourcesReady(cdoms)
 }
 
 func (c *Controller) reconcileApplicationDomainReferences(ctx context.Context, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
@@ -627,12 +630,33 @@ func (c *Controller) reconcileApplicationDomainReferences(ctx context.Context, c
 		return
 	}
 
-	if !areDomainResourcesReady(doms) || !areDomainResourcesReady(cdoms) {
-		// Not all domain resources are ready
-		ca.SetStatusWithReadyCondition(ca.Status.State, metav1.ConditionFalse, "ProcessingDomainReferences", "Waiting for domain references to be ready")
-		requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 5*time.Second)
+	setNotReady := func(state v1alpha1.CAPApplicationState, msg string) {
+		ca.SetStatusWithReadyCondition(state, metav1.ConditionFalse, "ProcessingDomainReferences", msg)
+		requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 10*time.Second)
 	}
 
+	setStatus := func(r bool, e error) bool {
+		var (
+			s v1alpha1.CAPApplicationState
+			m string
+		)
+		if e != nil {
+			s = v1alpha1.CAPApplicationStateError
+			m = e.Error()
+		} else if !r {
+			s = v1alpha1.CAPApplicationStateProcessing
+			m = "Waiting for domain references to be ready"
+		} else {
+			return false
+		}
+		setNotReady(s, m)
+		return true
+	}
+
+	if done := setStatus(areDomainResourcesReady(doms)); done {
+		return
+	}
+	setStatus(areDomainResourcesReady(cdoms))
 	return
 }
 
