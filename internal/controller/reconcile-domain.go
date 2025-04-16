@@ -32,9 +32,11 @@ const (
 	DomainEventMissingIngressGatewayInfo = "MissingIngressGatewayInfo"
 	DomainEventCertificateNotReady       = "CertificateNotReady"
 	DomainEventSubdomainAlreadyInUse     = "SubdomainAlreadyInUse"
+	DomainEventDuplicateDomainHost       = "DuplicateDomainHost"
 	EventActionProcessingDomainResources = "ProcessingDomainResources"
 	LabelKubernetesServiceName           = "kubernetes.io/service-name"
 	LabelKubernetesMetadataName          = "kubernetes.io/metadata.name"
+	LabelDomainHostHash                  = "sme.sap.com/domain-host-hash"
 )
 
 func (c *Controller) reconcileDomain(ctx context.Context, item QueueItem, attempts int) (result *ReconcileResult, err error) {
@@ -150,6 +152,11 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 		return NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0), nil
 	}
 
+	// check for duplicate domains
+	if result, err = handleDuplicateDomainHosts(ctx, c, dom); err != nil || result != nil {
+		return
+	}
+
 	ownerId := formOwnerIdFromDomain(dom)
 	subResourceName := fmt.Sprintf("%s-%s", subResourceNamespace, dom.GetName())
 
@@ -211,6 +218,58 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 	return
 }
 
+func handleDuplicateDomainHosts[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T) (requeue *ReconcileResult, err error) {
+	grp := errgroup.Group{}
+	var (
+		doms  []*v1alpha1.Domain
+		cdoms []*v1alpha1.ClusterDomain
+	)
+	selector := labels.SelectorFromSet(labels.Set{
+		LabelDomainHostHash: sha1Sum(dom.GetSpec().Domain),
+	})
+	grp.Go(func() (err error) {
+		doms, err = c.crdInformerFactory.Sme().V1alpha1().Domains().Lister().List(selector)
+		if err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to list domains: %w", err)
+		}
+		return nil
+	})
+	grp.Go(func() (err error) {
+		cdoms, err = c.crdInformerFactory.Sme().V1alpha1().ClusterDomains().Lister().List(selector)
+		if err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to list cluster domains: %w", err)
+		}
+		return nil
+	})
+	if err = grp.Wait(); err != nil {
+		return
+	}
+	if len(doms)+len(cdoms) > 1 {
+		// there are other domains with the same host
+		// (1) set current domain to error state
+		msg := "Domain host is also specified in another Domain/ClusterDomain"
+		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateError, metav1.ConditionFalse, "DuplicateDomainHost", msg)
+		c.Event(runtime.Object(dom), nil, corev1.EventTypeWarning, DomainEventDuplicateDomainHost, EventActionProcessingDomainResources, msg)
+
+		// (2) requeue the other domain for setting error state and wait to retry reconciling the current domain resource
+		requeue = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 30*time.Second)
+		addDuplicateDomainResourcesToQueue(dom, doms, requeue)
+		addDuplicateDomainResourcesToQueue(dom, cdoms, requeue)
+		return
+	}
+	return
+}
+
+func addDuplicateDomainResourcesToQueue[T v1alpha1.DomainEntity, E v1alpha1.DomainEntity](dom T, s []E, requeue *ReconcileResult) {
+	for i := range s {
+		if dom.GetKind() != s[i].GetKind() || dom.GetNamespace() != s[i].GetNamespace() || dom.GetName() != s[i].GetName() {
+			if s[i].GetStatus().State == v1alpha1.DomainStateReady {
+				requeue.AddResource(getResourceKeyFromKind(s[i]), s[i].GetName(), s[i].GetNamespace(), 0)
+			}
+		}
+	}
+}
+
 func notifyReferencingApplications[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T) (requeue *ReconcileResult, err error) {
 	if dom.GetSpec().Domain == dom.GetStatus().ObservedDomain {
 		return
@@ -247,6 +306,18 @@ func prepareDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Contro
 		mo.Finalizers = []string{}
 	}
 	if addFinalizer(&mo.Finalizers, FinalizerDomain) {
+		update = true
+	}
+
+	// add or update domain host hash label
+	hash := sha1Sum(dom.GetSpec().Domain)
+	if mo.Labels == nil {
+		mo.Labels = map[string]string{
+			LabelDomainHostHash: hash,
+		}
+		update = true
+	} else if v, ok := mo.Labels[LabelDomainHostHash]; !ok || v != hash {
+		mo.Labels[LabelDomainHostHash] = hash
 		update = true
 	}
 
@@ -948,17 +1019,20 @@ func getDomainGatewayReferences[T v1alpha1.DomainEntity](s []T) []string {
 	return gateways
 }
 
-func areDomainResourcesReady[T v1alpha1.DomainEntity](doms []T) bool {
+func areDomainResourcesReady[T v1alpha1.DomainEntity](doms []T) (bool, error) {
 	if len(doms) == 0 {
-		return true
+		return true, nil
 	}
 	for _, dom := range doms {
 		s := dom.GetStatus()
+		if s.State == v1alpha1.DomainStateError {
+			return false, fmt.Errorf("%s in state %s: %s", formOwnerIdFromDomain(dom), s.State, dom.GetStatusReadyConditionMessage())
+		}
 		if s.State != v1alpha1.DomainStateReady || !isCROConditionReady(s.GenericStatus) {
-			return false
+			return false, nil
 		}
 	}
-	return true
+	return true, nil
 }
 
 func deleteDomainCertificates[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, ownerId string) error {
