@@ -152,7 +152,7 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 		return NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0), nil
 	}
 
-	// check for duplicate domains
+	// (1) check for duplicate domains
 	if result, err = handleDuplicateDomainHosts(ctx, c, dom); err != nil || result != nil {
 		return
 	}
@@ -160,7 +160,7 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 	ownerId := formOwnerIdFromDomain(dom)
 	subResourceName := fmt.Sprintf("%s-%s", subResourceNamespace, dom.GetName())
 
-	// (1) get ingress information
+	// (2) get ingress information
 	var (
 		ingressInfo *ingressGatewayInfo
 	)
@@ -170,35 +170,35 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 	}
 	dom.GetStatus().DnsTarget = ingressInfo.DNSTarget
 
-	// (2) reconcile certificate
+	// (3) reconcile certificate
 	err = handleDomainCertificate(ctx, c, dom, subResourceName, ingressInfo.Namespace, ownerId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reconcile domain certificate for %s: %w", ownerId, err)
 	}
 
-	// (3) reconcile gateway
+	// (4) reconcile gateway
 	err = handleDomainGateway(ctx, c, dom, subResourceName, subResourceNamespace, ownerId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reconcile domain gateway for %s: %w", ownerId, err)
 	}
 
-	// (4) notify applications in case of domain changes
-	if result, err = notifyReferencingApplications(ctx, c, dom); err != nil || result != nil {
-		return
+	// (5) notify applications in case of domain changes
+	if dom.GetSpec().Domain != dom.GetStatus().ObservedDomain {
+		return notifyReferencingApplications(ctx, c, dom, result)
 	}
 
-	// (5) handle network policy from the ingress gateway to the workload
+	// (6) handle network policy from the ingress gateway to the workload
 	if err = handleDomainNetworkPolicies(ctx, c, dom, ownerId, subResourceName); err != nil {
 		return nil, fmt.Errorf("failed to reconcile domain network policies for %s: %w", ownerId, err)
 	}
 
-	// (6) handle dns entries
+	// (7) handle dns entries
 	err = handleDnsEntries(ctx, c, dom, ownerId, subResourceNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reconcile domain dns entries for %s: %w", ownerId, err)
 	}
 
-	// (7) wait for certificate to be ready
+	// (8) wait for certificate to be ready
 	if ready, err := areCertificatesReady(ctx, c, []T{dom}); err != nil || !ready {
 		if err == nil {
 			result = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 3*time.Second)
@@ -206,7 +206,7 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 		return result, err
 	}
 
-	// (8) wait for dns entries to be ready
+	// (9) wait for dns entries to be ready
 	if ready, err := areDnsEntriesReady(ctx, c, []T{dom}, ""); err != nil || !ready {
 		if err == nil {
 			result = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 3*time.Second)
@@ -247,7 +247,7 @@ func handleDuplicateDomainHosts[T v1alpha1.DomainEntity](ctx context.Context, c 
 	if len(doms)+len(cdoms) > 1 {
 		// there are other domains with the same host
 		// (1) set current domain to error state
-		msg := "Domain host is also specified in another Domain/ClusterDomain"
+		msg := "Identical domain host is specified in another Domain/ClusterDomain resource"
 		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateError, metav1.ConditionFalse, "DuplicateDomainHost", msg)
 		c.Event(runtime.Object(dom), nil, corev1.EventTypeWarning, DomainEventDuplicateDomainHost, EventActionProcessingDomainResources, msg)
 
@@ -255,7 +255,7 @@ func handleDuplicateDomainHosts[T v1alpha1.DomainEntity](ctx context.Context, c 
 		requeue = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 30*time.Second)
 		addDuplicateDomainResourcesToQueue(dom, doms, requeue)
 		addDuplicateDomainResourcesToQueue(dom, cdoms, requeue)
-		return
+		return notifyReferencingApplications(ctx, c, dom, requeue)
 	}
 	return
 }
@@ -270,21 +270,20 @@ func addDuplicateDomainResourcesToQueue[T v1alpha1.DomainEntity, E v1alpha1.Doma
 	}
 }
 
-func notifyReferencingApplications[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T) (requeue *ReconcileResult, err error) {
-	if dom.GetSpec().Domain == dom.GetStatus().ObservedDomain {
-		return
-	}
-
+func notifyReferencingApplications[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, requeue *ReconcileResult) (*ReconcileResult, error) {
 	cas, err := getReferencingApplications(ctx, c, dom)
 	if err != nil {
 		return nil, err
 	}
 	if len(cas) == 0 {
 		// no applications are referencing this domain
-		return nil, nil
+		return requeue, nil
 	}
 
-	requeue = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0)
+	if requeue == nil {
+		// requeue the domain only when the reconciliation result is nil
+		requeue = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0)
+	}
 	for _, ca := range cas {
 		requeue.AddResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0)
 	}
@@ -292,7 +291,7 @@ func notifyReferencingApplications[T v1alpha1.DomainEntity](ctx context.Context,
 	// set the observed domain in the status
 	dom.SetStatusObservedDomain(dom.GetSpec().Domain)
 
-	return
+	return requeue, nil
 }
 
 func prepareDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T) (update bool) {
