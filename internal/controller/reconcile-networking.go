@@ -22,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 )
 
 const PrimaryDnsSuffix = "primary-dns"
@@ -57,10 +56,6 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 		if err != nil {
 			eventType = corev1.EventTypeWarning
 			message = err.Error()
-			if _, ok := err.(*OperatorGatewayMissingError); ok {
-				err = nil
-				requeue = NewReconcileResultWithResource(ResourceCAPTenant, cat.Name, cat.Namespace, 10*time.Second)
-			}
 		}
 		if reason != "" { // raise event only when there is a modification or problem
 			c.Event(cat, nil, eventType, reason, EventActionReconcileTenantNetworking, message)
@@ -265,33 +260,6 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 	return modified, err
 }
 
-type OperatorGatewayMissingError struct{}
-
-func (err *OperatorGatewayMissingError) Error() string {
-	return "operator gateway for secondary domains missing"
-}
-
-// Delete DNSEntries that are not in the current ServiceExposures list (TODO: may have to be done differently for service usage in multi-tenant scenarios)
-func (c *Controller) cleanupServiceDNSEntries(ctx context.Context, aSubDomainHashes []string, ca *v1alpha1.CAPApplication) (err error) {
-	// Add a requirement for OwnerIdentifierHash and SubdomainHash
-	ownerReq, _ := labels.NewRequirement(LabelOwnerIdentifierHash, selection.Equals, []string{sha1Sum(v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)})
-	subDomainExistsReq, _ := labels.NewRequirement(LabelSubdomainHash, selection.Exists, []string{})
-	// Create label selector based on the above requirement for filtering out all unused service related DNS entries
-	labelSelector := labels.NewSelector()
-	labelSelector = labelSelector.Add(*ownerReq, *subDomainExistsReq)
-
-	if len(aSubDomainHashes) > 0 {
-		// Add all unused subdomain hashes to requirements for Label Selector
-		subDomainsReq, _ := labels.NewRequirement(LabelSubdomainHash, selection.NotIn, aSubDomainHashes)
-		labelSelector = labelSelector.Add(*subDomainsReq)
-	}
-
-	util.LogInfo("Deleting unused dns entries", string(Processing), ca, nil)
-
-	// Delete all unused DNS entries for service exposures
-	return c.gardenerDNSClient.DnsV1alpha1().DNSEntries(ca.Namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: labelSelector.String()})
-}
-
 func (c *Controller) updateVirtualServiceSpecFromDomainReferences(ctx context.Context, spec *networkingv1.VirtualService, subdomain string, ca *v1alpha1.CAPApplication) error {
 	doms, cdoms, err := fetchDomainResourcesFromCache(ctx, c, ca.Spec.DomainRefs, ca.Namespace)
 	if err != nil {
@@ -322,10 +290,6 @@ func (c *Controller) reconcileServiceNetworking(ctx context.Context, ca *v1alpha
 		if err != nil {
 			eventType = corev1.EventTypeWarning
 			message = err.Error()
-			if _, ok := err.(*OperatorGatewayMissingError); ok {
-				err = nil
-				requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 10*time.Second)
-			}
 		}
 		if reason != "" { // raise event only when there is a modification or problem
 			c.Event(cav, nil, eventType, reason, EventActionReconcileServiceNetworking, message)
