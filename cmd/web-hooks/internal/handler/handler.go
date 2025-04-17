@@ -41,6 +41,7 @@ const (
 	TenantOpJobWorkloadCountErr          = "%s %s there should not be any job workload of type %s or %s defined if all the deployment workloads are of type %s."
 	ServiceExposureWorkloadNameErr       = "%s %s workload name %s mentioned as part of routes in service exposure with subDomain %s is not a valid workload of type Service."
 	DuplicateServiceExposureSubDomainErr = "%s %s duplicate subDomain %s in service exposure"
+	DomainsDeprecated                    = "%s %s domains are deprecated. Use domainRefs instead in: %s.%s"
 )
 
 type validateResource struct {
@@ -87,6 +88,18 @@ type ResponseCa struct {
 	Metadata `json:"metadata"`
 	Spec     *v1alpha1.CAPApplicationSpec `json:"spec"`
 	Kind     string                       `json:"kind"`
+}
+
+type ResponseCdom struct {
+	Metadata `json:"metadata"`
+	Spec     *v1alpha1.DomainSpec `json:"spec"`
+	Kind     string               `json:"kind"`
+}
+
+type ResponseDom struct {
+	Metadata `json:"metadata"`
+	Spec     *v1alpha1.DomainSpec `json:"spec"`
+	Kind     string               `json:"kind"`
 }
 
 type responseInterface interface {
@@ -570,6 +583,58 @@ func (wh *WebhookHandler) checkCaIsConsistent(catObjOld ResponseCat) validateRes
 	return validAdmissionReviewObj()
 }
 
+func (wh *WebhookHandler) checkForDuplicateDomains(namespace string, domain string) validateResource {
+	clusterDoms, _ := wh.CrdClient.SmeV1alpha1().ClusterDomains("").List(context.TODO(), metav1.ListOptions{})
+	for _, clusterDom := range clusterDoms.Items {
+		if clusterDom.Spec.Domain == domain {
+			return validateResource{
+				allowed: false,
+				message: fmt.Sprintf("%s %s %s already exist with domain %s", InvalidationMessage, v1alpha1.ClusterDomainKind, clusterDom.Name, domain),
+			}
+		}
+	}
+
+	doms, _ := wh.CrdClient.SmeV1alpha1().Domains(namespace).List(context.TODO(), metav1.ListOptions{})
+	for _, dom := range doms.Items {
+		if dom.Spec.Domain == domain {
+			return validateResource{
+				allowed: false,
+				message: fmt.Sprintf("%s %s %s already exist in namespace %s with domain %s", InvalidationMessage, v1alpha1.DomainKind, dom.Name, dom.Namespace, domain),
+			}
+		}
+	}
+
+	return validAdmissionReviewObj()
+}
+
+func (wh *WebhookHandler) validateClusterDomain(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview) validateResource {
+	clusterDomObjNew := ResponseDom{}
+	if admissionReview.Request.Operation == admissionv1.Create || admissionReview.Request.Operation == admissionv1.Update {
+		if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &clusterDomObjNew, v1alpha1.ClusterDomainKind); !validatedResource.allowed {
+			return validatedResource
+		}
+
+		// Check if a clusterDomain or Domain already exists with the new domain
+		return wh.checkForDuplicateDomains("", clusterDomObjNew.Spec.Domain)
+	}
+
+	return validAdmissionReviewObj()
+}
+
+func (wh *WebhookHandler) validateDomain(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview) validateResource {
+	domObjNew := ResponseDom{}
+	if admissionReview.Request.Operation == admissionv1.Create || admissionReview.Request.Operation == admissionv1.Update {
+		if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &domObjNew, v1alpha1.DomainKind); !validatedResource.allowed {
+			return validatedResource
+		}
+
+		// Check if a clusterDomain or Domain already exists with the new domain
+		return wh.checkForDuplicateDomains(domObjNew.Metadata.Namespace, domObjNew.Spec.Domain)
+	}
+
+	return validAdmissionReviewObj()
+}
+
 func (wh *WebhookHandler) validateCAPTenant(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview) validateResource {
 	catObjOld := ResponseCat{}
 	catObjNew := ResponseCat{}
@@ -660,6 +725,7 @@ func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissio
 		if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &caObjNew, v1alpha1.CAPApplicationKind); !validatedResource.allowed {
 			return validatedResource
 		}
+
 		// check: update on .Spec.Provider
 		if admissionReview.Request.Operation == admissionv1.Update && !cmp.Equal(caObjNew.Spec.Provider, caObjOld.Spec.Provider) {
 			return validateResource{
@@ -667,7 +733,24 @@ func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissio
 				message: fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
 			}
 		}
+
+		// Domains are DEPRECATED
+		if admissionReview.Request.Operation == admissionv1.Create && !cmp.Equal(caObjNew.Spec.Domains, v1alpha1.ApplicationDomains{}) {
+			return validateResource{
+				allowed: false,
+				message: fmt.Sprintf(DomainsDeprecated, InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
+			}
+		}
+
+		// check: cannot switch from domainRefs to domains
+		if admissionReview.Request.Operation == admissionv1.Update && (len(caObjOld.Spec.DomainRefs) > 0 && !cmp.Equal(caObjNew.Spec.Domains, v1alpha1.ApplicationDomains{})) {
+			return validateResource{
+				allowed: false,
+				message: fmt.Sprintf(DomainsDeprecated, InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
+			}
+		}
 	}
+
 	return validAdmissionReviewObj()
 }
 
@@ -716,6 +799,14 @@ func (wh *WebhookHandler) Validate(w http.ResponseWriter, r *http.Request) {
 		}
 	case v1alpha1.CAPTenantOutputKind:
 		if validation = wh.validateCAPTenantOutput(w, admissionReview); validation.errorOccured {
+			return
+		}
+	case v1alpha1.ClusterDomainKind:
+		if validation = wh.validateClusterDomain(w, admissionReview); validation.errorOccured {
+			return
+		}
+	case v1alpha1.DomainKind:
+		if validation = wh.validateDomain(w, admissionReview); validation.errorOccured {
 			return
 		}
 	}

@@ -34,6 +34,10 @@ func (ca *CAPApplication) SetStatusServicesOnly(val *bool) {
 	ca.Status.ServicesOnly = val
 }
 
+func (ca *CAPApplication) SetStatusObservedSubdomains(values []string) {
+	ca.Status.ObservedSubdomains = values
+}
+
 func (ca *CAPApplication) IsServicesOnly() bool {
 	return ca.Status.ServicesOnly != nil && *ca.Status.ServicesOnly
 }
@@ -97,4 +101,108 @@ func (ctop *CAPTenantOperation) SetStatusCurrentStep(step *uint32, job *string) 
 func (status *GenericStatus) SetStatusCondition(condition metav1.Condition) {
 	status.ObservedGeneration = condition.ObservedGeneration
 	meta.SetStatusCondition(&status.Conditions, condition)
+}
+
+func (status *GenericStatus) GetStatusReadyCondition() *metav1.Condition {
+	for i := range status.Conditions {
+		if status.Conditions[i].Type == readyType {
+			return &status.Conditions[i]
+		}
+	}
+	return nil
+}
+
+type DomainEntity interface {
+	*Domain | *ClusterDomain
+	SetStatusWithReadyCondition(state DomainState, readyStatus metav1.ConditionStatus, reason string, message string)
+	SetStatusObservedDomain(v string)
+	GetKind() string
+	GetName() string
+	GetNamespace() string
+	GetMetadata() *metav1.ObjectMeta
+	GetStatus() *DomainStatus
+	GetStatusReadyConditionMessage() string
+	GetSpec() *DomainSpec
+}
+
+func (dom *Domain) SetStatusWithReadyCondition(state DomainState, readyStatus metav1.ConditionStatus, reason string, message string) {
+	dom.Status.State = state
+	dom.Status.SetStatusCondition(metav1.Condition{Type: readyType, Status: readyStatus, Reason: reason, Message: message, ObservedGeneration: dom.Generation})
+}
+
+func (dom *Domain) SetStatusObservedDomain(v string) {
+	dom.Status.ObservedDomain = v
+}
+
+func (dom *Domain) GetKind() string {
+	return DomainKind
+}
+
+func (dom *Domain) GetName() string {
+	return dom.Name
+}
+
+func (dom *Domain) GetNamespace() string {
+	return dom.Namespace
+}
+
+func (dom *Domain) GetMetadata() *metav1.ObjectMeta {
+	return &dom.ObjectMeta
+}
+
+func (dom *Domain) GetStatus() *DomainStatus {
+	return &dom.Status
+}
+
+func (dom *Domain) GetSpec() *DomainSpec {
+	return &dom.Spec
+}
+
+func (dom *Domain) GetStatusReadyConditionMessage() string {
+	cond := dom.Status.GetStatusReadyCondition()
+	if cond != nil {
+		return cond.Message
+	}
+	return ""
+}
+
+func (cdom *ClusterDomain) SetStatusWithReadyCondition(state DomainState, readyStatus metav1.ConditionStatus, reason string, message string) {
+	cdom.Status.State = state
+	cdom.Status.SetStatusCondition(metav1.Condition{Type: readyType, Status: readyStatus, Reason: reason, Message: message, ObservedGeneration: cdom.Generation})
+}
+
+func (cdom *ClusterDomain) SetStatusObservedDomain(v string) {
+	cdom.Status.ObservedDomain = v
+}
+
+func (cdom *ClusterDomain) GetKind() string {
+	return ClusterDomainKind
+}
+
+func (cdom *ClusterDomain) GetName() string {
+	return cdom.Name
+}
+
+func (cdom *ClusterDomain) GetNamespace() string {
+	return cdom.Namespace
+}
+
+func (cdom *ClusterDomain) GetMetadata() *metav1.ObjectMeta {
+	return &cdom.ObjectMeta
+}
+
+func (cdom *ClusterDomain) GetStatus() *DomainStatus {
+	return &cdom.Status
+}
+
+func (cdom *ClusterDomain) GetSpec() *DomainSpec {
+	return &cdom.Spec
+}
+
+func (cdom *ClusterDomain) GetStatusReadyConditionMessage() string {
+	cond := cdom.Status.GetStatusReadyCondition()
+	if cond != nil {
+		return cond.Message
+	}
+	return ""
 }
