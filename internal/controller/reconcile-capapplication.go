@@ -632,7 +632,7 @@ func (c *Controller) reconcileApplicationDomainReferences(ctx context.Context, c
 
 	setNotReady := func(state v1alpha1.CAPApplicationState, msg string) {
 		ca.SetStatusWithReadyCondition(state, metav1.ConditionFalse, "ProcessingDomainReferences", msg)
-		requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 10*time.Second)
+		requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 15*time.Second)
 	}
 
 	setStatus := func(r bool, e error) bool {
