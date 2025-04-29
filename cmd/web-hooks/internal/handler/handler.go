@@ -90,12 +90,6 @@ type ResponseCa struct {
 	Kind     string                       `json:"kind"`
 }
 
-type ResponseCdom struct {
-	Metadata `json:"metadata"`
-	Spec     *v1alpha1.DomainSpec `json:"spec"`
-	Kind     string               `json:"kind"`
-}
-
 type ResponseDom struct {
 	Metadata `json:"metadata"`
 	Spec     *v1alpha1.DomainSpec `json:"spec"`
@@ -583,8 +577,8 @@ func (wh *WebhookHandler) checkCaIsConsistent(catObjOld ResponseCat) validateRes
 	return validAdmissionReviewObj()
 }
 
-func (wh *WebhookHandler) checkForDuplicateDomains(namespace string, domain string) validateResource {
-	clusterDoms, _ := wh.CrdClient.SmeV1alpha1().ClusterDomains("").List(context.TODO(), metav1.ListOptions{})
+func (wh *WebhookHandler) checkForDuplicateDomains(domain string) validateResource {
+	clusterDoms, _ := wh.CrdClient.SmeV1alpha1().ClusterDomains(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
 	for _, clusterDom := range clusterDoms.Items {
 		if clusterDom.Spec.Domain == domain {
 			return validateResource{
@@ -594,7 +588,7 @@ func (wh *WebhookHandler) checkForDuplicateDomains(namespace string, domain stri
 		}
 	}
 
-	doms, _ := wh.CrdClient.SmeV1alpha1().Domains(namespace).List(context.TODO(), metav1.ListOptions{})
+	doms, _ := wh.CrdClient.SmeV1alpha1().Domains(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
 	for _, dom := range doms.Items {
 		if dom.Spec.Domain == domain {
 			return validateResource{
@@ -615,7 +609,7 @@ func (wh *WebhookHandler) validateClusterDomain(w http.ResponseWriter, admission
 		}
 
 		// Check if a clusterDomain or Domain already exists with the new domain
-		return wh.checkForDuplicateDomains("", clusterDomObjNew.Spec.Domain)
+		return wh.checkForDuplicateDomains(clusterDomObjNew.Spec.Domain)
 	}
 
 	return validAdmissionReviewObj()
@@ -629,7 +623,7 @@ func (wh *WebhookHandler) validateDomain(w http.ResponseWriter, admissionReview 
 		}
 
 		// Check if a clusterDomain or Domain already exists with the new domain
-		return wh.checkForDuplicateDomains(domObjNew.Metadata.Namespace, domObjNew.Spec.Domain)
+		return wh.checkForDuplicateDomains(domObjNew.Spec.Domain)
 	}
 
 	return validAdmissionReviewObj()
