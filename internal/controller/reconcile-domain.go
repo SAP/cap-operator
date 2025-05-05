@@ -31,6 +31,7 @@ import (
 const (
 	DomainEventMissingIngressGatewayInfo = "MissingIngressGatewayInfo"
 	DomainEventCertificateNotReady       = "CertificateNotReady"
+	DomainEventDNSEntriesNotReady        = "DNSEntriesNotReady"
 	DomainEventSubdomainAlreadyInUse     = "SubdomainAlreadyInUse"
 	DomainEventDuplicateDomainHost       = "DuplicateDomainHost"
 	EventActionProcessingDomainResources = "ProcessingDomainResources"
@@ -146,7 +147,7 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 		}
 	}()
 
-	if dom.GetStatus().State == v1alpha1.DomainStateReady || dom.GetStatus().State == "" {
+	if dom.GetStatus().State != v1alpha1.DomainStateProcessing {
 		// set processing status
 		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateProcessing, metav1.ConditionFalse, "Processing", "Processing domain resources")
 		return NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0), nil
@@ -201,6 +202,7 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 	// (8) wait for certificate to be ready
 	if ready, err := areCertificatesReady(ctx, c, []T{dom}); err != nil || !ready {
 		if err == nil {
+			c.Event(runtime.Object(dom), nil, corev1.EventTypeWarning, DomainEventCertificateNotReady, EventActionProcessingDomainResources, "Waiting for certificate to be ready")
 			result = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 3*time.Second)
 		}
 		return result, err
@@ -209,6 +211,7 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 	// (9) wait for dns entries to be ready
 	if ready, err := areDnsEntriesReady(ctx, c, []T{dom}, ""); err != nil || !ready {
 		if err == nil {
+			c.Event(runtime.Object(dom), nil, corev1.EventTypeWarning, DomainEventDNSEntriesNotReady, EventActionProcessingDomainResources, "Waiting for dns entries to be ready")
 			result = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 3*time.Second)
 		}
 		return result, err
@@ -276,20 +279,21 @@ func notifyReferencingApplications[T v1alpha1.DomainEntity](ctx context.Context,
 		return nil, err
 	}
 
-	// set the observed domain in the status
+	// set the observed domain in the status - do this only when the above step does not return an error
 	defer func() {
 		dom.SetStatusObservedDomain(dom.GetSpec().Domain)
 	}()
+
+	if requeue == nil {
+		// requeue the domain only when the reconciliation result is nil
+		requeue = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0)
+	}
 
 	if len(cas) == 0 {
 		// no applications are referencing this domain
 		return requeue, nil
 	}
 
-	if requeue == nil {
-		// requeue the domain only when the reconciliation result is nil
-		requeue = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0)
-	}
 	for _, ca := range cas {
 		requeue.AddResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0)
 	}
