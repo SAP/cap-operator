@@ -146,7 +146,7 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 		}
 	}()
 
-	if dom.GetStatus().State == v1alpha1.DomainStateReady {
+	if dom.GetStatus().State == v1alpha1.DomainStateReady || dom.GetStatus().State == "" {
 		// set processing status
 		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateProcessing, metav1.ConditionFalse, "Processing", "Processing domain resources")
 		return NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0), nil
@@ -275,6 +275,12 @@ func notifyReferencingApplications[T v1alpha1.DomainEntity](ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+
+	// set the observed domain in the status
+	defer func() {
+		dom.SetStatusObservedDomain(dom.GetSpec().Domain)
+	}()
+
 	if len(cas) == 0 {
 		// no applications are referencing this domain
 		return requeue, nil
@@ -287,9 +293,6 @@ func notifyReferencingApplications[T v1alpha1.DomainEntity](ctx context.Context,
 	for _, ca := range cas {
 		requeue.AddResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0)
 	}
-
-	// set the observed domain in the status
-	dom.SetStatusObservedDomain(dom.GetSpec().Domain)
 
 	return requeue, nil
 }
