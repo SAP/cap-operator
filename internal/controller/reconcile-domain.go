@@ -693,7 +693,7 @@ func handleDnsEntries[T v1alpha1.DomainEntity](ctx context.Context, c *Controlle
 					entry.Labels[LabelBTPApplicationIdentifierHash] = appId
 					entry.Spec = dnsv1alpha1.DNSEntrySpec{
 						DNSName: sdom + "." + dom.GetSpec().Domain,
-						Targets: []string{dom.GetStatus().DnsTarget},
+						Targets: []string{sanitizeDNSTarget(dom.GetStatus().DnsTarget)},
 					}
 					_, err = c.gardenerDNSClient.DnsV1alpha1().DNSEntries(entry.Namespace).Update(ctx, &entry, metav1.UpdateOptions{})
 					if err != nil {
@@ -731,7 +731,7 @@ func handleDnsEntries[T v1alpha1.DomainEntity](ctx context.Context, c *Controlle
 			},
 			Spec: dnsv1alpha1.DNSEntrySpec{
 				DNSName:             sdom + "." + dom.GetSpec().Domain,
-				Targets:             []string{dom.GetStatus().DnsTarget},
+				Targets:             []string{sanitizeDNSTarget(dom.GetStatus().DnsTarget)},
 				CNameLookupInterval: &cNameLookup,
 				TTL:                 &ttl,
 			},

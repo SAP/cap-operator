@@ -27,9 +27,7 @@ import (
 const PrimaryDnsSuffix = "primary-dns"
 
 const (
-	CAPOperator                                  = "CAPOperator"
-	OperatorDomainLabel                          = CAPOperator + "." + OperatorDomains
-	OperatorDomainNamePrefix                     = "cap-operator-domains-"
+	CAPOperator                                  = "CAPOperator" // TO be removed after redoing unit tests
 	EventActionReconcileServiceNetworking        = "ReconcileServiceNetworking"
 	EventServiceNetworkingModified               = "ServiceNetworkingModified"
 	EventServiceVirtualServiceModificationFailed = "ServiceVirtualServiceModificationFailed"
@@ -38,11 +36,6 @@ const (
 var (
 	cNameLookup = int64(30)
 	ttl         = int64(600)
-)
-
-const (
-	formatResourceState    = "%s in state %s for %s %s.%s"
-	formatResourceStateErr = formatResourceState + ": %s"
 )
 
 func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
