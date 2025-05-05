@@ -168,7 +168,7 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ingress information for %s: %w", ownerId, err)
 	}
-	dom.GetStatus().DnsTarget = ingressInfo.DNSTarget
+	dom.GetStatus().DnsTarget = sanitizeDNSTarget(ingressInfo.DNSTarget)
 
 	// (3) reconcile certificate
 	err = handleDomainCertificate(ctx, c, dom, subResourceName, ingressInfo.Namespace, ownerId)
@@ -693,7 +693,7 @@ func handleDnsEntries[T v1alpha1.DomainEntity](ctx context.Context, c *Controlle
 					entry.Labels[LabelBTPApplicationIdentifierHash] = appId
 					entry.Spec = dnsv1alpha1.DNSEntrySpec{
 						DNSName: sdom + "." + dom.GetSpec().Domain,
-						Targets: []string{sanitizeDNSTarget(dom.GetStatus().DnsTarget)},
+						Targets: []string{dom.GetStatus().DnsTarget},
 					}
 					_, err = c.gardenerDNSClient.DnsV1alpha1().DNSEntries(entry.Namespace).Update(ctx, &entry, metav1.UpdateOptions{})
 					if err != nil {
@@ -731,7 +731,7 @@ func handleDnsEntries[T v1alpha1.DomainEntity](ctx context.Context, c *Controlle
 			},
 			Spec: dnsv1alpha1.DNSEntrySpec{
 				DNSName:             sdom + "." + dom.GetSpec().Domain,
-				Targets:             []string{sanitizeDNSTarget(dom.GetStatus().DnsTarget)},
+				Targets:             []string{dom.GetStatus().DnsTarget},
 				CNameLookupInterval: &cNameLookup,
 				TTL:                 &ttl,
 			},
