@@ -246,8 +246,10 @@ func (o *ManagedCertificateSpec) Hash() string {
 }
 
 func (o *ManagedCertificateSpec) getGardenerCertificateSpec() certv1alpha1.CertificateSpec {
+	cn := "*." + trimDNSTarget(o.Domain)
 	return certv1alpha1.CertificateSpec{
-		DNSNames: []string{"*." + o.Domain},
+		DNSNames:   []string{"*." + o.Domain},
+		CommonName: &cn,
 		SecretRef: &corev1.SecretReference{
 			Name:      o.Name,
 			Namespace: o.Namespace,
@@ -256,8 +258,10 @@ func (o *ManagedCertificateSpec) getGardenerCertificateSpec() certv1alpha1.Certi
 }
 
 func (o *ManagedCertificateSpec) getCertManagerCertificateSpec() certManagerv1.CertificateSpec {
+	cn := "*." + trimDNSTarget(o.Domain)
 	return certManagerv1.CertificateSpec{
 		DNSNames:   []string{"*." + o.Domain},
+		CommonName: cn,
 		SecretName: o.Name,
 		IssuerRef: certManagermetav1.ObjectReference{
 			// TODO: make this configurable

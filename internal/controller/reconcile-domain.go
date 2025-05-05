@@ -169,7 +169,7 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 	if err != nil {
 		return nil, fmt.Errorf("failed to get ingress information for %s: %w", ownerId, err)
 	}
-	dom.GetStatus().DnsTarget = ingressInfo.DNSTarget
+	dom.GetStatus().DnsTarget = sanitizeDNSTarget(ingressInfo.DNSTarget)
 
 	// (3) reconcile certificate
 	err = handleDomainCertificate(ctx, c, dom, subResourceName, ingressInfo.Namespace, ownerId)
