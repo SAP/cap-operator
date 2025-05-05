@@ -474,11 +474,11 @@ func getDNSTarget(ingressGWSvc *corev1.Service) string {
 }
 
 func trimDNSTarget(dnsTarget string) string {
-	// Trim dnsTarget to under 64 chars --> TODO: Also handle this in webhook/crd spec
-	for len(dnsTarget) > 64 {
+	// Trim dnsTarget to under 62 chars (*. is added for cert CN) --> TODO: Also handle this in webhook/crd spec
+	for len(dnsTarget) > 62 {
 		dnsTarget = dnsTarget[strings.Index(dnsTarget, ".")+1:]
 	}
-	return sanitizeDNSTarget(dnsTarget)
+	return dnsTarget
 }
 
 func sanitizeDNSTarget(dnsTarget string) string {
