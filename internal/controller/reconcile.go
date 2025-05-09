@@ -55,6 +55,7 @@ const (
 	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
 	FinalizerCAPTenant                  = "sme.sap.com/captenant"
 	FinalizerCAPTenantOperation         = "sme.sap.com/captenantoperation"
+	FinalizerDomain                     = "sme.sap.com/domain"
 	GardenerDNSClassIdentifier          = "dns.gardener.cloud/class"
 )
 
