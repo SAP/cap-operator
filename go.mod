@@ -7,26 +7,26 @@ require (
 	github.com/MicahParks/keyfunc/v3 v3.3.11
 	github.com/cert-manager/cert-manager v1.17.2
 	github.com/gardener/cert-management v0.17.6
-	github.com/gardener/external-dns-management v0.23.5
+	github.com/gardener/external-dns-management v0.24.0
 	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/zapr v1.3.0
 	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v3 v3.0.1
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.82.1
-	github.com/prometheus-operator/prometheus-operator/pkg/client v0.82.1
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.82.2
+	github.com/prometheus-operator/prometheus-operator/pkg/client v0.82.2
 	github.com/prometheus/client_golang v1.22.0
-	github.com/prometheus/common v0.63.0
+	github.com/prometheus/common v0.64.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/mod v0.24.0
 	google.golang.org/protobuf v1.36.6
-	istio.io/api v1.25.2
-	istio.io/client-go v1.25.2
-	k8s.io/api v0.33.0
-	k8s.io/apimachinery v0.33.0
-	k8s.io/client-go v0.33.0
-	k8s.io/code-generator v0.33.0
+	istio.io/api v1.26.0
+	istio.io/client-go v1.26.0
+	k8s.io/api v0.33.1
+	k8s.io/apimachinery v0.33.1
+	k8s.io/client-go v0.33.1
+	k8s.io/code-generator v0.33.1
 	k8s.io/klog/v2 v2.130.1
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0
 )
@@ -70,11 +70,11 @@ require (
 	golang.org/x/text v0.25.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	golang.org/x/tools v0.32.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250505200425-f936aa4a68b2 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250512202823-5a2f75b736a9 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.33.0 // indirect
+	k8s.io/apiextensions-apiserver v0.33.1 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250207200755-1244d31929d7 // indirect
 	k8s.io/kube-openapi v0.0.0-20250318190949-c8a335a9a2ff // indirect
 	k8s.io/utils v0.0.0-20250502105355-0f33e8f1c979 // indirect
