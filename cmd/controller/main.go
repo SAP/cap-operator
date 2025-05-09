@@ -117,6 +117,14 @@ func main() {
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				klog.InfoS("Started leading: ", LeaseLockName, leaseLockId)
+
+				migrationDone := make(chan bool, 1)
+				go migrateToDomainRefs(migrationDone, crdClient, istioClient, certClient, certManagerClient, dnsClient)
+				if ok := <-migrationDone; !ok {
+					klog.Errorf("Migration failed; not starting controller")
+					os.Exit(1)
+				}
+
 				c := controller.NewController(coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient, promClient)
 				go c.Start(ctx)
 			},
