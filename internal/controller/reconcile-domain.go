@@ -1034,7 +1034,7 @@ func areDomainResourcesReady[T v1alpha1.DomainEntity](doms []T) (bool, error) {
 		if s.State == v1alpha1.DomainStateError {
 			return false, fmt.Errorf("%s in state %s: %s", formOwnerIdFromDomain(dom), s.State, dom.GetStatusReadyConditionMessage())
 		}
-		if s.State != v1alpha1.DomainStateReady || !isCROConditionReady(s.GenericStatus) {
+		if !isCROConditionReady(s.GenericStatus) {
 			return false, nil
 		}
 	}
@@ -1061,13 +1061,32 @@ func deleteDomainCertificates[T v1alpha1.DomainEntity](ctx context.Context, c *C
 }
 
 func handleDomainResourceDeletion[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T) (*ReconcileResult, error) {
-	if dom.GetStatus().State != v1alpha1.DomainStateDeleting {
-		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateDeleting, metav1.ConditionFalse, "Deleting", "Deleting domain resources")
+	cas, err := getReferencingApplications(ctx, c, dom)
+	if err != nil {
+		return nil, err
+	}
+
+	var readyStatus metav1.ConditionStatus
+	if isCROConditionReady(dom.GetStatus().GenericStatus) {
+		readyStatus = metav1.ConditionTrue
+	} else {
+		readyStatus = metav1.ConditionFalse
+	}
+
+	if len(cas) > 0 {
+		// keep ready condition intact - block deletion
+		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateDeleting, readyStatus, "DeletionBlocked", "deletion blocked by referencing applications")
+		// requeue to attempt after a delay
+		return NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 30*time.Second), nil
+	}
+
+	if dom.GetStatus().State != v1alpha1.DomainStateDeleting || readyStatus == metav1.ConditionTrue {
+		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateDeleting, metav1.ConditionFalse, "Deleting", "deleting domain resources")
 		return NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0), nil
 	}
 
 	ownerId := formOwnerIdFromDomain(dom)
-	err := deleteDomainCertificates(ctx, c, dom, ownerId)
+	err = deleteDomainCertificates(ctx, c, dom, ownerId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete domain certificates for %s: %w", ownerId, err)
 	}

@@ -487,12 +487,6 @@ func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alp
 		return NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0), nil
 	}
 
-	// TODO: cleanup domain resources via reconciliation
-	// util.LogInfo("Removing primary domain certificate", string(Deleting), ca, nil)
-	// if err = c.deletePrimaryDomainCertificate(ctx, ca); err != nil && !k8sErrors.IsNotFound(err) {
-	// 	return nil, err
-	// }
-
 	if !ca.IsServicesOnly() {
 		// delete CAPTenants - return if found in this loop, to verify deletion
 		var tenantFound bool
@@ -583,7 +577,7 @@ func (c *Controller) areApplicationDomainReferencesReady(ctx context.Context, ca
 }
 
 func (c *Controller) reconcileApplicationDomainReferences(ctx context.Context, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
-	// fetch references domain resources
+	// (1) fetch referenced domain resources
 	var (
 		doms  []*v1alpha1.Domain
 		cdoms []*v1alpha1.ClusterDomain
@@ -600,6 +594,38 @@ func (c *Controller) reconcileApplicationDomainReferences(ctx context.Context, c
 		return nil, err
 	}
 
+	// (2) check and wait till all referenced domain resources are ready
+	setNotReady := func(state v1alpha1.CAPApplicationState, msg string) {
+		ca.SetStatusWithReadyCondition(state, metav1.ConditionFalse, "ProcessingDomainReferences", msg)
+		requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 5*time.Second)
+	}
+
+	setStatus := func(r bool, e error) bool {
+		var (
+			s v1alpha1.CAPApplicationState
+			m string
+		)
+		if e != nil {
+			s = v1alpha1.CAPApplicationStateError
+			m = e.Error()
+		} else if !r {
+			s = v1alpha1.CAPApplicationStateProcessing
+			m = "Waiting for domain references to be ready"
+		} else {
+			return false
+		}
+		setNotReady(s, m)
+		return true
+	}
+
+	if done := setStatus(areDomainResourcesReady(doms)); done {
+		return
+	}
+	if done := setStatus(areDomainResourcesReady(cdoms)); done {
+		return
+	}
+
+	// (3) check if domain references have changed - and requeue sub-resources if needed
 	m := map[string]string{}
 	m = createDomainMap(doms, m)
 	m = createDomainMap(cdoms, m)
@@ -630,33 +656,6 @@ func (c *Controller) reconcileApplicationDomainReferences(ctx context.Context, c
 		return
 	}
 
-	setNotReady := func(state v1alpha1.CAPApplicationState, msg string) {
-		ca.SetStatusWithReadyCondition(state, metav1.ConditionFalse, "ProcessingDomainReferences", msg)
-		requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 15*time.Second)
-	}
-
-	setStatus := func(r bool, e error) bool {
-		var (
-			s v1alpha1.CAPApplicationState
-			m string
-		)
-		if e != nil {
-			s = v1alpha1.CAPApplicationStateError
-			m = e.Error()
-		} else if !r {
-			s = v1alpha1.CAPApplicationStateProcessing
-			m = "Waiting for domain references to be ready"
-		} else {
-			return false
-		}
-		setNotReady(s, m)
-		return true
-	}
-
-	if done := setStatus(areDomainResourcesReady(doms)); done {
-		return
-	}
-	setStatus(areDomainResourcesReady(cdoms))
 	return
 }
 
