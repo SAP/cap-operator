@@ -10,7 +10,6 @@ import (
 	certManager "github.com/cert-manager/cert-manager/pkg/client/clientset/versioned"
 	gardenerCert "github.com/gardener/cert-management/pkg/client/cert/clientset/versioned"
 	gardenerDNS "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned"
-	"github.com/google/go-cmp/cmp"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned"
 	istio "istio.io/client-go/pkg/clientset/versioned"
@@ -38,22 +37,14 @@ func migrateToDomainRefs(crdClient versioned.Interface, istioClient istio.Interf
 		return false
 	}
 
-	var relevantCAs []v1alpha1.CAPApplication
-	for _, ca := range caList.Items {
-		if cmp.Equal(ca.Spec.Domains, v1alpha1.ApplicationDomains{}) {
-			continue
-		}
-		relevantCAs = append(relevantCAs, ca)
-	}
-
-	if len(relevantCAs) == 0 {
-		klog.Info("No CAPApplications with domains found. Skipping migration.")
+	if len(caList.Items) == 0 {
+		klog.Info("No CAPApplications found. Skipping migration.")
 		return true
 	}
 
 	// [Step 1] Delete all DNS Entries
 	klog.Info("Deleting DNS entries")
-	if err := deleteDnsEntries(gardenerDNSClient, crdClient, relevantCAs); err != nil {
+	if err := deleteDnsEntries(gardenerDNSClient, crdClient, caList.Items); err != nil {
 		klog.Errorf("Deleting DNS entries failed %v", err)
 		return false
 	}
@@ -61,7 +52,7 @@ func migrateToDomainRefs(crdClient versioned.Interface, istioClient istio.Interf
 
 	// [Step 2] Delete all Istio Gateways
 	klog.Info("Deleting Istio Gateways")
-	if err := deleteIstioGateways(istioClient, relevantCAs); err != nil {
+	if err := deleteIstioGateways(istioClient, caList.Items); err != nil {
 		klog.Errorf("Deleting Istio Gateways failed %v", err)
 		return false
 	}
@@ -69,17 +60,21 @@ func migrateToDomainRefs(crdClient versioned.Interface, istioClient istio.Interf
 
 	// [Step 3] Delete all Gardener and cert-manager Certificates
 	klog.Info("Deleting Gardener and cert-manager certificates")
-	if err := deleteCertificates(gardenerCertificateClient, certManagerCertificateClient, relevantCAs); err != nil {
+	if err := deleteCertificates(gardenerCertificateClient, certManagerCertificateClient, caList.Items); err != nil {
 		klog.Errorf("Deleting certificates failed %v", err)
 		return false
 	}
 	klog.Info("Deleting Gardener and cert-manager certificates finished")
 
-	// [Step 5] Create domain resource in the CAPApplication namespace for each primary domain
-	for i := range relevantCAs {
-		ca := &relevantCAs[i]
+	// [Step 5] Create domain resource in the CAPApplication namespace for each primary domain and collect all secondary domains
+	var secondaryDomainMap = make(map[string][]*v1alpha1.CAPApplication)
+	for _, ca := range caList.Items {
+		if ca.Spec.Domains.Primary == "" {
+			klog.Infof("Skipping CAPApplication %s.%s as it has no primary domain", ca.Namespace, ca.Name)
+			continue
+		}
 		domainName := ca.Spec.BTPAppName + "-primary"
-		if err := createDomain(crdClient, domainName, ca.Spec.Domains.Primary, v1alpha1.DnsModeWildcard, ca); err != nil {
+		if err := createDomain(crdClient, domainName, ca.Spec.Domains.Primary, v1alpha1.DnsModeWildcard, &ca); err != nil {
 			klog.Errorf("Creating domain %s.%s with host %s failed with error %v", domainName, ca.Namespace, ca.Spec.Domains.Primary, err)
 			return false
 		}
@@ -89,14 +84,10 @@ func migrateToDomainRefs(crdClient versioned.Interface, istioClient istio.Interf
 			Kind: v1alpha1.DomainKind,
 			Name: domainName,
 		})
-	}
 
-	// Collect all secondary domains from CAPApplications
-	var secondaryDomainMap = make(map[string][]*v1alpha1.CAPApplication)
-	for i := range relevantCAs {
-		ca := &relevantCAs[i]
+		// Collect all secondary domains from CAPApplications
 		for _, secDom := range ca.Spec.Domains.Secondary {
-			secondaryDomainMap[secDom] = append(secondaryDomainMap[secDom], ca)
+			secondaryDomainMap[secDom] = append(secondaryDomainMap[secDom], &ca)
 		}
 	}
 
@@ -137,8 +128,7 @@ func migrateToDomainRefs(crdClient versioned.Interface, istioClient istio.Interf
 	}
 
 	// [Step 7] Update the CAPApplications with the new domainRefs
-	for i := range relevantCAs {
-		ca := &relevantCAs[i]
+	for _, ca := range caList.Items {
 		if len(ca.Spec.DomainRefs) == 0 {
 			continue
 		}
@@ -146,7 +136,7 @@ func migrateToDomainRefs(crdClient versioned.Interface, istioClient istio.Interf
 		// Remove the old domains from the CAPApplication
 		ca.Spec.Domains = v1alpha1.ApplicationDomains{}
 
-		_, err = crdClient.SmeV1alpha1().CAPApplications(ca.Namespace).Update(context.TODO(), ca, metav1.UpdateOptions{})
+		_, err = crdClient.SmeV1alpha1().CAPApplications(ca.Namespace).Update(context.TODO(), &ca, metav1.UpdateOptions{})
 		if err != nil {
 			klog.Errorf("Updating CAPApplication %s.%s with domainRefs failed: %v", ca.Namespace, ca.Name, err)
 			return false
@@ -164,16 +154,12 @@ func deleteDnsEntries(gardenerDNSClient gardenerDNS.Interface, crdClient version
 		ownerLabelHashReq, _ := labels.NewRequirement(LabelOwnerIdentifierHash, selection.Equals, []string{ownerIdentifierHash})
 		ownerLabelHashReqSelector := labels.NewSelector().Add(*ownerLabelHashReq)
 
-		dnsEntries, err := gardenerDNSClient.DnsV1alpha1().DNSEntries(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: ownerLabelHashReqSelector.String()})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return err
-		}
-		klog.Infof("Deleting %d DNS Entries for CAPApplication %s.%s with ownerIdentifierHash %s", len(dnsEntries.Items), ca.Namespace, ca.Name, ownerIdentifierHash)
+		klog.Infof("Deleting DNS Entries for CAPApplication %s.%s with ownerIdentifierHash %s", ca.Namespace, ca.Name, ownerIdentifierHash)
+
 		if !dryRun {
-			for _, dnsEntry := range dnsEntries.Items {
-				if err := gardenerDNSClient.DnsV1alpha1().DNSEntries(dnsEntry.Namespace).Delete(context.TODO(), dnsEntry.Name, metav1.DeleteOptions{}); err != nil {
-					return err
-				}
+			err := gardenerDNSClient.DnsV1alpha1().DNSEntries(metav1.NamespaceAll).DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: ownerLabelHashReqSelector.String()})
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				return err
 			}
 		}
 	}
@@ -189,16 +175,12 @@ func deleteDnsEntries(gardenerDNSClient gardenerDNS.Interface, crdClient version
 		ownerLabelHashReq, _ := labels.NewRequirement(LabelOwnerIdentifierHash, selection.Equals, []string{ownerIdentifierHash})
 		ownerLabelHashReqSelector := labels.NewSelector().Add(*ownerLabelHashReq)
 
-		dnsEntries, err := gardenerDNSClient.DnsV1alpha1().DNSEntries(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: ownerLabelHashReqSelector.String()})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return err
-		}
-		klog.Infof("Deleting %d DNS Entries for CAPTenant %s.%s with ownerIdentifierHash %s", len(dnsEntries.Items), cat.Namespace, cat.Name, ownerIdentifierHash)
+		klog.Infof("Deleting DNS Entries for CAPTenant %s.%s with ownerIdentifierHash %s", cat.Namespace, cat.Name, ownerIdentifierHash)
+
 		if !dryRun {
-			for _, dnsEntry := range dnsEntries.Items {
-				if err := gardenerDNSClient.DnsV1alpha1().DNSEntries(dnsEntry.Namespace).Delete(context.TODO(), dnsEntry.Name, metav1.DeleteOptions{}); err != nil {
-					return err
-				}
+			err := gardenerDNSClient.DnsV1alpha1().DNSEntries(metav1.NamespaceAll).DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: ownerLabelHashReqSelector.String()})
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				return err
 			}
 		}
 	}
@@ -289,16 +271,11 @@ func deleteIstioGateways(istioClient istio.Interface, caList []v1alpha1.CAPAppli
 		btpAppLabelHashReq, _ := labels.NewRequirement(LabelBTPApplicationIdentifierHash, selection.Equals, []string{btpAppLabelHash})
 		btpAppLabelHashSelector := labels.NewSelector().Add(*btpAppLabelHashReq)
 
-		gateways, err := istioClient.NetworkingV1beta1().Gateways(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: btpAppLabelHashSelector.String()})
-		if err != nil && !k8sErrors.IsNotFound(err) {
-			return err
-		}
-		klog.Infof("Deleting %d Istio Gateways for CAPApplication %s with btpAppLabelHash %s", len(gateways.Items), ca.Name, btpAppLabelHash)
+		klog.Infof("Deleting Istio Gateways for CAPApplication %s with btpAppLabelHash %s", ca.Name, btpAppLabelHash)
 		if !dryRun {
-			for _, gateway := range gateways.Items {
-				if err := istioClient.NetworkingV1beta1().Gateways(gateway.Namespace).Delete(context.TODO(), gateway.Name, metav1.DeleteOptions{}); err != nil {
-					return err
-				}
+			err := istioClient.NetworkingV1beta1().Gateways(metav1.NamespaceAll).DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: btpAppLabelHashSelector.String()})
+			if err != nil && !k8sErrors.IsNotFound(err) {
+				return err
 			}
 		}
 	}
@@ -307,16 +284,11 @@ func deleteIstioGateways(istioClient istio.Interface, caList []v1alpha1.CAPAppli
 	ownerLabelHashReq, _ := labels.NewRequirement(LabelOwnerIdentifierHash, selection.Equals, []string{ownerIdentifierHash})
 	ownerLabelHashReqSelector := labels.NewSelector().Add(*ownerLabelHashReq)
 
-	gatewaysCAPDomain, err := istioClient.NetworkingV1beta1().Gateways(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: ownerLabelHashReqSelector.String()})
-	if err != nil && !k8sErrors.IsNotFound(err) {
-		return err
-	}
-	klog.Infof("Deleting %d Istio Gateways for CAPOperator.OperatorDomains", len(gatewaysCAPDomain.Items))
+	klog.Infof("Deleting Istio Gateways for CAPOperator.OperatorDomains")
 	if !dryRun {
-		for _, gateway := range gatewaysCAPDomain.Items {
-			if err := istioClient.NetworkingV1beta1().Gateways(gateway.Namespace).Delete(context.TODO(), gateway.Name, metav1.DeleteOptions{}); err != nil {
-				return err
-			}
+		err := istioClient.NetworkingV1beta1().Gateways(metav1.NamespaceAll).DeleteCollection(context.TODO(), metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: ownerLabelHashReqSelector.String()})
+		if err != nil && !k8sErrors.IsNotFound(err) {
+			return err
 		}
 	}
 
