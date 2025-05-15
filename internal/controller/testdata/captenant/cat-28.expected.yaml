@@ -69,25 +69,3 @@ spec:
       type: CustomTenantOperation
     - name: ten-op
       type: TenantOperation
----
-apiVersion: dns.gardener.cloud/v1alpha1
-kind: DNSEntry
-metadata:
-  annotations:
-    dns.gardener.cloud/class: garden
-    sme.sap.com/resource-hash: c38b79c0bac0cf1b5b8e6757b31d892898fe18472338996f7103adbf0249c79e
-    sme.sap.com/owner-identifier: CAPTenant.default.test-cap-01-consumer
-  labels:
-    sme.sap.com/owner-identifier-hash: f57a7105fbe1d899a7757ddd04747b6b33dde594
-  name: test-cap-01-consumer0
-  namespace: default
-  ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
-      blockOwnerDeletion: true
-      controller: true
-      kind: CAPTenant
-      name: test-cap-01-consumer
-spec:
-  dnsName: my-consumer.foo.bar.local
-  targets:
-    - public-ingress.operator.testing.local
