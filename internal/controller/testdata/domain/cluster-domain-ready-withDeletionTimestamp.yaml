@@ -1,0 +1,27 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: ClusterDomain
+metadata:
+  name: test-cap-01-secondary
+  finalizers:
+  - sme.sap.com/domain
+  labels:
+    sme.sap.com/domain-host-hash: 367762e6dbe1ec665c949f28406d81b4fe088a87
+  deletionTimestamp: "2022-03-22T13:24:38Z"
+spec:
+  dnsMode: Subdomain
+  domain: foo.bar.local
+  ingressSelector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  tlsMode: Simple
+status:
+  conditions:
+  - message: Domain resources are ready
+    reason: Ready
+    status: "True"
+    type: Ready
+  state: Ready
+  dnsTarget: x.bar.local
+  observedDomain: foo.bar.local
+  observedGeneration: 0
+

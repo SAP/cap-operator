@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: istio-system
+status:
+  phase: Active
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  name: istio-ingressgateway-5dbdc4cdbb-pvgtp
+  namespace: istio-system
+spec:
+  containers:
+    - image: istio.ingress.image.local:1.12.2
+      imagePullPolicy: IfNotPresent
+      name: istio-proxy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    dns.gardener.cloud/class: garden
+    dns.gardener.cloud/dnsnames: public-ingress.operator.testing.local
+    dns.gardener.cloud/ttl: "600"
+  creationTimestamp: "2022-03-01T15:14:59Z"
+  finalizers:
+    - garden.dns.gardener.cloud/service-dns
+  name: istio-ingressgateway
+  namespace: istio-system
+  resourceVersion: "4876"
+  uid: ee535038-2f0f-4d9a-adbd-1ae05ba1e864
+spec:
+  ports:
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: 8443
+  selector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  sessionAffinity: None
+  type: LoadBalancer
+---
+addressType: IPv4
+apiVersion: discovery.k8s.io/v1
+endpoints:
+- addresses:
+  - 10.96.6.70
+  conditions:
+    ready: true
+    serving: true
+    terminating: false
+  nodeName: ip-10-250-1-36.eu-central-1.compute.internal
+  targetRef:
+    kind: Pod
+    name: istio-ingressgateway-5dbdc4cdbb-pvgtp
+    namespace: istio-system
+    uid: d11a2862-b816-4367-b996-79e513389e45
+  zone: eu-central-1b
+kind: EndpointSlice
+metadata:
+  generateName: istio-ingressgateway-
+  labels:
+    app: istio-ingressgateway
+    app.kubernetes.io/instance: istio
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: istio-ingressgateway
+    app.kubernetes.io/part-of: istio
+    app.kubernetes.io/version: 1.0.0
+    endpointslice.kubernetes.io/managed-by: endpointslice-controller.k8s.io
+    helm.sh/chart: istio-ingress-1.0.0
+    install.operator.istio.io/owning-resource: default-operator
+    install.operator.istio.io/owning-resource-namespace: istio-system
+    istio: ingressgateway
+    istio.io/rev: default
+    kubernetes.io/service-name: istio-ingressgateway
+    operator.istio.io/component: IngressGateways
+    operator.istio.io/managed: Reconcile
+    operator.istio.io/version: unknown
+    release: istio
+  name: istio-ingressgateway-7dxcb
+  namespace: istio-system
+ports:
+- name: http2
+  port: 8080
+  protocol: TCP
+- name: https
+  port: 8443
+  protocol: TCP
+- name: status-port
+  port: 15021
+  protocol: TCP

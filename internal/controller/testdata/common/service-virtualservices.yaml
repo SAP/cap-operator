@@ -2,7 +2,7 @@ apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   annotations:
-    sme.sap.com/resource-hash: "2309c27d407c5e1d71529d3448da227ab25f63fb5f9d631d7c8a3e9fd0a1ff34"
+    sme.sap.com/resource-hash: "dc220e4e7854e20e62c38bf2ad51b9218932fd56180d90b37e1ce08e3d55e238"
     sme.sap.com/owner-identifier: CAPApplication.default.test-ca-01
   labels:
      sme.sap.com/owner-identifier-hash: 489b013844088de243023d895aa4c674e90a4aad
@@ -16,8 +16,8 @@ metadata:
       name: test-ca-01
 spec:
   gateways:
-    - test-cap-01-gw
-    - istio-system/cap-operator-domains-gen
+    - default-test-cap-01-primary
+    - default/default-test-cap-01-secondary
   hosts:
     - router.app-domain.test.local
     - router.foo.bar.local
@@ -36,7 +36,7 @@ apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   annotations:
-    sme.sap.com/resource-hash: "2309c27d407c5e1d71529d3448da227ab25f63fb5f9d631d7c8a3e9fd0a1ff34"
+    sme.sap.com/resource-hash: "68b2cbfe9bf5533a65f5b102c238964af40b44dbac0b6f71670c40677cd6e6e1"
     sme.sap.com/owner-identifier: CAPApplication.default.test-ca-01
   labels:
      sme.sap.com/owner-identifier-hash: 489b013844088de243023d895aa4c674e90a4aad
@@ -50,11 +50,11 @@ metadata:
       name: test-ca-01
 spec:
   gateways:
-    - test-cap-01-gw
-    - istio-system/cap-operator-domains-gen
+    - default-test-cap-01-primary
+    - default/default-test-cap-01-secondary
   hosts:
-    - cap-backend-service.app-domain.test.local
-    - cap-backend-service.foo.bar.local
+    - api.app-domain.test.local
+    - api.foo.bar.local
   http:
     - match:
         - uri:

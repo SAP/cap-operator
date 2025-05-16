@@ -25,15 +25,11 @@ spec:
         name: cap-service-manager
         secret: cap-cap-01-svc-man-bind-cf
   btpAppName: test-cap-01
-  domains:
-    istioIngressGatewayLabels:
-      - name: app
-        value: istio-ingressgateway
-      - name: istio
-        value: ingressgateway
-    primary: app-domain.test.local
-    secondary:
-      - foo.bar.local
+  domainRefs:
+  - kind: Domain
+    name: test-cap-01-primary
+  - kind: ClusterDomain
+    name: test-cap-01-secondary
   globalAccountId: btp-glo-acc-id
   provider:
     subDomain: my-provider
@@ -46,4 +42,5 @@ status:
       status: "False"
       type: Ready
   observedGeneration: 2
+  domainSpecHash: '{"ClusterDomain.test-cap-01-secondary":"foo.bar.local","Domain.default.test-cap-01-primary":"app-domain.test.local"}'
   state: Processing
