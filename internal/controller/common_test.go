@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	certManagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
@@ -44,6 +45,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -597,6 +599,12 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 			return fmt.Errorf("controller is not using a fake clientset")
 		}
 		fakeClient.Tracker().Add(obj)
+	case *discoveryv1.EndpointSlice:
+		fakeClient, ok := c.kubeClient.(*k8sfake.Clientset)
+		if !ok {
+			return fmt.Errorf("controller is not using a fake clientset")
+		}
+		fakeClient.Tracker().Add(obj)
 	default:
 		return fmt.Errorf("unknown object type")
 	}
@@ -658,11 +666,13 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 		case *v1alpha1.Domain:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("domains"), mo.GetNamespace(), mo.GetName())
 		case *v1alpha1.ClusterDomain:
-			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("clusterdomains"), mo.GetNamespace(), mo.GetName())
+			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("clusterdomains"), metav1.NamespaceAll, mo.GetName())
 		}
 	case *monv1.ServiceMonitor:
 		fakeClient := c.promClient.(*promopFake.Clientset)
 		actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("servicemonitors"), mo.GetNamespace(), mo.GetName())
+	case *discoveryv1.EndpointSlice:
+		actual, err = c.kubeClient.(*k8sfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("endpointslices"), mo.GetNamespace(), mo.GetName())
 	default:
 		return fmt.Errorf("unknown expected object type")
 	}
@@ -679,6 +689,7 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 func compareResourceFields(actual runtime.Object, expected runtime.Object, t *testing.T, kind string, namespace string, name string) {
 	if diff := gocmp.Diff(
 		actual, expected,
+		protocmp.Transform(),
 		gocmp.FilterPath(func(p gocmp.Path) bool {
 			// NOTE: do not compare the type metadata as this is not guaranteed to be filled from the fake client
 			return p.String() == "TypeMeta"
