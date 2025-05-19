@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	certManagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
@@ -44,6 +45,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -62,6 +64,8 @@ var gvrKindMap map[string]string = map[string]string{
 	"captenants.sme.sap.com/v1alpha1":             "CAPTenant",
 	"capapplications.sme.sap.com/v1alpha1":        "CAPApplication",
 	"capapplicationversions.sme.sap.com/v1alpha1": "CAPApplicationVersion",
+	"domains.sme.sap.com/v1alpha1":                "Domain",
+	"clusterdomains.sme.sap.com/v1alpha1":         "ClusterDomain",
 	"servicemonitors.monitoring.coreos.com/v1":    "ServiceMonitor",
 }
 
@@ -152,6 +156,10 @@ var removeStatusTimestampHandler k8stesting.ReactionFunc = func(action k8stestin
 		case *v1alpha1.CAPTenant:
 			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
 		case *v1alpha1.CAPTenantOperation:
+			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
+		case *v1alpha1.Domain:
+			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
+		case *v1alpha1.ClusterDomain:
 			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
 		}
 	}
@@ -343,8 +351,10 @@ func reconcileTestItem(ctx context.Context, t *testing.T, item QueueItem, data T
 			requeue, err = c.reconcileCAPTenant(ctx, item, data.attempts)
 		case ResourceCAPTenantOperation:
 			requeue, err = c.reconcileCAPTenantOperation(ctx, item, data.attempts)
-		// case ResourceOperatorDomains:
-		// 	err = c.reconcileOperatorDomains(ctx, item, data.attempts)
+		case ResourceDomain:
+			requeue, err = c.reconcileDomain(ctx, item, data.attempts)
+		case ResourceClusterDomain:
+			requeue, err = c.reconcileClusterDomain(ctx, item, data.attempts)
 		default:
 			t.Error("unidentified queue item for testing")
 		}
@@ -563,7 +573,7 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 			fakeClient.Tracker().Create(schema.GroupVersionResource{Group: "networking.istio.io", Version: "v1", Resource: "destinationrules"}, obj, metaObj.GetNamespace())
 			err = c.istioInformerFactory.Networking().V1().DestinationRules().Informer().GetIndexer().Add(obj)
 		}
-	case *v1alpha1.CAPApplication, *v1alpha1.CAPApplicationVersion, *v1alpha1.CAPTenant, *v1alpha1.CAPTenantOperation:
+	case *v1alpha1.CAPApplication, *v1alpha1.CAPApplicationVersion, *v1alpha1.CAPTenant, *v1alpha1.CAPTenantOperation, *v1alpha1.Domain, *v1alpha1.ClusterDomain:
 		fakeClient, ok := c.crdClient.(*copfake.Clientset)
 		if !ok {
 			return fmt.Errorf("controller is not using a fake clientset")
@@ -578,9 +588,19 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 			err = c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Informer().GetIndexer().Add(obj)
 		case *v1alpha1.CAPTenantOperation:
 			err = c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Informer().GetIndexer().Add(obj)
+		case *v1alpha1.Domain:
+			err = c.crdInformerFactory.Sme().V1alpha1().Domains().Informer().GetIndexer().Add(obj)
+		case *v1alpha1.ClusterDomain:
+			err = c.crdInformerFactory.Sme().V1alpha1().ClusterDomains().Informer().GetIndexer().Add(obj)
 		}
 	case *monv1.ServiceMonitor:
 		fakeClient, ok := c.promClient.(*promopFake.Clientset)
+		if !ok {
+			return fmt.Errorf("controller is not using a fake clientset")
+		}
+		fakeClient.Tracker().Add(obj)
+	case *discoveryv1.EndpointSlice:
+		fakeClient, ok := c.kubeClient.(*k8sfake.Clientset)
 		if !ok {
 			return fmt.Errorf("controller is not using a fake clientset")
 		}
@@ -632,7 +652,7 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 		case *istionwv1.Gateway:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("gateways"), mo.GetNamespace(), mo.GetName())
 		}
-	case *v1alpha1.CAPApplication, *v1alpha1.CAPApplicationVersion, *v1alpha1.CAPTenant, *v1alpha1.CAPTenantOperation:
+	case *v1alpha1.CAPApplication, *v1alpha1.CAPApplicationVersion, *v1alpha1.CAPTenant, *v1alpha1.CAPTenantOperation, *v1alpha1.Domain, *v1alpha1.ClusterDomain:
 		fakeClient := c.crdClient.(*copfake.Clientset)
 		switch expected.(type) {
 		case *v1alpha1.CAPApplication:
@@ -643,10 +663,16 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("captenants"), mo.GetNamespace(), mo.GetName())
 		case *v1alpha1.CAPTenantOperation:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("captenantoperations"), mo.GetNamespace(), mo.GetName())
+		case *v1alpha1.Domain:
+			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("domains"), mo.GetNamespace(), mo.GetName())
+		case *v1alpha1.ClusterDomain:
+			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("clusterdomains"), metav1.NamespaceAll, mo.GetName())
 		}
 	case *monv1.ServiceMonitor:
 		fakeClient := c.promClient.(*promopFake.Clientset)
 		actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("servicemonitors"), mo.GetNamespace(), mo.GetName())
+	case *discoveryv1.EndpointSlice:
+		actual, err = c.kubeClient.(*k8sfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("endpointslices"), mo.GetNamespace(), mo.GetName())
 	default:
 		return fmt.Errorf("unknown expected object type")
 	}
@@ -663,6 +689,7 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 func compareResourceFields(actual runtime.Object, expected runtime.Object, t *testing.T, kind string, namespace string, name string) {
 	if diff := gocmp.Diff(
 		actual, expected,
+		protocmp.Transform(),
 		gocmp.FilterPath(func(p gocmp.Path) bool {
 			// NOTE: do not compare the type metadata as this is not guaranteed to be filled from the fake client
 			return p.String() == "TypeMeta"

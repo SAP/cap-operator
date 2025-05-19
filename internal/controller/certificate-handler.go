@@ -195,7 +195,7 @@ func (h *CertificateHandler) IsCertificateReady(cert ManagedCertificate) (bool, 
 			if readyCond == nil || readyCond.Status == certManagermetav1.ConditionUnknown {
 				return false, nil
 			} else if readyCond.Status == certManagermetav1.ConditionFalse {
-				return false, fmt.Errorf("%s not ready: %s", certManagerv1.CertificateKind, certv1alpha1.StateError, readyCond.Message)
+				return false, fmt.Errorf("%s not ready: %s %s", certManagerv1.CertificateKind, certv1alpha1.StateError, readyCond.Message)
 			}
 		} else {
 			return false, fmt.Errorf("failed to cast certificate to cert-manager type")
