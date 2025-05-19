@@ -4,7 +4,6 @@ metadata:
   annotations:
     sme.sap.com/owner-identifier: Domain.incidents-namespace.inc-primary
     sme.sap.com/resource-hash: 4f15ef7b54d820e54dc376eb08324a635c40dec81e6cc5593fb4ece81c8da776
-  creationTimestamp: "2025-05-13T18:54:10Z"
   finalizers:
   - sme.sap.com/domain
   generation: 1

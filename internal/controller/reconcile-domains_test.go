@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"os"
 	"testing"
 )
 
@@ -107,6 +108,28 @@ func TestDomain_Ready(t *testing.T) {
 	)
 }
 
+func TestDomain_ReadyWithCertManager(t *testing.T) {
+	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress, ObservedDomain set, certManager, dns and gateway ready - Domain ready",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-observedDom.yaml",
+				"testdata/domain/primary-certManager-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-ready.yaml",
+		},
+	)
+
+	os.Setenv(certManagerEnv, "")
+}
+
 func TestDomain_DnsError(t *testing.T) {
 	err := reconcileTestItem(
 		context.TODO(), t,
@@ -151,6 +174,33 @@ func TestDomain_CertificateError(t *testing.T) {
 	if err.Error() != "Certificate has state Error: certificate error" {
 		t.Error("Wrong error message")
 	}
+}
+
+func TestDomain_CertManagerError(t *testing.T) {
+	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress, ObservedDomain set, certManager error, dns ready - Domain error",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-observedDom.yaml",
+				"testdata/domain/primary-certManager-error.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-certManager-error.yaml",
+			expectError:       true,
+		},
+	)
+
+	if err.Error() != "Certificate not ready: Error cert-manager message error" {
+		t.Error("Wrong error message")
+	}
+
+	os.Setenv(certManagerEnv, "")
 }
 
 func TestDomain_Updatedomain(t *testing.T) {
