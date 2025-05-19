@@ -387,7 +387,7 @@ func handleDomainGateway[T v1alpha1.DomainEntity](ctx context.Context, c *Contro
 			},
 			Spec: *gatewaySpec,
 		}, metav1.CreateOptions{})
-	} else if gateway.Labels[AnnotationResourceHash] != hash { // update
+	} else if gateway.Annotations[AnnotationResourceHash] != hash { // update
 		updateResourceAnnotation(&gateway.ObjectMeta, hash)
 		gateway.Labels[LabelOwnerGeneration] = fmt.Sprintf("%d", dom.GetMetadata().Generation)
 		gateway.Spec = *gatewaySpec

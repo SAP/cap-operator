@@ -49,14 +49,6 @@ const (
 	defaultVersion     = "0.0.1"
 )
 
-const (
-	ingressGWName        = "ingressGw"
-	istioSystemNamespace = "istio-system"
-	gatewayName          = btpApplicationName + "-" + GatewaySuffix
-	certificateName      = btpApplicationName + "-" + CertificateSuffix
-	dnsEntryName         = btpApplicationName + "-" + PrimaryDnsSuffix
-)
-
 type ingressResources struct {
 	service *corev1.Service
 	pod     *corev1.Pod
@@ -73,42 +65,6 @@ type testResources struct {
 	certManagerCert *certManagerv1.Certificate
 	dnsEntry        *dnsv1alpha1.DNSEntry
 	preventStart    bool
-}
-
-func createIngressResource(name string, ca *v1alpha1.CAPApplication, dnsTarget string) *ingressResources {
-	ingressLabelSelector := map[string]string{}
-	svcName := "istioingress-gateway"
-	namespace := istioSystemNamespace
-	if name != ingressGWName {
-		svcName = name
-		namespace = metav1.NamespaceDefault
-	}
-	for _, label := range ca.Spec.Domains.IstioIngressGatewayLabels {
-		ingressLabelSelector[label.Name] = label.Value
-	}
-
-	return &ingressResources{
-		pod: &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-				Labels:    ingressLabelSelector,
-			},
-		},
-		service: &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      svcName,
-				Namespace: namespace,
-				Annotations: map[string]string{
-					AnnotationGardenerDNSTarget: dnsTarget,
-				},
-			},
-			Spec: corev1.ServiceSpec{
-				Type:     corev1.ServiceTypeLoadBalancer,
-				Selector: ingressLabelSelector,
-			},
-		},
-	}
 }
 
 func createCaCRO(name string, withFinalizer bool) *v1alpha1.CAPApplication {
