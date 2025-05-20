@@ -55,7 +55,6 @@ func TestDomain_ProcessingWithoutIngress(t *testing.T) {
 	}
 }
 
-// REVISIT CANNOT READ CERTIFICATE
 func TestDomain_ProcessingWithIngress(t *testing.T) {
 	reconcileTestItem(
 		context.TODO(), t,
@@ -70,6 +69,26 @@ func TestDomain_ProcessingWithIngress(t *testing.T) {
 			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
 		},
 	)
+}
+
+func TestDomain_ProcessingWithIngressCertManager(t *testing.T) {
+	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress - ObservedDomain getting set, certManager and gateway getting created",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing.yaml",
+			},
+			expectedResources: "testdata/domain/domain-processing-observedDom-certManager-gateway.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+
+	os.Setenv(certManagerEnv, "")
 }
 
 func TestDomain_ProcessingWithIngressCertGateway(t *testing.T) {
@@ -217,9 +236,30 @@ func TestDomain_Updatedomain(t *testing.T) {
 				"testdata/domain/primary-dns-ready.yaml",
 			},
 			expectedResources: "testdata/domain/domain-update.expected.yaml",
-			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
 		},
 	)
+}
+
+func TestDomain_UpdatedomainWithCertManager(t *testing.T) {
+	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain updated using certManager - gateway and dns getting updated",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-update.yaml",
+				"testdata/domain/primary-certManager-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-update.expected.yaml",
+		},
+	)
+
+	os.Setenv(certManagerEnv, "")
 }
 
 func TestDomain_DeletionTimestampSet(t *testing.T) {
@@ -248,6 +288,92 @@ func TestDomain_DeletingWithCert(t *testing.T) {
 				"testdata/domain/primary-certificate-ready.yaml",
 			},
 			expectedResources: "testdata/domain/domain-deleting-no-finalizer.yaml",
+		},
+	)
+}
+
+func TestDomain_DeletingWithCertManager(t *testing.T) {
+	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain deleting with certificates - Finalizer removed",
+			initialResources: []string{
+				"testdata/domain/domain-deleting.yaml",
+				"testdata/domain/primary-certManager-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-deleting-no-finalizer.yaml",
+		},
+	)
+
+	os.Setenv(certManagerEnv, "")
+}
+
+func TestDomain_DuplicateDomains(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary-dup"}},
+		TestData{
+			description: "Duplicate domains",
+			initialResources: []string{
+				"testdata/domain/domain-ready.yaml",
+				"testdata/domain/domain-duplicate.yaml",
+			},
+			expectedResources: "testdata/domain/domain-duplicate.expected.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}, {Namespace: "default", Name: "test-cap-01-primary-dup"}}},
+		},
+	)
+}
+
+func TestDomain_SubdomainWithCAService(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain with type subdomain and CA service only - dns and netpol getting created",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-with-subdomain-processing.yaml",
+				"testdata/domain/ca-services-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-with-subdomain-processing-with-dns-netpol.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+}
+
+func TestDomain_SubdomainWithCATenanat(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain with type subdomain and CA with provider tenant - dns and netpol getting created",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-with-subdomain-processing.yaml",
+				"testdata/capapplication/ca-06.expected.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-with-subdomain-processing-with-dns-netpol-cat.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+}
+
+func TestDomain_CADeleted(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain with type subdomain and CA deleted - dns and netpol getting deleted",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-with-subdomain-processing-with-dns-netpol.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-with-subdomain-ready.yaml",
 		},
 	)
 }

@@ -3,10 +3,6 @@ kind: Domain
 metadata:
   name: test-cap-01-primary
   namespace: default
-  finalizers:
-  - sme.sap.com/domain
-  labels:
-    sme.sap.com/domain-host-hash: e68f5960522c10885f02827ee4260e9416eccb70
 spec:
   dnsMode: Wildcard
   domain: app-domain-dup.test.local
@@ -16,10 +12,13 @@ spec:
   tlsMode: Simple
 status:
   conditions:
-  - message: Processing domain resources
-    reason: Processing
-    status: "False"
+  - lastTransitionTime: "2025-05-13T18:55:20Z"
+    message: Domain resources are ready
+    observedGeneration: 1
+    reason: Ready
+    status: "True"
     type: Ready
-  state: Processing
-  dnsTarget: public-ingress.operator.testing.local
+  dnsTarget: x.test.local
   observedDomain: app-domain-dup.test.local
+  observedGeneration: 1
+  state: Ready

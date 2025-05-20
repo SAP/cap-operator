@@ -56,7 +56,7 @@ spec:
       credentialName: default-test-cap-01-primary
       mode: SIMPLE
 ---
-apiVersion: cert.gardener.cloud/v1alpha1
+apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   annotations:
@@ -72,7 +72,8 @@ metadata:
 spec:
   dnsNames:
   - '*.app-domain.test.local'
-  secretRef:
-    name: default-test-cap-01-primary
-    namespace: istio-system
+  secretName: default-test-cap-01-primary
+  issuerRef:
+    kind: ClusterIssuer
+    name: cluster-ca
 
