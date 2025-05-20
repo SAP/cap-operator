@@ -553,6 +553,13 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 		}
 		fakeClient.Tracker().Add(obj)
 		err = c.gardenerDNSInformerFactory.Dns().V1alpha1().DNSEntries().Informer().GetIndexer().Add(obj)
+	case *networkingv1.NetworkPolicy:
+		fakeClient, ok := c.kubeClient.(*k8sfake.Clientset)
+		if !ok {
+			return fmt.Errorf("controller is not using a fake clientset")
+		}
+		fakeClient.Tracker().Add(obj)
+		err = c.kubeInformerFactory.Networking().V1().NetworkPolicies().Informer().GetIndexer().Add(obj)
 	case *istionwv1.Gateway, *istionwv1.VirtualService, *istionwv1.DestinationRule:
 		fakeClient, ok := c.istioClient.(*istiofake.Clientset)
 		if !ok {
@@ -637,9 +644,9 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 	case *networkingv1.NetworkPolicy:
 		actual, err = c.kubeClient.(*k8sfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("networkpolicies"), mo.GetNamespace(), mo.GetName())
 	case *gardenercertv1alpha1.Certificate:
-		actual, err = c.gardenerCertificateClient.(*gardenercertfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("certificates.cert.gardener.cloud"), mo.GetNamespace(), mo.GetName())
+		actual, err = c.gardenerCertificateClient.(*gardenercertfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("certificates"), mo.GetNamespace(), mo.GetName())
 	case *certManagerv1.Certificate:
-		actual, err = c.certManagerCertificateClient.(*certManagerFake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("certificates.cert.gardener.cloud"), mo.GetNamespace(), mo.GetName())
+		actual, err = c.certManagerCertificateClient.(*certManagerFake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("certificates"), mo.GetNamespace(), mo.GetName())
 	case *gardenerdnsv1alpha1.DNSEntry:
 		actual, err = c.gardenerDNSClient.(*gardenerdnsfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("dnsentries"), mo.GetNamespace(), mo.GetName())
 	case *istionwv1.Gateway, *istionwv1.VirtualService, *istionwv1.DestinationRule:

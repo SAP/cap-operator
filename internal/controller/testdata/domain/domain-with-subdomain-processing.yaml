@@ -6,10 +6,10 @@ metadata:
   finalizers:
   - sme.sap.com/domain
   labels:
-    sme.sap.com/domain-host-hash: e68f5960522c10885f02827ee4260e9416eccb70
+    sme.sap.com/domain-host-hash: d8b11ae7b1f04e357f32290b81db58c247dac748
 spec:
-  dnsMode: Wildcard
-  domain: app-domain-dup.test.local
+  dnsMode: Subdomain
+  domain: app-domain.test.local
   ingressSelector:
     app: istio-ingressgateway
     istio: ingressgateway
@@ -22,4 +22,6 @@ status:
     type: Ready
   state: Processing
   dnsTarget: public-ingress.operator.testing.local
-  observedDomain: app-domain-dup.test.local
+  observedDomain: app-domain.test.local
+
+

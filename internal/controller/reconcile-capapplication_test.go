@@ -576,3 +576,52 @@ func TestCA_ServicesOnly_Consistent(t *testing.T) {
 		},
 	)
 }
+
+func TestCA_ServicesOnly_UpdatedHostDomains(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01"}},
+		TestData{
+			description: "capapplication - updated host in domain",
+			initialResources: []string{
+				"testdata/common/domain-hostUpdated-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/capapplication/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/expected/cav-services-ready.yaml",
+				"testdata/common/service-virtualservices.yaml",
+				"testdata/capapplicationversion/services-ready.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems:      []string{},
+			expectError:       false,
+			expectedResources: "testdata/capapplication/ca-services-hostUpdated.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{ResourceCAPApplication: {{Namespace: "default", Name: "test-ca-01"}}, ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-ca-01-cav-v1"}},
+				ResourceDomain:        {{Namespace: "default", Name: "test-cap-01-primary"}},
+				ResourceClusterDomain: {{Namespace: "", Name: "test-cap-01-secondary"}}},
+		},
+	)
+}
+
+func TestCA_ServicesOnly_NoDomainRef(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01"}},
+		TestData{
+			description: "capapplication - no domain ref",
+			initialResources: []string{
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/capapplication/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/expected/cav-services-ready.yaml",
+				"testdata/common/service-virtualservices.yaml",
+				"testdata/capapplicationversion/services-ready.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems:      []string{},
+			expectError:       false,
+			expectedResources: "testdata/capapplication/ca-processing-domainRefs.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplication: {{Namespace: "default", Name: "test-ca-01"}}},
+		},
+	)
+}
