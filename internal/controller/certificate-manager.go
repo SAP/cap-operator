@@ -108,36 +108,36 @@ func (h *CertificateManager) RemoveCertificateFinalizers(ctx context.Context, ce
 	updGroup, updCtx := errgroup.WithContext(ctx)
 	for i := range certs {
 		cert := certs[i]
-		switch h.managerType {
-		case certManagerCertManagerIO:
-			if c, ok := cert.(*certManagerv1.Certificate); ok {
-				updGroup.Go(func() error {
-					var err error
-					// remove Finalizer from cert-manager Certificate
-					if removeFinalizer(&c.Finalizers, FinalizerDomain) {
-						_, err = h.c.certManagerCertificateClient.CertmanagerV1().Certificates(c.Namespace).Update(updCtx, c, metav1.UpdateOptions{})
-					}
-					return err
-				})
-			}
-		default:
-			if c, ok := cert.(*certv1alpha1.Certificate); ok {
-				updGroup.Go(func() error {
-					var err error
-					// remove Finalizer from gardener Certificate
-					if removeFinalizer(&c.Finalizers, FinalizerDomain) {
-						_, err = h.c.gardenerCertificateClient.CertV1alpha1().Certificates(c.Namespace).Update(updCtx, c, metav1.UpdateOptions{})
-					}
-					return err
-				})
-			}
-		}
+		updGroup.Go(func() error {
+			return h.removeManagedCertificateFinalizer(updCtx, cert)
+		})
 	}
 
 	if err = updGroup.Wait(); err != nil {
 		return fmt.Errorf("failed to remove finalizer from certificate: %w", err)
 	}
 	return
+}
+
+func (h *CertificateManager) removeManagedCertificateFinalizer(ctx context.Context, cert ManagedCertificate) error {
+	var err error
+	switch h.managerType {
+	case certManagerCertManagerIO:
+		if c, ok := cert.(*certManagerv1.Certificate); ok {
+			// remove Finalizer from cert-manager Certificate
+			if removeFinalizer(&c.Finalizers, FinalizerDomain) {
+				_, err = h.c.certManagerCertificateClient.CertmanagerV1().Certificates(c.Namespace).Update(ctx, c, metav1.UpdateOptions{})
+			}
+		}
+	default:
+		if c, ok := cert.(*certv1alpha1.Certificate); ok {
+			// remove Finalizer from gardener Certificate
+			if removeFinalizer(&c.Finalizers, FinalizerDomain) {
+				_, err = h.c.gardenerCertificateClient.CertV1alpha1().Certificates(c.Namespace).Update(ctx, c, metav1.UpdateOptions{})
+			}
+		}
+	}
+	return err
 }
 
 func (h *CertificateManager) UpdateCertificate(ctx context.Context, cert ManagedCertificate, info *ManagedCertificateInfo) (err error) {
