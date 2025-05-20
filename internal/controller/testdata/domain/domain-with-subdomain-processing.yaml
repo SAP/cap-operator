@@ -23,5 +23,3 @@ status:
   state: Processing
   dnsTarget: public-ingress.operator.testing.local
   observedDomain: app-domain.test.local
-
-

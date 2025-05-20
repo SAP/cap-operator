@@ -19,6 +19,6 @@ status:
     status: "True"
     type: Ready
   dnsTarget: x.test.local
-  observedDomain: app-domain.test.local
+  observedDomain: app-domain-dup.test.local
   observedGeneration: 1
   state: Ready
