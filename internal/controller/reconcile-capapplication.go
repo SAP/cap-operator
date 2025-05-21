@@ -325,7 +325,7 @@ func (c *Controller) getCachedApplicationResources(ctx context.Context, ca *v1al
 	return versions, tenants, nil
 }
 
-func addDomainReferencesToReconcileResult(refs []v1alpha1.DomainRefs, result *ReconcileResult, namespace string) {
+func addDomainReferencesToReconcileResult(refs []v1alpha1.DomainRef, result *ReconcileResult, namespace string) {
 	for _, ref := range refs {
 		switch ref.Kind {
 		case v1alpha1.DomainKind:
@@ -505,7 +505,7 @@ func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alp
 	// delete CAPApplication
 	if removeFinalizer(&ca.Finalizers, FinalizerCAPApplication) {
 		// requeue domain references for cleanup
-		var outdatedRefs []v1alpha1.DomainRefs
+		var outdatedRefs []v1alpha1.DomainRef
 		json.Unmarshal([]byte(ca.Status.DomainSpecHash), &outdatedRefs) // ignore errors (considering older versions)
 		var requeue *ReconcileResult
 		if outdatedRefs != nil {

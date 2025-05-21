@@ -55,7 +55,7 @@ func createCaCRO() *v1alpha1.CAPApplication {
 			Namespace: metav1.NamespaceDefault,
 		},
 		Spec: v1alpha1.CAPApplicationSpec{
-			DomainRefs: []v1alpha1.DomainRefs{
+			DomainRefs: []v1alpha1.DomainRef{
 				{
 					Kind: "Domain",
 					Name: "primaryDomain",
@@ -162,7 +162,7 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 						TenantId:  tenantId,
 					},
 					BTP: v1alpha1.BTP{},
-					DomainRefs: []v1alpha1.DomainRefs{
+					DomainRefs: []v1alpha1.DomainRef{
 						{
 							Kind: "Domain",
 							Name: "primaryDomain",
@@ -186,14 +186,14 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 				crdOld.Spec.Provider.TenantId = crdOld.Spec.Provider.TenantId + "modified"
 				rawBytesOld, err = json.Marshal(crdOld)
 			} else if change == domainsUpdate {
-				crd.Spec.DomainRefs = []v1alpha1.DomainRefs{}
+				crd.Spec.DomainRefs = []v1alpha1.DomainRef{}
 				crd.Spec.Domains = v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}}
 				rawBytes, err = json.Marshal(crd)
 			}
 		}
 
 		if operation == admissionv1.Create && change == useDomains && err == nil {
-			crd.Spec.DomainRefs = []v1alpha1.DomainRefs{}
+			crd.Spec.DomainRefs = []v1alpha1.DomainRef{}
 			crd.Spec.Domains = v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}}
 			rawBytes, err = json.Marshal(crd)
 		}

@@ -86,9 +86,9 @@ type CAPApplicationList struct {
 
 // CAPApplicationSpec defines the desired state of CAPApplication
 type CAPApplicationSpec struct {
-	// Domains used by the application (new) // TODO: remove optional once the new field is meant to be used
-	DomainRefs []DomainRefs `json:"domainRefs,omitempty"`
-	// [DEPRECATED] Domains used by the application
+	// Domains used by the application (new)
+	DomainRefs []DomainRef `json:"domainRefs,omitempty"`
+	// [DEPRECATED] Domains used by the application // Will be removed in future versions
 	Domains ApplicationDomains `json:"domains,omitempty"`
 	// SAP BTP Global Account Identifier where services are entitles for the current application
 	GlobalAccountId string `json:"globalAccountId"`
@@ -101,7 +101,7 @@ type CAPApplicationSpec struct {
 }
 
 // Domain references
-type DomainRefs struct {
+type DomainRef struct {
 	// +kubebuilder:validation:Enum=Domain;ClusterDomain
 	Kind string `json:"kind"`
 	Name string `json:"name"`
