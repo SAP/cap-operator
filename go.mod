@@ -21,6 +21,7 @@ require (
 	go.uber.org/zap v1.27.0
 	golang.org/x/mod v0.24.0
 	golang.org/x/sync v0.14.0
+	gomodules.xyz/jsonpatch/v2 v2.5.0
 	google.golang.org/protobuf v1.36.6
 	istio.io/api v1.26.0
 	istio.io/client-go v1.26.0
