@@ -577,10 +577,10 @@ func (wh *WebhookHandler) checkCaIsConsistent(catObjOld ResponseCat) validateRes
 	return validAdmissionReviewObj()
 }
 
-func (wh *WebhookHandler) checkForDuplicateDomains(domain string) validateResource {
+func (wh *WebhookHandler) checkForDuplicateDomains(domain string, name string) validateResource {
 	clusterDoms, _ := wh.CrdClient.SmeV1alpha1().ClusterDomains(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
 	for _, clusterDom := range clusterDoms.Items {
-		if clusterDom.Spec.Domain == domain {
+		if clusterDom.Spec.Domain == domain && clusterDom.Name != name {
 			return validateResource{
 				allowed: false,
 				message: fmt.Sprintf("%s %s %s already exist with domain %s", InvalidationMessage, v1alpha1.ClusterDomainKind, clusterDom.Name, domain),
@@ -590,7 +590,7 @@ func (wh *WebhookHandler) checkForDuplicateDomains(domain string) validateResour
 
 	doms, _ := wh.CrdClient.SmeV1alpha1().Domains(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
 	for _, dom := range doms.Items {
-		if dom.Spec.Domain == domain {
+		if dom.Spec.Domain == domain && dom.Name != name {
 			return validateResource{
 				allowed: false,
 				message: fmt.Sprintf("%s %s %s already exist in namespace %s with domain %s", InvalidationMessage, v1alpha1.DomainKind, dom.Name, dom.Namespace, domain),
@@ -609,7 +609,7 @@ func (wh *WebhookHandler) validateClusterDomain(w http.ResponseWriter, admission
 		}
 
 		// Check if a clusterDomain or Domain already exists with the new domain
-		return wh.checkForDuplicateDomains(clusterDomObjNew.Spec.Domain)
+		return wh.checkForDuplicateDomains(clusterDomObjNew.Spec.Domain, clusterDomObjNew.Name)
 	}
 
 	return validAdmissionReviewObj()
@@ -623,7 +623,7 @@ func (wh *WebhookHandler) validateDomain(w http.ResponseWriter, admissionReview 
 		}
 
 		// Check if a clusterDomain or Domain already exists with the new domain
-		return wh.checkForDuplicateDomains(domObjNew.Spec.Domain)
+		return wh.checkForDuplicateDomains(domObjNew.Spec.Domain, domObjNew.Name)
 	}
 
 	return validAdmissionReviewObj()
@@ -861,7 +861,7 @@ func prepareResponse(w http.ResponseWriter, admissionReview *admissionv1.Admissi
 		}
 		message = InvalidationMessage
 	}
-	klog.InfoS(message, "kind", admissionReview.Request.Kind.Kind, "operation", string(admissionReview.Request.Operation))
+	klog.InfoS(message, "kind", admissionReview.Request.Kind.Kind, "operation", string(admissionReview.Request.Operation), "details", validation.message)
 
 	if bytes, err := json.Marshal(&finalizedAdmissionReview); err != nil {
 		httpError(w, http.StatusInternalServerError, fmt.Errorf("%s %w", AdmissionError, err))

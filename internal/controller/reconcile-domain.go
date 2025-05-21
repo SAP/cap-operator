@@ -977,7 +977,7 @@ func newSelectorForOwnerIdentifierHashes(ownerIdHashes []string) labels.Selector
 	return labels.NewSelector().Add(*ownerReq)
 }
 
-func fetchDomainResourcesFromCache(ctx context.Context, c *Controller, refs []v1alpha1.DomainRefs, namespace string) ([]*v1alpha1.Domain, []*v1alpha1.ClusterDomain, error) {
+func fetchDomainResourcesFromCache(ctx context.Context, c *Controller, refs []v1alpha1.DomainRef, namespace string) ([]*v1alpha1.Domain, []*v1alpha1.ClusterDomain, error) {
 	doms := []*v1alpha1.Domain{}
 	cdoms := []*v1alpha1.ClusterDomain{}
 	for _, ref := range refs {
@@ -1116,15 +1116,15 @@ func createDomainMap[T v1alpha1.DomainEntity](doms []T, in map[string]string) (o
 	return
 }
 
-func convertOwnerIdsToDomainReferences(ownerIds []string) (refs []v1alpha1.DomainRefs) {
-	refs = []v1alpha1.DomainRefs{}
+func convertOwnerIdsToDomainReferences(ownerIds []string) (refs []v1alpha1.DomainRef) {
+	refs = []v1alpha1.DomainRef{}
 	for _, id := range ownerIds {
 		parts := strings.Split(id, ".")
 		switch len(parts) {
 		case 2:
-			refs = append(refs, v1alpha1.DomainRefs{Kind: parts[0], Name: parts[1]})
+			refs = append(refs, v1alpha1.DomainRef{Kind: parts[0], Name: parts[1]})
 		default: // case 3:
-			refs = append(refs, v1alpha1.DomainRefs{Kind: parts[0], Name: parts[2]})
+			refs = append(refs, v1alpha1.DomainRef{Kind: parts[0], Name: parts[2]})
 		}
 	}
 	return

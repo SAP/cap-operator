@@ -7,23 +7,23 @@ SPDX-License-Identifier: Apache-2.0
 
 package v1alpha1
 
-// DomainRefsApplyConfiguration represents a declarative configuration of the DomainRefs type for use
+// DomainRefApplyConfiguration represents a declarative configuration of the DomainRef type for use
 // with apply.
-type DomainRefsApplyConfiguration struct {
+type DomainRefApplyConfiguration struct {
 	Kind *string `json:"kind,omitempty"`
 	Name *string `json:"name,omitempty"`
 }
 
-// DomainRefsApplyConfiguration constructs a declarative configuration of the DomainRefs type for use with
+// DomainRefApplyConfiguration constructs a declarative configuration of the DomainRef type for use with
 // apply.
-func DomainRefs() *DomainRefsApplyConfiguration {
-	return &DomainRefsApplyConfiguration{}
+func DomainRef() *DomainRefApplyConfiguration {
+	return &DomainRefApplyConfiguration{}
 }
 
 // WithKind sets the Kind field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Kind field is set to the value of the last call.
-func (b *DomainRefsApplyConfiguration) WithKind(value string) *DomainRefsApplyConfiguration {
+func (b *DomainRefApplyConfiguration) WithKind(value string) *DomainRefApplyConfiguration {
 	b.Kind = &value
 	return b
 }
@@ -31,7 +31,7 @@ func (b *DomainRefsApplyConfiguration) WithKind(value string) *DomainRefsApplyCo
 // WithName sets the Name field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Name field is set to the value of the last call.
-func (b *DomainRefsApplyConfiguration) WithName(value string) *DomainRefsApplyConfiguration {
+func (b *DomainRefApplyConfiguration) WithName(value string) *DomainRefApplyConfiguration {
 	b.Name = &value
 	return b
 }

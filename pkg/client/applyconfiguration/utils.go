@@ -67,8 +67,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.DeploymentDetailsApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Domain"):
 		return &smesapcomv1alpha1.DomainApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("DomainRefs"):
-		return &smesapcomv1alpha1.DomainRefsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainRef"):
+		return &smesapcomv1alpha1.DomainRefApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DomainSpec"):
 		return &smesapcomv1alpha1.DomainSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DomainStatus"):

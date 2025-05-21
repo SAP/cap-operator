@@ -78,7 +78,7 @@ func migrateToDomainRefs(crdClient versioned.Interface, istioClient istio.Interf
 		}
 
 		// Add domainRef to the CAPApplication
-		ca.Spec.DomainRefs = append(ca.Spec.DomainRefs, v1alpha1.DomainRefs{
+		ca.Spec.DomainRefs = append(ca.Spec.DomainRefs, v1alpha1.DomainRef{
 			Kind: v1alpha1.DomainKind,
 			Name: domainName,
 		})
@@ -93,7 +93,7 @@ func migrateToDomainRefs(crdClient versioned.Interface, istioClient istio.Interf
 			}
 
 			// Add domainRef to the CAPApplications
-			ca.Spec.DomainRefs = append(ca.Spec.DomainRefs, v1alpha1.DomainRefs{
+			ca.Spec.DomainRefs = append(ca.Spec.DomainRefs, v1alpha1.DomainRef{
 				Kind: v1alpha1.ClusterDomainKind,
 				Name: cdom.Name,
 			})
