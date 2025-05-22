@@ -101,26 +101,12 @@ func (h *CertificateHandler) RemoveCertificateFinalizers(ctx context.Context, ce
 		cert := certs[i]
 		switch h.managerType {
 		case certManagerCertManagerIO:
-			if c, ok := cert.(*certManagerv1.Certificate); ok {
-				updGroup.Go(func() error {
-					var err error
-					// remove Finalizer from cert-manager Certificate
-					if removeFinalizer(&c.Finalizers, FinalizerDomain) {
-						_, err = h.c.certManagerCertificateClient.CertmanagerV1().Certificates(c.Namespace).Update(updCtx, c, metav1.UpdateOptions{})
-					}
-					return err
-				})
+			if err := h.removeCertManagerFinalizer(updCtx, updGroup, cert); err != nil {
+				return err
 			}
 		default:
-			if c, ok := cert.(*certv1alpha1.Certificate); ok {
-				updGroup.Go(func() error {
-					var err error
-					// remove Finalizer from gardener Certificate
-					if removeFinalizer(&c.Finalizers, FinalizerDomain) {
-						_, err = h.c.gardenerCertificateClient.CertV1alpha1().Certificates(c.Namespace).Update(updCtx, c, metav1.UpdateOptions{})
-					}
-					return err
-				})
+			if err := h.removeGardenerFinalizer(updCtx, updGroup, cert); err != nil {
+				return err
 			}
 		}
 	}
@@ -129,6 +115,34 @@ func (h *CertificateHandler) RemoveCertificateFinalizers(ctx context.Context, ce
 		return fmt.Errorf("failed to remove finalizer from certificate: %w", err)
 	}
 	return
+}
+
+func (h *CertificateHandler) removeCertManagerFinalizer(ctx context.Context, group *errgroup.Group, cert ManagedCertificate) error {
+	if c, ok := cert.(*certManagerv1.Certificate); ok {
+		group.Go(func() error {
+			var err error
+			// remove Finalizer from cert-manager Certificate
+			if removeFinalizer(&c.Finalizers, FinalizerDomain) {
+				_, err = h.c.certManagerCertificateClient.CertmanagerV1().Certificates(c.Namespace).Update(ctx, c, metav1.UpdateOptions{})
+			}
+			return err
+		})
+	}
+	return nil
+}
+
+func (h *CertificateHandler) removeGardenerFinalizer(ctx context.Context, group *errgroup.Group, cert ManagedCertificate) error {
+	if c, ok := cert.(*certv1alpha1.Certificate); ok {
+		group.Go(func() error {
+			var err error
+			// remove Finalizer from gardener Certificate
+			if removeFinalizer(&c.Finalizers, FinalizerDomain) {
+				_, err = h.c.gardenerCertificateClient.CertV1alpha1().Certificates(c.Namespace).Update(ctx, c, metav1.UpdateOptions{})
+			}
+			return err
+		})
+	}
+	return nil
 }
 
 func (h *CertificateHandler) UpdateCertificate(ctx context.Context, cert ManagedCertificate, spec *ManagedCertificateSpec) (err error) {
@@ -189,29 +203,42 @@ func (h *CertificateHandler) CreateCertificate(ctx context.Context, spec *Manage
 func (h *CertificateHandler) IsCertificateReady(cert ManagedCertificate) (bool, error) {
 	switch h.managerType {
 	case certManagerCertManagerIO:
-		if c, ok := cert.(*certManagerv1.Certificate); ok {
-			readyCond := getCertManagerReadyCondition(c)
-			// check for ready state
-			if readyCond == nil || readyCond.Status == certManagermetav1.ConditionUnknown {
-				return false, nil
-			} else if readyCond.Status == certManagermetav1.ConditionFalse {
-				return false, fmt.Errorf("%s not ready: %s %s", certManagerv1.CertificateKind, certv1alpha1.StateError, readyCond.Message)
-			}
-		} else {
-			return false, fmt.Errorf("failed to cast certificate to cert-manager type")
-		}
+		return h.isCertManagerCertificateReady(cert)
 	default:
-		if c, ok := cert.(*certv1alpha1.Certificate); ok {
-			// check for ready state
-			if c.Status.State == certv1alpha1.StateError {
-				return false, fmt.Errorf("%s has state %s: %s", certv1alpha1.CertificateKind, certv1alpha1.StateError, *c.Status.Message)
-			} else if c.Status.State != certv1alpha1.StateReady {
-				return false, nil
-			}
-		} else {
-			return false, fmt.Errorf("failed to cast certificate to gardener type")
-		}
+		return h.isGardenerCertificateReady(cert)
 	}
+}
+
+func (h *CertificateHandler) isCertManagerCertificateReady(cert ManagedCertificate) (bool, error) {
+	c, ok := cert.(*certManagerv1.Certificate)
+	if !ok {
+		return false, fmt.Errorf("failed to cast certificate to cert-manager type")
+	}
+
+	readyCond := getCertManagerReadyCondition(c)
+	if readyCond == nil || readyCond.Status == certManagermetav1.ConditionUnknown {
+		return false, nil
+	}
+	if readyCond.Status == certManagermetav1.ConditionFalse {
+		return false, fmt.Errorf("%s not ready: %s %s", certManagerv1.CertificateKind, certv1alpha1.StateError, readyCond.Message)
+	}
+
+	return true, nil
+}
+
+func (h *CertificateHandler) isGardenerCertificateReady(cert ManagedCertificate) (bool, error) {
+	c, ok := cert.(*certv1alpha1.Certificate)
+	if !ok {
+		return false, fmt.Errorf("failed to cast certificate to gardener type")
+	}
+
+	if c.Status.State == certv1alpha1.StateError {
+		return false, fmt.Errorf("%s has state %s: %s", certv1alpha1.CertificateKind, certv1alpha1.StateError, *c.Status.Message)
+	}
+	if c.Status.State != certv1alpha1.StateReady {
+		return false, nil
+	}
+
 	return true, nil
 }
 

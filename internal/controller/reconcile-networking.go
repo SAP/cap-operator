@@ -31,6 +31,7 @@ const (
 	EventActionReconcileServiceNetworking        = "ReconcileServiceNetworking"
 	EventServiceNetworkingModified               = "ServiceNetworkingModified"
 	EventServiceVirtualServiceModificationFailed = "ServiceVirtualServiceModificationFailed"
+	SvcClusterLocalSuffix                        = ".svc.cluster.local"
 )
 
 var (
@@ -130,7 +131,7 @@ func (c *Controller) getUpdatedTenantDestinationRuleObject(ctx context.Context, 
 	}
 
 	spec := &networkingv1.DestinationRule{
-		Host: routerPortInfo.WorkloadName + ServiceSuffix + "." + cat.Namespace + ".svc.cluster.local",
+		Host: routerPortInfo.WorkloadName + ServiceSuffix + "." + cat.Namespace + SvcClusterLocalSuffix,
 		TrafficPolicy: &networkingv1.TrafficPolicy{
 			LoadBalancer: &networkingv1.LoadBalancerSettings{
 				LbPolicy: &networkingv1.LoadBalancerSettings_ConsistentHash{
@@ -226,7 +227,7 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 			},
 			Route: []*networkingv1.HTTPRouteDestination{{
 				Destination: &networkingv1.Destination{
-					Host: routerPortInfo.WorkloadName + ServiceSuffix + "." + cat.Namespace + ".svc.cluster.local",
+					Host: routerPortInfo.WorkloadName + ServiceSuffix + "." + cat.Namespace + SvcClusterLocalSuffix,
 					Port: &networkingv1.PortSelector{Number: uint32(routerPortInfo.Ports[0].Port)},
 				},
 				Weight: 100,
@@ -406,7 +407,7 @@ func (c *Controller) getUpdatedServiceVirtualServiceObject(ctx context.Context, 
 			},
 			Route: []*networkingv1.HTTPRouteDestination{{
 				Destination: &networkingv1.Destination{
-					Host: getWorkloadName(cavName, route.WorkloadName) + ServiceSuffix + "." + ca.Namespace + ".svc.cluster.local",
+					Host: getWorkloadName(cavName, route.WorkloadName) + ServiceSuffix + "." + ca.Namespace + SvcClusterLocalSuffix,
 					Port: &networkingv1.PortSelector{Number: uint32(route.Port)},
 				},
 			}},
