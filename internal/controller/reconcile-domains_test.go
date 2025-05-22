@@ -1,329 +1,423 @@
-/*
-SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
-SPDX-License-Identifier: Apache-2.0
-*/
-
 package controller
 
 import (
 	"context"
 	"os"
 	"testing"
-
-	certManagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
-	certv1alpha1 "github.com/gardener/cert-management/pkg/apis/cert/v1alpha1"
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	istionwv1 "istio.io/client-go/pkg/apis/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 )
 
-const envDNS = "env-ingress.some.cluster.sap"
+func TestDomain_MissingLabelAndFinalizer(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Initial test with no label and no finalizer",
+			initialResources: []string{
+				"testdata/domain/domain-initial-state.yaml",
+			},
+			expectedResources: "testdata/domain/domain-initial-state-label-finalizer.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+}
 
-func TestController_reconcileOperatorDomains(t *testing.T) {
-	tests := []struct {
-		name                  string
-		createCA              bool
-		createCA2             bool
-		updateCA              bool
-		createIngress         bool
-		withoutDNSNames       bool
-		useEnvDNS             bool
-		cleanUpDomains        bool
-		wantErr               bool
-		expectDomainResources bool
-		enableCertManagerEnv  bool
-	}{
-		{
-			name:                  "Test without CAPApplication",
-			wantErr:               false,
-			expectDomainResources: false,
+func TestDomain_InitialState(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "With label and finalizer, processing inital state",
+			initialResources: []string{
+				"testdata/domain/domain-initial-state-label-finalizer.yaml",
+			},
+			expectedResources: "testdata/domain/domain-processing.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
 		},
-		{
-			name:                  "Test with CAPApplication but without Ingress GW",
-			createCA:              true,
-			wantErr:               true,
-			expectDomainResources: false,
+	)
+}
+
+func TestDomain_ProcessingWithoutIngress(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing without ingress",
+			initialResources: []string{
+				"testdata/domain/domain-processing.yaml",
+			},
+			expectedResources: "testdata/domain/domain-no-ingress-error.yaml",
+			expectError:       true,
 		},
-		{
-			name:                  "Test with CAPApplication and Ingress GW",
-			createCA:              true,
-			createIngress:         true,
-			wantErr:               false,
-			expectDomainResources: true,
-		},
-		{
-			name:                  "Test cleanup after creation",
-			createCA:              true,
-			createIngress:         true,
-			wantErr:               false,
-			cleanUpDomains:        true,
-			expectDomainResources: false,
-		},
-		{
-			name:                  "Test with multiple CAPApplications and Ingress GW",
-			createCA:              true,
-			createCA2:             true,
-			createIngress:         true,
-			wantErr:               false,
-			expectDomainResources: true,
-		},
-		{
-			name:                  "Test with multiple CAPApplications and Ingress GW without DNS names",
-			createCA:              true,
-			createCA2:             true,
-			createIngress:         true,
-			withoutDNSNames:       true,
-			wantErr:               true, // ingress gateway service not annotated with dns target name for CAPApplication default.ca-test-name
-			expectDomainResources: false,
-		},
-		{
-			name:                  "Test with multiple CAPApplications and Ingress GW without DNS names but DNS_TARGET env",
-			createCA:              true,
-			createCA2:             true,
-			createIngress:         true,
-			withoutDNSNames:       true,
-			useEnvDNS:             true,
-			wantErr:               false,
-			expectDomainResources: true, // Creates resources because of DNS_TARGET env
-		},
-		// {
-		// 	name:                  "Test cleanup with multiple CAPApplications and Ingress GW",
-		// 	createCA:              true,
-		// 	createCA2:             true,
-		// 	createIngress:         true,
-		// 	cleanUpDomains:        true,
-		// 	wantErr:               false,
-		// 	expectDomainResources: true,
-		// },
-		{
-			name:                  "Test update with CAPApplication and Ingress GW",
-			createCA:              true,
-			updateCA:              true,
-			createIngress:         true,
-			wantErr:               false,
-			expectDomainResources: true,
-		},
-		{
-			name:                  "Test with CAPApplication and Ingress GW (enableCertManagerEnv)",
-			createCA:              true,
-			createIngress:         true,
-			enableCertManagerEnv:  true,
-			wantErr:               false,
-			expectDomainResources: true,
-		},
-		{
-			name:                  "Test cleanup after creation (enableCertManagerEnv)",
-			createCA:              true,
-			createIngress:         true,
-			enableCertManagerEnv:  true,
-			wantErr:               false,
-			cleanUpDomains:        true,
-			expectDomainResources: false,
-		},
-		{
-			name:                  "Test with multiple CAPApplications and Ingress GW (enableCertManagerEnv)",
-			createCA:              true,
-			createCA2:             true,
-			createIngress:         true,
-			enableCertManagerEnv:  true,
-			wantErr:               false,
-			expectDomainResources: true,
-		},
-		// {
-		// 	name:                  "Test cleanup with multiple CAPApplications and Ingress GW (enableCertManagerEnv)",
-		// 	createCA:              true,
-		// 	createCA2:             true,
-		// 	createIngress:         true,
-		// 	cleanUpDomains:        true,
-		// 	enableCertManagerEnv:     true,
-		// 	wantErr:               false,
-		// 	expectDomainResources: true,
-		// },
-		{
-			name:                  "Test update with CAPApplication and Ingress GW (enableCertManagerEnv)",
-			createCA:              true,
-			updateCA:              true,
-			createIngress:         true,
-			enableCertManagerEnv:  true,
-			wantErr:               false,
-			expectDomainResources: true,
-		},
+	)
+
+	if err.Error() != "failed to get ingress information for Domain.default.test-cap-01-primary: no matching ingress gateway pods found matching selector from Domain.default.test-cap-01-primary" {
+		t.Error("Wrong error message")
 	}
-	defer os.Unsetenv(certManagerEnv)
-	defer os.Unsetenv(dnsTargetEnv)
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if tt.enableCertManagerEnv {
-				os.Setenv(certManagerEnv, certManagerCertManagerIO)
-			} else {
-				os.Setenv(certManagerEnv, certManagerGardener)
-			}
-			if tt.useEnvDNS {
-				os.Setenv(dnsTargetEnv, envDNS)
-			}
-			var c *Controller
-			var ca *v1alpha1.CAPApplication
-			var ca2 *v1alpha1.CAPApplication
-			var ingressRes *ingressResources
-			if tt.createCA {
-				ca = createCaCRO(caCroName, false)
-				if tt.createCA2 {
-					ca2 = ca.DeepCopy()
-					ca2.Name += "2"
-					// Test with duplicate domain
-					ca2.Spec.Domains.Secondary = []string{secondaryDomain, "2" + secondaryDomain}
-				}
-			}
+}
 
-			if tt.createIngress {
-				dns := dnsTarget
-				if tt.withoutDNSNames {
-					dns = ""
-				}
-				ingressRes = createIngressResource(ingressGWName, ca, dns)
-			}
+func TestDomain_ProcessingWithIngress(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress - ObservedDomain getting set, cert and gateway getting created",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing.yaml",
+			},
+			expectedResources: "testdata/domain/domain-processing-observedDom-cert-gateway.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+}
 
-			// Deregister metrics
-			defer deregisterMetrics()
+func TestDomain_ProcessingWithIngressCertManager(t *testing.T) {
+	os.Setenv(certManagerEnv, certManagerCertManagerIO)
 
-			c = getTestController(testResources{
-				cas:       []*v1alpha1.CAPApplication{ca, ca2},
-				ingressGW: []*ingressResources{ingressRes},
-			})
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress - ObservedDomain getting set, certManager and gateway getting created",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing.yaml",
+			},
+			expectedResources: "testdata/domain/domain-processing-observedDom-certManager-gateway.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
 
-			q := QueueItem{
-				Key: ResourceOperatorDomains,
-				ResourceKey: NamespacedResourceKey{
-					Namespace: metav1.NamespaceAll,
-					Name:      "",
-				},
-			}
-			err := c.reconcileOperatorDomains(context.TODO(), q, 0)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Controller.reconcileOperatorDomains() error = %v, wantErr %v", err, tt.wantErr)
-			}
+	os.Setenv(certManagerEnv, "")
+}
 
-			if tt.updateCA {
-				var gw *istionwv1.Gateway
-				listGWs, _ := c.istioClient.NetworkingV1().Gateways(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}).String()})
-				if len(listGWs.Items) > 0 {
-					gw = listGWs.Items[0]
-					generateMetaObjName(gw)
-				}
-				var gardenerCert *certv1alpha1.Certificate
-				var certManagerCert *certManagerv1.Certificate
-				if tt.enableCertManagerEnv {
-					certManagerCertList, _ := c.certManagerCertificateClient.CertmanagerV1().Certificates(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}).String()})
-					if len(certManagerCertList.Items) > 0 {
-						certManagerCert = &certManagerCertList.Items[0]
-						certManagerCert.Name = gw.Name
-					}
-				} else {
-					gardenerCertList, _ := c.gardenerCertificateClient.CertV1alpha1().Certificates(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}).String()})
-					if len(gardenerCertList.Items) > 0 {
-						gardenerCert = &gardenerCertList.Items[0]
-						gardenerCert.Name = gw.Name
-					}
-				}
-				ca.Spec.Domains.Secondary = []string{"2" + secondaryDomain, "3" + secondaryDomain}
+func TestDomain_ProcessingWithIngressCertGateway(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress, ObservedDomain set, cert and gateway ready - dns getting created",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-observedDom.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+			},
+			expectedResources: "testdata/domain/domain-processing-dns.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+}
 
-				// Deregister metrics before starting new controller again
-				deregisterMetrics()
+func TestDomain_Ready(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress, ObservedDomain set, cert, dns and gateway ready - Domain ready",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-observedDom.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-ready.yaml",
+		},
+	)
+}
 
-				c = getTestController(testResources{
-					cas:             []*v1alpha1.CAPApplication{ca, ca2},
-					gateway:         gw,
-					gardenerCert:    gardenerCert,
-					certManagerCert: certManagerCert,
-					ingressGW:       []*ingressResources{ingressRes},
-				})
-				err = c.reconcileOperatorDomains(context.TODO(), q, 0)
-				if (err != nil) != tt.wantErr {
-					t.Errorf("Controller.reconcileOperatorDomains() error = %v, wantErr %v", err, tt.wantErr)
-				}
-			}
+func TestDomain_ReadyWithCertManager(t *testing.T) {
+	os.Setenv(certManagerEnv, certManagerCertManagerIO)
 
-			if tt.cleanUpDomains {
-				var gw *istionwv1.Gateway
-				var ingressGW2 *ingressResources
-				listGWs, _ := c.istioClient.NetworkingV1().Gateways(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}).String()})
-				if len(listGWs.Items) > 0 {
-					gw = listGWs.Items[0]
-					generateMetaObjName(gw)
-				}
-				var gardenerCert *certv1alpha1.Certificate
-				var certManagerCert *certManagerv1.Certificate
-				if tt.enableCertManagerEnv {
-					certManagerCertList, _ := c.certManagerCertificateClient.CertmanagerV1().Certificates(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}).String()})
-					if len(certManagerCertList.Items) > 0 {
-						certManagerCert = &certManagerCertList.Items[0]
-						certManagerCert.Name = gw.Name
-					}
-				} else {
-					gardenerCertList, _ := c.gardenerCertificateClient.CertV1alpha1().Certificates(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}).String()})
-					if len(gardenerCertList.Items) > 0 {
-						gardenerCert = &gardenerCertList.Items[0]
-						gardenerCert.Name = gw.Name
-					}
-				}
-				ca.Spec.Domains.Secondary = []string{}
-				if tt.createCA2 {
-					ca2.Spec.Domains.IstioIngressGatewayLabels[0].Value += "2"
-					ca2.Spec.Domains.IstioIngressGatewayLabels[1].Value += "2"
-					ingressGW2 = createIngressResource(ingressGWName+"2", ca2, "Something.that.surely.exceeds.the.64char.limit."+dnsTarget)
-				}
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress, ObservedDomain set, certManager, dns and gateway ready - Domain ready",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-observedDom.yaml",
+				"testdata/domain/primary-certManager-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-ready.yaml",
+		},
+	)
 
-				// Deregister metrics before starting new controller again
-				deregisterMetrics()
+	os.Setenv(certManagerEnv, "")
+}
 
-				c = getTestController(testResources{
-					cas:             []*v1alpha1.CAPApplication{ca, ca2},
-					gateway:         gw,
-					gardenerCert:    gardenerCert,
-					certManagerCert: certManagerCert,
-					ingressGW:       []*ingressResources{ingressRes, ingressGW2},
-				})
+func TestDomain_DnsError(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress, ObservedDomain set, cert ready, dns error - Domain error",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-observedDom.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-error.yaml",
+			},
+			expectedResources: "testdata/domain/domain-dns-error.yaml",
+			expectError:       true,
+		},
+	)
 
-				err = c.reconcileOperatorDomains(context.TODO(), q, 0)
-				if (err != nil) != tt.wantErr {
-					t.Errorf("Controller.reconcileOperatorDomains() error = %v, wantErr %v", err, tt.wantErr)
-				}
-			}
-
-			var gw *istionwv1.Gateway
-			listGWs, _ := c.istioClient.NetworkingV1().Gateways(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}).String()})
-			if len(listGWs.Items) > 0 {
-				gw = listGWs.Items[0]
-			}
-			var cert interface{}
-			if tt.enableCertManagerEnv {
-				certManagerCertList, _ := c.certManagerCertificateClient.CertmanagerV1().Certificates(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}).String()})
-				if len(certManagerCertList.Items) > 0 {
-					cert = &certManagerCertList.Items[0]
-				}
-			} else {
-				gardenerCertList, _ := c.gardenerCertificateClient.CertV1alpha1().Certificates(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labels.SelectorFromValidatedSet(map[string]string{LabelOwnerIdentifierHash: sha1Sum(CAPOperator, OperatorDomains)}).String()})
-				if len(gardenerCertList.Items) > 0 {
-					cert = &gardenerCertList.Items[0]
-				}
-			}
-
-			if tt.expectDomainResources {
-				if gw == nil {
-					t.Errorf("Controller.reconcileOperatorDomains() error = Expected OperatorDomain Gateway missing")
-				}
-				if cert == nil {
-					t.Errorf("Controller.reconcileOperatorDomains() error = Expected OperatorDomain Certificate missing")
-				}
-			} else {
-				if gw != nil {
-					t.Errorf("Controller.reconcileOperatorDomains() error = Unexpected OperatorDomain Gateway: %v", gw)
-				}
-				if cert != nil {
-					t.Errorf("Controller.reconcileOperatorDomains() error = Unexpected OperatorDomain Certificate: %v", cert)
-				}
-			}
-		})
+	if err.Error() != "DNSEntry in state Error for Domain.default.test-cap-01-primary: dns message" {
+		t.Error("Wrong error message")
 	}
+}
+
+func TestDomain_CertificateError(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress, ObservedDomain set, certificate error, dns ready - Domain error",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-observedDom.yaml",
+				"testdata/domain/primary-certificate-error.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-cert-error.yaml",
+			expectError:       true,
+		},
+	)
+
+	if err.Error() != "Certificate has state Error: certificate error" {
+		t.Error("Wrong error message")
+	}
+}
+
+func TestDomain_CertManagerError(t *testing.T) {
+	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress, ObservedDomain set, certManager error, dns ready - Domain error",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-observedDom.yaml",
+				"testdata/domain/primary-certManager-error.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-certManager-error.yaml",
+			expectError:       true,
+		},
+	)
+
+	if err.Error() != "Certificate not ready: Error cert-manager message error" {
+		t.Error("Wrong error message")
+	}
+
+	os.Setenv(certManagerEnv, "")
+}
+
+func TestDomain_Updatedomain(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain updated - gateway and dns getting updated",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-update.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-update.expected.yaml",
+		},
+	)
+}
+
+func TestDomain_UpdatedomainWithCertManager(t *testing.T) {
+	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain updated using certManager - gateway and dns getting updated",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-update.yaml",
+				"testdata/domain/primary-certManager-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-update.expected.yaml",
+		},
+	)
+
+	os.Setenv(certManagerEnv, "")
+}
+
+func TestDomain_DeletionTimestampSet(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain ready and deletion timestamp set - Domain deleting",
+			initialResources: []string{
+				"testdata/domain/domain-ready-withDeletionTimestamp.yaml",
+			},
+			expectedResources: "testdata/domain/domain-deleting.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+}
+
+func TestDomain_DeletingWithCert(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain deleting with certificates - Finalizer removed",
+			initialResources: []string{
+				"testdata/domain/domain-deleting.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-deleting-no-finalizer.yaml",
+		},
+	)
+}
+
+func TestDomain_DeletingWithCertManager(t *testing.T) {
+	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain deleting with certificates - Finalizer removed",
+			initialResources: []string{
+				"testdata/domain/domain-deleting.yaml",
+				"testdata/domain/primary-certManager-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-deleting-no-finalizer.yaml",
+		},
+	)
+
+	os.Setenv(certManagerEnv, "")
+}
+
+func TestDomain_DuplicateDomains(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary-dup"}},
+		TestData{
+			description: "Duplicate domains",
+			initialResources: []string{
+				"testdata/domain/domain-ready.yaml",
+				"testdata/domain/domain-duplicate.yaml",
+			},
+			expectedResources: "testdata/domain/domain-duplicate.expected.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}, {Namespace: "default", Name: "test-cap-01-primary-dup"}}},
+		},
+	)
+}
+
+func TestDomain_SubdomainWithCAService(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain with type subdomain and CA service only - dns and netpol getting created",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-with-subdomain-processing.yaml",
+				"testdata/domain/ca-services-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-with-subdomain-processing-with-dns-netpol.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+}
+
+func TestDomain_SubdomainWithCATenanat(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain with type subdomain and CA with provider tenant - dns and netpol getting created",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-with-subdomain-processing.yaml",
+				"testdata/capapplication/ca-06.expected.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-with-subdomain-processing-with-dns-netpol-cat.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+}
+
+func TestDomain_CADeleted(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain with type subdomain and CA deleted - dns and netpol getting deleted",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-with-subdomain-processing-with-dns-netpol.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-with-subdomain-ready.yaml",
+		},
+	)
+}
+
+func TestClusterDomain_MissingLabelAndFinalizer(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceClusterDomain, ResourceKey: NamespacedResourceKey{Namespace: "", Name: "test-cap-01-secondary"}},
+		TestData{
+			description: "Initial test with no label and no finalizer",
+			initialResources: []string{
+				"testdata/domain/cluster-domain-initial-state.yaml",
+			},
+			expectedResources: "testdata/domain/cluster-domain-initial-state-label-finalizer.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceClusterDomain: {{Namespace: "", Name: "test-cap-01-secondary"}}},
+		},
+	)
+}
+
+func TestClusterDomain_DeletionTimestampSet(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceClusterDomain, ResourceKey: NamespacedResourceKey{Namespace: "", Name: "test-cap-01-secondary"}},
+		TestData{
+			description: "ClusterDomain ready and deletion timestamp set - ClusterDomain deleting",
+			initialResources: []string{
+				"testdata/domain/cluster-domain-ready-withDeletionTimestamp.yaml",
+			},
+			expectedResources: "testdata/domain/cluster-domain-deleting.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceClusterDomain: {{Namespace: "", Name: "test-cap-01-secondary"}}},
+		},
+	)
+}
+
+func TestClusterDomain_DeletingFinalizerRemoved(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceClusterDomain, ResourceKey: NamespacedResourceKey{Namespace: "", Name: "test-cap-01-secondary"}},
+		TestData{
+			description: "ClusterDomain deleting - Finalizer removed",
+			initialResources: []string{
+				"testdata/domain/cluster-domain-deleting.yaml",
+			},
+			expectedResources: "testdata/domain/cluster-domain-deleting-no-finalizer.yaml",
+		},
+	)
 }

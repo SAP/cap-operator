@@ -1,0 +1,85 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: Domain
+metadata:
+  name: test-cap-01-primary
+  namespace: default
+  finalizers:
+  - sme.sap.com/domain
+  labels:
+    sme.sap.com/domain-host-hash: e68f5960522c10885f02827ee4260e9416eccb70
+spec:
+  dnsMode: Wildcard
+  domain: app-domain-dup.test.local
+  ingressSelector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  tlsMode: Simple
+status:
+  conditions:
+  - message: Domain resources are ready
+    reason: Ready
+    status: "True"
+    type: Ready
+  state: Ready
+  dnsTarget: public-ingress.operator.testing.local
+  observedDomain: app-domain-dup.test.local
+---
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
+    sme.sap.com/resource-hash: 0d321fe553b796574ea521b052a525a9f04dde2579d173240c1db691cea24d51
+  labels:
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
+  name: default-test-cap-01-primary
+  namespace: default
+  ownerReferences:
+  - apiVersion: sme.sap.com/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Domain
+    name: test-cap-01-primary
+spec:
+  selector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  servers:
+  - hosts:
+    - ./*.app-domain-dup.test.local
+    port:
+      name: https
+      number: 443
+      protocol: HTTPS
+    tls:
+      credentialName: default-test-cap-01-primary
+      mode: SIMPLE
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+    dns.gardener.cloud/class: garden
+    sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
+    sme.sap.com/resource-hash: d9ccf51ead1f6a2c8634259f546de958bae8f91183fc453f52157fd60248cfab
+  generateName: default-test-cap-01-primary-
+  labels:
+    sme.sap.com/btp-app-identifier-hash: ""
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
+    sme.sap.com/subdomain-hash: df58248c414f342c81e056b40bee12d17a08bf61
+  name: default-test-cap-01-primary-gen
+  namespace: default
+  ownerReferences:
+  - apiVersion: sme.sap.com/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Domain
+    name: test-cap-01-primary
+spec:
+  dnsName: '*.app-domain-dup.test.local'
+  targets:
+  - public-ingress.operator.testing.local
+status:
+  state: Ready

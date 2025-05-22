@@ -1,0 +1,26 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: test-cap-01-certificate
+  namespace: istio-system
+  annotations:
+    sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
+    sme.sap.com/resource-hash: 4f15ef7b54d820e54dc376eb08324a635c40dec81e6cc5593fb4ece81c8da776
+  labels:
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
+spec:
+  dnsNames:
+  - '*.app-domain.test.local'
+  secretName: default-test-cap-01-primary
+  issuerRef:
+    kind: ClusterIssuer
+    name: cluster-ca
+status:
+  state: Ready
+  conditions:
+  - message: "cert-manager message error"
+    reason: ""
+    status: "False"
+    type: Ready
+    observedGeneration: 0

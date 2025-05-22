@@ -1,0 +1,23 @@
+apiVersion: cert.gardener.cloud/v1alpha1
+kind: Certificate
+metadata:
+  annotations:
+    sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
+    sme.sap.com/resource-hash: 4f15ef7b54d820e54dc376eb08324a635c40dec81e6cc5593fb4ece81c8da776
+  finalizers:
+  - sme.sap.com/domain
+  generation: 1
+  labels:
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
+  name: default-test-cap-01-primary
+  namespace: istio-system
+spec:
+  dnsNames:
+  - '*.app-domain.test.local'
+  secretRef:
+    name: default-test-cap-01-primary
+    namespace: istio-system
+status:
+  state: Error
+  message: certificate error
