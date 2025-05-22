@@ -1475,6 +1475,13 @@ func TestClusterDomainInvalidity(t *testing.T) {
 			operation:       admissionv1.Create,
 			duplicateDomain: true,
 		},
+		{
+			operation:              admissionv1.Update,
+			duplicateClusterDomain: true,
+		},
+		{
+			operation: admissionv1.Update,
+		},
 	}
 	for _, test := range tests {
 		t.Run("Testing ClusterDomain invalidity during "+string(test.operation), func(t *testing.T) {
@@ -1513,8 +1520,7 @@ func TestClusterDomainInvalidity(t *testing.T) {
 				t.Fatal("admission review error")
 			}
 
-			var clusterDomainDup *v1alpha1.ClusterDomain
-			clusterDomainDup = clusterDomain.DeepCopy()
+			var clusterDomainDup = clusterDomain.DeepCopy()
 			if test.duplicateClusterDomain {
 				clusterDomainDup.Name = clusterDomainDup.Name + "-duplicate"
 			} else if test.duplicateDomain {
@@ -1547,8 +1553,10 @@ func TestClusterDomainInvalidity(t *testing.T) {
 				errorMessage = fmt.Sprintf("%s %s %s already exist in namespace %s with domain %s", InvalidationMessage, v1alpha1.DomainKind, domain.Name, domain.Namespace, domain.Spec.Domain)
 			}
 
-			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
-				t.Fatal("validation response error")
+			if test.duplicateClusterDomain || test.duplicateDomain {
+				if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
+					t.Fatal("validation response error")
+				}
 			}
 		})
 	}
@@ -1567,6 +1575,13 @@ func TestDomainInvalidity(t *testing.T) {
 		{
 			operation:       admissionv1.Create,
 			duplicateDomain: true,
+		},
+		{
+			operation:       admissionv1.Update,
+			duplicateDomain: true,
+		},
+		{
+			operation: admissionv1.Update,
 		},
 	}
 	for _, test := range tests {
@@ -1601,13 +1616,12 @@ func TestDomainInvalidity(t *testing.T) {
 				CrdClient: fakeCrdClient.NewSimpleClientset(clusterDomain, domain),
 			}
 
-			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.ClusterDomainKind, clusterDomain.Name, noUpdate)
+			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.DomainKind, domain.Name, noUpdate)
 			if err != nil {
 				t.Fatal("admission review error")
 			}
 
-			var domainDup *v1alpha1.Domain
-			domainDup = domain.DeepCopy()
+			var domainDup = domain.DeepCopy()
 			if test.duplicateClusterDomain {
 				domainDup.Name = domainDup.Name + "-duplicate"
 				domainDup.Spec.Domain = clusterDomain.Spec.Domain
@@ -1640,8 +1654,10 @@ func TestDomainInvalidity(t *testing.T) {
 				errorMessage = fmt.Sprintf("%s %s %s already exist in namespace %s with domain %s", InvalidationMessage, v1alpha1.DomainKind, domain.Name, domain.Namespace, domain.Spec.Domain)
 			}
 
-			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
-				t.Fatal("validation response error")
+			if test.duplicateClusterDomain || test.duplicateDomain {
+				if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
+					t.Fatal("validation response error")
+				}
 			}
 		})
 	}
