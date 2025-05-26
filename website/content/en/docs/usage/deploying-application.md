@@ -22,8 +22,8 @@ spec:
   ingressSelector:
     app: istio-ingressgateway
     istio: ingressgateway
-  tlsMode: Simple        # Simple (default) or  Mutual
-  dnsMode: Wildcard      # Wildcard or Subdomain or None (default)
+  tlsMode: Simple
+  dnsMode: Wildcard
 ```
 
 The `ClusterDomain` resource is not namespaced and is suited for global or shared domain configurations. For example, multiple applications can share the same secondary domain. See [API Reference](../../reference/#sme.sap.com/v1alpha1.ClusterDomain).
@@ -38,8 +38,8 @@ spec:
   ingressSelector:
     app: istio-ingressgateway
     istio: ingressgateway
-  tlsMode: Simple        # Simple (default) or  Mutual
-  dnsMode: Subdomain     # Wildcard or Subdomain or None (default)
+  tlsMode: Simple
+  dnsMode: Subdomain
 ```
 
 The object, `CAPApplication`, describes the high-level attributes of an application such as the SAP BTP account where it is hosted, the consumed SAP BTP services, domains where the application routes will be made available etc. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplication).
