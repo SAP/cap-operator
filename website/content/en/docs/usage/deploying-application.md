@@ -7,7 +7,40 @@ description: >
   How to deploy a new CAP-based application
 ---
 
-Just by defining two resources provided by CAP Operator, namely `capapplications.sme.sap.com` and `capapplicationversions.sme.sap.com`, it's possible to deploy a multi-tenant CAP application and start using it. These resources are _namespaced_ and so the CAP Operator will create all related resources (deployments, gateways, jobs etc.) within the same namespace.
+To deploy a multi-tenant CAP application, you simply define a few key resources provided by the CAP Operator: `capapplications.sme.sap.com`, `capapplicationversions.sme.sap.com`, and at least one domain resource—either `domains.sme.sap.com`, `clusterdomains.sme.sap.com`, or both. The `CAPApplication` and `CAPApplicationVersion` resources are namespaced, so the CAP Operator creates all associated runtime components—such as deployments, services, and jobs—within the same namespace. Domain resources, whether defined as namespaced (`Domain`) or cluster-scoped (`ClusterDomain`), determine how external traffic reaches the application and how DNS and TLS settings are applied.
+
+The `Domain` object is namespaced and intended for use by a single application typically for your primary domain. See [API Reference](../../reference/#sme.sap.com/v1alpha1.Domain).
+
+```yaml
+apiVersion: sme.sap.com/v1alpha1
+kind: Domain
+metadata:
+  namespace: cap-app-01
+  name: cap-app-01-primary
+spec:
+  domain: cap-app-01.cluster.shoot.url.k8s.example.com
+  ingressSelector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  tlsMode: Simple        # Simple (default) or  Mutual
+  dnsMode: Wildcard      # Wildcard or Subdomain or None (default)
+```
+
+The `ClusterDomain` resource is not namespaced and is suited for global or shared domain configurations. For example, multiple applications can share the same secondary domain. See [API Reference](../../reference/#sme.sap.com/v1alpha1.ClusterDomain).
+
+```yaml
+apiVersion: sme.sap.com/v1alpha1
+kind: ClusterDomain
+metadata:
+  name: common-secondary-domain
+spec:
+  domain: alt.shoot.example.com
+  ingressSelector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  tlsMode: Simple        # Simple (default) or  Mutual
+  dnsMode: Subdomain     # Wildcard or Subdomain or None (default)
+```
 
 The object, `CAPApplication`, describes the high-level attributes of an application such as the SAP BTP account where it is hosted, the consumed SAP BTP services, domains where the application routes will be made available etc. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplication).
 
@@ -42,15 +75,11 @@ spec:
       - class: portal
         name: app-portal
         secret: cap-app-01-portal-bind-cf
-  domains:
-    istioIngressGatewayLabels: # <-- labels used to identify the Istio ingress gateway (the values provided here are the default values)
-      - name: app
-        value: istio-ingressgateway
-      - name: istio
-        value: ingressgateway
-    primary: "cap-app-01.cluster.shoot.url.k8s.example.com" # <-- primary domain where the application is exposed. Each tenant will have access to a subdomain of this domain. Ensure that this is at most 62 chars long.
-    secondary:
-      - "alt.shoot.example.com"
+  domainRefs:
+  - kind: Domain
+    name: cap-app-01-primary # <-- reference to Domain resource in the same namespace
+  - kind: ClusterDomain
+    name: common-secondary-domain # <-- reference to ClusterDomain resource in the cluster
   globalAccountId: global-account-id
   provider:
     subDomain: cap-app-01-provider

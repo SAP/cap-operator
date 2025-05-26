@@ -102,7 +102,7 @@ ApplicationDomains
 </em>
 </td>
 <td>
-<p>Domains used by the application</p>
+<p>[DEPRECATED] Domains used by the application</p>
 </td>
 </tr>
 <tr>
@@ -713,7 +713,7 @@ DomainSpec
 </em>
 </td>
 <td>
-<p>Domains spec</p>
+<p>ClusterDomains spec</p>
 <br/>
 <br/>
 <table>
@@ -725,6 +725,7 @@ string
 </em>
 </td>
 <td>
+<p>Domain used by an application</p>
 </td>
 </tr>
 <tr>
@@ -735,6 +736,7 @@ map[string]string
 </em>
 </td>
 <td>
+<p>Selector is the set of labels used to select the ingress pods handling the domain</p>
 </td>
 </tr>
 <tr>
@@ -747,6 +749,7 @@ TLSMode
 </em>
 </td>
 <td>
+<p>TLS mode for the generated (Istio) Gateway resource. Set this to Mutual when using mTLS with an external gateway.</p>
 </td>
 </tr>
 <tr>
@@ -759,6 +762,7 @@ DNSMode
 </em>
 </td>
 <td>
+<p>DNS mode controls the creation of DNS entries related to the domain</p>
 </td>
 </tr>
 <tr>
@@ -769,6 +773,7 @@ string
 </em>
 </td>
 <td>
+<p>DNS Target for traffic to this domain</p>
 </td>
 </tr>
 </table>
@@ -784,7 +789,7 @@ DomainStatus
 </em>
 </td>
 <td>
-<p>Domain status</p>
+<p>ClusterDomain status</p>
 </td>
 </tr>
 </tbody>
@@ -855,6 +860,7 @@ string
 </em>
 </td>
 <td>
+<p>Domain used by an application</p>
 </td>
 </tr>
 <tr>
@@ -865,6 +871,7 @@ map[string]string
 </em>
 </td>
 <td>
+<p>Selector is the set of labels used to select the ingress pods handling the domain</p>
 </td>
 </tr>
 <tr>
@@ -877,6 +884,7 @@ TLSMode
 </em>
 </td>
 <td>
+<p>TLS mode for the generated (Istio) Gateway resource. Set this to Mutual when using mTLS with an external gateway.</p>
 </td>
 </tr>
 <tr>
@@ -889,6 +897,7 @@ DNSMode
 </em>
 </td>
 <td>
+<p>DNS mode controls the creation of DNS entries related to the domain</p>
 </td>
 </tr>
 <tr>
@@ -899,6 +908,7 @@ string
 </em>
 </td>
 <td>
+<p>DNS Target for traffic to this domain</p>
 </td>
 </tr>
 </table>
@@ -1092,7 +1102,7 @@ ApplicationDomains
 </em>
 </td>
 <td>
-<p>Domains used by the application</p>
+<p>[DEPRECATED] Domains used by the application</p>
 </td>
 </tr>
 <tr>
@@ -1249,6 +1259,17 @@ Kubernetes meta/v1.Time
 </td>
 <td>
 <p>The last time a full reconciliation was completed</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>observedSubdomains</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Last known application subdomains</p>
 </td>
 </tr>
 </tbody>
@@ -2173,13 +2194,13 @@ Kubernetes core/v1.RestartPolicy
 </tr>
 </thead>
 <tbody><tr><td><p>&#34;None&#34;</p></td>
-<td><p>No DNS (Default)</p>
+<td><p>No DNS entries will be created (Default)</p>
 </td>
 </tr><tr><td><p>&#34;Subdomain&#34;</p></td>
-<td><p>Subdomain DNS mode</p>
+<td><p>A DNS entry will be created for each subdomain specified by the applications using this domain</p>
 </td>
 </tr><tr><td><p>&#34;Wildcard&#34;</p></td>
-<td><p>Wildcard DNS mode</p>
+<td><p>Wildcard DNS entry will be created</p>
 </td>
 </tr></tbody>
 </table>
@@ -2362,6 +2383,10 @@ WorkloadMonitoring
 </td>
 </tr></tbody>
 </table>
+<h3 id="sme.sap.com/v1alpha1.DomainEntity">DomainEntity
+</h3>
+<div>
+</div>
 <h3 id="sme.sap.com/v1alpha1.DomainRefs">DomainRefs
 </h3>
 <p>
@@ -2382,9 +2407,7 @@ WorkloadMonitoring
 <td>
 <code>kind</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DomainType">
-DomainType
-</a>
+string
 </em>
 </td>
 <td>
@@ -2425,6 +2448,7 @@ string
 </em>
 </td>
 <td>
+<p>Domain used by an application</p>
 </td>
 </tr>
 <tr>
@@ -2435,6 +2459,7 @@ map[string]string
 </em>
 </td>
 <td>
+<p>Selector is the set of labels used to select the ingress pods handling the domain</p>
 </td>
 </tr>
 <tr>
@@ -2447,6 +2472,7 @@ TLSMode
 </em>
 </td>
 <td>
+<p>TLS mode for the generated (Istio) Gateway resource. Set this to Mutual when using mTLS with an external gateway.</p>
 </td>
 </tr>
 <tr>
@@ -2459,6 +2485,7 @@ DNSMode
 </em>
 </td>
 <td>
+<p>DNS mode controls the creation of DNS entries related to the domain</p>
 </td>
 </tr>
 <tr>
@@ -2469,6 +2496,7 @@ string
 </em>
 </td>
 <td>
+<p>DNS Target for traffic to this domain</p>
 </td>
 </tr>
 </tbody>
@@ -2537,32 +2565,32 @@ DomainState
 </em>
 </td>
 <td>
-<p>State of Domain</p>
+<p>State of the Domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsTarget</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Effective DNS Target identified for this domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>observedDomain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>domain observed during last reconciliation</p>
 </td>
 </tr>
 </tbody>
-</table>
-<h3 id="sme.sap.com/v1alpha1.DomainType">DomainType
-(<code>string</code> alias)</h3>
-<p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainRefs">DomainRefs</a>)
-</p>
-<div>
-</div>
-<table>
-<thead>
-<tr>
-<th>Value</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody><tr><td><p>&#34;ClusterDomain&#34;</p></td>
-<td><p>Cluster Domain</p>
-</td>
-</tr><tr><td><p>&#34;Domain&#34;</p></td>
-<td><p>Domain</p>
-</td>
-</tr></tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.Duration">Duration
 (<code>string</code> alias)</h3>
@@ -3442,5 +3470,5 @@ If not specified, CAP Operator will not attempt to create a ServiceMonitor for t
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>db9bfa6</code>.
+on git commit <code>81da7a3</code>.
 </em></p>
