@@ -26,7 +26,6 @@ type CertificateConstraint interface {
 type CertificateHandler struct {
 	c           *Controller
 	managerType string
-	// ListCertificates(ctx context.Context, namespace string, selector labels.Selector) ([]*ManagedCertificate[T], error)
 }
 
 func NewCertificateHandler(c *Controller) *CertificateHandler {

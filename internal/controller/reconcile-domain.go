@@ -20,6 +20,7 @@ import (
 	networkingv1 "istio.io/api/networking/v1"
 	istionwv1 "istio.io/client-go/pkg/apis/networking/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	k8snwv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,6 +39,11 @@ const (
 	LabelKubernetesServiceName           = "kubernetes.io/service-name"
 	LabelKubernetesMetadataName          = "kubernetes.io/metadata.name"
 	LabelDomainHostHash                  = "sme.sap.com/domain-host-hash"
+)
+
+var (
+	cNameLookup = int64(30)
+	ttl         = int64(600)
 )
 
 func (c *Controller) reconcileDomain(ctx context.Context, item QueueItem, attempts int) (result *ReconcileResult, err error) {
@@ -459,6 +465,7 @@ func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Co
 	return
 }
 
+// #region Ingress Gateway Info
 func getIngressInfo[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T) (ingGwInfo *ingressGatewayInfo, err error) {
 	// create ingress gateway selector from specified labels
 	ingressLabelSelector, err := labels.ValidatedSelectorFromSet(dom.GetSpec().IngressSelector)
@@ -505,12 +512,9 @@ func getIngressInfo[T v1alpha1.DomainEntity](ctx context.Context, c *Controller,
 	}
 	// (3) attempt to get dns target from Service via annotation(s)
 	if dnsTarget == "" {
-		ingressService, err := getIngressLoadbalancerService(ctx, c, namespace, relevantPodNames, dom)
+		dnsTarget, err = getDNSTargetFromIngressLoadbalancerService(ctx, c, namespace, relevantPodNames, dom)
 		if err != nil {
 			return nil, err
-		}
-		if ingressService != nil {
-			dnsTarget = getDNSTarget(ingressService)
 		}
 	}
 	if dnsTarget == "" {
@@ -521,62 +525,79 @@ func getIngressInfo[T v1alpha1.DomainEntity](ctx context.Context, c *Controller,
 	return &ingressGatewayInfo{Namespace: namespace, DNSTarget: dnsTarget}, nil
 }
 
-func getIngressLoadbalancerService[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, namespace string, relevantPodNames map[string]struct{}, dom T) (*corev1.Service, error) {
-	list, err := c.kubeClient.DiscoveryV1().EndpointSlices(namespace).List(ctx, metav1.ListOptions{})
+func getDNSTargetFromIngressLoadbalancerService[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, namespace string, relevantPodNames map[string]struct{}, dom T) (string, error) {
+	loadbalancerServices, err := c.getLoadBalancerServices(ctx, namespace)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	ownerId := formOwnerIdFromDomain(dom)
-	serviceTargets := map[string]map[string]struct{}{}
-	irrelevantServiceNames := map[string]struct{}{}
-	for _, slice := range list.Items {
+	list, err := c.kubeClient.DiscoveryV1().EndpointSlices(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	loadbalancerSvc := getRelevantLoadBalancerService(list.Items, loadbalancerServices, relevantPodNames)
+	if loadbalancerSvc != nil {
+		return getDNSTarget(loadbalancerSvc), nil
+	}
+
+	return "", fmt.Errorf("no matching load balancer service found for %s", formOwnerIdFromDomain(dom))
+}
+
+func getRelevantLoadBalancerService(endpointSlices []discoveryv1.EndpointSlice, loadbalancerServices []corev1.Service, relevantPodNames map[string]struct{}) *corev1.Service {
+	for _, slice := range endpointSlices {
 		serviceName := slice.Labels[LabelKubernetesServiceName]
 		if serviceName == "" {
 			continue
 		}
-		if _, ok := irrelevantServiceNames[serviceName]; ok {
-			// this service has already been marked as irrelevant
+		svcIndex := slices.IndexFunc(loadbalancerServices, func(svc corev1.Service) bool { return svc.Name == serviceName })
+		if svcIndex < 0 {
+			// this Endpoint / service is not relevant
 			continue
 		}
-		entry, ok := serviceTargets[serviceName]
-		if !ok {
-			entry = map[string]struct{}{}
-			serviceTargets[serviceName] = entry
-		}
+
 		for _, ep := range slice.Endpoints {
 			if ep.TargetRef != nil && ep.TargetRef.Kind == "Pod" {
-				if _, ok := relevantPodNames[ep.TargetRef.Name]; !ok {
-					// this endpoint targets pods outside the relevant selector
-					irrelevantServiceNames[serviceName] = struct{}{}
-					break
+				if _, ok := relevantPodNames[ep.TargetRef.Name]; ok {
+					return &loadbalancerServices[svcIndex]
 				}
-				entry[ep.TargetRef.Name] = struct{}{}
 			}
 		}
 	}
-	// remove irrelevant services from the list
-	for serviceName := range irrelevantServiceNames {
-		delete(serviceTargets, serviceName)
-	}
-	// if there are no relevant services, return nil
-	if len(serviceTargets) == 0 {
-		return nil, fmt.Errorf("no matching services found for %s", ownerId)
-	}
+	// no relevant service found
+	return nil
+}
 
-	loadbalancerServices, err := c.getLoadBalancerServices(ctx, namespace)
+func (c *Controller) getLoadBalancerServices(ctx context.Context, istioIngressGWNamespace string) ([]corev1.Service, error) {
+	// List all services in the same namespace as the istio-ingressgateway pod namespace
+	allServices, err := c.kubeClient.CoreV1().Services(istioIngressGWNamespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
-	for _, svc := range loadbalancerServices {
-		if _, ok := serviceTargets[svc.Name]; ok {
-			// this load balancer service selects the relevant pods - returning the first matched service
-			return &svc, nil
+	// Filter out LoadBalancer services
+	loadBalancerSvcs := []corev1.Service{}
+	for _, svc := range allServices.Items {
+		if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
+			loadBalancerSvcs = append(loadBalancerSvcs, svc)
 		}
 	}
-
-	return nil, fmt.Errorf("no matching load balancer service found for %s", ownerId)
+	return loadBalancerSvcs, nil
 }
+
+func getDNSTarget(ingressGWSvc *corev1.Service) string {
+	var dnsTarget string
+	switch dnsManager() {
+	case dnsManagerGardener:
+		dnsTarget = ingressGWSvc.Annotations[AnnotationGardenerDNSTarget]
+	case dnsManagerKubernetes:
+		dnsTarget = ingressGWSvc.Annotations[AnnotationKubernetesDNSTarget]
+	}
+
+	// Use the 1st value from Comma separated values (if any)
+	return strings.Split(dnsTarget, ",")[0]
+}
+
+//#endregion
 
 func formOwnerIdFromDomain[T v1alpha1.DomainEntity](dom T) string {
 	ownerId := dom.GetKind()
@@ -1128,4 +1149,9 @@ func convertOwnerIdsToDomainReferences(ownerIds []string) (refs []v1alpha1.Domai
 		}
 	}
 	return
+}
+
+func sanitizeDNSTarget(dnsTarget string) string {
+	// Replace *.domain with x.domain as * is not a valid subdomain for a dns target
+	return strings.ReplaceAll(dnsTarget, "*", "x")
 }
