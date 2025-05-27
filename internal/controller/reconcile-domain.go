@@ -40,6 +40,11 @@ const (
 	LabelDomainHostHash                  = "sme.sap.com/domain-host-hash"
 )
 
+var (
+	cNameLookup = int64(30)
+	ttl         = int64(600)
+)
+
 func (c *Controller) reconcileDomain(ctx context.Context, item QueueItem, attempts int) (result *ReconcileResult, err error) {
 	lister := c.crdInformerFactory.Sme().V1alpha1().Domains().Lister()
 	cached, err := lister.Domains(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
@@ -459,6 +464,7 @@ func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Co
 	return
 }
 
+// #region Ingress Gateway Info
 func getIngressInfo[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T) (ingGwInfo *ingressGatewayInfo, err error) {
 	// create ingress gateway selector from specified labels
 	ingressLabelSelector, err := labels.ValidatedSelectorFromSet(dom.GetSpec().IngressSelector)
@@ -577,6 +583,37 @@ func getIngressLoadbalancerService[T v1alpha1.DomainEntity](ctx context.Context,
 
 	return nil, fmt.Errorf("no matching load balancer service found for %s", ownerId)
 }
+
+func (c *Controller) getLoadBalancerServices(ctx context.Context, istioIngressGWNamespace string) ([]corev1.Service, error) {
+	// List all services in the same namespace as the istio-ingressgateway pod namespace
+	allServices, err := c.kubeClient.CoreV1().Services(istioIngressGWNamespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+	// Filter out LoadBalancer services
+	loadBalancerSvcs := []corev1.Service{}
+	for _, svc := range allServices.Items {
+		if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
+			loadBalancerSvcs = append(loadBalancerSvcs, svc)
+		}
+	}
+	return loadBalancerSvcs, nil
+}
+
+func getDNSTarget(ingressGWSvc *corev1.Service) string {
+	var dnsTarget string
+	switch dnsManager() {
+	case dnsManagerGardener:
+		dnsTarget = ingressGWSvc.Annotations[AnnotationGardenerDNSTarget]
+	case dnsManagerKubernetes:
+		dnsTarget = ingressGWSvc.Annotations[AnnotationKubernetesDNSTarget]
+	}
+
+	// Use the 1st value from Comma separated values (if any)
+	return strings.Split(dnsTarget, ",")[0]
+}
+
+//#endregion
 
 func formOwnerIdFromDomain[T v1alpha1.DomainEntity](dom T) string {
 	ownerId := dom.GetKind()
@@ -1128,4 +1165,9 @@ func convertOwnerIdsToDomainReferences(ownerIds []string) (refs []v1alpha1.Domai
 		}
 	}
 	return
+}
+
+func sanitizeDNSTarget(dnsTarget string) string {
+	// Replace *.domain with x.domain as * is not a valid subdomain for a dns target
+	return strings.ReplaceAll(dnsTarget, "*", "x")
 }

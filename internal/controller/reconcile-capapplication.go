@@ -342,7 +342,6 @@ func (c *Controller) validateSecrets(ctx context.Context, ca *v1alpha1.CAPApplic
 	if err == nil {
 		return false, nil
 	} else if !k8sErrors.IsNotFound(err) {
-		// TODO -> clarify whether we need to set this in the status, as this is an error probably caused via api-server unavailability / connection issues
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProcessingSecretsError", err.Error())
 		return false, err
 	}

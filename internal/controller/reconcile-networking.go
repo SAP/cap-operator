@@ -24,18 +24,10 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-const PrimaryDnsSuffix = "primary-dns"
-
 const (
-	CAPOperator                                  = "CAPOperator" // TO be removed after redoing unit tests
 	EventActionReconcileServiceNetworking        = "ReconcileServiceNetworking"
 	EventServiceNetworkingModified               = "ServiceNetworkingModified"
 	EventServiceVirtualServiceModificationFailed = "ServiceVirtualServiceModificationFailed"
-)
-
-var (
-	cNameLookup = int64(30)
-	ttl         = int64(600)
 )
 
 func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
@@ -434,54 +426,4 @@ func (c *Controller) getUpdatedServiceVirtualServiceObject(ctx context.Context, 
 	}
 
 	return modified, err
-}
-
-func (c *Controller) getLoadBalancerServices(ctx context.Context, istioIngressGWNamespace string) ([]corev1.Service, error) {
-	// List all services in the same namespace as the istio-ingressgateway pod namespace
-	allServices, err := c.kubeClient.CoreV1().Services(istioIngressGWNamespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return nil, err
-	}
-	// Filter out LoadBalancer services
-	loadBalancerSvcs := []corev1.Service{}
-	for _, svc := range allServices.Items {
-		if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
-			loadBalancerSvcs = append(loadBalancerSvcs, svc)
-		}
-	}
-	return loadBalancerSvcs, nil
-}
-
-func getIngressGatewayLabels(ca *v1alpha1.CAPApplication) map[string]string {
-	ingressLabels := map[string]string{}
-	for _, label := range ca.Spec.Domains.IstioIngressGatewayLabels {
-		ingressLabels[label.Name] = label.Value
-	}
-	return ingressLabels
-}
-
-func getDNSTarget(ingressGWSvc *corev1.Service) string {
-	var dnsTarget string
-	switch dnsManager() {
-	case dnsManagerGardener:
-		dnsTarget = ingressGWSvc.Annotations[AnnotationGardenerDNSTarget]
-	case dnsManagerKubernetes:
-		dnsTarget = ingressGWSvc.Annotations[AnnotationKubernetesDNSTarget]
-	}
-
-	// Use the 1st value from Comma separated values (if any)
-	return strings.Split(dnsTarget, ",")[0]
-}
-
-func trimDNSTarget(dnsTarget string) string {
-	// Trim dnsTarget to under 62 chars (*. is added for cert CN) --> TODO: Also handle this in webhook/crd spec
-	for len(dnsTarget) > 62 {
-		dnsTarget = dnsTarget[strings.Index(dnsTarget, ".")+1:]
-	}
-	return dnsTarget
-}
-
-func sanitizeDNSTarget(dnsTarget string) string {
-	// Replace *.domain with x.domain as * is not a valid subdomain for a dns target
-	return strings.ReplaceAll(dnsTarget, "*", "x")
 }
