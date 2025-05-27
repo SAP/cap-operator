@@ -1,10 +1,10 @@
 ---
 title: "Migrate to DomainRefs"
 linkTitle: "Migrate to DomainRefs"
-weight: 20
+weight: 10
 type: "docs"
 description: >
-  How to migrate existing CAP applications to use the new DomainRefs
+  Migrating existing CAP applications to use the new DomainRefs
 ---
 
 As part of the enhanced domain management capabilities in the CAP Operator, the `domains` section in `CAPApplication` resources has been deprecated. It has been replaced by the more flexible and explicit `domainRefs`, which allows referencing one or more `Domain` or `ClusterDomain` resources.
