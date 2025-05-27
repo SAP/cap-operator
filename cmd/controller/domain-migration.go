@@ -290,7 +290,7 @@ func createDomain(crdClient versioned.Interface, withName string, domainHost str
 			Name:      withName,
 			Namespace: ca.Namespace,
 			Annotations: map[string]string{
-				LabelMigratedToDomainRefsFromCA: ca.Namespace + "." + ca.Name,
+				LabelMigratedToDomainRefsFromCA: ca.Namespace + "/" + ca.Name,
 			},
 		},
 		Spec: v1alpha1.DomainSpec{
@@ -332,7 +332,7 @@ func createClusterDomain(crdClient versioned.Interface, withGenerateName string,
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: withGenerateName,
 			Annotations: map[string]string{
-				LabelMigratedToDomainRefsFromCA: "true",
+				LabelMigratedToDomainRefsFromCA: ca.Namespace + "/" + ca.Name,
 			},
 		},
 		Spec: v1alpha1.DomainSpec{
