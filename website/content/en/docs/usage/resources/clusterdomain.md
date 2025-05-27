@@ -1,7 +1,7 @@
 ---
 title: "ClusterDomain"
 linkTitle: "ClusterDomain"
-weight: 60
+weight: 70
 type: "docs"
 tags: ["domains"]
 description: >
@@ -25,5 +25,5 @@ spec:
   dnsTarget: public-ingress.cluster.domain # Optional
 ```
 
-- The `dnsTarget` field is optional. If specified, it will be used; otherwise, it will be derived from the Istio ingress gateway selectors.
-- `Gateway` and `DNSEntry` will be created in the cap-operator namespace while the `Certificates` will be created in the `istio-system` namespace.
+- The `dnsTarget` field is optional. If specified, it will be used; otherwise, it will be derived from the Istio Ingress Gateway via `ingressSelector`.
+- `Gateway` and `DNSEntry` will be created in the namespace where the cap-operator is installed, while `Certificates` will be created in the namespace where Istio Ingress Gateway is present.

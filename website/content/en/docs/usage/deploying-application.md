@@ -7,9 +7,9 @@ description: >
   How to deploy a new CAP-based application
 ---
 
-To deploy a multi-tenant CAP application, you simply define a few key resources provided by the CAP Operator: `capapplications.sme.sap.com`, `capapplicationversions.sme.sap.com`, and at least one domain resource—either `domains.sme.sap.com`, `clusterdomains.sme.sap.com`, or both. The `CAPApplication` and `CAPApplicationVersion` resources are namespaced, so the CAP Operator creates all associated runtime components—such as deployments, services, and jobs—within the same namespace. Domain resources, whether defined as namespaced (`Domain`) or cluster-scoped (`ClusterDomain`), determine how external traffic reaches the application and how DNS and TLS settings are applied.
+To deploy a multi-tenant CAP application, you simply define a few key resources provided by the CAP Operator: `capapplications.sme.sap.com`, `capapplicationversions.sme.sap.com`, and at least one domain resource - `domains.sme.sap.com` or `clusterdomains.sme.sap.com`, or both. The `CAPApplication` and `CAPApplicationVersion` resources are namespaced, so the CAP Operator creates all associated runtime components—such as deployments, services, and jobs—within the same namespace. Domain resources, whether defined as namespaced (`Domain`) or cluster-scoped (`ClusterDomain`), determine how external traffic reaches the application and how DNS and TLS settings are applied.
 
-The `Domain` resource is namespaced and intended for use by a single application typically for your primary domain. It must be created in the same namespace as the `CAPApplication`. See [API Reference](../../reference/#sme.sap.com/v1alpha1.Domain).
+The `Domain` resource is namespaced and intended for use by a single application typically for your application/cluster internal domain. It must be created in the same namespace as the `CAPApplication`. See [API Reference](../../reference/#sme.sap.com/v1alpha1.Domain).
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -18,7 +18,7 @@ metadata:
   namespace: cap-app-01
   name: cap-app-01-primary
 spec:
-  domain: cap-app-01.cluster.shoot.url.k8s.example.com
+  domain: my.cluster.shoot.url.k8s.example.com
   ingressSelector:
     app: istio-ingressgateway
     istio: ingressgateway
@@ -26,15 +26,15 @@ spec:
   dnsMode: Wildcard
 ```
 
-**Optional** - The `ClusterDomain` resource is not namespaced and is suited for global or shared domain configurations. For example, multiple applications can share the same secondary domain. If needed, either create a new one or reuse an existing one in the cluster. See [API Reference](../../reference/#sme.sap.com/v1alpha1.ClusterDomain).
+The `ClusterDomain` resource is not namespaced and is suited for global or shared domain configurations. For example, multiple applications can share the same external domain. If needed, either create a new one or reuse an existing one in the cluster. See [API Reference](../../reference/#sme.sap.com/v1alpha1.ClusterDomain).
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
 kind: ClusterDomain
 metadata:
-  name: common-secondary-domain
+  name: common-external-domain
 spec:
-  domain: alt.shoot.example.com
+  domain: my.example.com
   ingressSelector:
     app: istio-ingressgateway
     istio: ingressgateway
@@ -79,7 +79,7 @@ spec:
   - kind: Domain
     name: cap-app-01-primary # <-- reference to Domain resource in the same namespace
   - kind: ClusterDomain
-    name: common-secondary-domain # <-- reference to ClusterDomain resource in the cluster (either new or existing)
+    name: common-external-domain # <-- reference to ClusterDomain resource in the cluster (either new or existing)
   globalAccountId: global-account-id
   provider:
     subDomain: cap-app-01-provider

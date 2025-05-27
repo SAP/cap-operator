@@ -1,7 +1,7 @@
 ---
 title: "Domain"
 linkTitle: "Domain"
-weight: 50
+weight: 60
 type: "docs"
 tags: ["domains"]
 description: >
@@ -26,5 +26,5 @@ spec:
   dnsTarget: public-ingress.cluster.domain # Optional
 ```
 
-- The `dnsTarget` field is optional. If specified, it will be used; otherwise, it will be derived from the Istio ingress gateway selectors.
-- `Gateway` and `DNSEntry` will be created in the same namespace as the `Domain` resource while the `Certificates` will be created in the `istio-system` namespace.
+- The `dnsTarget` field is optional. If specified, it will be used; otherwise, it will be derived from the Istio Ingress Gateway via `ingressSelector`.
+- `Gateway` and `DNSEntry` will be created in the same namespace as the `Domain` resource while the `Certificates` will be created in the namespace where Istio Ingress Gateway is present.
