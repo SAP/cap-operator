@@ -1,6 +1,6 @@
 ---
 title: "ClusterDomain"
-linkTitle: "Clusteromain"
+linkTitle: "ClusterDomain"
 weight: 60
 type: "docs"
 tags: ["domains"]

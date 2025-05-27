@@ -9,7 +9,7 @@ description: >
 
 To deploy a multi-tenant CAP application, you simply define a few key resources provided by the CAP Operator: `capapplications.sme.sap.com`, `capapplicationversions.sme.sap.com`, and at least one domain resource—either `domains.sme.sap.com`, `clusterdomains.sme.sap.com`, or both. The `CAPApplication` and `CAPApplicationVersion` resources are namespaced, so the CAP Operator creates all associated runtime components—such as deployments, services, and jobs—within the same namespace. Domain resources, whether defined as namespaced (`Domain`) or cluster-scoped (`ClusterDomain`), determine how external traffic reaches the application and how DNS and TLS settings are applied.
 
-The `Domain` object is namespaced and intended for use by a single application typically for your primary domain. See [API Reference](../../reference/#sme.sap.com/v1alpha1.Domain).
+The `Domain` resource is namespaced and intended for use by a single application typically for your primary domain. It must be created in the same namespace as the `CAPApplication`. See [API Reference](../../reference/#sme.sap.com/v1alpha1.Domain).
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -26,7 +26,7 @@ spec:
   dnsMode: Wildcard
 ```
 
-The `ClusterDomain` resource is not namespaced and is suited for global or shared domain configurations. For example, multiple applications can share the same secondary domain. See [API Reference](../../reference/#sme.sap.com/v1alpha1.ClusterDomain).
+**Optional** - The `ClusterDomain` resource is not namespaced and is suited for global or shared domain configurations. For example, multiple applications can share the same secondary domain. If needed, either create a new one or reuse an existing one in the cluster. See [API Reference](../../reference/#sme.sap.com/v1alpha1.ClusterDomain).
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -42,7 +42,7 @@ spec:
   dnsMode: Subdomain
 ```
 
-The object, `CAPApplication`, describes the high-level attributes of an application such as the SAP BTP account where it is hosted, the consumed SAP BTP services, domains where the application routes will be made available etc. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplication).
+The `CAPApplication` resource describes the high-level attributes of an application such as the SAP BTP account where it is hosted, the consumed SAP BTP services, list of `Domain` and `ClusterDomain` resources etc. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplication).
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -79,14 +79,14 @@ spec:
   - kind: Domain
     name: cap-app-01-primary # <-- reference to Domain resource in the same namespace
   - kind: ClusterDomain
-    name: common-secondary-domain # <-- reference to ClusterDomain resource in the cluster
+    name: common-secondary-domain # <-- reference to ClusterDomain resource in the cluster (either new or existing)
   globalAccountId: global-account-id
   provider:
     subDomain: cap-app-01-provider
     tenantId: e55d7b5-279-48be-a7b0-aa2bae55d7b5
 ```
 
-The object, `CAPApplicationVersion`, describes the different components of an application version including the container images to be used and the services consumed by each component. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
+The `CAPApplicationVersion` describes the different components of an application version including the container images to be used and the services consumed by each component. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
 
 The `CAPApplicationVersion` must be created in the same namespace as the `CAPApplication` and refers to it.
 
