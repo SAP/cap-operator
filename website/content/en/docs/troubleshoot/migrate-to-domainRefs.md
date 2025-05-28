@@ -77,9 +77,9 @@ This change give users full control over how CAP applications are exposed to ext
           value: istio-ingressgateway
         - name: istio
           value: ingressgateway
-      primary: cap-app-01.cluster.shoot.url.k8s.example.com
+      primary: my.cluster.shoot.url.k8s.example.com
       secondary:
-        - alt.shoot.example.com
+        - my.example.com
     ...
   ```
 
