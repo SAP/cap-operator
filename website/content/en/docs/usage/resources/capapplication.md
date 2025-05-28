@@ -47,7 +47,7 @@ spec:
   - kind: Domain
     name: cap-app-01-primary
   - kind: ClusterDomain
-    name: common-secondary-domain
+    name: common-external-domain
   globalAccountId: 2dddd48d-b45f-45a5-b861-a80872a0c8a8
   provider: # <-- provider tenant details
     subDomain: cap-app-provider

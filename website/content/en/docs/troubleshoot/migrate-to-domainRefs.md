@@ -91,7 +91,7 @@ This change give users full control over how CAP applications are exposed to ext
     - kind: Domain
       name: cap-app-01-primary # <-- reference to Domain resource in the same namespace
     - kind: ClusterDomain
-      name: common-secondary-domain # <-- reference to ClusterDomain resource in the cluster (either new or existing)
+      name: common-external-domain # <-- reference to ClusterDomain resource in the cluster (either new or existing)
     ...
   ```
   Also, include the appropriate `Domain` or `ClusterDomain` resource templates in your Helm chart.

@@ -45,7 +45,7 @@ spec:
   - kind: Domain
     name: cap-app-01-primary
   - kind: ClusterDomain
-    name: common-secondary-domain
+    name: common-external-domain
   globalAccountId: btp-glo-acc-id
 ```
 

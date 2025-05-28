@@ -14,9 +14,9 @@ Here's an example of a fully configured `ClusterDomain` resource:
 apiVersion: sme.sap.com/v1alpha1
 kind: ClusterDomain
 metadata:
-  name: common-secondary-domain
+  name: common-external-domain
 spec:
-  domain: alt.shoot.example.com
+  domain: my.example.com
   ingressSelector:
     app: istio-ingressgateway
     istio: ingressgateway

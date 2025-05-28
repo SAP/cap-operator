@@ -17,7 +17,7 @@ metadata:
   namespace: cap-app-01
   name: cap-app-01-primary
 spec:
-  domain: cap-app-01.cluster.shoot.url.k8s.example.com
+  domain: my.cluster.shoot.url.k8s.example.com
   ingressSelector:
     app: istio-ingressgateway
     istio: ingressgateway
