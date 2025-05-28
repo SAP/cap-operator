@@ -121,7 +121,7 @@ func migrateToDomainRefs(crdClient versioned.Interface, istioClient istio.Interf
 func deleteDnsEntries(gardenerDNSClient gardenerDNS.Interface, crdClient versioned.Interface, caList []v1alpha1.CAPApplication) error {
 	// Delete all DNS Entries with owner CAPApplications
 	for _, ca := range caList {
-		ownerIdentifierHash := sha1Sum(v1alpha1.CAPApplicationKind, ca.Namespace, ca.Spec.BTPAppName)
+		ownerIdentifierHash := sha1Sum(v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
 		ownerLabelHashReq, _ := labels.NewRequirement(LabelOwnerIdentifierHash, selection.Equals, []string{ownerIdentifierHash})
 		ownerLabelHashReqSelector := labels.NewSelector().Add(*ownerLabelHashReq)
 
@@ -170,7 +170,7 @@ func deleteDnsEntries(gardenerDNSClient gardenerDNS.Interface, crdClient version
 func deleteCertificates(gardenerCertificateClient gardenerCert.Interface, certManagerCertificateClient certManager.Interface, caList []v1alpha1.CAPApplication) error {
 	// Delete all Gardener Certificates with owner CAPApplications
 	for _, ca := range caList {
-		ownerIdentifierHash := sha1Sum(v1alpha1.CAPApplicationKind, ca.Namespace, ca.Spec.BTPAppName)
+		ownerIdentifierHash := sha1Sum(v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
 		ownerLabelHashReq, _ := labels.NewRequirement(LabelOwnerIdentifierHash, selection.Equals, []string{ownerIdentifierHash})
 		ownerLabelHashReqSelector := labels.NewSelector().Add(*ownerLabelHashReq)
 
