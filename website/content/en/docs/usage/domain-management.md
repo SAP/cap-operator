@@ -52,9 +52,9 @@ Ensure that:
 
 ### Update Your Application Manifests
 
-If your CAP applications are still using the deprecated `domains` field, you will need to migrate to the new `domainRefs` format and define `Domain` or `ClusterDomain` resources explicitly.
+If your CAP applications are still using the deprecated `domains` section, you will need to migrate to the new `domainRefs` format and define `Domain` or `ClusterDomain` resources explicitly.
 
-*Before (deprecated domains field):*
+*Before (deprecated domains section):*
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
 kind: CAPApplication
