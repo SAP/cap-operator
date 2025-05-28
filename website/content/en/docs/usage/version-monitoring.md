@@ -1,7 +1,7 @@
 ---
 title: "Version Monitoring"
 linkTitle: "Version Monitoring"
-weight: 60
+weight: 70
 type: "docs"
 description: >
   How to monitor versions for automatic cleanup
@@ -42,7 +42,7 @@ spec:
     - name: backend
       deploymentDefinition:
         monitoring:
-          deletionRules:  
+          deletionRules:
             metrics:
               - calculationPeriod: 90m
                 name: current_sessions
@@ -56,14 +56,14 @@ spec:
 This informs the CAP Operator that workload `backend` is supplying two metrics which can be monitored for usage.
 
 - Metric `current_sessions` is of type `Gauge` which indicates that it is an absolute value at any point of time. When evaluating this metric, the CAP operator queries Prometheus with a PromQL expression which calculates the average value of this metric over a specified calculation period. The average value from each time series is then added together to get the evaluated value. The evaluated value is then compared against the specified threshold value to determine usage (or eligibility for cleanup).
-  
+
   |Evaluation steps for metric type `Gauge`|
   |-|
   |Execute PromQL expression `sum(avg_over_time(current_sessions{job="cav-demo-app-1-backend-svc",namespace="demo"}[90m]))` to get the evaluated value|
   |Check whether evaluated value <= 0 (the specified `thresholdValue`)|
 
 - Similarly, metric `total_http_requests` is of type `Counter` which indicates that it is a cumulative value which can increment. When evaluating this metric, the CAP operator queries Prometheus with a PromQL expression which calculates the rate (of increase) of this metric over a specified calculation period. The rate of increase from each time series is then added together to get the evaluated value. The evaluated value is then compared against the specified threshold value to determine usage (or eligibility for cleanup).
-  
+
   |Evaluation steps for metric type `Counter`|
   |-|
   |Execute PromQL expression `sum(rate(total_http_requests{job="cav-demo-app-1-backend-svc",namespace="demo"}[2h]))` to get the evaluated value|
@@ -135,7 +135,7 @@ spec:
 With this configuration the CAP Operator will create a `ServiceMonitor` which targets the workload `Service`. The `scrapeConfig.port` should match the name of one of the ports specified on the workload.
 
 {{% alert title="Use Case" color="secondary" %}}
-The workload `scrapeConfig` aims to support a minimal configuration, creating a `ServiceMonitor` which supports the most common use case (i.e. scraping the workload service via. a defined workload port). To use complex configurations in `ServiceMonitors`, they should be created separately. If the `scrapeConfig` of a version workload is empty, the CAP Operator will not attempt to create the related `ServiceMonitor`. 
+The workload `scrapeConfig` aims to support a minimal configuration, creating a `ServiceMonitor` which supports the most common use case (i.e. scraping the workload service via. a defined workload port). To use complex configurations in `ServiceMonitors`, they should be created separately. If the `scrapeConfig` of a version workload is empty, the CAP Operator will not attempt to create the related `ServiceMonitor`.
 {{% /alert %}}
 
 ## Evaluating `CAPApplicationVersions` for cleanup

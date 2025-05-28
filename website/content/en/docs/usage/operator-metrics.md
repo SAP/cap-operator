@@ -1,7 +1,7 @@
 ---
 title: "Operator Metrics"
 linkTitle: "Operator Metrics"
-weight: 70
+weight: 80
 type: "docs"
 description: >
   How to monitor and consume metrics emitted by CAP Operator

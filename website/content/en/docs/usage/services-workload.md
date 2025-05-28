@@ -1,7 +1,7 @@
 ---
 title: "Services Only Applications"
 linkTitle: "Services Only Applications"
-weight: 50
+weight: 60
 type: "docs"
 tags: ["services Only", "tenant independent"]
 description: >
