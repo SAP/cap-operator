@@ -7,24 +7,22 @@ description: >
   Enhancing Domain Management with CAP Operator
 ---
 
-The CAP Operator has introduced a significant update in domain management by deprecating the `domains` section in `CAPApplication` resources. This has been replaced with the more flexible `domainRefs`, allowing users to reference `Domain` or `ClusterDomain` resources.
-
-This change empowers users with greater control over how CAP applications interact with external networks, including TLS handling, ingress routing, and DNS setup.
+The CAP Operator has introduced a pivotal update in domain management, transitioning from the deprecated `domains` section in `CAPApplication` resources to the more versatile `domainRefs`. This shift allows users to reference [`Domain`](../resources/domain) or [`ClusterDomain`](../resources/clusterdomain) resources, offering enhanced control over CAP applications' networking behaviour, including TLS handling, ingress routing, and DNS setup.
 
 ## Migration Support
 
 ### Automatic Migration During Upgrade
 
-When upgrading to CAP Operator version [v0.15.0](https://github.com/SAP/cap-operator/releases/tag/v0.15.0), an automatic migration routine will be executed. This routine will:
+Upgrading to CAP Operator version [v0.15.0](https://github.com/SAP/cap-operator/releases/tag/v0.15.0) initiates an automatic migration routine. This process:
 
-- Scan existing `CAPApplication` resources.
-- Remove network-related resources (Gateways, DNSEntries, Certificates) linked to the deprecated `domains`.
-- Create equivalent `Domain` or `ClusterDomain` resources.
-- Update `CAPApplication` to utilize `domainRefs`.
+- Scans existing `CAPApplication` resources.
+- Removes network-related resources (Gateways, DNSEntries, Certificates) linked to the deprecated `domains`.
+- Creates equivalent `Domain` or `ClusterDomain` resources.
+- Updates `CAPApplication` to utilize `domainRefs`.
 
 ### Mutation Webhook
 
-A mutation webhook is also in place to manage `CAPApplication` resources created or updated with the deprecated `domains` section. It transforms these into `Domain` or `ClusterDomain` resources and populates `domainRefs`.
+A mutation webhook is also in place to ensure consistency by transforming `CAPApplication` resources created or updated with the deprecated `domains` section into `Domain` or `ClusterDomain` resources, populating `domainRefs`.
 
 {{< alert color="warning" title="Warning" >}}
 The webhook ensures consistency by rejecting updates to deprecated `domains` sections, promoting the transition to `domainRefs`.
@@ -45,14 +43,14 @@ kubectl get capapplication -n <your-app-namespace> <your-ca-name> -o yaml
 ```
 
 Ensure that:
-- the `domains` section is removed
+- `domains` section is removed
 - `domainRefs` entries exist
 - corresponding `Domain` or `ClusterDomain` resources are present
 
 
 ### Update Your Application Manifests
 
-If your CAP applications are still using the deprecated `domains` section, you will need to migrate to the new `domainRefs` format and define `Domain` or `ClusterDomain` resources explicitly.
+If your CAP applications still use the deprecated `domains` section, you will need to migrate to the new `domainRefs` format and define `Domain` or `ClusterDomain` resources explicitly.
 
 *Before (deprecated domains section):*
 ```yaml
@@ -120,4 +118,4 @@ spec:
   dnsMode: Subdomain
 ```
 
-Embrace these changes to enhance your domain management capabilities with CAP Operator.
+Embrace these changes to enhance your domain management capabilities with CAP Operator. Transitioning to `domainRefs` not only streamlines your network interactions but also aligns with the latest practices for efficient domain management.

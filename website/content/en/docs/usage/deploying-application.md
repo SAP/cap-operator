@@ -7,9 +7,21 @@ description: >
   How to deploy a new CAP-based application
 ---
 
-To deploy a multi-tenant CAP application, you simply define a few key resources provided by the CAP Operator: `capapplications.sme.sap.com`, `capapplicationversions.sme.sap.com`, and at least one domain resource - `domains.sme.sap.com` or `clusterdomains.sme.sap.com`, or both. The `CAPApplication` and `CAPApplicationVersion` resources are namespaced, so the CAP Operator creates all associated runtime components such as deployments, services, and jobs within the same namespace. Domain resources, whether defined as namespaced (`Domain`) or cluster-scoped (`ClusterDomain`), determine how external traffic reaches the application and how DNS and TLS settings are applied.
+Deploying a multi-tenant CAP application involves defining several key resources provided by the CAP Operator. These resources help manage the application's runtime components and external traffic routing.
 
-The `Domain` resource is namespaced and intended for use by a single application typically for your application/cluster internal domain. It must be created in the same namespace as the `CAPApplication`. See [API Reference](../../reference/#sme.sap.com/v1alpha1.Domain).
+## Key Resources
+
+1. **CAPApplication** (`capapplications.sme.sap.com`): This resource is namespaced, meaning it is confined to a specific namespace within your cluster. It represents the application itself.
+
+2. **CAPApplicationVersion** (`capapplicationversions.sme.sap.com`): Also namespaced, this resource specifies the version of the application you are deploying. It ensures that all runtime components like deployments, services, and jobs are created with the specified image version in the same namespace.
+
+3. **Domain Resources**: These resources determine how external traffic reaches your application and how DNS and TLS settings are applied. You can choose between:
+   - **Domain** (`domains.sme.sap.com`): A namespaced resource intended for a single application, typically for internal domain use within your application or cluster.
+   - **ClusterDomain** (`clusterdomains.sme.sap.com`): A cluster-scoped resource that can be used across multiple applications within the cluster.
+
+## Deployment Process
+
+To deploy your application, ensure that the `CAPApplication` and `CAPApplicationVersion` resources are created within the same namespace. This allows the CAP Operator to manage all associated application runtime components. For external traffic management, define either a `Domain` or `ClusterDomain` resource based on your application's needs.
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
