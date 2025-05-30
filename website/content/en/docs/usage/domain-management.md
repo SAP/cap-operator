@@ -117,5 +117,6 @@ Ensure that:
 - `domainRefs` entries exist
 - corresponding `Domain` or `ClusterDomain` resources are present
 
+## Conclusion
 
 Embrace these changes to enhance your domain management capabilities with CAP Operator. Transitioning to `domainRefs` not only streamlines your network interactions but also aligns with the latest practices for efficient domain management.

@@ -125,8 +125,8 @@ spec:
         env:
           - name: CDS_ENV
             value: production
-          - name: CDS_MTX_PROVISIONING_CONTAINER
-            value: '{"provisioning_parameters": { "database_id": "16e25c51-5455-4b17-a4d7-43545345345"}}'
+          - name: CDS_CONFIG
+            value: '{ "requires":{"cds.xt.DeploymentService":{"hdi": { "create":{ "database_id": "16e25c51-5455-4b17-a4d7-43545345345" } } } } }'
     - name: app-router
       consumedBTPServices:
         - app-uaa
