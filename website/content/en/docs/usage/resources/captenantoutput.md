@@ -1,7 +1,7 @@
 ---
 title: "CAPTenantOutput"
 linkTitle: "CAPTenantOutput"
-weight: 40
+weight: 50
 type: "docs"
 description: >
   How to configure the `CAPTenantOutput` resource

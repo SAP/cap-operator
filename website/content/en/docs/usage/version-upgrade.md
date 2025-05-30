@@ -50,7 +50,7 @@ spec:
           - name: PORT
             value: 4000
           - name: TENANT_HOST_PATTERN
-            value: "^(.*).(cap-app-01.cluster.shoot.canary.k8s-hana.ondemand.co|alt.shoot.example.com)"
+            value: "^(.*).(my.cluster.shoot.url.k8s.example.com|my.example.com)"
     - name: service-content
       consumedBTPServices:
         - app-uaa

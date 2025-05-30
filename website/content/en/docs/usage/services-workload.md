@@ -1,7 +1,7 @@
 ---
 title: "Services Only Applications"
 linkTitle: "Services Only Applications"
-weight: 50
+weight: 60
 type: "docs"
 tags: ["services Only", "tenant independent"]
 description: >
@@ -41,15 +41,11 @@ spec:
         name: cap-service-manager
         secret: cap-cap-01-svc-man-bind-cf
   btpAppName: test-cap-01
-  domains:
-    istioIngressGatewayLabels:
-      - name: app
-        value: istio-ingressgateway
-      - name: istio
-        value: ingressgateway
-    primary: app-domain.test.local
-    secondary:
-      - foo.bar.local
+  domainRefs:
+  - kind: Domain
+    name: cap-app-01-primary
+  - kind: ClusterDomain
+    name: common-external-domain
   globalAccountId: btp-glo-acc-id
 ```
 

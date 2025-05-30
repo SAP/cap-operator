@@ -15,7 +15,7 @@ CAP Operator supports the usage of `@sap/cds-mtxs` (which replaces the former `@
 
 This enables us to use built-in (into `@sap/cds-mtxs`) CLI-based handling for tenant operations during provisioning, deprovisioning, and upgrading tenants.
 
-As of now, for the usage of this new library, you (depending on your k8s cluster hardening setup) need to add additional `securityContext` for the `TenantOperation` and also `CAP` workloads as shown in the sample below. 
+As of now, for the usage of this new library, you (depending on your k8s cluster hardening setup) need to add additional `securityContext` for the `TenantOperation` and also `CAP` workloads as shown in the sample below.
 
 ``` yaml
  - name: tenant-job
@@ -43,7 +43,7 @@ This issue is now addressed by the SAP Service Binding Specification, which mand
 
 This can be achieved using the `secretKey` property for a `ServiceBinding` created using `btp-service-operator` or `cf-service-operator`, for example:
 
-```
+```yaml
 apiVersion: cf.cs.sap.com/v1alpha1
 kind: ServiceBinding
 metadata:
@@ -59,7 +59,7 @@ spec:
 
 ### HTTP requests reaching the AppRouter are not getting forwarded to the application server (pods)
 
-The Approuter component maps incoming requests to destinations (applications or services) that have been configured. If you're using an `xs-app.json` file with your Approuter to specify route mapping to various destinations, ensure that the `destinationName` property for the 
+The Approuter component maps incoming requests to destinations (applications or services) that have been configured. If you're using an `xs-app.json` file with your Approuter to specify route mapping to various destinations, ensure that the `destinationName` property for the
 SAP Cloud Application Programming Model back end is specified in the corresponding CAPApplicationVersion configuration. CAP Operator will inject this destination to the Approuter pods (via environment variables).
 
 
@@ -76,8 +76,8 @@ Use `@sap/approuter` version `14.x.x` (or higher).
 All custom resource objects (CROs) created by CAP Operator are protected with `finalizers` to ensure a proper cleanup takes place.
 For instance, when deleting a `CAPApplication` CRO, any existing tenants would be deprovisioned automatically to avoid inconsistenties. Once the deprovisioning is successful, the corresponding CROs would be removed automatically.
 The provider `CAPTenant` resource can't be deleted before deleting a consistent `CAPApplication`.
-_NOTE_: CAP operator needs the `secrets` from service instances/bindings to exist for the entire lifecycle of the 
+_NOTE_: CAP operator needs the `secrets` from service instances/bindings to exist for the entire lifecycle of the
 SAP Cloud Application Programming Model application. Removing the service instances/bindings i.e. the secrets from the cluster while the CAP application related CROs still exist would cause leftover resources in cluster (and perhaps the db). Recovering from such inconsistent states might not even be possible.
 Such a situation can easily arise when using `helm` delete/uninstall as the order of deletion of resouces is not configurable. We recommend that you do this with care.
-It's important that you ensure that the secrets from service instance/bindings aren't deleted before any 
+It's important that you ensure that the secrets from service instance/bindings aren't deleted before any
 SAP Cloud Application Programming Model application that consumes those secrets is completely removed.
