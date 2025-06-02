@@ -108,6 +108,9 @@ type DomainRef struct {
 }
 
 // Application domains
+//
+// Deprecated: ApplicationDomains exists for historical compatibility and should not be used.
+// This will be removed in future versions. Use DomainRef instead.
 type ApplicationDomains struct {
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
 	// +kubebuilder:validation:MaxLength=62
