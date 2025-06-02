@@ -211,6 +211,10 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 		return modified, err
 	}
 
+	headers, err := getNetworkingHeaders(ca)
+	if err != nil {
+		return modified, fmt.Errorf("error getting headers via CA annotations for %s %s.%s, error: %v", vs.Kind, vs.Namespace, vs.Name, err)
+	}
 	spec := &networkingv1.VirtualService{
 		Http: []*networkingv1.HTTPRoute{{
 			Match: []*networkingv1.HTTPMatchRequest{
@@ -221,7 +225,8 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 					Host: routerPortInfo.WorkloadName + ServiceSuffix + "." + cat.Namespace + ".svc.cluster.local",
 					Port: &networkingv1.PortSelector{Number: uint32(routerPortInfo.Ports[0].Port)},
 				},
-				Weight: 100,
+				Weight:  100,
+				Headers: headers,
 			}},
 		}},
 	}
@@ -386,6 +391,11 @@ func (c *Controller) getUpdatedServiceVirtualServiceObject(ctx context.Context, 
 		return false, fmt.Errorf("invalid owner reference found for %s %s.%s", vs.Kind, vs.Namespace, vs.Name)
 	}
 
+	headers, err := getNetworkingHeaders(ca)
+	if err != nil {
+		return modified, fmt.Errorf("error getting headers via CA annotations for %s %s.%s, error: %v", vs.Kind, vs.Namespace, vs.Name, err)
+	}
+
 	httpRoutes := []*networkingv1.HTTPRoute{}
 	for _, route := range serviceExposure.Routes {
 		prefix := route.Path
@@ -401,6 +411,7 @@ func (c *Controller) getUpdatedServiceVirtualServiceObject(ctx context.Context, 
 					Host: getWorkloadName(cavName, route.WorkloadName) + ServiceSuffix + "." + ca.Namespace + ".svc.cluster.local",
 					Port: &networkingv1.PortSelector{Number: uint32(route.Port)},
 				},
+				Headers: headers,
 			}},
 		})
 	}
@@ -426,4 +437,42 @@ func (c *Controller) getUpdatedServiceVirtualServiceObject(ctx context.Context, 
 	}
 
 	return modified, err
+}
+
+func getNetworkingHeaders(ca *v1alpha1.CAPApplication) (nwHeaders *networkingv1.Headers, err error) {
+	extractHeaders := func(annotation string) (headerOps *networkingv1.Headers_HeaderOperations, err error) {
+		headers := map[string]string{}
+		headersJson := ca.Annotations[annotation]
+		if headersJson != "" {
+			err = json.Unmarshal([]byte(headersJson), &headers)
+			if err != nil {
+				return headerOps, err
+			}
+			if len(headers) > 0 {
+				headerOps = &networkingv1.Headers_HeaderOperations{
+					Set: headers,
+				}
+			}
+		}
+		return headerOps, nil
+	}
+	// extract request headers from annotations
+	reqHeaders, err := extractHeaders(AnnotationVSRouteRequestHeaderSet)
+	if err != nil {
+		return nwHeaders, err
+	}
+	// extract response headers from annotations
+	resHeaders, err := extractHeaders(AnnotationVSRouteResponseHeaderSet)
+	if err != nil {
+		return nwHeaders, err
+	}
+
+	if reqHeaders != nil || resHeaders != nil {
+		nwHeaders = &networkingv1.Headers{
+			Request:  reqHeaders,
+			Response: resHeaders,
+		}
+	}
+
+	return nwHeaders, err
 }

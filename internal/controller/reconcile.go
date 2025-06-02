@@ -51,6 +51,8 @@ const (
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
 	AnnotationProviderSubAccountId      = "sme.sap.com/provider-sub-account-id"
 	AnnotationEnableCleanupMonitoring   = "sme.sap.com/enable-cleanup-monitoring"
+	AnnotationVSRouteRequestHeaderSet   = "sme.sap.com/vs-route-request-header-set"  // used to set the header for the vs route request
+	AnnotationVSRouteResponseHeaderSet  = "sme.sap.com/vs-route-response-header-set" // used to set the header for the vs route response
 	FinalizerCAPApplication             = "sme.sap.com/capapplication"
 	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
 	FinalizerCAPTenant                  = "sme.sap.com/captenant"
