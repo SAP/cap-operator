@@ -495,3 +495,66 @@ func TestCAPTenantStartProvisioningWithMultipleOperationSteps(t *testing.T) {
 		},
 	)
 }
+
+func TestCAPTenantVSHeaders(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "update captenant VS with headers",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/capapplication-vs-headers.yaml",
+				"testdata/common/capapplicationversion-v1.yaml",
+				"testdata/common/capapplicationversion-v2.yaml",
+				"testdata/captenant/cat-30.initial.yaml",
+			},
+			expectedResources: "testdata/captenant/cat-30.expected.yaml",
+		},
+	)
+}
+
+func TestCAPTenantVSHeadersErrorReq(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "update captenant VS with headers",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/capapplication-vs-headers-error-req.yaml",
+				"testdata/common/capapplicationversion-v1.yaml",
+				"testdata/common/capapplicationversion-v2.yaml",
+				"testdata/captenant/cat-30.initial.yaml",
+			},
+			expectError: true,
+		},
+	)
+	if err.Error() != `error getting headers via CA annotations for VirtualService default.test-cap-01-provider, error: invalid character '"' after object key:value pair` {
+		t.Error("error message is different from expected, actual:", err.Error())
+	}
+}
+
+func TestCAPTenantVSHeadersErrorRes(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "update captenant VS with headers",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/capapplication-vs-headers-error-res.yaml",
+				"testdata/common/capapplicationversion-v1.yaml",
+				"testdata/common/capapplicationversion-v2.yaml",
+				"testdata/captenant/cat-30.initial.yaml",
+			},
+			expectError: true,
+		},
+	)
+	if err.Error() != `error getting headers via CA annotations for VirtualService default.test-cap-01-provider, error: invalid character 'b' after object key` {
+		t.Error("error message is different from expected, actual:", err.Error())
+	}
+}
