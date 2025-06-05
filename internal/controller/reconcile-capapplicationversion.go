@@ -243,7 +243,7 @@ func getContentJobName(contentJobWorkloadName string, cav *v1alpha1.CAPApplicati
 	if cav.Spec.ContentJobs == nil { // for backward compactibility as there could be existing jobs in the clusters with old names
 		return cav.Name + "-" + strings.ToLower(string(v1alpha1.JobContent))
 	}
-	return cav.Name + "-" + contentJobWorkloadName + "-" + strings.ToLower(string(v1alpha1.JobContent))
+	return cav.Name + "-" + contentJobWorkloadName
 }
 
 func getNextContentJob(cav *v1alpha1.CAPApplicationVersion) *v1alpha1.WorkloadDetails {
