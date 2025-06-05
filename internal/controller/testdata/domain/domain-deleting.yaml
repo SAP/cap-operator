@@ -24,3 +24,4 @@ status:
   state: Deleting
   dnsTarget: public-ingress.operator.testing.local
   observedDomain: app-domain.test.local
+  gatewayName: test-cap-01-primary-gen

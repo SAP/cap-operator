@@ -3,20 +3,20 @@ kind: Certificate
 metadata:
   annotations:
     sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
-    sme.sap.com/resource-hash: 4f15ef7b54d820e54dc376eb08324a635c40dec81e6cc5593fb4ece81c8da776
+    sme.sap.com/resource-hash: 8e560670061f2ae8314cf2fdfa272b620bfb6420653bf806b43dee4091c29ea2
   finalizers:
   - sme.sap.com/domain
   generation: 1
   labels:
     sme.sap.com/owner-generation: "0"
     sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
-  name: default-test-cap-01-primary
-  namespace: istio-system
+  name: test-cap-01-primary-gen
+  namespace: default
 spec:
   dnsNames:
   - '*.app-domain.test.local'
   secretRef:
-    name: default-test-cap-01-primary
+    name: default--test-cap-01-primary
     namespace: istio-system
 status:
   state: Error

@@ -19,10 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-type CertificateConstraint interface {
-	*certv1alpha1.Certificate | *certManagerv1.Certificate
-}
-
 type CertificateHandler struct {
 	c           *Controller
 	managerType string
@@ -130,13 +126,13 @@ func (h *CertificateHandler) RemoveCertificateFinalizers(ctx context.Context, ce
 	return
 }
 
-func (h *CertificateHandler) UpdateCertificate(ctx context.Context, cert ManagedCertificate, spec *ManagedCertificateSpec) (err error) {
+func (h *CertificateHandler) UpdateCertificate(ctx context.Context, cert ManagedCertificate, info *ManagedCertificateInfo) (err error) {
 	switch h.managerType {
 	case certManagerCertManagerIO:
 		if c, ok := cert.(*certManagerv1.Certificate); ok {
-			updateResourceAnnotation(&c.ObjectMeta, spec.Hash())
-			c.Labels[LabelOwnerGeneration] = fmt.Sprintf("%d", spec.OwnerGeneration)
-			c.Spec = spec.getCertManagerCertificateSpec()
+			updateResourceAnnotation(&c.ObjectMeta, info.Hash())
+			c.Labels[LabelOwnerGeneration] = fmt.Sprintf("%d", info.OwnerGeneration)
+			c.Spec = info.getCertManagerCertificateSpec()
 			_, err = h.c.certManagerCertificateClient.CertmanagerV1().Certificates(c.Namespace).Update(ctx, c, metav1.UpdateOptions{})
 		} else {
 			err = fmt.Errorf("failed to cast certificate to cert-manager type")
@@ -144,9 +140,9 @@ func (h *CertificateHandler) UpdateCertificate(ctx context.Context, cert Managed
 
 	default:
 		if c, ok := cert.(*certv1alpha1.Certificate); ok {
-			updateResourceAnnotation(&c.ObjectMeta, spec.Hash())
-			c.Labels[LabelOwnerGeneration] = fmt.Sprintf("%d", spec.OwnerGeneration)
-			c.Spec = spec.getGardenerCertificateSpec()
+			updateResourceAnnotation(&c.ObjectMeta, info.Hash())
+			c.Labels[LabelOwnerGeneration] = fmt.Sprintf("%d", info.OwnerGeneration)
+			c.Spec = info.getGardenerCertificateSpec()
 			_, err = h.c.gardenerCertificateClient.CertV1alpha1().Certificates(c.Namespace).Update(ctx, c, metav1.UpdateOptions{})
 		} else {
 			err = fmt.Errorf("failed to cast certificate to gardener type")
@@ -155,31 +151,38 @@ func (h *CertificateHandler) UpdateCertificate(ctx context.Context, cert Managed
 	return
 }
 
-func (h *CertificateHandler) CreateCertificate(ctx context.Context, spec *ManagedCertificateSpec) (err error) {
+func (h *CertificateHandler) CreateCertificate(ctx context.Context, info *ManagedCertificateInfo) (err error) {
 	mo := metav1.ObjectMeta{
-		Name:      spec.Name,
-		Namespace: spec.Namespace,
 		Labels: map[string]string{
-			LabelOwnerIdentifierHash: sha1Sum(spec.OwnerId),
-			LabelOwnerGeneration:     fmt.Sprintf("%d", spec.OwnerGeneration),
+			LabelOwnerIdentifierHash: sha1Sum(info.OwnerId),
+			LabelOwnerGeneration:     fmt.Sprintf("%d", info.OwnerGeneration),
 		},
 		Annotations: map[string]string{
-			AnnotationResourceHash:    spec.Hash(),
-			AnnotationOwnerIdentifier: spec.OwnerId,
+			AnnotationResourceHash:    info.Hash(),
+			AnnotationOwnerIdentifier: info.OwnerId,
 		},
 		Finalizers: []string{FinalizerDomain},
 	}
+
+	// Gardener certificates are created in the namespace of the domain (or for clusterdomain in the operator namespace), as it supports creating TLS secrets in other namespaces (e.g. istio ingress namespace).
+	// Cert-Manager certificates do not support this out of the box and hene we create these in the istio ingress namespace, and use the same name we pre-determine for credentials certificates.
+	namespace := info.Namespace
 	switch h.managerType {
 	case certManagerCertManagerIO:
-		_, err = h.c.certManagerCertificateClient.CertmanagerV1().Certificates(spec.Namespace).Create(ctx, &certManagerv1.Certificate{
+		namespace = info.CredentialNamespace
+		mo.Name = info.CredentialName
+		mo.Namespace = namespace
+		_, err = h.c.certManagerCertificateClient.CertmanagerV1().Certificates(namespace).Create(ctx, &certManagerv1.Certificate{
 			ObjectMeta: mo,
-			Spec:       spec.getCertManagerCertificateSpec(),
+			Spec:       info.getCertManagerCertificateSpec(),
 		}, metav1.CreateOptions{})
 
 	default:
-		_, err = h.c.gardenerCertificateClient.CertV1alpha1().Certificates(spec.Namespace).Create(ctx, &certv1alpha1.Certificate{
+		mo.GenerateName = info.Name + "-"
+		mo.Namespace = namespace
+		_, err = h.c.gardenerCertificateClient.CertV1alpha1().Certificates(namespace).Create(ctx, &certv1alpha1.Certificate{
 			ObjectMeta: mo,
-			Spec:       spec.getGardenerCertificateSpec(),
+			Spec:       info.getGardenerCertificateSpec(),
 		}, metav1.CreateOptions{})
 	}
 	return
@@ -232,32 +235,34 @@ type ManagedCertificate interface {
 	GetLabels() map[string]string
 }
 
-type ManagedCertificateSpec struct {
-	Domain          string
-	Name            string
-	Namespace       string
-	OwnerId         string
-	OwnerGeneration int64
+type ManagedCertificateInfo struct {
+	Domain              string
+	Name                string
+	Namespace           string
+	CredentialName      string
+	CredentialNamespace string
+	OwnerId             string
+	OwnerGeneration     int64
 }
 
-func (o *ManagedCertificateSpec) Hash() string {
-	return sha256Sum(o.Domain, o.Name, o.Namespace)
+func (o *ManagedCertificateInfo) Hash() string {
+	return sha256Sum(o.Domain, o.CredentialName, o.CredentialNamespace)
 }
 
-func (o *ManagedCertificateSpec) getGardenerCertificateSpec() certv1alpha1.CertificateSpec {
+func (o *ManagedCertificateInfo) getGardenerCertificateSpec() certv1alpha1.CertificateSpec {
 	return certv1alpha1.CertificateSpec{
 		DNSNames: []string{"*." + o.Domain},
 		SecretRef: &corev1.SecretReference{
-			Name:      o.Name,
-			Namespace: o.Namespace,
+			Name:      o.CredentialName,
+			Namespace: o.CredentialNamespace,
 		},
 	}
 }
 
-func (o *ManagedCertificateSpec) getCertManagerCertificateSpec() certManagerv1.CertificateSpec {
+func (o *ManagedCertificateInfo) getCertManagerCertificateSpec() certManagerv1.CertificateSpec {
 	return certManagerv1.CertificateSpec{
 		DNSNames:   []string{"*." + o.Domain},
-		SecretName: o.Name,
+		SecretName: o.CredentialName,
 		IssuerRef: certManagermetav1.ObjectReference{
 			// TODO: make this configurable
 			Kind: certManagerv1.ClusterIssuerKind,

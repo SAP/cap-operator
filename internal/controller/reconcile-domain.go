@@ -165,7 +165,15 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 	}
 
 	ownerId := formOwnerIdFromDomain(dom)
-	subResourceName := fmt.Sprintf("%s-%s", subResourceNamespace, dom.GetName())
+
+	// We make certificate names (and secret names) unique by combining the domain resource namespace and name.
+	credentialName := fmt.Sprintf("%s--%s", subResourceNamespace, dom.GetName())
+
+	// We generate a unique name for other resources using the domain resource name
+	subResourceName := strings.ReplaceAll(dom.GetName(), ".", "--")
+	if len(subResourceName) > 57 {
+		subResourceName = subResourceName[:57] // Istio Gateway name limit is 63 characters, but we need to reserve space for the generated name prefix
+	}
 
 	// (2) get ingress information
 	var (
@@ -178,13 +186,13 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 	dom.GetStatus().DnsTarget = sanitizeDNSTarget(ingressInfo.DNSTarget)
 
 	// (3) reconcile certificate
-	err = handleDomainCertificate(ctx, c, dom, subResourceName, ingressInfo.Namespace, ownerId)
+	err = handleDomainCertificate(ctx, c, dom, credentialName, ingressInfo.Namespace, subResourceName, subResourceNamespace, ownerId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reconcile domain certificate for %s: %w", ownerId, err)
 	}
 
 	// (4) reconcile gateway
-	err = handleDomainGateway(ctx, c, dom, subResourceName, subResourceNamespace, ownerId)
+	err = handleDomainGateway(ctx, c, dom, credentialName, subResourceName, subResourceNamespace, ownerId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reconcile domain gateway for %s: %w", ownerId, err)
 	}
@@ -200,7 +208,7 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 	}
 
 	// (7) handle dns entries
-	err = handleDnsEntries(ctx, c, dom, ownerId, subResourceNamespace)
+	err = handleDnsEntries(ctx, c, dom, ownerId, subResourceName, subResourceNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reconcile domain dns entries for %s: %w", ownerId, err)
 	}
@@ -336,16 +344,26 @@ func prepareDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Contro
 	return update
 }
 
-func handleDomainGateway[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, name, namespace, ownerId string) (err error) {
-	gateway, err := c.istioClient.NetworkingV1().Gateways(namespace).Get(ctx, name, metav1.GetOptions{})
+func handleDomainGateway[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, credentialName, name, namespace, ownerId string) (err error) {
+	// create a gateway selector from specified labels
+	selector := labels.SelectorFromSet(labels.Set{
+		LabelOwnerIdentifierHash: sha1Sum(ownerId),
+	})
+	gatewayList, err := c.istioClient.NetworkingV1().Gateways(namespace).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
 	found := !errors.IsNotFound(err)
 	if err != nil && found {
 		return fmt.Errorf("failed to get gateway for %s: %w", ownerId, err)
 	}
+	var gateway *istionwv1.Gateway
+	if len(gatewayList.Items) == 1 {
+		gateway = gatewayList.Items[0]
+	} else {
+		if len(gatewayList.Items) > 1 {
+			return fmt.Errorf("found multiple gateways for %s, expected only one", ownerId)
+		}
+		// no gateway found, we will create a new one
+		found = false
 
-	if found && gateway.Labels[LabelOwnerIdentifierHash] != sha1Sum(ownerId) {
-		// this gateway is not owned by the domain
-		return fmt.Errorf("gateway %s.%s is not owned by %s", gateway.Namespace, gateway.Name, ownerId)
 	}
 
 	hostPrefix := "*/*."
@@ -364,7 +382,7 @@ func handleDomainGateway[T v1alpha1.DomainEntity](ctx context.Context, c *Contro
 				},
 				Tls: &networkingv1.ServerTLSSettings{
 					Mode:           convertTlsMode(dom.GetSpec().TLSMode),
-					CredentialName: name,
+					CredentialName: credentialName,
 				},
 			},
 		},
@@ -375,10 +393,10 @@ func handleDomainGateway[T v1alpha1.DomainEntity](ctx context.Context, c *Contro
 	}
 
 	if !found { // create
-		_, err = c.istioClient.NetworkingV1().Gateways(namespace).Create(ctx, &istionwv1.Gateway{
+		gateway, err = c.istioClient.NetworkingV1().Gateways(namespace).Create(ctx, &istionwv1.Gateway{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
+				GenerateName: name + "-",
+				Namespace:    namespace,
 				Labels: map[string]string{
 					LabelOwnerIdentifierHash: sha1Sum(ownerId),
 					LabelOwnerGeneration:     fmt.Sprintf("%d", dom.GetMetadata().Generation),
@@ -397,13 +415,17 @@ func handleDomainGateway[T v1alpha1.DomainEntity](ctx context.Context, c *Contro
 		updateResourceAnnotation(&gateway.ObjectMeta, hash)
 		gateway.Labels[LabelOwnerGeneration] = fmt.Sprintf("%d", dom.GetMetadata().Generation)
 		gateway.Spec = *gatewaySpec
-		_, err = c.istioClient.NetworkingV1().Gateways(namespace).Update(ctx, gateway, metav1.UpdateOptions{})
+		gateway, err = c.istioClient.NetworkingV1().Gateways(namespace).Update(ctx, gateway, metav1.UpdateOptions{})
+	}
+	// update the gateway in domain entity status as this is needed for VirtualService creation
+	if err == nil && gateway != nil {
+		dom.GetStatus().GatewayName = gateway.Name
 	}
 
 	return
 }
 
-func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, name, namespace, ownerId string) (err error) {
+func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, credentialName, credentialNamespace, name, namespace, ownerId string) (err error) {
 	h := NewCertificateHandler(c)
 	selector := labels.SelectorFromSet(labels.Set{
 		LabelOwnerIdentifierHash: sha1Sum(ownerId),
@@ -413,14 +435,16 @@ func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Co
 		return fmt.Errorf("failed to list certificates for %s: %w", ownerId, err)
 	}
 
-	spec := &ManagedCertificateSpec{
-		Domain:          dom.GetSpec().Domain,
-		Name:            name,
-		Namespace:       namespace,
-		OwnerId:         ownerId,
-		OwnerGeneration: dom.GetMetadata().Generation,
+	info := &ManagedCertificateInfo{
+		Domain:              dom.GetSpec().Domain,
+		Name:                name,
+		Namespace:           namespace,
+		CredentialName:      credentialName,
+		CredentialNamespace: credentialNamespace,
+		OwnerId:             ownerId,
+		OwnerGeneration:     dom.GetMetadata().Generation,
 	}
-	hash := spec.Hash()
+	hash := info.Hash()
 
 	certsForDeletion := []ManagedCertificate{}
 	var (
@@ -429,7 +453,7 @@ func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Co
 	)
 	for i := range certs {
 		cert := certs[i]
-		if cert.GetNamespace() != namespace || consistent {
+		if h.managerType == certManagerCertManagerIO && (cert.GetNamespace() != credentialNamespace || consistent) {
 			certsForDeletion = append(certsForDeletion, cert)
 			continue
 		}
@@ -457,9 +481,9 @@ func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Co
 	}
 
 	if selectedCert == nil { // create
-		err = h.CreateCertificate(ctx, spec)
+		err = h.CreateCertificate(ctx, info)
 	} else if !consistent { // update
-		err = h.UpdateCertificate(ctx, selectedCert, spec)
+		err = h.UpdateCertificate(ctx, selectedCert, info)
 	}
 
 	return
@@ -646,7 +670,7 @@ func getReferencingApplications[T v1alpha1.DomainEntity](ctx context.Context, c 
 	return sources, nil
 }
 
-func handleDnsEntries[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, ownerId, subResourceNamespace string) (err error) {
+func handleDnsEntries[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, ownerId, subResourceName string, subResourceNamespace string) (err error) {
 	if dnsManager() != dnsManagerGardener {
 		// skip dns entry handling if not using gardener dns manager
 		return nil
@@ -739,7 +763,7 @@ func handleDnsEntries[T v1alpha1.DomainEntity](ctx context.Context, c *Controlle
 		hash := sha256Sum(dom.GetSpec().Domain, sdom, dom.GetStatus().DnsTarget, appId)
 		dnsEntry := &dnsv1alpha1.DNSEntry{
 			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: fmt.Sprintf("%s-%s-", subResourceNamespace, dom.GetName()),
+				GenerateName: subResourceName + "-",
 				Namespace:    subResourceNamespace,
 				Labels: map[string]string{
 					LabelOwnerIdentifierHash:          sha1Sum(ownerId),
@@ -1035,12 +1059,15 @@ func getDomainHosts[T v1alpha1.DomainEntity](s []T, subdomain string) []string {
 
 func getDomainGatewayReferences[T v1alpha1.DomainEntity](s []T) []string {
 	gateways := []string{}
-	operatorNamespace := util.GetNamespace()
+
 	for _, dom := range s {
-		if dom.GetKind() == v1alpha1.DomainKind {
-			gateways = append(gateways, fmt.Sprintf("%s-%s", dom.GetNamespace(), dom.GetName()))
-		} else {
-			gateways = append(gateways, fmt.Sprintf("%s/%s-%s", operatorNamespace, operatorNamespace, dom.GetName()))
+		if dom.GetStatus().GatewayName != "" {
+			if dom.GetKind() == v1alpha1.DomainKind {
+				gateways = append(gateways, dom.GetStatus().GatewayName)
+			} else {
+				// for ClusterDomain, the gateway name is prefixed with the operator namespace
+				gateways = append(gateways, util.GetNamespace()+"/"+dom.GetStatus().GatewayName)
+			}
 		}
 	}
 	return gateways

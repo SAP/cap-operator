@@ -20,5 +20,6 @@ status:
     type: Ready
   dnsTarget: x.test.local
   observedDomain: app-domain.test.local
+  gatewayName: test-cap-01-primary-gen
   observedGeneration: 1
   state: Ready
