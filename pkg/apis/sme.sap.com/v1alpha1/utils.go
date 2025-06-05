@@ -59,8 +59,8 @@ func (cav *CAPApplicationVersion) SetStatusFinishedJobs(finishedJob string) {
 }
 
 func (cav *CAPApplicationVersion) CheckFinishedJobs(finishedJob string) bool {
-	// Older resources contain finished jobs with "-Content" suffix --> Keep this for compatibility
-	return slices.Contains(cav.Status.FinishedJobs, finishedJob) || slices.Contains(cav.Status.FinishedJobs, finishedJob+"-Content")
+	// Older resources contain finished jobs with "-content" suffix --> Keep this for compatibility
+	return slices.Contains(cav.Status.FinishedJobs, finishedJob) || slices.Contains(cav.Status.FinishedJobs, finishedJob+"-content")
 }
 
 func (cat *CAPTenant) SetStatusWithReadyCondition(state CAPTenantState, readyStatus metav1.ConditionStatus, reason string, message string) {

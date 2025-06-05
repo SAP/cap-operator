@@ -825,7 +825,9 @@ func TestCavInvalidity(t *testing.T) {
 		missingContentJobinContentJobs      bool
 		invalidJobinContentJobs             bool
 		invalidWorkloadName                 bool
-		longWorkloadName                    bool
+		longDeploymentWorkloadName          bool
+		longContentWorkloadName             bool
+		longTenantJobWorkloadName           bool
 		onlyServiceWorkloads                bool
 		serviceExposureWrongWorkloadName    bool
 		duplicateSubDomainInServiceExposure bool
@@ -927,9 +929,19 @@ func TestCavInvalidity(t *testing.T) {
 			backlogItems:        []string{},
 		},
 		{
-			operation:        admissionv1.Create,
-			longWorkloadName: true,
-			backlogItems:     []string{},
+			operation:                  admissionv1.Create,
+			longDeploymentWorkloadName: true,
+			backlogItems:               []string{},
+		},
+		{
+			operation:               admissionv1.Create,
+			longContentWorkloadName: true,
+			backlogItems:            []string{},
+		},
+		{
+			operation:                 admissionv1.Create,
+			longTenantJobWorkloadName: true,
+			backlogItems:              []string{},
 		},
 		{
 			operation:            admissionv1.Create,
@@ -1219,8 +1231,21 @@ func TestCavInvalidity(t *testing.T) {
 				crd.Spec.ContentJobs = append(crd.Spec.ContentJobs, "content", "content-2", "dummy")
 			} else if test.invalidWorkloadName == true {
 				crd.Spec.Workloads[0].Name = "WrongWorkloadName"
-			} else if test.longWorkloadName == true {
+			} else if test.longDeploymentWorkloadName == true {
 				crd.Spec.Workloads[0].Name = "extralongworkloadnamecontainingmorethan64characters"
+			} else if test.longContentWorkloadName == true {
+				crd.Spec.Workloads[2].Name = "extralongcontentworkloadnamecontainingmorethan64characters"
+			} else if test.longTenantJobWorkloadName == true {
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "extralongtenantworkloadnamecontainingmorethan64characters",
+					ConsumedBTPServices: []string{},
+					JobDefinition: &v1alpha1.JobDetails{
+						Type: v1alpha1.JobTenantOperation,
+						CommonDetails: v1alpha1.CommonDetails{
+							Image: "foo",
+						},
+					},
+				})
 			} else if test.onlyServiceWorkloads == true {
 				for _, workload := range crd.Spec.Workloads {
 					if workload.DeploymentDefinition != nil {
@@ -1362,8 +1387,38 @@ func TestCavInvalidity(t *testing.T) {
 				errorMessage = fmt.Sprintf("%s %s job dummy specified as part of ContentJobs is not a valid content job", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.invalidWorkloadName == true {
 				errorMessage = fmt.Sprintf("%s %s Invalid workload name: %s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, "WrongWorkloadName")
-			} else if test.longWorkloadName == true {
-				errorMessage = fmt.Sprintf("%s %s Derived service name: %s for workload %s will exceed 63 character limit. Adjust CAPApplicationVerion resource name or the workload name accordingly", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Name+"-"+"extralongworkloadnamecontainingmorethan64characters"+"-svc", "extralongworkloadnamecontainingmorethan64characters")
+			} else if test.longDeploymentWorkloadName == true {
+				errorMessage = fmt.Sprintf(
+					"%s %s Derived service name '%s' (length %d) exceeds max limit of %d characters. Please shorten CAPApplicationVersion name '%s' or workload name '%s'.",
+					InvalidationMessage,
+					v1alpha1.CAPApplicationVersionKind,
+					crd.Name+"-"+"extralongworkloadnamecontainingmorethan64characters"+"-svc",
+					len(crd.Name+"-"+"extralongworkloadnamecontainingmorethan64characters"+"-svc"),
+					63,
+					crd.Name,
+					"extralongworkloadnamecontainingmorethan64characters",
+				)
+			} else if test.longContentWorkloadName == true {
+				errorMessage = fmt.Sprintf(
+					"%s %s Derived content job pod name '%s' (length %d) exceeds max limit of %d characters. Please shorten CAPApplicationVersion name '%s' or workload name '%s'.",
+					InvalidationMessage,
+					v1alpha1.CAPApplicationVersionKind,
+					crd.Name+"-"+"extralongcontentworkloadnamecontainingmorethan64characters"+"-q4m9c",
+					len(crd.Name+"-"+"extralongcontentworkloadnamecontainingmorethan64characters"+"-q4m9c"),
+					63,
+					crd.Name,
+					"extralongcontentworkloadnamecontainingmorethan64characters",
+				)
+			} else if test.longTenantJobWorkloadName == true {
+				errorMessage = fmt.Sprintf(
+					"%s %s Derived tenant job pod name '%s' (length %d) exceeds max limit of %d characters. Please shorten workload name '%s'.",
+					InvalidationMessage,
+					v1alpha1.CAPApplicationVersionKind,
+					crd.Spec.CAPApplicationInstance+"-provider-"+"extralongtenantworkloadnamecontainingmorethan64characters"+"-q4m9c-c4d9c",
+					len(crd.Spec.CAPApplicationInstance+"-provider-"+"extralongtenantworkloadnamecontainingmorethan64characters"+"-q4m9c-c4d9c"),
+					63,
+					"extralongtenantworkloadnamecontainingmorethan64characters",
+				)
 			} else if test.onlyServiceWorkloads == true {
 				errorMessage = fmt.Sprintf(TenantOpJobWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.JobTenantOperation, v1alpha1.JobCustomTenantOperation, v1alpha1.DeploymentService)
 			} else if test.serviceExposureWrongWorkloadName == true {
