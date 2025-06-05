@@ -19,6 +19,7 @@ status:
     type: Ready
   dnsTarget: x.bar.local
   observedDomain: foo.bar.local
+  gatewayName: test-cap-01-secondary-gen
   observedGeneration: 1
   state: Ready
 

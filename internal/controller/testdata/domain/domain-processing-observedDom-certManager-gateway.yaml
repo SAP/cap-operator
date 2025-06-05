@@ -23,17 +23,19 @@ status:
   state: Processing
   dnsTarget: public-ingress.operator.testing.local
   observedDomain: app-domain.test.local
+  gatewayName: test-cap-01-primary-gen
 ---
 apiVersion: networking.istio.io/v1
 kind: Gateway
 metadata:
   annotations:
     sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
-    sme.sap.com/resource-hash: 88fee3ef7f6c6ad863d66d5932953b7303e4494574ad594a40cfd0894834e34d
+    sme.sap.com/resource-hash: 867335af5f55d7a37c7309833ce135deb875531b2db7efbcd9b831debd1190e0
   labels:
     sme.sap.com/owner-generation: "0"
     sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
-  name: default-test-cap-01-primary
+  name: test-cap-01-primary-gen
+  generateName: test-cap-01-primary-
   namespace: default
   ownerReferences:
   - apiVersion: sme.sap.com/v1alpha1
@@ -53,7 +55,7 @@ spec:
       number: 443
       protocol: HTTPS
     tls:
-      credentialName: default-test-cap-01-primary
+      credentialName: default--test-cap-01-primary
       mode: SIMPLE
 ---
 apiVersion: cert-manager.io/v1
@@ -61,18 +63,18 @@ kind: Certificate
 metadata:
   annotations:
     sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
-    sme.sap.com/resource-hash: 4f15ef7b54d820e54dc376eb08324a635c40dec81e6cc5593fb4ece81c8da776
+    sme.sap.com/resource-hash: 8e560670061f2ae8314cf2fdfa272b620bfb6420653bf806b43dee4091c29ea2
   finalizers:
   - sme.sap.com/domain
   labels:
     sme.sap.com/owner-generation: "0"
     sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
-  name: default-test-cap-01-primary
+  name: default--test-cap-01-primary
   namespace: istio-system
 spec:
   dnsNames:
   - '*.app-domain.test.local'
-  secretName: default-test-cap-01-primary
+  secretName: default--test-cap-01-primary
   issuerRef:
     kind: ClusterIssuer
     name: cluster-ca

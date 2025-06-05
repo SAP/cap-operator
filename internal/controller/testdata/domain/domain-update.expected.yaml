@@ -23,17 +23,18 @@ status:
   state: Ready
   dnsTarget: public-ingress.operator.testing.local
   observedDomain: app-domain-dup.test.local
+  gatewayName: test-cap-01-primary-gen
 ---
 apiVersion: networking.istio.io/v1
 kind: Gateway
 metadata:
   annotations:
     sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
-    sme.sap.com/resource-hash: 0d321fe553b796574ea521b052a525a9f04dde2579d173240c1db691cea24d51
+    sme.sap.com/resource-hash: 2671644b10d903aaa24c2a7b8fd01005169967dfda43b4ea947c7f388c42bcf4
   labels:
     sme.sap.com/owner-generation: "0"
     sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
-  name: default-test-cap-01-primary
+  name: test-cap-01-primary-gen
   namespace: default
   ownerReferences:
   - apiVersion: sme.sap.com/v1alpha1
@@ -53,7 +54,7 @@ spec:
       number: 443
       protocol: HTTPS
     tls:
-      credentialName: default-test-cap-01-primary
+      credentialName: default--test-cap-01-primary
       mode: SIMPLE
 ---
 apiVersion: dns.gardener.cloud/v1alpha1
@@ -63,13 +64,13 @@ metadata:
     dns.gardener.cloud/class: garden
     sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
     sme.sap.com/resource-hash: d9ccf51ead1f6a2c8634259f546de958bae8f91183fc453f52157fd60248cfab
-  generateName: default-test-cap-01-primary-
+  generateName: test-cap-01-primary-
   labels:
     sme.sap.com/btp-app-identifier-hash: ""
     sme.sap.com/owner-generation: "0"
     sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
     sme.sap.com/subdomain-hash: df58248c414f342c81e056b40bee12d17a08bf61
-  name: default-test-cap-01-primary-gen
+  name: test-cap-01-primary-gen
   namespace: default
   ownerReferences:
   - apiVersion: sme.sap.com/v1alpha1

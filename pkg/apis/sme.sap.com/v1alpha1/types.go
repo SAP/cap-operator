@@ -750,6 +750,8 @@ type DomainStatus struct {
 	State DomainState `json:"state"`
 	// Effective DNS Target identified for this domain
 	DnsTarget string `json:"dnsTarget,omitempty"`
+	// Gateway name used for the domain
+	GatewayName string `json:"gatewayName,omitempty"`
 	// domain observed during last reconciliation
 	ObservedDomain string `json:"observedDomain,omitempty"`
 }
