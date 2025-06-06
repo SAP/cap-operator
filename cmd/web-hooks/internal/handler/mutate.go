@@ -279,7 +279,7 @@ func (wh *WebhookHandler) createClusterDomain(domain string, name string, annota
 			Domain:          domain,
 			IngressSelector: ingressSelector,
 			TLSMode:         v1alpha1.TlsModeSimple,
-			DNSMode:         v1alpha1.DnsModeWildcard,
+			DNSMode:         v1alpha1.DnsModeSubdomain,
 		},
 	}
 	// Create the Domain in the Kubernetes cluster
