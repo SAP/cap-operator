@@ -241,6 +241,26 @@ func TestCAV_AllMultipleContentJobsCompleted(t *testing.T) {
 	)
 }
 
+func TestCAV_ExistingContentJobsWithContentSuffix(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with all multiple content jobs completed",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/cav-ready-with-multiple-content-jobs-content-suffix.yaml",
+				"testdata/capapplicationversion/all-mulitple-content-job-completed-content-suffix.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/cav-ready-with-multiple-content-jobs-content-suffix.yaml",
+			backlogItems: []string{
+				"ERP4SMEPREPWORKAPPPLAT-4351",
+			},
+		},
+	)
+}
+
 func TestCAV_OneOfMultipleContentJobsfailed(t *testing.T) {
 	reconcileTestItem(
 		context.TODO(), t,
