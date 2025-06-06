@@ -16,8 +16,8 @@ metadata:
       name: test-ca-01
 spec:
   gateways:
-    - default-test-cap-01-primary
-    - default/default-test-cap-01-secondary
+    - test-cap-01-primary-gen
+    - default/test-cap-01-secondary-gen
   hosts:
     - router.app-domain.test.local
     - router.foo.bar.local
@@ -50,8 +50,8 @@ metadata:
       name: test-ca-01
 spec:
   gateways:
-    - default-test-cap-01-primary
-    - default/default-test-cap-01-secondary
+    - test-cap-01-primary-gen
+    - default/test-cap-01-secondary-gen
   hosts:
     - api.app-domain.test.local
     - api.foo.bar.local

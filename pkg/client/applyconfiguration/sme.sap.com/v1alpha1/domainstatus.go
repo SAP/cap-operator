@@ -18,6 +18,7 @@ type DomainStatusApplyConfiguration struct {
 	GenericStatusApplyConfiguration `json:",inline"`
 	State                           *smesapcomv1alpha1.DomainState `json:"state,omitempty"`
 	DnsTarget                       *string                        `json:"dnsTarget,omitempty"`
+	GatewayName                     *string                        `json:"gatewayName,omitempty"`
 	ObservedDomain                  *string                        `json:"observedDomain,omitempty"`
 }
 
@@ -61,6 +62,14 @@ func (b *DomainStatusApplyConfiguration) WithState(value smesapcomv1alpha1.Domai
 // If called multiple times, the DnsTarget field is set to the value of the last call.
 func (b *DomainStatusApplyConfiguration) WithDnsTarget(value string) *DomainStatusApplyConfiguration {
 	b.DnsTarget = &value
+	return b
+}
+
+// WithGatewayName sets the GatewayName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the GatewayName field is set to the value of the last call.
+func (b *DomainStatusApplyConfiguration) WithGatewayName(value string) *DomainStatusApplyConfiguration {
+	b.GatewayName = &value
 	return b
 }
 

@@ -46,7 +46,7 @@ apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   annotations:
-    sme.sap.com/resource-hash: 1d2d693ed3ca2d83db03c6615724c011bf2beb944870d2109976a97e21cdd878
+    sme.sap.com/resource-hash: ac57fa31ed22c65186a46b7110cb1504999edc415eb29193765e7f170322baa7
     sme.sap.com/owner-identifier: default.test-cap-01-provider
   labels:
     sme.sap.com/owner-generation: "2"
@@ -61,8 +61,8 @@ metadata:
       name: test-cap-01-provider
 spec:
   gateways:
-    - default-test-cap-01-primary
-    - default/default-test-cap-01-secondary
+    - test-cap-01-primary-gen
+    - default/test-cap-01-secondary-gen
   hosts:
     - my-provider.app-domain.test.local
     - my-provider.foo.bar.local

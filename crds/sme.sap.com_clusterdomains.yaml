@@ -107,6 +107,8 @@ spec:
                 type: array
               dnsTarget:
                 type: string
+              gatewayName:
+                type: string
               observedDomain:
                 type: string
               observedGeneration:

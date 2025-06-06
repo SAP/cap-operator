@@ -3,11 +3,11 @@ kind: Gateway
 metadata:
   annotations:
     sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
-    sme.sap.com/resource-hash: 88fee3ef7f6c6ad863d66d5932953b7303e4494574ad594a40cfd0894834e34d
+    sme.sap.com/resource-hash: 867335af5f55d7a37c7309833ce135deb875531b2db7efbcd9b831debd1190e0
   labels:
     sme.sap.com/owner-generation: "0"
     sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
-  name: default-test-cap-01-primary
+  name: test-cap-01-primary-gen
   namespace: default
   ownerReferences:
   - apiVersion: sme.sap.com/v1alpha1
@@ -27,5 +27,5 @@ spec:
       number: 443
       protocol: HTTPS
     tls:
-      credentialName: default-test-cap-01-primary
+      credentialName: default--test-cap-01-primary
       mode: SIMPLE
