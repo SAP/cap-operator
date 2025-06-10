@@ -9,9 +9,18 @@ description: >
 ### New updates
 
 {{% cardpane %}}
+  {{% card header="Q2 2025" %}}
+  CAP Operator now has enhanced Domain Management features. Learn more about [Domain Management](./usage/domain-management).
+  {{% /card %}}
   {{% card header="Q1 2025" %}}
   CAP Operator now supports `Services Only` applications that are tenant independent. Learn more about [Services Only Applications](./usage/services-workload).
   {{% /card %}}
+{{% /cardpane %}}
+
+
+### Former updates
+
+{{% cardpane %}}
   {{% card header="Q4 2024" %}}
   CAP Operator now emits prometheus metrics for [Controller](docs/concepts/operator-components/controller/) and [Subscription Server](docs/concepts/operator-components/subscription-server/) components. Learn more about [metrics](./usage/operator-metrics).
   {{% /card %}}
