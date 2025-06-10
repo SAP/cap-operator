@@ -8,6 +8,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	certManagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
 	certManagermetav1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
@@ -19,16 +20,29 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-type CertificateHandler struct {
+const (
+	certManagerCredentialSuffix = "cert-manager"
+	gardenerCredentialSuffix    = "gardener"
+)
+
+type CertificateManager struct {
 	c           *Controller
 	managerType string
 }
 
-func NewCertificateHandler(c *Controller) *CertificateHandler {
-	return &CertificateHandler{c: c, managerType: certificateManager()}
+func CreateCertificateManager(c *Controller) *CertificateManager {
+	return &CertificateManager{c: c, managerType: certificateManager()}
 }
 
-func (h *CertificateHandler) ListCertificates(ctx context.Context, namespace string, selector labels.Selector) (list []ManagedCertificate, err error) {
+func (h *CertificateManager) GetCredentialName(namespace string, name string) string {
+	credentialSuffix := gardenerCredentialSuffix
+	if h.managerType == certManagerCertManagerIO {
+		credentialSuffix = certManagerCredentialSuffix
+	}
+	return fmt.Sprintf("%s--%s-%s", namespace, name, credentialSuffix)
+}
+
+func (h *CertificateManager) ListCertificates(ctx context.Context, namespace string, selector labels.Selector) (list []ManagedCertificate, err error) {
 	switch h.managerType {
 	case certManagerCertManagerIO:
 		return h.listCertManagerCertificates(ctx, namespace, selector)
@@ -37,7 +51,7 @@ func (h *CertificateHandler) ListCertificates(ctx context.Context, namespace str
 	}
 }
 
-func (h *CertificateHandler) listGardenerCertificates(ctx context.Context, namespace string, selector labels.Selector) (list []ManagedCertificate, err error) {
+func (h *CertificateManager) listGardenerCertificates(ctx context.Context, namespace string, selector labels.Selector) (list []ManagedCertificate, err error) {
 	certs, err := h.c.gardenerCertificateClient.CertV1alpha1().Certificates(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: selector.String(),
 	})
@@ -51,7 +65,7 @@ func (h *CertificateHandler) listGardenerCertificates(ctx context.Context, names
 	return
 }
 
-func (h *CertificateHandler) listCertManagerCertificates(ctx context.Context, namespace string, selector labels.Selector) (list []ManagedCertificate, err error) {
+func (h *CertificateManager) listCertManagerCertificates(ctx context.Context, namespace string, selector labels.Selector) (list []ManagedCertificate, err error) {
 	certs, err := h.c.certManagerCertificateClient.CertmanagerV1().Certificates(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: selector.String(),
 	})
@@ -65,7 +79,7 @@ func (h *CertificateHandler) listCertManagerCertificates(ctx context.Context, na
 	return
 }
 
-func (h *CertificateHandler) DeleteCertificates(ctx context.Context, certs []ManagedCertificate) error {
+func (h *CertificateManager) DeleteCertificates(ctx context.Context, certs []ManagedCertificate) error {
 	err := h.RemoveCertificateFinalizers(ctx, certs)
 	if err != nil {
 		return err
@@ -90,7 +104,7 @@ func (h *CertificateHandler) DeleteCertificates(ctx context.Context, certs []Man
 	return nil
 }
 
-func (h *CertificateHandler) RemoveCertificateFinalizers(ctx context.Context, certs []ManagedCertificate) (err error) {
+func (h *CertificateManager) RemoveCertificateFinalizers(ctx context.Context, certs []ManagedCertificate) (err error) {
 	updGroup, updCtx := errgroup.WithContext(ctx)
 	for i := range certs {
 		cert := certs[i]
@@ -126,7 +140,7 @@ func (h *CertificateHandler) RemoveCertificateFinalizers(ctx context.Context, ce
 	return
 }
 
-func (h *CertificateHandler) UpdateCertificate(ctx context.Context, cert ManagedCertificate, info *ManagedCertificateInfo) (err error) {
+func (h *CertificateManager) UpdateCertificate(ctx context.Context, cert ManagedCertificate, info *ManagedCertificateInfo) (err error) {
 	switch h.managerType {
 	case certManagerCertManagerIO:
 		if c, ok := cert.(*certManagerv1.Certificate); ok {
@@ -151,7 +165,7 @@ func (h *CertificateHandler) UpdateCertificate(ctx context.Context, cert Managed
 	return
 }
 
-func (h *CertificateHandler) CreateCertificate(ctx context.Context, info *ManagedCertificateInfo) (err error) {
+func (h *CertificateManager) CreateCertificate(ctx context.Context, info *ManagedCertificateInfo) (err error) {
 	mo := metav1.ObjectMeta{
 		Labels: map[string]string{
 			LabelOwnerIdentifierHash: sha1Sum(info.OwnerId),
@@ -166,21 +180,16 @@ func (h *CertificateHandler) CreateCertificate(ctx context.Context, info *Manage
 
 	// Gardener certificates are created in the namespace of the domain (or for clusterdomain in the operator namespace), as it supports creating TLS secrets in other namespaces (e.g. istio ingress namespace).
 	// Cert-Manager certificates do not support this out of the box and hene we create these in the istio ingress namespace, and use the same name we pre-determine for credentials certificates.
-	namespace := info.Namespace
+	h.updateCertificateMetadata(&mo, info)
 	switch h.managerType {
 	case certManagerCertManagerIO:
-		namespace = info.CredentialNamespace
-		mo.Name = info.CredentialName
-		mo.Namespace = namespace
-		_, err = h.c.certManagerCertificateClient.CertmanagerV1().Certificates(namespace).Create(ctx, &certManagerv1.Certificate{
+		_, err = h.c.certManagerCertificateClient.CertmanagerV1().Certificates(mo.Namespace).Create(ctx, &certManagerv1.Certificate{
 			ObjectMeta: mo,
 			Spec:       info.getCertManagerCertificateSpec(),
 		}, metav1.CreateOptions{})
 
 	default:
-		mo.GenerateName = info.Name + "-"
-		mo.Namespace = namespace
-		_, err = h.c.gardenerCertificateClient.CertV1alpha1().Certificates(namespace).Create(ctx, &certv1alpha1.Certificate{
+		_, err = h.c.gardenerCertificateClient.CertV1alpha1().Certificates(mo.Namespace).Create(ctx, &certv1alpha1.Certificate{
 			ObjectMeta: mo,
 			Spec:       info.getGardenerCertificateSpec(),
 		}, metav1.CreateOptions{})
@@ -188,7 +197,18 @@ func (h *CertificateHandler) CreateCertificate(ctx context.Context, info *Manage
 	return
 }
 
-func (h *CertificateHandler) IsCertificateReady(cert ManagedCertificate) (bool, error) {
+func (h *CertificateManager) updateCertificateMetadata(meta *metav1.ObjectMeta, info *ManagedCertificateInfo) {
+	if h.managerType == certManagerCertManagerIO {
+		// cert-manager certificates are created in the istio ingress namespace, and use the credential name w/o any suffix.
+		meta.Name = info.CredentialName[:strings.LastIndex(info.CredentialName, "-"+certManagerCredentialSuffix)]
+		meta.Namespace = info.CredentialNamespace
+	} else {
+		meta.GenerateName = info.Name + "-"
+		meta.Namespace = info.Namespace
+	}
+}
+
+func (h *CertificateManager) IsCertificateReady(cert ManagedCertificate) (bool, error) {
 	switch h.managerType {
 	case certManagerCertManagerIO:
 		if c, ok := cert.(*certManagerv1.Certificate); ok {

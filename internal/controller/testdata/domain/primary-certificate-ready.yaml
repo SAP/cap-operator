@@ -3,7 +3,7 @@ kind: Certificate
 metadata:
   annotations:
     sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
-    sme.sap.com/resource-hash: 8e560670061f2ae8314cf2fdfa272b620bfb6420653bf806b43dee4091c29ea2
+    sme.sap.com/resource-hash: d1230403c2273b22d7950e99d2a0cdec0f6cd33a899bcbaa82c60a95e9006c61
   finalizers:
   - sme.sap.com/domain
   generation: 1
@@ -16,7 +16,7 @@ spec:
   dnsNames:
   - '*.app-domain.test.local'
   secretRef:
-    name: default--test-cap-01-primary
+    name: default--test-cap-01-primary-gardener
     namespace: istio-system
 status:
   state: Ready

@@ -212,7 +212,7 @@ func TestDomain_CertManagerError(t *testing.T) {
 				"testdata/domain/istio-ingress.yaml",
 				"testdata/domain/domain-processing-observedDom.yaml",
 				"testdata/domain/primary-certManager-error.yaml",
-				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-gateway-cert-manager.yaml",
 				"testdata/domain/primary-dns-ready.yaml",
 			},
 			expectedResources: "testdata/domain/domain-certManager-error.yaml",
@@ -257,10 +257,10 @@ func TestDomain_UpdatedomainWithCertManager(t *testing.T) {
 				"testdata/domain/istio-ingress.yaml",
 				"testdata/domain/domain-update.yaml",
 				"testdata/domain/primary-certManager-ready.yaml",
-				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-gateway-cert-manager.yaml",
 				"testdata/domain/primary-dns-ready.yaml",
 			},
-			expectedResources: "testdata/domain/domain-update.expected.yaml",
+			expectedResources: "testdata/domain/domain-update.expected-certManager.yaml",
 		},
 	)
 

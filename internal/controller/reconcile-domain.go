@@ -166,9 +166,6 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 
 	ownerId := formOwnerIdFromDomain(dom)
 
-	// We make certificate names (and secret names) unique by combining the domain resource namespace and name.
-	credentialName := fmt.Sprintf("%s--%s", subResourceNamespace, dom.GetName())
-
 	// We generate a unique name for other resources using the domain resource name
 	subResourceName := strings.ReplaceAll(dom.GetName(), ".", "--")
 	if len(subResourceName) > 57 {
@@ -186,7 +183,7 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 	dom.GetStatus().DnsTarget = sanitizeDNSTarget(ingressInfo.DNSTarget)
 
 	// (3) reconcile certificate
-	err = handleDomainCertificate(ctx, c, dom, credentialName, ingressInfo.Namespace, subResourceName, subResourceNamespace, ownerId)
+	credentialName, err := handleDomainCertificate(ctx, c, dom, ingressInfo.Namespace, subResourceName, subResourceNamespace, ownerId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reconcile domain certificate for %s: %w", ownerId, err)
 	}
@@ -425,15 +422,17 @@ func handleDomainGateway[T v1alpha1.DomainEntity](ctx context.Context, c *Contro
 	return
 }
 
-func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, credentialName, credentialNamespace, name, namespace, ownerId string) (err error) {
-	h := NewCertificateHandler(c)
+func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, credentialNamespace, name, namespace, ownerId string) (credentialName string, err error) {
+	h := CreateCertificateManager(c)
 	selector := labels.SelectorFromSet(labels.Set{
 		LabelOwnerIdentifierHash: sha1Sum(ownerId),
 	})
 	certs, err := h.ListCertificates(ctx, metav1.NamespaceAll, selector)
 	if err != nil {
-		return fmt.Errorf("failed to list certificates for %s: %w", ownerId, err)
+		return "", fmt.Errorf("failed to list certificates for %s: %w", ownerId, err)
 	}
+
+	credentialName = h.GetCredentialName(namespace, name)
 
 	info := &ManagedCertificateInfo{
 		Domain:              dom.GetSpec().Domain,
@@ -476,7 +475,7 @@ func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Co
 
 	if len(certsForDeletion) > 0 {
 		if err = h.DeleteCertificates(ctx, certsForDeletion); err != nil {
-			return fmt.Errorf("failed to delete outdated certificates for %s: %w", ownerId, err)
+			return "", fmt.Errorf("failed to delete outdated certificates for %s: %w", ownerId, err)
 		}
 	}
 
@@ -930,7 +929,7 @@ func areCertificatesReady[T v1alpha1.DomainEntity](ctx context.Context, c *Contr
 		domainMap[hash] = doms[i]
 	}
 	selector := newSelectorForOwnerIdentifierHashes(ownerIdHashes)
-	h := NewCertificateHandler(c)
+	h := CreateCertificateManager(c)
 	certs, err := h.ListCertificates(ctx, metav1.NamespaceAll, selector)
 	if err != nil {
 		return false, fmt.Errorf("failed to list certificates: %w", err)
@@ -1093,7 +1092,7 @@ func deleteDomainCertificates[T v1alpha1.DomainEntity](ctx context.Context, c *C
 	selector := labels.SelectorFromSet(labels.Set{
 		LabelOwnerIdentifierHash: sha1Sum(ownerId),
 	})
-	h := NewCertificateHandler(c)
+	h := CreateCertificateManager(c)
 	certs, err := h.ListCertificates(ctx, metav1.NamespaceAll, selector)
 	if err != nil {
 		return fmt.Errorf("failed to list certificates for %s: %w", ownerId, err)
