@@ -31,7 +31,7 @@ func TestDomain_InitialState(t *testing.T) {
 		context.TODO(), t,
 		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
 		TestData{
-			description: "With label and finalizer, processing inital state",
+			description: "With label and finalizer, processing initial state",
 			initialResources: []string{
 				"testdata/domain/domain-initial-state-label-finalizer.yaml",
 			},
