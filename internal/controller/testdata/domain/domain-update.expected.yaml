@@ -30,7 +30,7 @@ kind: Gateway
 metadata:
   annotations:
     sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
-    sme.sap.com/resource-hash: 2671644b10d903aaa24c2a7b8fd01005169967dfda43b4ea947c7f388c42bcf4
+    sme.sap.com/resource-hash: 3214db1859db6df959b2c8dc0fe90e2f41774c869c0f14f6fa7ac6288a565b50
   labels:
     sme.sap.com/owner-generation: "0"
     sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
@@ -54,7 +54,7 @@ spec:
       number: 443
       protocol: HTTPS
     tls:
-      credentialName: default--test-cap-01-primary
+      credentialName: default--test-cap-01-primary-gardener
       mode: SIMPLE
 ---
 apiVersion: dns.gardener.cloud/v1alpha1

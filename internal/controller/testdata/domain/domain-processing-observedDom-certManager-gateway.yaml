@@ -30,7 +30,7 @@ kind: Gateway
 metadata:
   annotations:
     sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
-    sme.sap.com/resource-hash: 867335af5f55d7a37c7309833ce135deb875531b2db7efbcd9b831debd1190e0
+    sme.sap.com/resource-hash: 673ce3f2c82306636047caa12ecf1200c763f491511d9c41e2c5014d5db9383e
   labels:
     sme.sap.com/owner-generation: "0"
     sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
@@ -55,7 +55,7 @@ spec:
       number: 443
       protocol: HTTPS
     tls:
-      credentialName: default--test-cap-01-primary
+      credentialName: default--test-cap-01-primary-cert-manager
       mode: SIMPLE
 ---
 apiVersion: cert-manager.io/v1
@@ -63,7 +63,7 @@ kind: Certificate
 metadata:
   annotations:
     sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
-    sme.sap.com/resource-hash: 8e560670061f2ae8314cf2fdfa272b620bfb6420653bf806b43dee4091c29ea2
+    sme.sap.com/resource-hash: 1e0784231c871a291abfa30b8ca1241306c997a011944be7c0222822f3c2934b
   finalizers:
   - sme.sap.com/domain
   labels:
@@ -74,7 +74,7 @@ metadata:
 spec:
   dnsNames:
   - '*.app-domain.test.local'
-  secretName: default--test-cap-01-primary
+  secretName: default--test-cap-01-primary-cert-manager
   issuerRef:
     kind: ClusterIssuer
     name: cluster-ca
