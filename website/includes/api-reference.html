@@ -936,6 +936,8 @@ DomainStatus
 </p>
 <div>
 <p>Application domains</p>
+<p>Deprecated: ApplicationDomains exists for historical compatibility and should not be used.
+This will be removed in future versions. Use DomainRef instead.</p>
 </div>
 <table>
 <thead>
@@ -2581,6 +2583,17 @@ string
 </tr>
 <tr>
 <td>
+<code>gatewayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Gateway name used for the domain</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>observedDomain</code><br/>
 <em>
 string
@@ -3470,5 +3483,5 @@ If not specified, CAP Operator will not attempt to create a ServiceMonitor for t
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>a83edcf</code>.
+on git commit <code>50011c0</code>.
 </em></p>
