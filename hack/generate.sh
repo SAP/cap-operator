@@ -14,20 +14,19 @@ if ! which jq >/dev/null; then
   exit 1
 fi
 
+mkdir -p ./tmp/go
+
+if [ ! -f ./tmp/go.mod ]; then
+  cd ./tmp
+  echo "Creating Temporary go.mod file"
+  go mod init sap.com/test
+  cd ..
+fi
+
+echo $(go get -modfile=./tmp/go.mod k8s.io/code-generator@latest)
+CODEGEN_PKG=$(go list -modfile=./tmp/go.mod -m -f {{.Dir}} k8s.io/code-generator)
+
 cd $(dirname "${BASH_SOURCE[0]}")/..
-
-if [ ! -f go.mod ]; then
-  echo "Error: this is not a go module, is it?"
-  exit 1
-fi
-
-if [ -z "${CODEGEN_PKG:-}" ]; then
-  if [ -d ./vendor/k8s.io/code-generator ]; then
-    CODEGEN_PKG=./vendor/k8s.io/code-generator
-  else
-    CODEGEN_PKG=$(go mod download -json k8s.io/code-generator | jq -r '.Dir //empty')
-  fi
-fi
 
 if [ -z "${GEN_PKG_PATH:-}" ]; then
   GEN_PKG_PATH=$(go list -m)/pkg
