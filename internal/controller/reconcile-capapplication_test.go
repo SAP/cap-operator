@@ -625,3 +625,30 @@ func TestCA_ServicesOnly_NoDomainRef(t *testing.T) {
 		},
 	)
 }
+
+func TestCA_ServicesOnly_Error(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01"}},
+		TestData{
+			description: "capapplication - services error case",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/capapplication/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/expected/cav-services-ready.yaml",
+				"testdata/common/service-virtualservices.yaml",
+				"testdata/capapplicationversion/services-ready.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems:          []string{},
+			expectError:           true,
+			mockErrorForResources: []ResourceAction{{Verb: "list", Group: "networking.istio.io", Version: "v1", Resource: "virtualservices", Namespace: "*", Name: "*"}},
+		},
+	)
+	if err.Error() != "mocked api error (virtualservices.networking.istio.io/v1)" {
+		t.Error("error message is different from expected: ", err.Error())
+	}
+
+}
