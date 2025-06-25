@@ -678,3 +678,14 @@ func (c *Controller) addApplicationResourcesToReconcileResult(ctx context.Contex
 
 	return nil
 }
+
+// Collect service operation metrics based on the status of the CAV
+func collectServiceOperationMetrics(cav *v1alpha1.CAPApplicationVersion, err error) {
+	// Collect/Increment overall completed service operation metrics
+	ServiceOperations.WithLabelValues(cav.Labels[LabelBTPApplicationIdentifierHash]).Inc()
+
+	if err != nil {
+		// Collect/Increment failed service operation metrics with CAV details
+		ServiceOperationFailures.WithLabelValues(cav.Labels[LabelBTPApplicationIdentifierHash], cav.Spec.Version, cav.Namespace, cav.Name).Inc()
+	}
+}

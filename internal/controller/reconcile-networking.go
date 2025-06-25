@@ -283,6 +283,8 @@ func (c *Controller) reconcileServiceNetworking(ctx context.Context, ca *v1alpha
 		}
 		if reason != "" { // raise event only when there is a modification or problem
 			c.Event(cav, nil, eventType, reason, EventActionReconcileServiceNetworking, message)
+			// collect service operation metrics only if there is an error or modification on VirtualService
+			collectServiceOperationMetrics(cav, err)
 		}
 	}()
 

@@ -62,6 +62,20 @@ var (
 		Help:      "Duration of last tenant operation in seconds",
 	}, []string{"app", "tenant_id"})
 
+	// Metrics for overall service operations
+	ServiceOperations = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: CAPOp,
+		Name:      "service_operations",
+		Help:      "Overall number of service operations",
+	}, []string{"app"})
+
+	// Metrics for overall service operations
+	ServiceOperationFailures = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: CAPOp,
+		Name:      "service_operation_failures",
+		Help:      "Service Operations that failed to complete",
+	}, []string{"app", "version", "namespace", "name"})
+
 	/**
 		Note:
 		All the metrics below are for the CAP Operator controller workqueue,
