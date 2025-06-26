@@ -17,7 +17,6 @@ import (
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -38,7 +37,7 @@ const (
 	EventActionCheckForVersion          = "CheckForVersion"
 )
 
-func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem, attempts int) (result *ReconcileResult, err error) {
+func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem, _ int) (result *ReconcileResult, err error) {
 	lister := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister()
 	cached, err := lister.CAPApplications(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
 	if err != nil {
@@ -47,7 +46,7 @@ func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem
 	ca := cached.DeepCopy()
 
 	// prepare annotations, labels, finalizers
-	if c.prepareCAPApplication(ctx, ca) {
+	if c.prepareCAPApplication(ca) {
 		if err = c.updateCAPApplication(ctx, ca); err == nil {
 			result = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0)
 		}
@@ -57,7 +56,7 @@ func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem
 	defer func() {
 		if err == nil {
 			// observe subdomains and queue domains (in case of changes)
-			result, err = c.observeCAPApplicationSubdomains(ctx, ca, result)
+			result, err = c.observeCAPApplicationSubdomains(ca, result)
 		}
 
 		if statusErr := c.updateCAPApplicationStatus(ctx, ca); statusErr != nil && err == nil {
@@ -80,13 +79,13 @@ func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, reason, message)
 		result = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0)
 	} else {
-		result, err = c.handleCAPApplicationDependentResources(ctx, ca, attempts)
+		result, err = c.handleCAPApplicationDependentResources(ctx, ca)
 	}
 
-	return c.checkAdditionalConditions(ctx, ca, result, err)
+	return c.checkAdditionalConditions(ca, result, err)
 }
 
-func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context, ca *v1alpha1.CAPApplication, attempts int) (requeue *ReconcileResult, err error) {
+func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
 	var processing bool
 	defer func() {
 		if processing {
@@ -99,18 +98,18 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 	}()
 
 	// step 1 - validate BTPServices
-	if processing, err = c.validateSecrets(ctx, ca, attempts); err != nil || processing {
+	if processing, err = c.validateSecrets(ca); err != nil || processing {
 		return
 	}
 
 	// step 2 - wait for domain references to be ready
 	// The version ready status needs relevant service related DNS entries to exist!
-	if requeue, err = c.reconcileApplicationDomainReferences(ctx, ca); requeue != nil || err != nil {
+	if requeue, err = c.reconcileApplicationDomainReferences(ca); requeue != nil || err != nil {
 		return
 	}
 
 	// step 3 - check for valid versions
-	cav, err := c.getLatestReadyCAPApplicationVersion(ctx, ca, true)
+	cav, err := c.getLatestReadyCAPApplicationVersion(ca, true)
 	if err != nil {
 		// do not update the CAPApplication status - this is not an error reported by the version, but error while fetching the version
 		return
@@ -161,7 +160,7 @@ func (c *Controller) verifyApplicationConsistent(ctx context.Context, ca *v1alph
 }
 
 func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1alpha1.CAPApplication) error {
-	cav, err := c.getLatestReadyCAPApplicationVersion(ctx, ca, false)
+	cav, err := c.getLatestReadyCAPApplicationVersion(ca, false)
 	if err != nil {
 		return err
 	}
@@ -206,7 +205,7 @@ func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1al
 	return nil
 }
 
-func (c *Controller) checkAdditionalConditions(ctx context.Context, ca *v1alpha1.CAPApplication, result *ReconcileResult, err error) (*ReconcileResult, error) {
+func (c *Controller) checkAdditionalConditions(ca *v1alpha1.CAPApplication, result *ReconcileResult, err error) (*ReconcileResult, error) {
 	// In case of explicit Reconcile or errors return back with the original result
 	if result != nil || err != nil {
 		return result, err
@@ -218,7 +217,7 @@ func (c *Controller) checkAdditionalConditions(ctx context.Context, ca *v1alpha1
 	readyReason := string(v1alpha1.ConditionTypeLatestVersionReady)
 
 	// Get latest CAV (incl. ones that may not be ready)
-	cav, err := c.getLatestCAPApplicationVersion(ctx, ca)
+	cav, err := c.getLatestCAPApplicationVersion(ca)
 	if err != nil {
 		return nil, err
 	}
@@ -280,11 +279,11 @@ func (c *Controller) updateCAPApplicationStatus(ctx context.Context, ca *v1alpha
 	return err
 }
 
-func (c *Controller) observeCAPApplicationSubdomains(ctx context.Context, ca *v1alpha1.CAPApplication, result *ReconcileResult) (*ReconcileResult, error) {
+func (c *Controller) observeCAPApplicationSubdomains(ca *v1alpha1.CAPApplication, result *ReconcileResult) (*ReconcileResult, error) {
 	mapSubDomains := map[string]struct{}{}
 
 	// Get all versions and tenants
-	cavs, tenants, err := c.getCachedApplicationResources(ctx, ca)
+	cavs, tenants, err := c.getCachedApplicationResources(ca)
 	if err != nil {
 		return result, err
 	}
@@ -313,8 +312,8 @@ func (c *Controller) observeCAPApplicationSubdomains(ctx context.Context, ca *v1
 	return result, nil
 }
 
-func (c *Controller) getCachedApplicationResources(ctx context.Context, ca *v1alpha1.CAPApplication) (versions []*v1alpha1.CAPApplicationVersion, tenants []*v1alpha1.CAPTenant, err error) {
-	versions, err = c.getCachedCAPApplicationVersions(ctx, ca)
+func (c *Controller) getCachedApplicationResources(ca *v1alpha1.CAPApplication) (versions []*v1alpha1.CAPApplicationVersion, tenants []*v1alpha1.CAPTenant, err error) {
+	versions, err = c.getCachedCAPApplicationVersions(ca)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -336,7 +335,7 @@ func addDomainReferencesToReconcileResult(refs []v1alpha1.DomainRef, result *Rec
 	}
 }
 
-func (c *Controller) validateSecrets(ctx context.Context, ca *v1alpha1.CAPApplication, attempts int) (bool, error) {
+func (c *Controller) validateSecrets(ca *v1alpha1.CAPApplication) (bool, error) {
 	err := c.checkAndPreserveSecrets(ca.Spec.BTP.Services, ca.Namespace)
 
 	if err == nil {
@@ -537,7 +536,7 @@ func (c *Controller) deleteTenants(ctx context.Context, ca *v1alpha1.CAPApplicat
 	return len(tenants) > 0, nil
 }
 
-func (c *Controller) prepareCAPApplication(ctx context.Context, ca *v1alpha1.CAPApplication) (update bool) {
+func (c *Controller) prepareCAPApplication(ca *v1alpha1.CAPApplication) (update bool) {
 	// Do nothing when object is deleted
 	if ca.DeletionTimestamp != nil {
 		return false
@@ -562,9 +561,9 @@ func (c *Controller) prepareCAPApplication(ctx context.Context, ca *v1alpha1.CAP
 	return update
 }
 
-func (c *Controller) areApplicationDomainReferencesReady(ctx context.Context, ca *v1alpha1.CAPApplication) (bool, error) {
+func (c *Controller) areApplicationDomainReferencesReady(ca *v1alpha1.CAPApplication) (bool, error) {
 	// check if all domain references are ready
-	doms, cdoms, err := fetchDomainResourcesFromCache(ctx, c, ca.Spec.DomainRefs, ca.Namespace)
+	doms, cdoms, err := fetchDomainResourcesFromCache(c, ca.Spec.DomainRefs, ca.Namespace)
 	if err != nil {
 		return false, err
 	}
@@ -575,14 +574,14 @@ func (c *Controller) areApplicationDomainReferencesReady(ctx context.Context, ca
 	return areDomainResourcesReady(cdoms)
 }
 
-func (c *Controller) reconcileApplicationDomainReferences(ctx context.Context, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
+func (c *Controller) reconcileApplicationDomainReferences(ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
 	// (1) fetch referenced domain resources
 	var (
 		doms  []*v1alpha1.Domain
 		cdoms []*v1alpha1.ClusterDomain
 	)
-	doms, cdoms, err = fetchDomainResourcesFromCache(ctx, c, ca.Spec.DomainRefs, ca.Namespace)
-	if errors.IsNotFound(err) {
+	doms, cdoms, err = fetchDomainResourcesFromCache(c, ca.Spec.DomainRefs, ca.Namespace)
+	if k8sErrors.IsNotFound(err) {
 		// ignore error and wait for domain resources to be created
 		c.Event(ca, nil, corev1.EventTypeWarning, CAPApplicationEventMissingDomainReferences, EventActionProcessingDomainResources, err.Error())
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, "ProcessingDomainReferences", "Waiting for all domain references to be created")
@@ -646,7 +645,7 @@ func (c *Controller) reconcileApplicationDomainReferences(ctx context.Context, c
 		}
 
 		// requeue versions and tenants for adjusting virtual services
-		err = c.addApplicationResourcesToReconcileResult(ctx, ca, requeue)
+		err = c.addApplicationResourcesToReconcileResult(ca, requeue)
 		if err != nil {
 			return nil, err
 		}
@@ -658,8 +657,8 @@ func (c *Controller) reconcileApplicationDomainReferences(ctx context.Context, c
 	return
 }
 
-func (c *Controller) addApplicationResourcesToReconcileResult(ctx context.Context, ca *v1alpha1.CAPApplication, requeue *ReconcileResult) error {
-	versions, tenants, err := c.getCachedApplicationResources(ctx, ca)
+func (c *Controller) addApplicationResourcesToReconcileResult(ca *v1alpha1.CAPApplication, requeue *ReconcileResult) error {
+	versions, tenants, err := c.getCachedApplicationResources(ca)
 	if err != nil {
 		return err
 	}

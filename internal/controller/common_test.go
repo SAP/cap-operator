@@ -83,7 +83,7 @@ var generateNameCreateHandler k8stesting.ReactionFunc = func(action k8stesting.A
 	return false, obj, nil
 }
 
-func getErrorReactorWithResources(t *testing.T, items []ResourceAction) k8stesting.ReactionFunc {
+func getErrorReactorWithResources(items []ResourceAction) k8stesting.ReactionFunc {
 	actionItems := items
 	return func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 		gvr := action.GetResource()
@@ -220,11 +220,7 @@ func addForDiscovery(c *k8stesting.Fake, resources []schema.GroupVersionResource
 	for i := range resources {
 		r := resources[i]
 		gv := fmt.Sprintf("%s/%s", r.Group, r.Version)
-		if v, ok := m[gv]; ok {
-			v = append(v, r)
-		} else {
-			m[gv] = []schema.GroupVersionResource{r}
-		}
+		m[gv] = append(m[gv], r)
 	}
 	for k, v := range m {
 		apiResources := []metav1.APIResource{}
@@ -258,22 +254,22 @@ func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAc
 	copClient.PrependReactor("create", "*", generateNameCreateHandler)
 	copClient.PrependReactor("update", "*", removeStatusTimestampHandler)
 	copClient.PrependReactor("delete-collection", "*", getDeleteCollectionHandler(t, copClient))
-	copClient.PrependReactor("*", "*", getErrorReactorWithResources(t, items))
+	copClient.PrependReactor("*", "*", getErrorReactorWithResources(items))
 
 	istioClient.PrependReactor("create", "*", generateNameCreateHandler)
 	istioClient.PrependReactor("delete-collection", "*", getDeleteCollectionHandler(t, istioClient))
-	istioClient.PrependReactor("*", "*", getErrorReactorWithResources(t, items))
+	istioClient.PrependReactor("*", "*", getErrorReactorWithResources(items))
 
 	coreClient.PrependReactor("create", "*", generateNameCreateHandler)
 	coreClient.PrependReactor("create", "*", generateNameCreateHandler)
-	coreClient.PrependReactor("*", "*", getErrorReactorWithResources(t, items))
+	coreClient.PrependReactor("*", "*", getErrorReactorWithResources(items))
 
 	gardenerDNSClient.PrependReactor("create", "*", generateNameCreateHandler)
-	gardenerDNSClient.PrependReactor("*", "*", getErrorReactorWithResources(t, items))
+	gardenerDNSClient.PrependReactor("*", "*", getErrorReactorWithResources(items))
 	gardenerDNSClient.PrependReactor("delete-collection", "*", getDeleteCollectionHandler(t, gardenerDNSClient))
 
 	gardenerCertClient.PrependReactor("create", "*", generateNameCreateHandler)
-	gardenerCertClient.PrependReactor("*", "*", getErrorReactorWithResources(t, items))
+	gardenerCertClient.PrependReactor("*", "*", getErrorReactorWithResources(items))
 	gardenerCertClient.PrependReactor("delete-collection", "*", getDeleteCollectionHandler(t, gardenerDNSClient))
 
 	c := NewController(coreClient, copClient, istioClient, gardenerCertClient, certManagerClient, gardenerDNSClient, promopClient)

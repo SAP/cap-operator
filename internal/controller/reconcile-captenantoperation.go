@@ -77,7 +77,7 @@ const (
 	EventActionTrackJob  = "TrackJob"
 )
 
-func (c *Controller) reconcileCAPTenantOperation(ctx context.Context, item QueueItem, attempts int) (result *ReconcileResult, err error) {
+func (c *Controller) reconcileCAPTenantOperation(ctx context.Context, item QueueItem, _ int) (result *ReconcileResult, err error) {
 	// cached, err := c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Lister().CAPTenantOperations(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
 	cached, err := c.crdClient.SmeV1alpha1().CAPTenantOperations(item.ResourceKey.Namespace).Get(ctx, item.ResourceKey.Name, metav1.GetOptions{})
 
