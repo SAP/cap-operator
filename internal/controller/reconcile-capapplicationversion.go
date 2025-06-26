@@ -52,7 +52,7 @@ type DeploymentParameters struct {
 	VCAPSecretName  string
 }
 
-func (c *Controller) reconcileCAPApplicationVersion(ctx context.Context, item QueueItem, attempts int) (*ReconcileResult, error) {
+func (c *Controller) reconcileCAPApplicationVersion(ctx context.Context, item QueueItem, _ int) (*ReconcileResult, error) {
 	lister := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister()
 	cached, err := lister.CAPApplicationVersions(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
 	if err != nil {
@@ -207,7 +207,7 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 		return nil, err
 	}
 
-	requeue, err := c.checkServiceDNSEntries(ctx, ca, cav)
+	requeue, err := c.checkServiceDNSEntries(ca, cav)
 	if requeue != nil || err != nil {
 		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "WaitingForServiceDNSEntries"})
 		return requeue, err
@@ -221,11 +221,11 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 	return nil, c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateReady, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "True", Reason: "WorkloadsReady"})
 }
 
-func (c *Controller) checkServiceDNSEntries(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (*ReconcileResult, error) {
+func (c *Controller) checkServiceDNSEntries(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (*ReconcileResult, error) {
 	checkNeeded := len(cav.Spec.ServiceExposures) > 0
 	// check application domain references to ensure dns entries are ready
 	if checkNeeded {
-		ready, err := c.areApplicationDomainReferencesReady(ctx, ca)
+		ready, err := c.areApplicationDomainReferencesReady(ca)
 		if err != nil {
 			util.LogError(err, "error reading application domain references", string(Processing), cav, nil, "version", cav.Spec.Version)
 			return nil, err
@@ -490,7 +490,7 @@ func newService(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion
 // #endregion Service
 
 // #region ServiceMonitor
-func (c *Controller) checkServiceMonitorCapability(ctx context.Context) error {
+func (c *Controller) checkServiceMonitorCapability() error {
 	const (
 		monitoringGroupVersion = "monitoring.coreos.com/v1"
 		resourceKind           = "ServiceMonitor"
@@ -508,7 +508,7 @@ func (c *Controller) checkServiceMonitorCapability(ctx context.Context) error {
 }
 
 func (c *Controller) updateServiceMonitors(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workloadServicePortInfos []servicePortInfo) error {
-	if err := c.checkServiceMonitorCapability(ctx); err != nil {
+	if err := c.checkServiceMonitorCapability(); err != nil {
 		util.LogWarning(err, "could not confirm availability of service monitor resource; service monitors will not be created")
 		return nil
 	}

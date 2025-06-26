@@ -47,7 +47,7 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 		}
 	}()
 
-	if drModified, err = c.reconcileTenantDestinationRule(ctx, cat, cavName, ca); err != nil {
+	if drModified, err = c.reconcileTenantDestinationRule(ctx, cat, cavName); err != nil {
 		util.LogError(err, "Destination rule reconciliation failed", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		reason = CAPTenantEventDestinationRuleModificationFailed
 		return
@@ -73,7 +73,7 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 	return
 }
 
-func (c *Controller) reconcileTenantDestinationRule(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (modified bool, err error) {
+func (c *Controller) reconcileTenantDestinationRule(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string) (modified bool, err error) {
 	var (
 		create, update bool
 		dr             *istionwv1.DestinationRule
@@ -93,7 +93,7 @@ func (c *Controller) reconcileTenantDestinationRule(ctx context.Context, cat *v1
 		return
 	}
 
-	if update, err = c.getUpdatedTenantDestinationRuleObject(ctx, cat, dr, cavName); err != nil {
+	if update, err = c.getUpdatedTenantDestinationRuleObject(cat, dr, cavName); err != nil {
 		util.LogError(err, "", string(Processing), cat, dr, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		return
 	}
@@ -109,7 +109,7 @@ func (c *Controller) reconcileTenantDestinationRule(ctx context.Context, cat *v1
 	return create || update, err
 }
 
-func (c *Controller) getUpdatedTenantDestinationRuleObject(ctx context.Context, cat *v1alpha1.CAPTenant, dr *istionwv1.DestinationRule, cavName string) (modified bool, err error) {
+func (c *Controller) getUpdatedTenantDestinationRuleObject(cat *v1alpha1.CAPTenant, dr *istionwv1.DestinationRule, cavName string) (modified bool, err error) {
 	// verify owner reference
 	modified, err = c.enforceTenantResourceOwnership(&dr.ObjectMeta, &dr.TypeMeta, cat)
 	if err != nil {
@@ -176,7 +176,7 @@ func (c *Controller) reconcileTenantVirtualService(ctx context.Context, cat *v1a
 		return
 	}
 
-	if update, err = c.getUpdatedTenantVirtualServiceObject(ctx, cat, vs, cavName, ca); err != nil {
+	if update, err = c.getUpdatedTenantVirtualServiceObject(cat, vs, cavName, ca); err != nil {
 		util.LogError(err, "", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId)
 		return
 	}
@@ -192,7 +192,7 @@ func (c *Controller) reconcileTenantVirtualService(ctx context.Context, cat *v1a
 	return create || update, err
 }
 
-func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, cat *v1alpha1.CAPTenant, vs *istionwv1.VirtualService, cavName string, ca *v1alpha1.CAPApplication) (modified bool, err error) {
+func (c *Controller) getUpdatedTenantVirtualServiceObject(cat *v1alpha1.CAPTenant, vs *istionwv1.VirtualService, cavName string, ca *v1alpha1.CAPApplication) (modified bool, err error) {
 	if ca == nil {
 		ca, err = c.getCachedCAPApplication(cat.Namespace, cat.Spec.CAPApplicationInstance)
 		if err != nil {
@@ -230,7 +230,7 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 			}},
 		}},
 	}
-	err = c.updateVirtualServiceSpecFromDomainReferences(ctx, spec, cat.Spec.SubDomain, ca)
+	err = c.updateVirtualServiceSpecFromDomainReferences(spec, cat.Spec.SubDomain, ca)
 	if err != nil {
 		return modified, err
 	}
@@ -250,8 +250,8 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(ctx context.Context, c
 	return modified, err
 }
 
-func (c *Controller) updateVirtualServiceSpecFromDomainReferences(ctx context.Context, spec *networkingv1.VirtualService, subdomain string, ca *v1alpha1.CAPApplication) error {
-	doms, cdoms, err := fetchDomainResourcesFromCache(ctx, c, ca.Spec.DomainRefs, ca.Namespace)
+func (c *Controller) updateVirtualServiceSpecFromDomainReferences(spec *networkingv1.VirtualService, subdomain string, ca *v1alpha1.CAPApplication) error {
+	doms, cdoms, err := fetchDomainResourcesFromCache(c, ca.Spec.DomainRefs, ca.Namespace)
 	if err != nil {
 		return err
 	}
@@ -368,7 +368,7 @@ func (c *Controller) modifyServiceExposure(ctx context.Context, vsList *istionwv
 	}
 
 	// update VirtualService Spec
-	if update, err = c.getUpdatedServiceVirtualServiceObject(ctx, vs, serviceExposure, ownerRef, ca, cav.Name); err != nil {
+	if update, err = c.getUpdatedServiceVirtualServiceObject(vs, serviceExposure, ownerRef, ca, cav.Name); err != nil {
 		return
 	}
 
@@ -384,7 +384,7 @@ func (c *Controller) modifyServiceExposure(ctx context.Context, vsList *istionwv
 	return
 }
 
-func (c *Controller) getUpdatedServiceVirtualServiceObject(ctx context.Context, vs *istionwv1.VirtualService, serviceExposure v1alpha1.ServiceExposure, ownerRef metav1.OwnerReference, ca *v1alpha1.CAPApplication, cavName string) (modified bool, err error) {
+func (c *Controller) getUpdatedServiceVirtualServiceObject(vs *istionwv1.VirtualService, serviceExposure v1alpha1.ServiceExposure, ownerRef metav1.OwnerReference, ca *v1alpha1.CAPApplication, cavName string) (modified bool, err error) {
 	// update owner reference
 	if owner, ok := getOwnerByKind(vs.OwnerReferences, v1alpha1.CAPApplicationKind); !ok {
 		vs.OwnerReferences = append(vs.OwnerReferences, ownerRef)
@@ -421,7 +421,7 @@ func (c *Controller) getUpdatedServiceVirtualServiceObject(ctx context.Context, 
 	spec := &networkingv1.VirtualService{
 		Http: httpRoutes,
 	}
-	err = c.updateVirtualServiceSpecFromDomainReferences(ctx, spec, serviceExposure.SubDomain, ca)
+	err = c.updateVirtualServiceSpecFromDomainReferences(spec, serviceExposure.SubDomain, ca)
 	if err != nil {
 		return modified, err
 	}

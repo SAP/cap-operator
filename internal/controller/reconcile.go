@@ -201,8 +201,8 @@ func (c *Controller) getCachedCAPTenant(namespace string, value string, valueIsT
 /*
 fetch the latest CAPApplicationVersion in Ready state, for a specified CAPApplication
 */
-func (c *Controller) getLatestReadyCAPApplicationVersion(ctx context.Context, ca *v1alpha1.CAPApplication, avoidNotFound bool) (*v1alpha1.CAPApplicationVersion, error) {
-	cavs, err := c.getCachedCAPApplicationVersions(ctx, ca)
+func (c *Controller) getLatestReadyCAPApplicationVersion(ca *v1alpha1.CAPApplication, avoidNotFound bool) (*v1alpha1.CAPApplicationVersion, error) {
+	cavs, err := c.getCachedCAPApplicationVersions(ca)
 	if err != nil {
 		return nil, err
 	}
@@ -226,8 +226,8 @@ func (c *Controller) getLatestReadyCAPApplicationVersion(ctx context.Context, ca
 /*
 fetch the latest CAPApplicationVersion, for a specified CAPApplication
 */
-func (c *Controller) getLatestCAPApplicationVersion(ctx context.Context, ca *v1alpha1.CAPApplication) (*v1alpha1.CAPApplicationVersion, error) {
-	cavs, err := c.getCachedCAPApplicationVersions(ctx, ca)
+func (c *Controller) getLatestCAPApplicationVersion(ca *v1alpha1.CAPApplication) (*v1alpha1.CAPApplicationVersion, error) {
+	cavs, err := c.getCachedCAPApplicationVersions(ca)
 	if err != nil {
 		return nil, err
 	}
@@ -252,8 +252,8 @@ func (c *Controller) getLatestCAPApplicationVersion(ctx context.Context, ca *v1a
 
 	fetch the relevant CAPApplicationVersion in Ready state, for a specified CAPApplication and version string
 */
-func (c *Controller) getRelevantCAPApplicationVersion(ctx context.Context, ca *v1alpha1.CAPApplication, version string) (*v1alpha1.CAPApplicationVersion, error) {
-	cavs, err := c.getCachedCAPApplicationVersions(ctx, ca)
+func (c *Controller) getRelevantCAPApplicationVersion(ca *v1alpha1.CAPApplication, version string) (*v1alpha1.CAPApplicationVersion, error) {
+	cavs, err := c.getCachedCAPApplicationVersions(ca)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +274,7 @@ func (c *Controller) getRelevantCAPApplicationVersion(ctx context.Context, ca *v
 	return latestCav, err
 }
 
-func (c *Controller) getCachedCAPApplicationVersions(ctx context.Context, ca *v1alpha1.CAPApplication) ([]*v1alpha1.CAPApplicationVersion, error) {
+func (c *Controller) getCachedCAPApplicationVersions(ca *v1alpha1.CAPApplication) ([]*v1alpha1.CAPApplicationVersion, error) {
 	selector, err := labels.ValidatedSelectorFromSet(map[string]string{
 		LabelOwnerIdentifierHash: sha1Sum(ca.Namespace, ca.Name),
 	})
@@ -355,7 +355,7 @@ func (c *Controller) checkServicesOnly(ca *v1alpha1.CAPApplication, cav *v1alpha
 			if servicesOnly {
 				serviceErrorPrefix = "with"
 			}
-			return fmt.Errorf("Creating a new version %s only service workloads is not allowed. The CAP Application %s.%s is already marked with ServicesOnly %v from a previous version", serviceErrorPrefix, ca.Namespace, ca.Name, !servicesOnly)
+			return fmt.Errorf("creating a new version %s only service workloads is not allowed. The CAP Application %s.%s is already marked with ServicesOnly %v from a previous version", serviceErrorPrefix, ca.Namespace, ca.Name, !servicesOnly)
 		}
 	}
 
@@ -406,7 +406,7 @@ func generateVCAPEnv(ns string, serviceInfos []v1alpha1.ServiceInfo, kubeClient 
 		if envVCAPServices[serviceInfo.Class] == nil {
 			envVCAPServices[serviceInfo.Class] = []map[string]any{}
 		}
-		// Simulate attributes that describe a bound service (@TODO: consider adding tags, binding_name, plan etc..)
+		// Simulate attributes that describe a bound service
 		envVCAPServices[serviceInfo.Class] = append(envVCAPServices[serviceInfo.Class], entry)
 	}
 

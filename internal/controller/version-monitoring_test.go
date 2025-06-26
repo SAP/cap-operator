@@ -222,7 +222,7 @@ func TestVersionSelectionForCleanup(t *testing.T) {
 			c := setupTestControllerWithInitialResources(t, tc.resources)
 			orc := &cleanupOrchestrator{queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[NamespacedResourceKey]())}
 			defer orc.queue.ShutDown()
-			err := c.queueVersionsForCleanupEvaluation(context.TODO(), orc)
+			err := c.queueVersionsForCleanupEvaluation(orc)
 			if err != nil {
 				if !tc.expectError {
 					t.Errorf("not expecting error for test case %s -> error: %s", tc.name, err.Error())

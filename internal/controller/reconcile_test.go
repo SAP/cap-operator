@@ -450,7 +450,7 @@ func TestGetLatestReadyCAPApplicationVersion(t *testing.T) {
 				cavs: cavs,
 			})
 
-			latestCav, err := c.getLatestReadyCAPApplicationVersion(context.TODO(), ca, false)
+			latestCav, err := c.getLatestReadyCAPApplicationVersion(ca, false)
 
 			if test.status == v1alpha1.CAPApplicationVersionStateReady || test.status == "mixed" {
 				if err != nil {
@@ -545,7 +545,7 @@ func TestGetLatestCAPApplicationVersion(t *testing.T) {
 				cavs: cavs,
 			})
 
-			latestCav, err := c.getLatestCAPApplicationVersion(context.TODO(), ca)
+			latestCav, err := c.getLatestCAPApplicationVersion(ca)
 
 			if test.expectError == false {
 				if err != nil {
