@@ -147,7 +147,7 @@ func (c *Controller) getUpdatedTenantDestinationRuleObject(cat *v1alpha1.CAPTena
 	}
 	hash := sha256Sum(string(serializedSpec))
 	if dr.Annotations[AnnotationResourceHash] != hash {
-		dr.Spec = *spec
+		dr.Spec = *spec.DeepCopy()
 		updateResourceAnnotation(&dr.ObjectMeta, hash)
 		modified = true
 	}
@@ -242,7 +242,7 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(cat *v1alpha1.CAPTenan
 	}
 	hash := sha256Sum(string(serializedSpec))
 	if vs.Annotations[AnnotationResourceHash] != hash {
-		vs.Spec = *spec
+		vs.Spec = *spec.DeepCopy()
 		updateResourceAnnotation(&vs.ObjectMeta, hash)
 		modified = true
 	}
@@ -433,7 +433,7 @@ func (c *Controller) getUpdatedServiceVirtualServiceObject(vs *istionwv1.Virtual
 	}
 	hash := sha256Sum(string(serializedSpec))
 	if vs.Annotations[AnnotationResourceHash] != hash {
-		vs.Spec = *spec
+		vs.Spec = *spec.DeepCopy()
 		updateResourceAnnotation(&vs.ObjectMeta, hash)
 		modified = true
 	}

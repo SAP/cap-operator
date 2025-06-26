@@ -406,12 +406,12 @@ func handleDomainGateway[T v1alpha1.DomainEntity](ctx context.Context, c *Contro
 					*metav1.NewControllerRef(metav1.Object(dom), v1alpha1.SchemeGroupVersion.WithKind(dom.GetKind())),
 				},
 			},
-			Spec: *gatewaySpec,
+			Spec: *gatewaySpec.DeepCopy(),
 		}, metav1.CreateOptions{})
 	} else if gateway.Annotations[AnnotationResourceHash] != hash { // update
 		updateResourceAnnotation(&gateway.ObjectMeta, hash)
 		gateway.Labels[LabelOwnerGeneration] = fmt.Sprintf("%d", dom.GetMetadata().Generation)
-		gateway.Spec = *gatewaySpec
+		gateway.Spec = *gatewaySpec.DeepCopy()
 		gateway, err = c.istioClient.NetworkingV1().Gateways(namespace).Update(ctx, gateway, metav1.UpdateOptions{})
 	}
 	// update the gateway in domain entity status as this is needed for VirtualService creation
