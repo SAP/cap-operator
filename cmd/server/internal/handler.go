@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -72,6 +73,37 @@ const (
 	TenantDeprovisioning = "Tenant Deprovisioning"
 )
 
+type RequestInfo struct {
+	// One of "SMS" or "SaaS"
+	subscriptionType subscriptionType
+	// payload Details
+	payload *payloadDetails
+	// header details
+	headerDetails *headerDetails
+}
+
+type subscriptionType string
+
+const (
+	SaaS subscriptionType = "SaaS"
+	SMS  subscriptionType = "SMS"
+)
+
+type payloadDetails struct {
+	subscriptionGUID  string
+	tenantId          string
+	subdomain         string
+	globalAccountId   string
+	appName           string
+	commercialAppName string
+	raw               *map[string]any
+}
+
+type headerDetails struct {
+	authorization string
+	callbackInfo  string
+}
+
 type Result struct {
 	Tenant  *v1alpha1.CAPTenant
 	Message string
@@ -98,52 +130,48 @@ type tenantInfo struct {
 	tenantSubDomain string
 }
 
-func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
+func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 	util.LogInfo("Create Tenant triggered", TenantProvisioning, "CreateTenant", nil)
 	var created = false
-	// Get the relevant provisioning request
-	decoder := json.NewDecoder(req.Body)
-	var reqType map[string]any
-	err := decoder.Decode(&reqType)
-	if err != nil {
-		klog.ErrorS(err, ErrorOccurred)
-		return &Result{Tenant: nil, Message: err.Error()}
-	}
+	var saasData *util.SaasRegistryCredentials
+	var uaaData *util.XSUAACredentials
 
 	// Check if CAPApplication instance for the given btpApp exists
-	ca, err := s.checkCAPApp(reqType["globalAccountGUID"].(string), reqType["subscriptionAppName"].(string))
+	ca, err := s.checkCAPApp(reqInfo.payload.globalAccountId, reqInfo.payload.appName)
 	if err != nil {
 		util.LogError(err, ErrorOccurred, TenantProvisioning, ca, nil)
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
-	// fetch SaaS Registry and XSUAA information
-	saasData, uaaData := s.getServiceDetails(ca, TenantProvisioning)
-	if saasData == nil || uaaData == nil {
-		return &Result{Tenant: nil, Message: ResourceNotFound}
-	}
+	if reqInfo.subscriptionType == SaaS {
+		// fetch SaaS Registry and XSUAA information
+		saasData, uaaData = s.getServiceDetails(ca, TenantProvisioning)
+		if saasData == nil || uaaData == nil {
+			return &Result{Tenant: nil, Message: ResourceNotFound}
+		}
 
-	// validate token
-	err = s.checkAuthorization(req.Header.Get("Authorization"), saasData, uaaData, TenantProvisioning)
-	if err != nil {
-		return &Result{Tenant: nil, Message: err.Error()}
+		// validate token
+		err = s.checkAuthorization(reqInfo.headerDetails.authorization, saasData, uaaData, TenantProvisioning)
+		if err != nil {
+			return &Result{Tenant: nil, Message: err.Error()}
+		}
 	}
 
 	// Check if A CRO for CAPTenant already exists
-	tenant := s.getTenant(reqType["globalAccountGUID"].(string), reqType["subscriptionAppName"].(string), reqType["subscribedTenantId"].(string), ca.Namespace, TenantProvisioning).Tenant
+	tenant := s.getTenant(reqInfo.payload.globalAccountId, reqInfo.payload.appName, reqInfo.payload.tenantId, ca.Namespace, TenantProvisioning).Tenant
 
 	// If the resource doesn't exist, we'll create it
 	if tenant == nil {
 		created = true
-		jsonReqByte, _ := json.Marshal(reqType)
+		jsonReqByte, _ := json.Marshal(reqInfo.payload.raw)
 		// Create a secret to store the subscription context (payload from the request)
 		secret, err := s.KubeClienset.CoreV1().Secrets(ca.Namespace).Create(context.TODO(), &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: ca.Name + "-consumer-",
 				Namespace:    ca.Namespace,
 				Labels: map[string]string{
-					LabelBTPApplicationIdentifierHash: sha1Sum(reqType["globalAccountGUID"].(string), reqType["subscriptionAppName"].(string)),
-					LabelTenantId:                     reqType["subscribedTenantId"].(string),
+					LabelBTPApplicationIdentifierHash: sha1Sum(reqInfo.payload.globalAccountId, reqInfo.payload.appName),
+					LabelTenantId:                     reqInfo.payload.tenantId,
 				},
 			},
 			StringData: map[string]string{
@@ -164,15 +192,15 @@ func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
 					AnnotationSubscriptionContextSecret: secret.Name, // Store the secret name in the tenant annotation
 				},
 				Labels: map[string]string{
-					LabelBTPApplicationIdentifierHash: sha1Sum(reqType["globalAccountGUID"].(string), reqType["subscriptionAppName"].(string)),
-					LabelTenantId:                     reqType["subscribedTenantId"].(string),
+					LabelBTPApplicationIdentifierHash: sha1Sum(reqInfo.payload.globalAccountId, reqInfo.payload.appName),
+					LabelTenantId:                     reqInfo.payload.tenantId,
 				},
 			},
 			Spec: v1alpha1.CAPTenantSpec{
 				CAPApplicationInstance: ca.Name,
 				BTPTenantIdentification: v1alpha1.BTPTenantIdentification{
-					SubDomain: reqType["subscribedSubdomain"].(string),
-					TenantId:  reqType["subscribedTenantId"].(string),
+					SubDomain: reqInfo.payload.subdomain,
+					TenantId:  reqInfo.payload.tenantId,
 				},
 			},
 		}, metav1.CreateOptions{})
@@ -186,8 +214,8 @@ func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
 
 	// TODO: consider retrying tenant creation if it is in Error state
 	if tenant != nil {
-		tenantIn := tenantInfo{tenantId: reqType["subscribedTenantId"].(string), tenantSubDomain: reqType["subscribedSubdomain"].(string)}
-		s.initializeCallback(tenant.Name, ca, saasData, req, tenantIn, true)
+		tenantIn := tenantInfo{tenantId: reqInfo.payload.tenantId, tenantSubDomain: reqInfo.payload.subdomain}
+		s.initializeCallback(tenant.Name, ca, saasData, reqInfo, tenantIn, true)
 	}
 
 	// Tenant created/exists
@@ -240,38 +268,34 @@ func (s *SubscriptionHandler) getTenant(globalAccountGUID string, btpAppName str
 	return &Result{Tenant: &ctList.Items[0], Message: ResourceFound}
 }
 
-func (s *SubscriptionHandler) DeleteTenant(req *http.Request) *Result {
+func (s *SubscriptionHandler) DeleteTenant(reqInfo *RequestInfo) *Result {
+	var saasData *util.SaasRegistryCredentials
+	var uaaData *util.XSUAACredentials
 	util.LogInfo("Delete Tenant triggered", TenantDeprovisioning, "DeleteTenant", nil)
-	// Get the relevant deprovisioning request
-	decoder := json.NewDecoder(req.Body)
-	var reqType map[string]interface{}
-	err := decoder.Decode(&reqType)
-	if err != nil {
-		klog.ErrorS(err, ErrorOccurred)
-		return &Result{Tenant: nil, Message: err.Error()}
-	}
 
 	// Check if CAPApplication instance for the given btpApp exists
-	ca, err := s.checkCAPApp(reqType["globalAccountGUID"].(string), reqType["subscriptionAppName"].(string))
+	ca, err := s.checkCAPApp(reqInfo.payload.globalAccountId, reqInfo.payload.appName)
 	if err != nil {
-		util.LogError(err, ErrorOccurred, TenantDeprovisioning, ca, nil)
+		util.LogError(err, ErrorOccurred, TenantProvisioning, ca, nil)
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
-	// fetch SaaS Registry and XSUAA information
-	saasData, uaaData := s.getServiceDetails(ca, TenantProvisioning)
-	if saasData == nil || uaaData == nil {
-		return &Result{Tenant: nil, Message: ResourceNotFound}
+	if reqInfo.subscriptionType == SaaS {
+		// fetch SaaS Registry and XSUAA information
+		saasData, uaaData = s.getServiceDetails(ca, TenantProvisioning)
+		if saasData == nil || uaaData == nil {
+			return &Result{Tenant: nil, Message: ResourceNotFound}
+		}
+
+		// validate token
+		err = s.checkAuthorization(reqInfo.headerDetails.authorization, saasData, uaaData, TenantDeprovisioning)
+		if err != nil {
+			util.LogError(err, AuthorizationCheckFailed, TenantDeprovisioning, ca, nil)
+			return &Result{Tenant: nil, Message: err.Error()}
+		}
 	}
 
-	// validate token
-	err = s.checkAuthorization(req.Header.Get("Authorization"), saasData, uaaData, TenantDeprovisioning)
-	if err != nil {
-		util.LogError(err, AuthorizationCheckFailed, TenantDeprovisioning, ca, nil)
-		return &Result{Tenant: nil, Message: err.Error()}
-	}
-
-	tenant := s.getTenant(reqType["globalAccountGUID"].(string), reqType["subscriptionAppName"].(string), reqType["subscribedTenantId"].(string), ca.Namespace, TenantDeprovisioning).Tenant
+	tenant := s.getTenant(reqInfo.payload.globalAccountId, reqInfo.payload.appName, reqInfo.payload.tenantId, ca.Namespace, TenantDeprovisioning).Tenant
 
 	tenantName := ResourceNotFound
 	if tenant != nil {
@@ -283,8 +307,8 @@ func (s *SubscriptionHandler) DeleteTenant(req *http.Request) *Result {
 			return &Result{Tenant: nil, Message: err.Error()}
 		}
 	}
-	tenantIn := tenantInfo{tenantId: reqType["subscribedTenantId"].(string), tenantSubDomain: reqType["subscribedSubdomain"].(string)}
-	s.initializeCallback(tenantName, ca, saasData, req, tenantIn, false)
+	tenantIn := tenantInfo{tenantId: reqInfo.payload.tenantId, tenantSubDomain: reqInfo.payload.subdomain}
+	s.initializeCallback(tenantName, ca, saasData, reqInfo, tenantIn, false)
 
 	return &Result{Tenant: tenant, Message: ResourceDeleted}
 }
@@ -327,13 +351,13 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 	return nil
 }
 
-func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1.CAPApplication, saasData *util.SaasRegistryCredentials, req *http.Request, tenantIn tenantInfo, isProvisioning bool) {
+func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1.CAPApplication, saasData *util.SaasRegistryCredentials, reqInfo *RequestInfo, tenantIn tenantInfo, isProvisioning bool) {
 	subscriptionDomain := ca.Annotations[AnnotationSubscriptionDomain]
 	if subscriptionDomain == "" {
 		subscriptionDomain = s.getPrimaryDomain(ca)
 	}
 	appUrl := "https://" + tenantIn.tenantSubDomain + "." + subscriptionDomain
-	asyncCallbackPath := req.Header.Get("STATUS_CALLBACK")
+	asyncCallbackPath := reqInfo.headerDetails.callbackInfo
 	util.LogInfo("Callback initialized", TenantProvisioning, ca, nil, "subscription URL", appUrl, "async callback path", asyncCallbackPath, "tenantName", tenantName)
 
 	step := TenantProvisioning
@@ -644,30 +668,117 @@ func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, saasData 
 	klog.InfoS("Exiting from async callback..")
 }
 
-func (s *SubscriptionHandler) HandleRequest(w http.ResponseWriter, req *http.Request) {
+func (s *SubscriptionHandler) HandleRequest(w http.ResponseWriter, req *http.Request, subscriptionType subscriptionType) {
 	var subscriptionResult *Result
+	var reqInfo *RequestInfo
+	// Response
+	defer func() {
+		subscriptionResult.Tenant = nil // Don't return tenant details in response
+		res, _ := json.Marshal(subscriptionResult)
+		w.Write(res)
+	}()
+
 	switch req.Method {
 	case http.MethodPut:
-		subscriptionResult = s.CreateTenant(req)
-		if subscriptionResult.Tenant == nil {
-			w.WriteHeader(http.StatusNotAcceptable)
-		} else {
-			w.WriteHeader(http.StatusAccepted)
-		}
+		defer func() {
+			if reqInfo != nil {
+				subscriptionResult = s.CreateTenant(reqInfo)
+				if subscriptionResult.Tenant == nil {
+					w.WriteHeader(http.StatusNotAcceptable)
+				} else {
+					w.WriteHeader(http.StatusAccepted)
+				}
+			}
+		}()
 	case http.MethodDelete:
-		subscriptionResult = s.DeleteTenant(req)
-		if subscriptionResult.Message != ResourceDeleted {
-			w.WriteHeader(http.StatusNotAcceptable)
-		} else {
-			w.WriteHeader(http.StatusAccepted)
-		}
+		defer func() {
+			if reqInfo != nil {
+				subscriptionResult = s.DeleteTenant(reqInfo)
+				if subscriptionResult.Message != ResourceDeleted {
+					w.WriteHeader(http.StatusNotAcceptable)
+				} else {
+					w.WriteHeader(http.StatusAccepted)
+				}
+			}
+		}()
 	default:
 		subscriptionResult = &Result{Tenant: nil, Message: InvalidRequestMethod}
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
-	subscriptionResult.Tenant = nil // Don't return tenant details in response
-	res, _ := json.Marshal(subscriptionResult)
-	w.Write(res)
+
+	// Decode the request to get tenant details
+	reqInfo, err := DecodeRequest(req, subscriptionType)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		subscriptionResult = &Result{Tenant: nil, Message: err.Error()}
+	}
+}
+
+func (s *SubscriptionHandler) HandleSaaSRequest(w http.ResponseWriter, req *http.Request) {
+	s.HandleRequest(w, req, SaaS)
+}
+
+func (s *SubscriptionHandler) HandleSMSRequest(w http.ResponseWriter, req *http.Request) {
+	s.HandleRequest(w, req, SMS)
+}
+
+func DecodeRequest(req *http.Request, subscriptionType subscriptionType) (*RequestInfo, error) {
+	klog.Infof("------> METHOD %s, HEADERS: %v ---END", req.Method, req.Header)
+
+	var subscriptionGUID, tenantId, subdomain, globalAccountId, appName, commercialAppName string
+	decoder := json.NewDecoder(req.Body)
+	var jsonPayload map[string]any
+	err := decoder.Decode(&jsonPayload)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding request: %w", err)
+	}
+
+	tmp, _ := json.Marshal(jsonPayload)
+	klog.Infof("------> Decoded request payload for %s subscription, payload: %s ---END", string(subscriptionType), string(tmp))
+
+	tmp, _ = io.ReadAll(req.Body)
+	klog.Infof("------> Decoded payload: %s ---END", string(tmp))
+
+	headerDetails := &headerDetails{
+		authorization: req.Header.Get("Authorization"),
+		callbackInfo:  req.Header.Get("STATUS_CALLBACK"),
+	}
+
+	switch subscriptionType {
+	case SMS:
+		subscriber := jsonPayload["subscriber"].(map[string]any)
+		subscriptionGUID = subscriber["subscriptionGUID"].(string)
+		tenantId = subscriber["app_tid"].(string)
+		subdomain = subscriber["subaccountSubdomain"].(string)
+		globalAccountId = subscriber["globalAccountId"].(string)
+		rootApp := jsonPayload["rootApplication"].(map[string]any)
+		appName = rootApp["appName"].(string)
+		commercialAppName = rootApp["commercialAppName"].(string)
+	default:
+		subscriptionGUID = jsonPayload["subscriptionGUID"].(string)
+		tenantId = jsonPayload["subscribedTenantId"].(string)
+		subdomain = jsonPayload["subscribedSubdomain"].(string)
+		globalAccountId = jsonPayload["globalAccountGUID"].(string)
+		appName = jsonPayload["subscriptionAppName"].(string)
+		commercialAppName = jsonPayload["subscriptionCommercialAppName"].(string)
+	}
+
+	payload := &payloadDetails{
+		// GTID
+		subscriptionGUID:  subscriptionGUID,
+		tenantId:          tenantId,
+		subdomain:         subdomain,
+		globalAccountId:   globalAccountId,
+		appName:           appName,
+		commercialAppName: commercialAppName,
+		raw:               &jsonPayload,
+	}
+
+	return &RequestInfo{
+		subscriptionType: subscriptionType,
+		payload:          payload,
+		headerDetails:    headerDetails,
+	}, nil
 }
 
 func NewSubscriptionHandler(clientset versioned.Interface, kubeClienset kubernetes.Interface) *SubscriptionHandler {

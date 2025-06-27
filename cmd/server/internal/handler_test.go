@@ -246,9 +246,9 @@ func TestMain(m *testing.M) {
 
 func Test_IncorrectMethod(t *testing.T) {
 	res := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPatch, RequestPath, strings.NewReader(`{"foo": "bar"}`))
+	req := httptest.NewRequest(http.MethodPatch, RequestPath, strings.NewReader(`{"subscriptionAppName":"`+appName+`","globalAccountGUID":"`+globalAccountId+`","subscribedTenantId":"`+tenantId+`","subscribedSubdomain":"`+subDomain+`"}`))
 	subHandler := setup(nil)
-	subHandler.HandleRequest(res, req)
+	subHandler.HandleSaaSRequest(res, req)
 	if res.Code != http.StatusMethodNotAllowed {
 		t.Errorf("Expected status '%d', received '%d'", http.StatusMethodNotAllowed, res.Code)
 	}
@@ -289,7 +289,7 @@ func Test_provisioning(t *testing.T) {
 			name:               "Invalid Provisioning Request",
 			method:             http.MethodPut,
 			body:               "",
-			expectedStatusCode: http.StatusNotAcceptable,
+			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse: Result{
 				Message: "EOF", //TODO
 			},
@@ -469,7 +469,7 @@ func Test_provisioning(t *testing.T) {
 			res := httptest.NewRecorder()
 			req := httptest.NewRequest(testData.method, RequestPath, strings.NewReader(testData.body))
 			req.Header.Set("Authorization", "Bearer "+tokenString)
-			subHandler.HandleRequest(res, req)
+			subHandler.HandleSaaSRequest(res, req)
 			if res.Code != testData.expectedStatusCode {
 				t.Errorf("Expected status '%d', received '%d'", testData.expectedStatusCode, res.Code)
 			}
@@ -505,7 +505,7 @@ func Test_deprovisioning(t *testing.T) {
 			method: http.MethodDelete,
 
 			body:               "",
-			expectedStatusCode: http.StatusNotAcceptable,
+			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse: Result{
 				Message: "EOF", //TODO
 			},
@@ -567,7 +567,7 @@ func Test_deprovisioning(t *testing.T) {
 			res := httptest.NewRecorder()
 			req := httptest.NewRequest(testData.method, RequestPath, strings.NewReader(testData.body))
 			req.Header.Set("Authorization", "Bearer "+tokenString)
-			subHandler.HandleRequest(res, req)
+			subHandler.HandleSaaSRequest(res, req)
 			if res.Code != testData.expectedStatusCode {
 				t.Errorf("Expected status '%d', received '%d'", testData.expectedStatusCode, res.Code)
 			}
