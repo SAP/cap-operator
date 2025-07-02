@@ -36,8 +36,21 @@ type SaasRegistryCredentials struct {
 	SaasManagerUrl string `json:"saas_registry_url"`
 }
 
+type SmsCredentials struct {
+	CredentialData             `json:",inline"`
+	SubscriptionManagerUrl     string `json:"subscription_manager_url"`
+	CallbackCertificateIssuer  string `json:"callback_certificate_issuer"`
+	CallbackCertificateSubject string `json:"callback_certificate_subject"`
+}
+
 type XSUAACredentials struct {
 	CredentialData        `json:",inline"`
 	XSAppName             string `json:"xsappname"`
 	TrusterClientIDSuffix string `json:"trustedclientidsuffix"`
+}
+
+type CallbackReqInfo struct {
+	CredentialData `json:",inline"`
+	CallbackUrl    string `json:"callbackUrl"`
+	CallbackPath   string `json:"callbackPath"`
 }
