@@ -1414,8 +1414,8 @@ func TestCavInvalidity(t *testing.T) {
 					"%s %s Derived tenant job pod name '%s' (length %d) exceeds max limit of %d characters. Please shorten workload name '%s'.",
 					InvalidationMessage,
 					v1alpha1.CAPApplicationVersionKind,
-					crd.Spec.CAPApplicationInstance+"-provider-"+"extralongtenantworkloadnamecontainingmorethan64characters"+"-q4m9c-c4d9c",
-					len(crd.Spec.CAPApplicationInstance+"-provider-"+"extralongtenantworkloadnamecontainingmorethan64characters"+"-q4m9c-c4d9c"),
+					"extralongtenantworkloadnamecontainingmorethan64characters"+"-q4m9c-c4d9c",
+					len("extralongtenantworkloadnamecontainingmorethan64characters"+"-q4m9c-c4d9c"),
 					63,
 					"extralongtenantworkloadnamecontainingmorethan64characters",
 				)
