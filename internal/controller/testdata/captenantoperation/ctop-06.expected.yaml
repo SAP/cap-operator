@@ -36,9 +36,9 @@ status:
       status: "False"
       observedGeneration: 1
       reason: StepInitiated
-      message: "step 1/1 : job default.test-cap-01-provider-cap-backend-gen created"
+      message: "step 1/1 : job default.cap-backend-gen created"
   currentStep: 1
-  activeJob: "test-cap-01-provider-cap-backend-gen"
+  activeJob: "cap-backend-gen"
 ---
 apiVersion: batch/v1
 kind: Job
@@ -57,8 +57,8 @@ metadata:
     sme.sap.com/category: "Workload"
     sme.sap.com/workload-name: "cap-backend"
     sme.sap.com/workload-type: "TenantOperation"
-  generateName: test-cap-01-provider-cap-backend-
-  name: test-cap-01-provider-cap-backend-gen
+  generateName: cap-backend-
+  name: cap-backend-gen
   namespace: default
   ownerReferences:
     - apiVersion: sme.sap.com/v1alpha1

@@ -417,7 +417,7 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 	})
 
 	params := &jobCreateParams{
-		namePrefix:        relatedResources.CAPTenant.Name + "-" + workload.Name + "-",
+		namePrefix:        workload.Name + "-",
 		labels:            labels,
 		annotations:       annotations,
 		vcapSecretName:    vcapSecretName,

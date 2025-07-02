@@ -40,9 +40,9 @@ status:
       status: "False"
       observedGeneration: 1
       reason: StepInitiated
-      message: "step 1/3 : job default.test-cap-01-provider-custom-say-gen created"
+      message: "step 1/3 : job default.custom-say-gen created"
   currentStep: 1
-  activeJob: "test-cap-01-provider-custom-say-gen"
+  activeJob: "custom-say-gen"
 ---
 apiVersion: batch/v1
 kind: Job
@@ -63,8 +63,8 @@ metadata:
     sme.sap.com/category: "Workload"
     sme.sap.com/workload-name: "custom-say"
     sme.sap.com/workload-type: "CustomTenantOperation"
-  generateName: test-cap-01-provider-custom-say-
-  name: test-cap-01-provider-custom-say-gen
+  generateName: custom-say-
+  name: custom-say-gen
   namespace: default
   ownerReferences:
     - apiVersion: sme.sap.com/v1alpha1

@@ -36,9 +36,9 @@ status:
       status: "False"
       observedGeneration: 1
       reason: StepProcessing
-      message: "step 1/1 : waiting for job default.test-cap-01-provider-mtx-gen"
+      message: "step 1/1 : waiting for job default.mtx-gen"
   currentStep: 1
-  activeJob: "test-cap-01-provider-mtx-gen"
+  activeJob: "mtx-gen"
 ---
 apiVersion: batch/v1
 kind: Job
@@ -57,8 +57,8 @@ metadata:
     sme.sap.com/category: "Workload"
     sme.sap.com/workload-name: "mtx"
     sme.sap.com/workload-type: "TenantOperation"
-  generateName: test-cap-01-provider-mtx-
-  name: test-cap-01-provider-mtx-gen
+  generateName: mtx-
+  name: mtx-gen
   namespace: default
   ownerReferences:
     - apiVersion: sme.sap.com/v1alpha1

@@ -41,4 +41,4 @@ status:
       status: "True"
       observedGeneration: 1
       reason: StepFailed
-      message: "step 2/3 : job default.test-cap-01-provider-ten-op-xyz failed"
+      message: "step 2/3 : job default.ten-op-xyz failed"

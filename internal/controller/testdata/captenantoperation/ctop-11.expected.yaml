@@ -40,4 +40,4 @@ status:
       status: "True"
       observedGeneration: 1
       reason: StepCompleted
-      message: "step 3/3 : job default.test-cap-01-provider-custom-say-xyz completed"
+      message: "step 3/3 : job default.custom-say-xyz completed"

@@ -40,9 +40,9 @@ status:
       status: "False"
       observedGeneration: 1
       reason: StepInitiated
-      message: "step 2/3 : job default.test-cap-01-provider-ten-op-gen created"
+      message: "step 2/3 : job default.ten-op-gen created"
   currentStep: 2
-  activeJob: "test-cap-01-provider-ten-op-gen"
+  activeJob: "ten-op-gen"
 ---
 apiVersion: batch/v1
 kind: Job
@@ -61,8 +61,8 @@ metadata:
     sme.sap.com/category: "Workload"
     sme.sap.com/workload-name: "ten-op"
     sme.sap.com/workload-type: "TenantOperation"
-  generateName: test-cap-01-provider-ten-op-
-  name: test-cap-01-provider-ten-op-gen
+  generateName: ten-op-
+  name: ten-op-gen
   namespace: default
   ownerReferences:
     - apiVersion: sme.sap.com/v1alpha1

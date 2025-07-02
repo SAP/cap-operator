@@ -41,5 +41,5 @@ status:
       status: "False"
       observedGeneration: 1
       reason: StepCompleted
-      message: "step 1/3 : job default.test-cap-01-provider-custom-say-xyz completed"
+      message: "step 1/3 : job default.custom-say-xyz completed"
   currentStep: 2
