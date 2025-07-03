@@ -269,6 +269,7 @@ func (s *SubscriptionHandler) getCallbackReqInfo(subscriptionType subscriptionTy
 	switch subscriptionType {
 	case SMS:
 		if smsData != nil {
+			safeAssign(&callbackReqInfo.CredentialType, &smsData.CredentialType)
 			safeAssign(&callbackReqInfo.CertificateUrl, &smsData.CertificateUrl)
 			safeAssign(&callbackReqInfo.Certificate, &smsData.Certificate)
 			safeAssign(&callbackReqInfo.CertificateKey, &smsData.CertificateKey)
@@ -279,6 +280,7 @@ func (s *SubscriptionHandler) getCallbackReqInfo(subscriptionType subscriptionTy
 		}
 	default:
 		if saasData != nil {
+			safeAssign(&callbackReqInfo.CredentialType, &saasData.CredentialType)
 			safeAssign(&callbackReqInfo.CertificateUrl, &saasData.CertificateUrl)
 			safeAssign(&callbackReqInfo.Certificate, &saasData.Certificate)
 			safeAssign(&callbackReqInfo.CertificateKey, &saasData.CertificateKey)
@@ -305,54 +307,51 @@ func (s *SubscriptionHandler) updateSecret(tenant *v1alpha1.CAPTenant, secret *c
 	return nil
 }
 
-func (s *SubscriptionHandler) getTenantByBtpAppIdentifier(globalAccountGUID string, btpAppName string, tenantId string, namespace string, step string) *Result {
-	labelSelector, err := labels.ValidatedSelectorFromSet(map[string]string{
+func (s *SubscriptionHandler) getTenantByBtpAppIdentifier(globalAccountGUID, btpAppName, tenantId, namespace, step string) *Result {
+	labelsMap := map[string]string{
 		LabelBTPApplicationIdentifierHash: sha1Sum(globalAccountGUID, btpAppName),
 		LabelTenantId:                     tenantId,
-	})
+	}
+	return s.getTenantByLabels(labelsMap, namespace, step, "getTenantByBtpAppIdentifier")
+}
 
+func (s *SubscriptionHandler) getTenantBySubscriptionGUID(subscriptionGUID, tenantId, step string) *Result {
+	labelsMap := map[string]string{
+		LabelGlobalTenantId: subscriptionGUID,
+		LabelTenantId:       tenantId,
+	}
+	return s.getTenantByLabels(labelsMap, metav1.NamespaceAll, step, "getTenantBySubscriptionGUID")
+}
+
+func (s *SubscriptionHandler) getTenantByLabels(labelsMap map[string]string, namespace, step, methodName string) *Result {
+	labelSelector, err := labels.ValidatedSelectorFromSet(labelsMap)
 	if err != nil {
-		util.LogError(err, "Error occurred in getTenantByBtpAppIdentifier", step, "getTenantByBtpAppIdentifier", nil, "tenantId", tenantId, LabelBTPApplicationIdentifierHash, sha1Sum(globalAccountGUID, btpAppName))
+		util.LogError(err, "Error in "+methodName, step, methodName, nil, flattenLabels(labelsMap)...)
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
 	ctList, err := s.Clientset.SmeV1alpha1().CAPTenants(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
 	if err != nil {
-		util.LogError(err, "Error occurred in getTenantByBtpAppIdentifier", step, "getTenantByBtpAppIdentifier", nil, "tenantId", tenantId, LabelBTPApplicationIdentifierHash, sha1Sum(globalAccountGUID, btpAppName))
+		util.LogError(err, "Error in "+methodName, step, methodName, nil, flattenLabels(labelsMap)...)
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
+
 	if len(ctList.Items) == 0 {
-		util.LogInfo("No tenant found", step, "getTenantByBtpAppIdentifier", nil, "tenantId", tenantId, LabelBTPApplicationIdentifierHash, sha1Sum(globalAccountGUID, btpAppName))
+		util.LogInfo("No tenant found", step, methodName, nil, flattenLabels(labelsMap)...)
 		return &Result{Tenant: nil, Message: ResourceNotFound}
 	}
 	// Assume only 1 tenant actually matches the selector!
-	util.LogInfo("Tenant found", step, &ctList.Items[0], nil, "namespace", namespace, "tenantId", tenantId, LabelBTPApplicationIdentifierHash, sha1Sum(globalAccountGUID, btpAppName))
+	util.LogInfo("Tenant found", step, &ctList.Items[0], nil, append([]interface{}{"namespace", &ctList.Items[0].Namespace}, flattenLabels(labelsMap)...)...)
 	return &Result{Tenant: &ctList.Items[0], Message: ResourceFound}
 }
 
-func (s *SubscriptionHandler) getTenantBySubscriptionGUID(subscriptionGUID string, tenantId string, step string) *Result {
-	labelSelector, err := labels.ValidatedSelectorFromSet(map[string]string{
-		LabelGlobalTenantId: subscriptionGUID,
-		LabelTenantId:       tenantId,
-	})
-
-	if err != nil {
-		util.LogError(err, "Error occurred in getTenantBySubscriptionGUID", step, "getTenantBySubscriptionGUID", nil, "tenantId", tenantId, LabelGlobalTenantId, subscriptionGUID)
-		return &Result{Tenant: nil, Message: err.Error()}
+func flattenLabels(labelsMap map[string]string) []interface{} {
+	// Converts the label map to a flat key-value slice for logging
+	var result []interface{}
+	for k, v := range labelsMap {
+		result = append(result, k, v)
 	}
-
-	ctList, err := s.Clientset.SmeV1alpha1().CAPTenants(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
-	if err != nil {
-		util.LogError(err, "Error occurred in getTenantBySubscriptionGUID", step, "getTenantBySubscriptionGUID", nil, "tenantId", tenantId, LabelGlobalTenantId, subscriptionGUID)
-		return &Result{Tenant: nil, Message: err.Error()}
-	}
-	if len(ctList.Items) == 0 {
-		util.LogInfo("No tenant found", step, "getTenantBySubscriptionGUID", nil, "tenantId", tenantId, LabelGlobalTenantId, subscriptionGUID)
-		return &Result{Tenant: nil, Message: ResourceNotFound}
-	}
-	// Assume only 1 tenant actually matches the selector!
-	util.LogInfo("Tenant found", step, &ctList.Items[0], nil, "namespace", ctList.Items[0].GetNamespace(), "tenantId", tenantId, LabelGlobalTenantId, subscriptionGUID)
-	return &Result{Tenant: &ctList.Items[0], Message: ResourceFound}
+	return result
 }
 
 func (s *SubscriptionHandler) DeleteTenant(reqInfo *RequestInfo) *Result {

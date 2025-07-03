@@ -284,7 +284,7 @@ func TestMain(m *testing.M) {
 
 func Test_IncorrectMethod(t *testing.T) {
 	res := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPatch, RequestPath, strings.NewReader(`{"subscriptionAppName":"`+appName+`","globalAccountGUID":"`+globalAccountId+`","subscribedTenantId":"`+tenantId+`","subscribedSubdomain":"`+subDomain+`"}`))
+	req := httptest.NewRequest(http.MethodPatch, RequestPath, strings.NewReader(`{"subscriptionAppName":"`+appName+`","globalAccountGUID":"`+globalAccountId+`","subscriptionGUID":"`+subscriptionGUID+`","subscriptionCommercialAppName":"`+appName+`","subscribedTenantId":"`+tenantId+`","subscribedSubdomain":"`+subDomain+`"}`))
 	subHandler := setup(nil, createSecrets())
 	subHandler.HandleSaaSRequest(res, req)
 	if res.Code != http.StatusMethodNotAllowed {
@@ -1000,10 +1000,22 @@ func TestAsyncCallback(t *testing.T) {
 			CertificateUrl: "https://cert.auth.service.local",
 		},
 	}
+	smsData := &util.SmsCredentials{
+		SubscriptionManagerUrl: "https://saas-manager.auth.service.local",
+		CredentialData: util.CredentialData{
+			CredentialType: "x509",
+			ClientId:       "randomapp!b14",
+			AuthUrl:        "https://secret.auth.service.local",
+			UAADomain:      "auth.service.local",
+			Certificate:    certValue,
+			CertificateKey: keyValue,
+			CertificateUrl: "https://cert.auth.service.local",
+		},
+	}
 
 	type testContextKey string
 	const cKey testContextKey = "async-callback-test"
-	createCallbackTestServer := func(ctx context.Context, t *testing.T, params *testConfig) *http.Client {
+	createCallbackTestServer := func(ctx context.Context, t *testing.T, params *testConfig, subscriptionType subscriptionType) *http.Client {
 		// NOTE: reusing the wildcard domain and certificates for *.auth.service.local
 
 		// Append CA cert to the system pool
@@ -1039,7 +1051,13 @@ func TestAsyncCallback(t *testing.T) {
 				if r.Header.Get("Authorization") != "Bearer test-server-access-token" {
 					t.Error("expected authorization header with token in async callback")
 				}
-				payload := &SaaSCallbackResponse{}
+
+				var payload any
+				if subscriptionType == SaaS {
+					payload = &SaaSCallbackResponse{}
+				} else if subscriptionType == SMS {
+					payload = &SmsCallbackResponse{}
+				}
 				body, err := io.ReadAll(r.Body)
 				if err != nil {
 					t.Fatalf("could not read callback request body: %s", err.Error())
@@ -1049,21 +1067,50 @@ func TestAsyncCallback(t *testing.T) {
 				if err != nil {
 					t.Fatalf("could not parse callback request body: %s", err.Error())
 				}
-				if (params.status && payload.Status != CallbackSucceeded) || (!params.status && payload.Status != CallbackFailed) {
-					t.Fatalf("status %s does not match status initiated from callback", payload.Status)
-				}
-				if params.isProvisioning {
-					if strings.Index(payload.Message, "Provisioning ") != 0 {
-						t.Fatal("incorrect message in payload")
+
+				switch subscriptionType {
+				case SaaS:
+					payload := payload.(*SaaSCallbackResponse)
+					if (params.status && payload.Status != CallbackSucceeded) || (!params.status && payload.Status != CallbackFailed) {
+						t.Fatalf("status %s does not match status initiated from callback", payload.Status)
 					}
-				} else {
-					if strings.Index(payload.Message, "Deprovisioning ") != 0 {
-						t.Fatal("incorrect message in payload")
+					if params.isProvisioning {
+						if strings.Index(payload.Message, "Provisioning ") != 0 {
+							t.Fatal("incorrect message in payload")
+						}
+					} else {
+						if strings.Index(payload.Message, "Deprovisioning ") != 0 {
+							t.Fatal("incorrect message in payload")
+						}
+					}
+					if params.additionalData != nil && payload.AdditionalOutput == nil {
+						t.Fatal("expected additional output in payload")
+					}
+					if payload.SubscriptionUrl != "https://app.cluster.local" {
+						t.Fatal("expected subscription URL to match the one provided in callback")
+					}
+				case SMS:
+					payload := payload.(*SmsCallbackResponse)
+					if (params.status && payload.Status != CallbackSucceeded) || (!params.status && payload.Status != CallbackFailed) {
+						t.Fatalf("status %s does not match status initiated from callback", payload.Status)
+					}
+					if params.isProvisioning {
+						if strings.Index(payload.Message, "Provisioning ") != 0 {
+							t.Fatal("incorrect message in payload")
+						}
+					} else {
+						if strings.Index(payload.Message, "Deprovisioning ") != 0 {
+							t.Fatal("incorrect message in payload")
+						}
+					}
+					if params.additionalData != nil && payload.AdditionalOutput == nil {
+						t.Fatal("expected additional output in payload")
+					}
+					if payload.ApplicationUrl != "https://app.cluster.local" {
+						t.Fatal("expected application URL to match the one provided in callback")
 					}
 				}
-				if params.additionalData != nil && payload.AdditionalOutput == nil {
-					t.Fatal("expected additional output in payload")
-				}
+
 				w.WriteHeader(200)
 			}
 		}))
@@ -1099,18 +1146,18 @@ func TestAsyncCallback(t *testing.T) {
 	}
 
 	tests := []testConfig{
-		{testName: "1", status: true, useCredentialType: "x509", isProvisioning: true},
-		{testName: "2", status: true, useCredentialType: "x509", isProvisioning: false},
-		{testName: "3", status: false, useCredentialType: "instance-secret", isProvisioning: true},
-		{testName: "4", status: false, useCredentialType: "instance-secret", additionalData: &map[string]any{"foo": "bar"}, isProvisioning: true},
-		{testName: "5", status: false, useCredentialType: "x509", additionalData: &map[string]any{"foo1": "bar2", "someKey": &map[string]string{"name": "key", "plan": "none"}}, isProvisioning: true},
+		{testName: "saas_1", status: true, useCredentialType: "x509", isProvisioning: true},
+		{testName: "sass_2", status: true, useCredentialType: "x509", isProvisioning: false},
+		{testName: "sass_3", status: false, useCredentialType: "instance-secret", isProvisioning: true},
+		{testName: "sass_4", status: false, useCredentialType: "instance-secret", additionalData: &map[string]any{"foo": "bar"}, isProvisioning: true},
+		{testName: "saas_5", status: false, useCredentialType: "x509", additionalData: &map[string]any{"foo1": "bar2", "someKey": &map[string]string{"name": "key", "plan": "none"}}, isProvisioning: true},
 	}
 
 	ctx := context.WithValue(context.Background(), cKey, true)
 	for _, p := range tests {
 		saasData.CredentialType = p.useCredentialType
 		t.Run(p.testName, func(t *testing.T) {
-			client := createCallbackTestServer(context.TODO(), t, &p)
+			client := createCallbackTestServer(context.TODO(), t, &p, SaaS)
 			subHandler := setup(client, createSecrets())
 			callbackReqInfo := subHandler.getCallbackReqInfo(SaaS, saasData, nil)
 			subHandler.handleAsyncCallback(
@@ -1122,6 +1169,33 @@ func TestAsyncCallback(t *testing.T) {
 				p.additionalData,
 				p.isProvisioning,
 				SaaS,
+			)
+		})
+	}
+
+	testsSms := []testConfig{
+		{testName: "sms_1", status: true, useCredentialType: "x509", isProvisioning: true},
+		{testName: "sms_2", status: true, useCredentialType: "x509", isProvisioning: false},
+		{testName: "sms_3", status: false, useCredentialType: "instance-secret", isProvisioning: true},
+		{testName: "sms_4", status: false, useCredentialType: "instance-secret", additionalData: &map[string]any{"foo": "bar"}, isProvisioning: true},
+		{testName: "sms_5", status: false, useCredentialType: "x509", additionalData: &map[string]any{"foo1": "bar2", "someKey": &map[string]string{"name": "key", "plan": "none"}}, isProvisioning: true},
+	}
+
+	for _, p := range testsSms {
+		smsData.CredentialType = p.useCredentialType
+		t.Run(p.testName, func(t *testing.T) {
+			client := createCallbackTestServer(context.TODO(), t, &p, SMS)
+			subHandler := setup(client, createSmsSecret())
+			callbackReqInfo := subHandler.getCallbackReqInfo(SMS, nil, smsData)
+			subHandler.handleAsyncCallback(
+				ctx,
+				callbackReqInfo,
+				p.status,
+				"/async/callback",
+				"https://app.cluster.local",
+				p.additionalData,
+				p.isProvisioning,
+				SMS,
 			)
 		})
 	}
