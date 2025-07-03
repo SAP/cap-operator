@@ -503,15 +503,36 @@ func (s *SubscriptionHandler) checkCertIssuerAndSubject(xForwardedClientCert str
 		return err
 	}
 
-	certIssuerJson, _ := json.Marshal(cert.Issuer)
-	certSubjectJson, _ := json.Marshal(cert.Subject)
-	klog.Infof("Certificate Issuer: %s, Subject: %s", string(certIssuerJson), string(certSubjectJson))
-	klog.Infof("Req Certificate Issuer: %s, Subject: %s", smsData.CallbackCertificateIssuer, smsData.CallbackCertificateSubject)
-	if string(certIssuerJson) != smsData.CallbackCertificateIssuer || string(certSubjectJson) != smsData.CallbackCertificateSubject {
-		err := fmt.Errorf("certificate issuer and subject mismatch")
-		util.LogError(err, "certificate issuer and subject check failed", step, "checkCertIssuerAndSubject", nil)
+	if s.checkCertificate(cert, smsData) != nil {
+		util.LogError(err, "certificate check failed", step, "checkCertIssuerAndSubject", nil)
 		return err
 	}
+	return nil
+}
+
+func (s *SubscriptionHandler) checkCertificate(cert *x509.Certificate, smsData *util.SmsCredentials) error {
+	// check issuer
+	var smsIssuerDNJson JsonDN
+	err := json.Unmarshal([]byte(smsData.CallbackCertificateIssuer), &smsIssuerDNJson)
+	if err != nil {
+		return err
+	}
+	// Normalize both sides
+	if !compareDN(normalizeX509(cert.Issuer), normalizeDNJson(smsIssuerDNJson)) {
+		return fmt.Errorf("certificate issuer mismatch")
+	}
+
+	// check subject
+	var smsSubjectDNJson JsonDN
+	err = json.Unmarshal([]byte(smsData.CallbackCertificateSubject), &smsSubjectDNJson)
+	if err != nil {
+		return err
+	}
+	// Normalize both sides
+	if !compareDN(normalizeX509(cert.Subject), normalizeDNJson(smsSubjectDNJson)) {
+		return fmt.Errorf("certificate subject mismatch")
+	}
+
 	return nil
 }
 
@@ -917,11 +938,6 @@ func (s *SubscriptionHandler) HandleSMSRequest(w http.ResponseWriter, req *http.
 }
 
 func DecodeRequest(req *http.Request, subscriptionType subscriptionType) (*RequestInfo, error) {
-	// klog.Infof("------> METHOD %s, HEADERS: %v ---END", req.Method, req.Header)
-
-	// klog.Infof("------> URL: %s ---END", req.URL)
-	// klog.Infof("------> Body: %v ---END", req.Body)
-
 	var subscriptionGUID, tenantId, subdomain, globalAccountId, appName, commercialAppName string
 	var jsonPayload map[string]any
 
@@ -932,12 +948,6 @@ func DecodeRequest(req *http.Request, subscriptionType subscriptionType) (*Reque
 			return nil, fmt.Errorf("error decoding request: %w", err)
 		}
 	}
-
-	// tmp, _ := json.Marshal(jsonPayload)
-	// klog.Infof("------> Decoded request payload for %s subscription, payload: %s ---END", string(subscriptionType), string(tmp))
-
-	// tmp, _ = io.ReadAll(req.Body)
-	// klog.Infof("------> Decoded payload: %s ---END", string(tmp))
 
 	var hdrDetails headerDetails
 	switch subscriptionType {

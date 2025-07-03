@@ -125,9 +125,9 @@ func createSmsSecret() []runtime.Object {
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
 			"credentials": []byte(`{
-				"callback_certificate_issuer": "{\"Country\":[\"DE\"],\"Organization\":[\"RandomOrg\"],\"OrganizationalUnit\":[\"RandomOrgUnit\"],\"Locality\":[\"RandomCity\"],\"Province\":[\"RandomState\"],\"StreetAddress\":null,\"PostalCode\":null,\"SerialNumber\":\"\",\"CommonName\":\"*.auth.service.local\",\"Names\":[{\"Type\":[2,5,4,6],\"Value\":\"DE\"},{\"Type\":[2,5,4,8],\"Value\":\"RandomState\"},{\"Type\":[2,5,4,7],\"Value\":\"RandomCity\"},{\"Type\":[2,5,4,10],\"Value\":\"RandomOrg\"},{\"Type\":[2,5,4,11],\"Value\":\"RandomOrgUnit\"},{\"Type\":[2,5,4,3],\"Value\":\"*.auth.service.local\"},{\"Type\":[1,2,840,113549,1,9,1],\"Value\":\"hello@example.com\"}],\"ExtraNames\":null}",
-				"callback_certificate_subject": "{\"Country\":[\"DE\"],\"Organization\":[\"RandomOrg\"],\"OrganizationalUnit\":[\"RandomOrgUnit\"],\"Locality\":[\"RandomCity\"],\"Province\":[\"RandomState\"],\"StreetAddress\":null,\"PostalCode\":null,\"SerialNumber\":\"\",\"CommonName\":\"*.auth.service.local\",\"Names\":[{\"Type\":[2,5,4,6],\"Value\":\"DE\"},{\"Type\":[2,5,4,8],\"Value\":\"RandomState\"},{\"Type\":[2,5,4,7],\"Value\":\"RandomCity\"},{\"Type\":[2,5,4,10],\"Value\":\"RandomOrg\"},{\"Type\":[2,5,4,11],\"Value\":\"RandomOrgUnit\"},{\"Type\":[2,5,4,3],\"Value\":\"*.auth.service.local\"},{\"Type\":[1,2,840,113549,1,9,1],\"Value\":\"hello@example.com\"}],\"ExtraNames\":null}",
-				"callback_certificate_subject_rfc_2253": "CN=Subscription Manager,L=Subscription Manager,OU=08fef1ee-e1db-4788-8701-6da74021591c,OU=Canary,OU=SAP Cloud Platform Clients,O=SAP SE,C=DE",
+				"callback_certificate_issuer": "{\"C\":\"DE\",\"L\":\"*\",\"O\":\"RandomOrg\",\"OU\":\"RandomOrgUnit\",\"CN\":\"*.auth.service.local\"}",
+    			"callback_certificate_subject": "{\"CN\":\"*.auth.service.local\",\"L\":\"RandomCity\",\"OU\": [\"RandomOrgUnit\"],\"O\":\"RandomOrg\",\"C\":\"DE\"}",
+    			"callback_certificate_subject_rfc_2253": "CN=*.auth.service.local,L=RandomCity,OU=RandomOrgUnit,O=RandomOrg,C=DE",
 				"category": "CAP",
 				"clientid": "clientid",
 				"clientsecret": "clientsecret",
@@ -224,7 +224,7 @@ func createCAT(ready bool, withGlobalTenantId ...bool) *v1alpha1.CAPTenant {
 			},
 		},
 	}
-	if withGlobalTenantId[0] {
+	if withGlobalTenantId != nil && withGlobalTenantId[0] {
 		cat.ObjectMeta.Labels[LabelGlobalTenantId] = subscriptionGUID
 	}
 	if ready {
