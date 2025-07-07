@@ -18,26 +18,27 @@ type VCAPServiceInstance struct {
 }
 
 type CredentialData struct {
-	CredentialType        string `json:"credential-type"`
-	ClientId              string `json:"clientid"`
-	ClientSecret          string `json:"clientsecret"`
-	AuthUrl               string `json:"url"`
-	UAADomain             string `json:"uaadomain"`
-	ServiceBrokerUrl      string `json:"sburl"`
-	CertificateUrl        string `json:"certurl"`
-	Certificate           string `json:"certificate"`
-	CertificateKey        string `json:"key"`
-	VerificationKey       string `json:"verificationkey"`
-	CallbackTimeoutMillis string `json:"callbackTimeoutMillis"`
+	CredentialType   string `json:"credential-type"`
+	ClientId         string `json:"clientid"`
+	ClientSecret     string `json:"clientsecret"`
+	AuthUrl          string `json:"url"`
+	UAADomain        string `json:"uaadomain"`
+	ServiceBrokerUrl string `json:"sburl"`
+	CertificateUrl   string `json:"certurl"`
+	Certificate      string `json:"certificate"`
+	CertificateKey   string `json:"key"`
+	VerificationKey  string `json:"verificationkey"`
 }
 
 type SaasRegistryCredentials struct {
 	CredentialData `json:",inline"`
+	AppUrls        string `json:"appUrls"`
 	SaasManagerUrl string `json:"saas_registry_url"`
 }
 
 type SmsCredentials struct {
 	CredentialData             `json:",inline"`
+	AppUrls                    string `json:"app_urls"`
 	SubscriptionManagerUrl     string `json:"subscription_manager_url"`
 	CallbackCertificateIssuer  string `json:"callback_certificate_issuer"`
 	CallbackCertificateSubject string `json:"callback_certificate_subject"`
@@ -50,7 +51,8 @@ type XSUAACredentials struct {
 }
 
 type CallbackReqInfo struct {
-	CredentialData `json:",inline"`
-	CallbackUrl    string `json:"callbackUrl"`
-	CallbackPath   string `json:"callbackPath"`
+	CredentialData        `json:",inline"`
+	CallbackTimeoutMillis string `json:"callbackTimeoutMillis"`
+	CallbackUrl           string `json:"callbackUrl"`
+	CallbackPath          string `json:"callbackPath"`
 }

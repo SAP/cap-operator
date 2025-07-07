@@ -241,8 +241,8 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 	// TODO: consider retrying tenant creation if it is in Error state
 	if tenant != nil {
 		tenantIn := tenantInfo{tenantId: reqInfo.payload.tenantId, tenantSubDomain: reqInfo.payload.subdomain}
-		callbackReqInfo := s.getCallbackReqInfo(reqInfo.subscriptionType, saasData, smsData)
-		s.initializeCallback(tenant.Name, ca, callbackReqInfo, reqInfo, tenantIn, true)
+		callbackReqInfo := s.getCallbackReqInfo(reqInfo.subscriptionType, reqInfo.headerDetails.callbackInfo, saasData, smsData)
+		s.initializeCallback(tenant.Name, ca, callbackReqInfo, reqInfo.subscriptionType, tenantIn, true)
 	}
 
 	// Tenant created/exists
@@ -257,39 +257,69 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 	return &Result{Tenant: tenant, Message: message(created)}
 }
 
-func (s *SubscriptionHandler) getCallbackReqInfo(subscriptionType subscriptionType, saasData *util.SaasRegistryCredentials, smsData *util.SmsCredentials) *util.CallbackReqInfo {
+func (s *SubscriptionHandler) getCallbackReqInfo(subscriptionType subscriptionType, callbackPath string, saasData *util.SaasRegistryCredentials, smsData *util.SmsCredentials) *util.CallbackReqInfo {
 	var callbackReqInfo = &util.CallbackReqInfo{}
 
-	safeAssign := func(target *string, source *string) {
-		if source != nil && *source != "" { // Only assign if source is not nil and not empty
-			*target = *source
+	assignIfNotEmpty := func(target *string, source string) {
+		if source != "" {
+			*target = source
 		}
 	}
+
+	// Define a common assigner function
+	assignCommonFields := func(source util.CredentialData) {
+		assignIfNotEmpty(&callbackReqInfo.CredentialType, source.CredentialType)
+		assignIfNotEmpty(&callbackReqInfo.CertificateUrl, source.CertificateUrl)
+		assignIfNotEmpty(&callbackReqInfo.Certificate, source.Certificate)
+		assignIfNotEmpty(&callbackReqInfo.CertificateKey, source.CertificateKey)
+		assignIfNotEmpty(&callbackReqInfo.AuthUrl, source.AuthUrl)
+		assignIfNotEmpty(&callbackReqInfo.ClientId, source.ClientId)
+		assignIfNotEmpty(&callbackReqInfo.ClientSecret, source.ClientSecret)
+	}
+
+	parseAppUrls := func(appUrls string, isSMS bool) {
+		if appUrls == "" {
+			return
+		}
+
+		var appUrlsMap map[string]any
+		err := json.Unmarshal([]byte(appUrls), &appUrlsMap)
+		if err != nil {
+			util.LogError(err, "Error unmarshalling AppUrls", "getCallbackReqInfo", nil, nil)
+			return
+		}
+
+		if isSMS {
+			if asyncCallbacks, ok := appUrlsMap["subscriptionCallbacks"].(map[string]any); ok {
+				if timeoutInMillis, ok := asyncCallbacks["async"].(map[string]any)["timeoutInMillis"]; ok {
+					callbackReqInfo.CallbackTimeoutMillis = fmt.Sprintf("%v", timeoutInMillis)
+				}
+			}
+		} else {
+			if timeoutInMillis, ok := appUrlsMap["callbackTimeoutMillis"]; ok {
+				callbackReqInfo.CallbackTimeoutMillis = fmt.Sprintf("%v", timeoutInMillis)
+			}
+		}
+	}
+
+	// Assign callback
+	assignIfNotEmpty(&callbackReqInfo.CallbackPath, callbackPath)
 
 	switch subscriptionType {
 	case SMS:
 		if smsData != nil {
-			safeAssign(&callbackReqInfo.CredentialType, &smsData.CredentialType)
-			safeAssign(&callbackReqInfo.CertificateUrl, &smsData.CertificateUrl)
-			safeAssign(&callbackReqInfo.Certificate, &smsData.Certificate)
-			safeAssign(&callbackReqInfo.CertificateKey, &smsData.CertificateKey)
-			safeAssign(&callbackReqInfo.AuthUrl, &smsData.AuthUrl)
-			safeAssign(&callbackReqInfo.ClientId, &smsData.ClientId)
-			safeAssign(&callbackReqInfo.ClientSecret, &smsData.ClientSecret)
-			safeAssign(&callbackReqInfo.CallbackUrl, &smsData.SubscriptionManagerUrl)
+			assignCommonFields(smsData.CredentialData)
+			assignIfNotEmpty(&callbackReqInfo.CallbackUrl, smsData.SubscriptionManagerUrl)
+			parseAppUrls(smsData.AppUrls, true)
 		}
 	default:
 		if saasData != nil {
-			safeAssign(&callbackReqInfo.CredentialType, &saasData.CredentialType)
-			safeAssign(&callbackReqInfo.CertificateUrl, &saasData.CertificateUrl)
-			safeAssign(&callbackReqInfo.Certificate, &saasData.Certificate)
-			safeAssign(&callbackReqInfo.CertificateKey, &saasData.CertificateKey)
-			safeAssign(&callbackReqInfo.AuthUrl, &saasData.AuthUrl)
-			safeAssign(&callbackReqInfo.ClientId, &saasData.ClientId)
-			safeAssign(&callbackReqInfo.ClientSecret, &saasData.ClientSecret)
-			safeAssign(&callbackReqInfo.CallbackUrl, &saasData.SaasManagerUrl)
+			assignCommonFields(saasData.CredentialData)
+			assignIfNotEmpty(&callbackReqInfo.CallbackUrl, saasData.SaasManagerUrl)
+			parseAppUrls(saasData.AppUrls, false)
 		}
 	}
+
 	return callbackReqInfo
 }
 
@@ -431,8 +461,8 @@ func (s *SubscriptionHandler) DeleteTenant(reqInfo *RequestInfo) *Result {
 	}
 
 	tenantIn := tenantInfo{tenantId: reqInfo.payload.tenantId, tenantSubDomain: reqInfo.payload.subdomain}
-	callbackReqInfo := s.getCallbackReqInfo(reqInfo.subscriptionType, saasData, smsData)
-	s.initializeCallback(tenant.Name, ca, callbackReqInfo, reqInfo, tenantIn, false)
+	callbackReqInfo := s.getCallbackReqInfo(reqInfo.subscriptionType, reqInfo.headerDetails.callbackInfo, saasData, smsData)
+	s.initializeCallback(tenant.Name, ca, callbackReqInfo, reqInfo.subscriptionType, tenantIn, false)
 
 	return &Result{Tenant: tenant, Message: ResourceDeleted}
 }
@@ -535,14 +565,14 @@ func (s *SubscriptionHandler) checkCertificate(cert *x509.Certificate, smsData *
 	return nil
 }
 
-func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1.CAPApplication, callbackReqInfo *util.CallbackReqInfo, reqInfo *RequestInfo, tenantIn tenantInfo, isProvisioning bool) {
+func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1.CAPApplication, callbackReqInfo *util.CallbackReqInfo, subscriptionType subscriptionType, tenantIn tenantInfo, isProvisioning bool) {
 	subscriptionDomain := ca.Annotations[AnnotationSubscriptionDomain]
 	if subscriptionDomain == "" {
 		subscriptionDomain = s.getPrimaryDomain(ca)
 	}
 
 	appUrl := "https://" + tenantIn.tenantSubDomain + "." + subscriptionDomain
-	asyncCallbackPath := reqInfo.headerDetails.callbackInfo
+	asyncCallbackPath := callbackReqInfo.CallbackPath
 	util.LogInfo("Callback initialized", TenantProvisioning, ca, nil, "subscription URL", appUrl, "async callback path", asyncCallbackPath, "tenantName", tenantName)
 
 	step := TenantProvisioning
@@ -579,7 +609,7 @@ func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1
 		} else {
 			additionalOutput = nil
 		}
-		s.handleAsyncCallback(ctx, callbackReqInfo, status, asyncCallbackPath, appUrl, additionalOutput, isProvisioning, reqInfo.subscriptionType)
+		s.handleAsyncCallback(ctx, callbackReqInfo, status, asyncCallbackPath, appUrl, additionalOutput, isProvisioning, subscriptionType)
 	}()
 
 	util.LogInfo("Waiting for async saas callback after checks...", step, ca, nil, "tenantName", tenantName)

@@ -101,6 +101,7 @@ func createSecrets() []runtime.Object {
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
 			"credentials": []byte(`{
+				"appUrls": "{\"getDependencies\":\"https://appSubdomain.appname.clusterdomain.com/callback/v1.0/dependencies\",\"onSubscription\":\"https://cap-op.clusterdomain.com/provision/tenants/{tenantId}\",\"getSubscriptionParameters\":\"\",\"onSubscriptionAsync\":true,\"onUnSubscriptionAsync\":true,\"onUpdateSubscriptionParametersAsync\":false,\"callbackTimeoutMillis\":300000,\"runGetDependenciesOnAsyncCallback\":false,\"onUpdateDependenciesAsync\":false}",
 				"saas_registry_url": "https://sm.service.local",
 				"clientid": "clientid",
 				"clientsecret": "clientsecret",
@@ -125,6 +126,7 @@ func createSmsSecret() []runtime.Object {
 		Type: corev1.SecretTypeOpaque,
 		Data: map[string][]byte{
 			"credentials": []byte(`{
+				"app_urls": "{\"subscriptionCallbacks\":{\"url\":\"https://cap-op.clusterdomain.com/provision/tenants/{app_tid}\",\"async\":{\"updateDependenciesEnable\":false,\"updateSubscriptionParametersEnable\":false,\"subscribeEnable\":true,\"unSubscribeEnable\":true,\"timeoutInMillis\":300000}},\"omitSubscriptionCallbacks\":null,\"dependenciesCallbacks\":{\"url\":\"https://appSubdomain.appname.clusterdomain.com/v1.0/callback/tenants/{app_tid}/dependencies\"},\"subscriptionParamsCallbacks\":{\"url\":\"\"}}",
 				"callback_certificate_issuer": "{\"C\":\"DE\",\"L\":\"*\",\"O\":\"RandomOrg\",\"OU\":\"RandomOrgUnit\",\"CN\":\"*.auth.service.local\"}",
     			"callback_certificate_subject": "{\"CN\":\"*.auth.service.local\",\"L\":\"RandomCity\",\"OU\": [\"RandomOrgUnit\"],\"O\":\"RandomOrg\",\"C\":\"DE\"}",
     			"callback_certificate_subject_rfc_2253": "CN=*.auth.service.local,L=RandomCity,OU=RandomOrgUnit,O=RandomOrg,C=DE",
@@ -1159,7 +1161,7 @@ func TestAsyncCallback(t *testing.T) {
 		t.Run(p.testName, func(t *testing.T) {
 			client := createCallbackTestServer(context.TODO(), t, &p, SaaS)
 			subHandler := setup(client, createSecrets())
-			callbackReqInfo := subHandler.getCallbackReqInfo(SaaS, saasData, nil)
+			callbackReqInfo := subHandler.getCallbackReqInfo(SaaS, "/saas-manager/v1/subscription-callback/1234567/result", saasData, nil)
 			subHandler.handleAsyncCallback(
 				ctx,
 				callbackReqInfo,
@@ -1186,7 +1188,7 @@ func TestAsyncCallback(t *testing.T) {
 		t.Run(p.testName, func(t *testing.T) {
 			client := createCallbackTestServer(context.TODO(), t, &p, SMS)
 			subHandler := setup(client, createSmsSecret())
-			callbackReqInfo := subHandler.getCallbackReqInfo(SMS, nil, smsData)
+			callbackReqInfo := subHandler.getCallbackReqInfo(SMS, "/subscription-manager/v1/subscription-callback/12345678/result", nil, smsData)
 			subHandler.handleAsyncCallback(
 				ctx,
 				callbackReqInfo,
