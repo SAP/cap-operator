@@ -617,14 +617,6 @@ func addCAPTenantLabels(cat *v1alpha1.CAPTenant, ca *v1alpha1.CAPApplication) (u
 		cat.ObjectMeta.Labels[LabelTenantId] = cat.Spec.TenantId
 		updated = true
 	}
-	if _, ok := cat.ObjectMeta.Labels[LabelTenantType]; !ok {
-		if ca.Spec.Provider.TenantId == cat.Spec.TenantId {
-			cat.ObjectMeta.Labels[LabelTenantType] = ProviderTenantType
-		} else {
-			cat.ObjectMeta.Labels[LabelTenantType] = ConsumerTenantType
-		}
-		updated = true
-	}
 	return updated
 }
 
