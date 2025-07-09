@@ -375,7 +375,7 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 	if ca.IsServicesOnly() {
 		return false, nil
 	}
-	providerTenantName := strings.Join([]string{ca.Name, ProviderTenantType}, "-")
+	providerTenantName := strings.Join([]string{ca.Name, TenantTypeProvider}, "-")
 	tenant, err := c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(ca.Namespace).Get(providerTenantName)
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
@@ -430,7 +430,7 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 					},
 					Labels: map[string]string{
 						LabelBTPApplicationIdentifierHash: sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName),
-						LabelTenantType:                   ProviderTenantType,
+						LabelTenantType:                   TenantTypeProvider,
 						LabelTenantId:                     ca.Spec.Provider.TenantId,
 					},
 				},
