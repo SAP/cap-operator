@@ -300,6 +300,26 @@ func TestDomain_UpdateAdditionalCACertificate(t *testing.T) {
 	)
 }
 
+func TestDomain_RemoveAdditionalCACertificate(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain updated - gateway and dns getting updated",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+				"testdata/domain/additional-caCertificate-secret.yaml",
+			},
+			expectedResources: "testdata/domain/domain-processing-without-additionalCaCertificate.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+}
+
 func TestDomain_UpdatedomainWithCertManager(t *testing.T) {
 	os.Setenv(certManagerEnv, certManagerCertManagerIO)
 
@@ -342,10 +362,11 @@ func TestDomain_DeletingWithCert(t *testing.T) {
 		context.TODO(), t,
 		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
 		TestData{
-			description: "Domain deleting with certificates - Finalizer removed",
+			description: "Domain deleting with certificates and additionalCaCertificateSecret - Finalizer removed",
 			initialResources: []string{
 				"testdata/domain/domain-deleting.yaml",
 				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/additional-caCertificate-secret.yaml",
 			},
 			expectedResources: "testdata/domain/domain-deleting-no-finalizer.yaml",
 		},
@@ -359,10 +380,11 @@ func TestDomain_DeletingWithCertManager(t *testing.T) {
 		context.TODO(), t,
 		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
 		TestData{
-			description: "Domain deleting with certificates - Finalizer removed",
+			description: "Domain deleting with certificates and additionalCaCertificateSecret - Finalizer removed",
 			initialResources: []string{
 				"testdata/domain/domain-deleting.yaml",
 				"testdata/domain/primary-certManager-ready.yaml",
+				"testdata/domain/additional-caCertificate-secret.yaml",
 			},
 			expectedResources: "testdata/domain/domain-deleting-no-finalizer.yaml",
 		},

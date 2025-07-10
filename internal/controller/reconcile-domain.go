@@ -503,8 +503,8 @@ func handleAdditionalCACertificate[T v1alpha1.DomainEntity](ctx context.Context,
 	}
 
 	// Extract the additional certificate bundle
-	var bundle string
-	if dom.GetSpec().CertConfig != nil && dom.GetSpec().CertConfig.AdditionalCACertificate != "" {
+	bundle := ""
+	if dom.GetSpec().CertConfig != nil {
 		bundle = dom.GetSpec().CertConfig.AdditionalCACertificate
 	}
 
@@ -540,28 +540,30 @@ func handleAdditionalCACertificate[T v1alpha1.DomainEntity](ctx context.Context,
 		if _, err := c.kubeClient.CoreV1().Secrets(credentialNamespace).Update(ctx, existingSecret, metav1.UpdateOptions{}); err != nil {
 			return fmt.Errorf("failed to update additional certificate bundle secret for %s: %w", ownerId, err)
 		}
-	} else {
-		// create a secret
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      secretName,
-				Namespace: credentialNamespace,
-				Labels: map[string]string{
-					LabelOwnerIdentifierHash: sha1Sum(ownerId),
-					LabelOwnerGeneration:     fmt.Sprintf("%d", dom.GetMetadata().Generation),
-				},
-				Annotations: map[string]string{
-					AnnotationResourceHash:    secretDataHash,
-					AnnotationOwnerIdentifier: ownerId,
-				},
-			},
-			Data: secretData,
-			Type: corev1.SecretTypeOpaque,
-		}
 
-		if _, err := c.kubeClient.CoreV1().Secrets(credentialNamespace).Create(ctx, secret, metav1.CreateOptions{}); err != nil {
-			return fmt.Errorf("failed to create additional certificate bundle secret for %s: %w", ownerId, err)
-		}
+		return nil
+	}
+
+	// create a secret
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: credentialNamespace,
+			Labels: map[string]string{
+				LabelOwnerIdentifierHash: sha1Sum(ownerId),
+				LabelOwnerGeneration:     fmt.Sprintf("%d", dom.GetMetadata().Generation),
+			},
+			Annotations: map[string]string{
+				AnnotationResourceHash:    secretDataHash,
+				AnnotationOwnerIdentifier: ownerId,
+			},
+		},
+		Data: secretData,
+		Type: corev1.SecretTypeOpaque,
+	}
+
+	if _, err := c.kubeClient.CoreV1().Secrets(credentialNamespace).Create(ctx, secret, metav1.CreateOptions{}); err != nil {
+		return fmt.Errorf("failed to create additional certificate bundle secret for %s: %w", ownerId, err)
 	}
 
 	return nil
