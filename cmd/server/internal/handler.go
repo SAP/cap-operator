@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -330,7 +330,7 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1.CAPApplication, saasData *util.SaasRegistryCredentials, req *http.Request, tenantIn tenantInfo, isProvisioning bool) {
 	subscriptionDomain := ca.Annotations[AnnotationSubscriptionDomain]
 	if subscriptionDomain == "" {
-		subscriptionDomain = ca.Spec.Domains.Primary
+		subscriptionDomain = s.getPrimaryDomain(ca)
 	}
 	appUrl := "https://" + tenantIn.tenantSubDomain + "." + subscriptionDomain
 	asyncCallbackPath := req.Header.Get("STATUS_CALLBACK")
@@ -374,6 +374,33 @@ func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1
 	}()
 
 	util.LogInfo("Waiting for async saas callback after checks...", step, ca, nil, "tenantName", tenantName)
+}
+
+func (s *SubscriptionHandler) getPrimaryDomain(ca *v1alpha1.CAPApplication) string {
+	// If no domainRefs are specified, return an empty string
+	if len(ca.Spec.DomainRefs) == 0 {
+		return ""
+	}
+	// Return the first domain as the primary domain
+	primaryDomainRef := ca.Spec.DomainRefs[0]
+	domain := ""
+	if primaryDomainRef.Kind == v1alpha1.DomainKind {
+		primaryDom, err := s.Clientset.SmeV1alpha1().Domains(ca.Namespace).Get(context.TODO(), primaryDomainRef.Name, metav1.GetOptions{})
+		if err != nil {
+			util.LogError(err, "Error getting primary domain", TenantProvisioning, ca, nil, "domainRef", primaryDomainRef.Name)
+		} else if primaryDom != nil {
+			domain = primaryDom.Spec.Domain
+		}
+	} else {
+		primaryDom, err := s.Clientset.SmeV1alpha1().ClusterDomains(metav1.NamespaceAll).Get(context.TODO(), primaryDomainRef.Name, metav1.GetOptions{})
+		if err != nil {
+			util.LogError(err, "Error getting primary cluster domain", TenantProvisioning, ca, nil, "domainRef", primaryDomainRef.Name)
+		} else if primaryDom != nil {
+			domain = primaryDom.Spec.Domain
+		}
+	}
+	// Return the primary domain if it exists, else return an empty string
+	return domain
 }
 
 func (s *SubscriptionHandler) enrichAdditionalOutput(namespace string, tenantId string, additionalOutput *map[string]any) error {

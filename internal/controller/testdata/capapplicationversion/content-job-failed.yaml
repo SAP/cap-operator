@@ -56,7 +56,7 @@ spec:
       dnsPolicy: ClusterFirst
       imagePullSecrets:
         - name: regcred
-      restartPolicy: OnFailure
+      restartPolicy: Never
       schedulerName: default-scheduler
       securityContext: {}
       terminationGracePeriodSeconds: 30

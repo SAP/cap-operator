@@ -1,0 +1,220 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  creationTimestamp: "2022-07-18T12:16:21Z"
+  labels:
+    job-name: test-cap-01-cav-v1-content-job-1-content
+  name: test-cap-01-cav-v1-content-job-1-content
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplicationVersion
+      name: test-cap-01-cav-v1
+      uid: 5e64489b-7346-4984-8617-e8c37338b3d8
+  resourceVersion: "150625273"
+  uid: afb8bcad-72ce-4567-8337-12fc67ef55acb
+spec:
+  backoffLimit: 2
+  completions: 1
+  parallelism: 1
+  selector:
+    matchLabels:
+      controller-uid: afb8bcad-72ce-4567-8337-12fc67ef55acb
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+      creationTimestamp: null
+      labels:
+        controller-uid: afb8bcad-72ce-4567-8337-12fc67ef55acb
+        job-name: test-cap-01-cav-v1-content-job-1-content
+        x4.sap.com/disable-karydia: "true"
+    spec:
+      containers:
+        - env:
+            - name: CAPOP_APP_VERSION
+              value: "14"
+            - name: TEST
+              value: Dummy
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+          envFrom:
+            - secretRef:
+                name: test-cap-01-cav-v1-content-job-1-content-gen
+                optional: true
+          image: bem.common.repositories.cloud.sap/content/bem-content
+          imagePullPolicy: Always
+          name: content-deploy
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+        - name: regcred
+      restartPolicy: Never
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  completionTime: "2022-07-18T12:16:41Z"
+  conditions:
+    - lastProbeTime: "2022-07-18T12:16:41Z"
+      lastTransitionTime: "2022-07-18T12:16:41Z"
+      status: "True"
+      type: Complete
+  startTime: "2022-07-14T12:16:21Z"
+  succeeded: 1
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  creationTimestamp: "2022-07-18T12:16:21Z"
+  labels:
+    job-name: test-cap-01-cav-v1-content-job-2-content
+  name: test-cap-01-cav-v1-content-job-2-content
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplicationVersion
+      name: test-cap-01-cav-v1
+      uid: 5e64489b-7346-4984-8617-e8c37338b3d8
+  resourceVersion: "150625273"
+  uid: afb8bcad-72ce-4567-8337-12fc67ef55acb
+spec:
+  backoffLimit: 2
+  completions: 1
+  parallelism: 1
+  selector:
+    matchLabels:
+      controller-uid: afb8bcad-72ce-4567-8337-12fc67ef55acb
+  template:
+    metadata:
+      annotations:
+        sidecar.istio.io/inject: "false"
+      creationTimestamp: null
+      labels:
+        controller-uid: afb8bcad-72ce-4567-8337-12fc67ef55acb
+        job-name: test-cap-01-cav-v1-content-job-2-content
+        x4.sap.com/disable-karydia: "true"
+    spec:
+      containers:
+        - env:
+            - name: CAPOP_APP_VERSION
+              value: "14"
+            - name: TEST
+              value: Dummy
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+          envFrom:
+            - secretRef:
+                name: test-cap-01-cav-v1-content-job-2-content-gen
+                optional: true
+          image: bem.common.repositories.cloud.sap/content/bem-content
+          imagePullPolicy: Always
+          name: content-deploy
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+        - name: regcred
+      restartPolicy: Never
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+status:
+  completionTime: "2022-07-18T12:16:41Z"
+  conditions:
+    - lastProbeTime: "2022-07-18T12:16:41Z"
+      lastTransitionTime: "2022-07-18T12:16:41Z"
+      status: "True"
+      type: Complete
+  startTime: "2022-07-14T12:16:21Z"
+  succeeded: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: test-cap-01
+    sme.sap.com/category: Workload
+    sme.sap.com/workload-name: test-cap-01-cav-v1-cap-backend-srv
+    sme.sap.com/workload-type: CAP
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/cav-version: "1.2.3"
+    sme.sap.com/owner-generation: "1"
+    sme.sap.com/owner-identifier-hash: e95e0682f33a657e75e1fc435972d19bd407ba3b
+  annotations:
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+    sme.sap.com/owner-identifier: default.test-cap-01-cav-v1
+  name: test-cap-01-cav-v1-cap-backend-srv
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplicationVersion
+      name: test-cap-01-cav-v1
+      uid: 5e64489b-7346-4984-8617-e8c37338b3d8
+spec:
+status:
+  replicas: 1
+  updatedReplicas: 1
+  readyReplicas: 1
+  availableReplicas: 1
+  conditions:
+    - lastTransitionTime: "2022-07-18T12:16:41Z"
+      lastUpdateTime: "2022-07-18T12:16:41Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: test-cap-01
+    sme.sap.com/category: Workload
+    sme.sap.com/workload-name: test-cap-01-cav-v1-app-router
+    sme.sap.com/workload-type: Router
+    sme.sap.com/exposed-workload: "true"
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/cav-version: "1.2.3"
+    sme.sap.com/owner-generation: "1"
+    sme.sap.com/owner-identifier-hash: e95e0682f33a657e75e1fc435972d19bd407ba3b
+  annotations:
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+    sme.sap.com/owner-identifier: default.test-cap-01-cav-v1
+  name: test-cap-01-cav-v1-app-router
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplicationVersion
+      name: test-cap-01-cav-v1
+      uid: 5e64489b-7346-4984-8617-e8c37338b3d8
+spec:
+status:
+  replicas: 1
+  updatedReplicas: 1
+  readyReplicas: 1
+  availableReplicas: 1
+  conditions:
+    - lastTransitionTime: "2022-07-18T12:16:41Z"
+      lastUpdateTime: "2022-07-18T12:16:41Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available

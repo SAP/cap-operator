@@ -1,0 +1,81 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: Domain
+metadata:
+  name: test-cap-01-primary
+  namespace: default
+  finalizers:
+  - sme.sap.com/domain
+  labels:
+    sme.sap.com/domain-host-hash: d8b11ae7b1f04e357f32290b81db58c247dac748
+spec:
+  dnsMode: Wildcard
+  domain: app-domain.test.local
+  ingressSelector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  tlsMode: Simple
+status:
+  conditions:
+  - message: Processing domain resources
+    reason: Processing
+    status: "False"
+    type: Ready
+  state: Processing
+  dnsTarget: public-ingress.operator.testing.local
+  observedDomain: app-domain.test.local
+  gatewayName: test-cap-01-primary-gen
+---
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
+    sme.sap.com/resource-hash: 673ce3f2c82306636047caa12ecf1200c763f491511d9c41e2c5014d5db9383e
+  labels:
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
+  name: test-cap-01-primary-gen
+  generateName: test-cap-01-primary-
+  namespace: default
+  ownerReferences:
+  - apiVersion: sme.sap.com/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Domain
+    name: test-cap-01-primary
+spec:
+  selector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  servers:
+  - hosts:
+    - ./*.app-domain.test.local
+    port:
+      name: https
+      number: 443
+      protocol: HTTPS
+    tls:
+      credentialName: default--test-cap-01-primary-cert-manager
+      mode: SIMPLE
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  annotations:
+    sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
+    sme.sap.com/resource-hash: 1e0784231c871a291abfa30b8ca1241306c997a011944be7c0222822f3c2934b
+  finalizers:
+  - sme.sap.com/domain
+  labels:
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
+  name: default--test-cap-01-primary
+  namespace: istio-system
+spec:
+  dnsNames:
+  - '*.app-domain.test.local'
+  secretName: default--test-cap-01-primary-cert-manager
+  issuerRef:
+    kind: ClusterIssuer
+    name: cluster-ca
+

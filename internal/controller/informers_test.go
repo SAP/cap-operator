@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -84,6 +84,9 @@ func TestController_initializeInformers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Deregister metrics
+			defer deregisterMetrics()
+
 			c := getTestController(testResources{})
 			expectedResult = false
 
@@ -92,7 +95,7 @@ func TestController_initializeInformers(t *testing.T) {
 				ResourceCAPApplicationVersion: &dummyType{},
 				ResourceCAPTenant:             &dummyType{},
 				ResourceCAPTenantOperation:    &dummyType{},
-				ResourceOperatorDomains:       &dummyType{},
+				// ResourceOperatorDomains:       &dummyType{},
 			}
 
 			testC := &Controller{

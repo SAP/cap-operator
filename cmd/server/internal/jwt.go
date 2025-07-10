@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -17,7 +17,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/MicahParks/keyfunc/v2"
+	"github.com/MicahParks/jwkset"
+	"github.com/MicahParks/keyfunc/v3"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -97,11 +98,16 @@ func VerifyXSUAAJWTToken(ctx context.Context, tokenString string, config *XSUAAC
 			return nil, err
 		}
 
-		jwks, err := keyfunc.Get(oidConfig.JWKSURI, keyfunc.Options{Ctx: ctx, Client: client})
+		storage, err := jwkset.NewStorageFromHTTP(oidConfig.JWKSURI, jwkset.HTTPClientStorageOptions{Client: client, Ctx: ctx})
 		if err != nil {
 			return nil, err
 		}
-		return jwks.Keyfunc(t)
+
+		k, err := keyfunc.New(keyfunc.Options{Ctx: ctx, Storage: storage})
+		if err != nil {
+			return nil, err
+		}
+		return k.Keyfunc(t)
 	}, jwt.WithLeeway(-15*time.Second))
 
 	if err != nil {

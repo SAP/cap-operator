@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -46,3 +46,19 @@ type CAPTenantOutputListerExpansion interface{}
 // CAPTenantOutputNamespaceListerExpansion allows custom methods to be added to
 // CAPTenantOutputNamespaceLister.
 type CAPTenantOutputNamespaceListerExpansion interface{}
+
+// ClusterDomainListerExpansion allows custom methods to be added to
+// ClusterDomainLister.
+type ClusterDomainListerExpansion interface{}
+
+// ClusterDomainNamespaceListerExpansion allows custom methods to be added to
+// ClusterDomainNamespaceLister.
+type ClusterDomainNamespaceListerExpansion interface{}
+
+// DomainListerExpansion allows custom methods to be added to
+// DomainLister.
+type DomainListerExpansion interface{}
+
+// DomainNamespaceListerExpansion allows custom methods to be added to
+// DomainNamespaceLister.
+type DomainNamespaceListerExpansion interface{}

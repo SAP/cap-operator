@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -16,6 +16,7 @@ type CAPApplicationVersionSpecApplyConfiguration struct {
 	Workloads              []WorkloadDetailsApplyConfiguration `json:"workloads,omitempty"`
 	TenantOperations       *TenantOperationsApplyConfiguration `json:"tenantOperations,omitempty"`
 	ContentJobs            []string                            `json:"contentJobs,omitempty"`
+	ServiceExposures       []ServiceExposureApplyConfiguration `json:"serviceExposures,omitempty"`
 }
 
 // CAPApplicationVersionSpecApplyConfiguration constructs a declarative configuration of the CAPApplicationVersionSpec type for use with
@@ -77,6 +78,19 @@ func (b *CAPApplicationVersionSpecApplyConfiguration) WithTenantOperations(value
 func (b *CAPApplicationVersionSpecApplyConfiguration) WithContentJobs(values ...string) *CAPApplicationVersionSpecApplyConfiguration {
 	for i := range values {
 		b.ContentJobs = append(b.ContentJobs, values[i])
+	}
+	return b
+}
+
+// WithServiceExposures adds the given value to the ServiceExposures field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the ServiceExposures field.
+func (b *CAPApplicationVersionSpecApplyConfiguration) WithServiceExposures(values ...*ServiceExposureApplyConfiguration) *CAPApplicationVersionSpecApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithServiceExposures")
+		}
+		b.ServiceExposures = append(b.ServiceExposures, *values[i])
 	}
 	return b
 }

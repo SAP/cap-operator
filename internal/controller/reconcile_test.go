@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -30,7 +30,7 @@ import (
 	promopFake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned/fake"
-	istionwv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
+	istionwv1 "istio.io/client-go/pkg/apis/networking/v1"
 	istiofake "istio.io/client-go/pkg/clientset/versioned/fake"
 )
 
@@ -49,14 +49,6 @@ const (
 	defaultVersion     = "0.0.1"
 )
 
-const (
-	ingressGWName        = "ingressGw"
-	istioSystemNamespace = "istio-system"
-	gatewayName          = btpApplicationName + "-" + GatewaySuffix
-	certificateName      = btpApplicationName + "-" + CertificateSuffix
-	dnsEntryName         = btpApplicationName + "-" + PrimaryDnsSuffix
-)
-
 type ingressResources struct {
 	service *corev1.Service
 	pod     *corev1.Pod
@@ -68,47 +60,11 @@ type testResources struct {
 	cats            []*v1alpha1.CAPTenant
 	ctops           []*v1alpha1.CAPTenantOperation
 	ingressGW       []*ingressResources
-	gateway         *istionwv1beta1.Gateway
+	gateway         *istionwv1.Gateway
 	gardenerCert    *certv1alpha1.Certificate
 	certManagerCert *certManagerv1.Certificate
 	dnsEntry        *dnsv1alpha1.DNSEntry
 	preventStart    bool
-}
-
-func createIngressResource(name string, ca *v1alpha1.CAPApplication, dnsTarget string) *ingressResources {
-	ingressLabelSelector := map[string]string{}
-	svcName := "istioingress-gateway"
-	namespace := istioSystemNamespace
-	if name != ingressGWName {
-		svcName = name
-		namespace = metav1.NamespaceDefault
-	}
-	for _, label := range ca.Spec.Domains.IstioIngressGatewayLabels {
-		ingressLabelSelector[label.Name] = label.Value
-	}
-
-	return &ingressResources{
-		pod: &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-				Labels:    ingressLabelSelector,
-			},
-		},
-		service: &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      svcName,
-				Namespace: namespace,
-				Annotations: map[string]string{
-					AnnotationGardenerDNSTarget: dnsTarget,
-				},
-			},
-			Spec: corev1.ServiceSpec{
-				Type:     corev1.ServiceTypeLoadBalancer,
-				Selector: ingressLabelSelector,
-			},
-		},
-	}
 }
 
 func createCaCRO(name string, withFinalizer bool) *v1alpha1.CAPApplication {
@@ -369,8 +325,8 @@ func getTestController(resources testResources) *Controller {
 	}
 
 	if resources.gateway != nil {
-		c.istioClient.NetworkingV1beta1().Gateways(resources.gateway.Namespace).Create(context.TODO(), resources.gateway, metav1.CreateOptions{})
-		c.istioInformerFactory.Networking().V1beta1().Gateways().Informer().GetIndexer().Add(resources.gateway)
+		c.istioClient.NetworkingV1().Gateways(resources.gateway.Namespace).Create(context.TODO(), resources.gateway, metav1.CreateOptions{})
+		c.istioInformerFactory.Networking().V1().Gateways().Informer().GetIndexer().Add(resources.gateway)
 	}
 
 	if resources.gardenerCert != nil {
@@ -486,12 +442,15 @@ func TestGetLatestReadyCAPApplicationVersion(t *testing.T) {
 				cavs = append(cavs, cav)
 			}
 
+			// Deregister metrics at the end of the test
+			defer deregisterMetrics()
+
 			c := getTestController(testResources{
 				cas:  []*v1alpha1.CAPApplication{ca},
 				cavs: cavs,
 			})
 
-			latestCav, err := c.getLatestReadyCAPApplicationVersion(context.TODO(), ca, false)
+			latestCav, err := c.getLatestReadyCAPApplicationVersion(ca, false)
 
 			if test.status == v1alpha1.CAPApplicationVersionStateReady || test.status == "mixed" {
 				if err != nil {
@@ -578,12 +537,15 @@ func TestGetLatestCAPApplicationVersion(t *testing.T) {
 				cavs = append(cavs, cav)
 			}
 
+			// Deregister metrics at the end of the test
+			defer deregisterMetrics()
+
 			c := getTestController(testResources{
 				cas:  []*v1alpha1.CAPApplication{ca},
 				cavs: cavs,
 			})
 
-			latestCav, err := c.getLatestCAPApplicationVersion(context.TODO(), ca)
+			latestCav, err := c.getLatestCAPApplicationVersion(ca)
 
 			if test.expectError == false {
 				if err != nil {

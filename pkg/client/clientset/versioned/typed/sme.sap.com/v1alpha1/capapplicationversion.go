@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,10 +8,10 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha1"
+	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	applyconfigurationsmesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha1"
 	scheme "github.com/sap/cap-operator/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -27,36 +27,39 @@ type CAPApplicationVersionsGetter interface {
 
 // CAPApplicationVersionInterface has methods to work with CAPApplicationVersion resources.
 type CAPApplicationVersionInterface interface {
-	Create(ctx context.Context, cAPApplicationVersion *v1alpha1.CAPApplicationVersion, opts v1.CreateOptions) (*v1alpha1.CAPApplicationVersion, error)
-	Update(ctx context.Context, cAPApplicationVersion *v1alpha1.CAPApplicationVersion, opts v1.UpdateOptions) (*v1alpha1.CAPApplicationVersion, error)
+	Create(ctx context.Context, cAPApplicationVersion *smesapcomv1alpha1.CAPApplicationVersion, opts v1.CreateOptions) (*smesapcomv1alpha1.CAPApplicationVersion, error)
+	Update(ctx context.Context, cAPApplicationVersion *smesapcomv1alpha1.CAPApplicationVersion, opts v1.UpdateOptions) (*smesapcomv1alpha1.CAPApplicationVersion, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, cAPApplicationVersion *v1alpha1.CAPApplicationVersion, opts v1.UpdateOptions) (*v1alpha1.CAPApplicationVersion, error)
+	UpdateStatus(ctx context.Context, cAPApplicationVersion *smesapcomv1alpha1.CAPApplicationVersion, opts v1.UpdateOptions) (*smesapcomv1alpha1.CAPApplicationVersion, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.CAPApplicationVersion, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.CAPApplicationVersionList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*smesapcomv1alpha1.CAPApplicationVersion, error)
+	List(ctx context.Context, opts v1.ListOptions) (*smesapcomv1alpha1.CAPApplicationVersionList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.CAPApplicationVersion, err error)
-	Apply(ctx context.Context, cAPApplicationVersion *smesapcomv1alpha1.CAPApplicationVersionApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.CAPApplicationVersion, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *smesapcomv1alpha1.CAPApplicationVersion, err error)
+	Apply(ctx context.Context, cAPApplicationVersion *applyconfigurationsmesapcomv1alpha1.CAPApplicationVersionApplyConfiguration, opts v1.ApplyOptions) (result *smesapcomv1alpha1.CAPApplicationVersion, err error)
 	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
-	ApplyStatus(ctx context.Context, cAPApplicationVersion *smesapcomv1alpha1.CAPApplicationVersionApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.CAPApplicationVersion, err error)
+	ApplyStatus(ctx context.Context, cAPApplicationVersion *applyconfigurationsmesapcomv1alpha1.CAPApplicationVersionApplyConfiguration, opts v1.ApplyOptions) (result *smesapcomv1alpha1.CAPApplicationVersion, err error)
 	CAPApplicationVersionExpansion
 }
 
 // cAPApplicationVersions implements CAPApplicationVersionInterface
 type cAPApplicationVersions struct {
-	*gentype.ClientWithListAndApply[*v1alpha1.CAPApplicationVersion, *v1alpha1.CAPApplicationVersionList, *smesapcomv1alpha1.CAPApplicationVersionApplyConfiguration]
+	*gentype.ClientWithListAndApply[*smesapcomv1alpha1.CAPApplicationVersion, *smesapcomv1alpha1.CAPApplicationVersionList, *applyconfigurationsmesapcomv1alpha1.CAPApplicationVersionApplyConfiguration]
 }
 
 // newCAPApplicationVersions returns a CAPApplicationVersions
 func newCAPApplicationVersions(c *SmeV1alpha1Client, namespace string) *cAPApplicationVersions {
 	return &cAPApplicationVersions{
-		gentype.NewClientWithListAndApply[*v1alpha1.CAPApplicationVersion, *v1alpha1.CAPApplicationVersionList, *smesapcomv1alpha1.CAPApplicationVersionApplyConfiguration](
+		gentype.NewClientWithListAndApply[*smesapcomv1alpha1.CAPApplicationVersion, *smesapcomv1alpha1.CAPApplicationVersionList, *applyconfigurationsmesapcomv1alpha1.CAPApplicationVersionApplyConfiguration](
 			"capapplicationversions",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.CAPApplicationVersion { return &v1alpha1.CAPApplicationVersion{} },
-			func() *v1alpha1.CAPApplicationVersionList { return &v1alpha1.CAPApplicationVersionList{} }),
+			func() *smesapcomv1alpha1.CAPApplicationVersion { return &smesapcomv1alpha1.CAPApplicationVersion{} },
+			func() *smesapcomv1alpha1.CAPApplicationVersionList {
+				return &smesapcomv1alpha1.CAPApplicationVersionList{}
+			},
+		),
 	}
 }

@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -7,7 +7,6 @@ package controller
 
 import (
 	"reflect"
-	"time"
 
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -21,12 +20,13 @@ const (
 	ResourceCAPApplicationVersion
 	ResourceCAPApplication
 	ResourceCAPTenantOperation
+	ResourceClusterDomain
+	ResourceDomain
 	ResourceJob
 	ResourceSecret
 	ResourceGateway
 	ResourceCertificate
 	ResourceDNSEntry
-	ResourceOperatorDomains
 	ResourceVirtualService
 	ResourceDestinationRule
 )
@@ -43,7 +43,8 @@ var (
 		ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind,
 		ResourceCAPApplication:        v1alpha1.CAPApplicationKind,
 		ResourceCAPTenantOperation:    v1alpha1.CAPTenantOperationKind,
-		ResourceOperatorDomains:       OperatorDomains,
+		ResourceClusterDomain:         v1alpha1.ClusterDomainKind,
+		ResourceDomain:                v1alpha1.DomainKind,
 	}
 )
 
@@ -64,7 +65,8 @@ var QueueMapping map[int]map[int]string = map[int]map[int]string{
 	ResourceDestinationRule:       {ResourceCAPTenant: v1alpha1.CAPTenantKind},
 	ResourceCAPApplicationVersion: {ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind, ResourceCAPApplication: v1alpha1.CAPApplicationKind},
 	ResourceCAPApplication:        {ResourceCAPApplication: v1alpha1.CAPApplicationKind},
-	ResourceOperatorDomains:       {ResourceOperatorDomains: OperatorDomains},
+	ResourceClusterDomain:         {ResourceClusterDomain: v1alpha1.ClusterDomainKind},
+	ResourceDomain:                {ResourceDomain: v1alpha1.DomainKind},
 }
 
 type QueueItem struct {
@@ -77,6 +79,8 @@ func (c *Controller) initializeInformers() {
 	c.registerCAPApplicationListeners()
 	c.registerCAPApplicationVersionListeners()
 	c.registerCAPTenantOperationListeners()
+	c.registerClusterDomainListeners()
+	c.registerDomainListeners()
 	c.registerJobListeners()
 	c.registerSecretListeners()
 	c.registerGatewayListeners()
@@ -131,18 +135,28 @@ func (c *Controller) registerCAPTenantOperationListeners() {
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceCAPTenantOperation))
 }
 
+func (c *Controller) registerClusterDomainListeners() {
+	c.crdInformerFactory.Sme().V1alpha1().ClusterDomains().Informer().
+		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceClusterDomain))
+}
+
+func (c *Controller) registerDomainListeners() {
+	c.crdInformerFactory.Sme().V1alpha1().Domains().Informer().
+		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceDomain))
+}
+
 func (c *Controller) registerJobListeners() {
 	c.kubeInformerFactory.Batch().V1().Jobs().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceJob))
 }
 
 func (c *Controller) registerVirtualServiceListeners() {
-	c.istioInformerFactory.Networking().V1beta1().VirtualServices().Informer().
+	c.istioInformerFactory.Networking().V1().VirtualServices().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceVirtualService))
 }
 
 func (c *Controller) registerDestinationRuleListeners() {
-	c.istioInformerFactory.Networking().V1beta1().DestinationRules().Informer().
+	c.istioInformerFactory.Networking().V1().DestinationRules().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceDestinationRule))
 }
 
@@ -152,7 +166,7 @@ func (c *Controller) registerSecretListeners() {
 }
 
 func (c *Controller) registerGatewayListeners() {
-	c.istioInformerFactory.Networking().V1beta1().Gateways().Informer().
+	c.istioInformerFactory.Networking().V1().Gateways().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceGateway))
 }
 
@@ -205,13 +219,6 @@ func (c *Controller) enqueueModifiedResource(sourceKey int, new, old interface{}
 			klog.InfoS(queuing, "namespace", owner.Namespace, "name", owner.Name, "kind", dependentKind)
 			q.Add(QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: owner.Name, Namespace: owner.Namespace}})
 		}
-	}
-
-	// Reconcile OperatorDomains just after all CAPApplication updates
-	if sourceKey == ResourceCAPApplication {
-		klog.InfoS(queuing, "resource", KindMap[ResourceOperatorDomains])
-		// Reconcile Secondary domains via a dummy resource (separate reconciliation) after 1s
-		c.queues[ResourceOperatorDomains].AddAfter(QueueItem{Key: ResourceOperatorDomains, ResourceKey: NamespacedResourceKey{Namespace: metav1.NamespaceAll, Name: ""}}, 1*time.Second)
 	}
 }
 

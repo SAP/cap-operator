@@ -1,0 +1,47 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPApplication
+metadata:
+  finalizers:
+    - sme.sap.com/capapplication
+  annotations:
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+  labels:
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+  generation: 0
+  name: test-ca-01
+  namespace: default
+  resourceVersion: "11373799"
+  uid: 3c7ba7cb-dc04-4fd1-be86-3eb3a5c64a98
+spec:
+  btp:
+    services:
+      - class: xsuaa
+        name: cap-uaa
+        secret: cap-cap-01-uaa-bind-cf
+      - class: xsuaa
+        name: cap-uaa2
+        secret: cap-cap-01-uaa2-bind-cf
+      - class: saas-registry
+        name: cap-saas-registry
+        secret: cap-cap-01-saas-bind-cf
+      - class: service-manager
+        name: cap-service-manager
+        secret: cap-cap-01-svc-man-bind-cf
+  btpAppName: test-cap-01
+  domainRefs:
+  - kind: Domain
+    name: test-cap-01-primary
+  - kind: ClusterDomain
+    name: test-cap-01-secondary
+  globalAccountId: btp-glo-acc-id
+status:
+  state: "Processing"
+  domainSpecHash: '{"ClusterDomain.test-cap-01-secondary":"foo.bar.local","Domain.default.test-cap-01-primary":"app-domain.test.local"}'
+  observedSubdomains:
+  - api
+  - router
+  conditions:
+    - message: Waiting for all domain references to be created
+      reason: ProcessingDomainReferences
+      status: "False"
+      type: Ready

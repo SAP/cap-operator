@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -7,6 +7,7 @@ package controller
 
 import (
 	"context"
+	"os"
 	"testing"
 )
 
@@ -51,6 +52,10 @@ func TestTenantOperationInitializeStep(t *testing.T) {
 }
 
 func TestTenantOperationWithNoSteps(t *testing.T) {
+	// Env set for this test to enable coverage for detailed metrics --> this has no impact on tenant operation code/test as such.
+	detailedMetrics := "DETAILED_OPERATIONAL_METRICS"
+	defer os.Unsetenv(detailedMetrics)
+	os.Setenv(detailedMetrics, "true")
 	err := reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},

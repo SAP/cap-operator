@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -51,6 +51,7 @@ type tentantOperationWorkload struct {
 	tolerations               []corev1.Toleration
 	backoffLimit              *int32
 	ttlSecondsAfterFinished   *int32
+	restartPolicy             corev1.RestartPolicy
 }
 
 const (
@@ -76,7 +77,7 @@ const (
 	EventActionTrackJob  = "TrackJob"
 )
 
-func (c *Controller) reconcileCAPTenantOperation(ctx context.Context, item QueueItem, attempts int) (result *ReconcileResult, err error) {
+func (c *Controller) reconcileCAPTenantOperation(ctx context.Context, item QueueItem, _ int) (result *ReconcileResult, err error) {
 	// cached, err := c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Lister().CAPTenantOperations(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
 	cached, err := c.crdClient.SmeV1alpha1().CAPTenantOperations(item.ResourceKey.Namespace).Get(ctx, item.ResourceKey.Name, metav1.GetOptions{})
 
@@ -211,6 +212,8 @@ func (c *Controller) reconcileTenantOperationSteps(ctx context.Context, ctop *v1
 		if err != nil {
 			c.Event(ctop, nil, corev1.EventTypeWarning, CAPTenantOperationConditionReasonStepProcessingError, EventActionTrackJob, err.Error())
 		}
+		// Collect.. is called here to ensure that the metrics are collected just once for every "completion" of the tenant operation.
+		collectTenantOperationMetrics(ctop)
 	}()
 
 	if ctop.Status.CurrentStep == nil { // set initial step
@@ -482,7 +485,7 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 					Annotations: params.annotations,
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy:             corev1.RestartPolicyNever,
+					RestartPolicy:             getRestartPolicy(derivedWorkload.restartPolicy, true),
 					ImagePullSecrets:          params.imagePullSecrets,
 					Containers:                getContainers(ctop, derivedWorkload, workload, params),
 					InitContainers:            *updateInitContainers(derivedWorkload.initContainers, getCTOPEnv(params, ctop, v1alpha1.JobTenantOperation), params.vcapSecretName),
@@ -572,6 +575,7 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 		if workload.JobDefinition.TTLSecondsAfterFinished != nil {
 			result.ttlSecondsAfterFinished = workload.JobDefinition.TTLSecondsAfterFinished
 		}
+		result.restartPolicy = workload.JobDefinition.RestartPolicy
 		result.affinity = workload.JobDefinition.Affinity
 		result.nodeSelector = workload.JobDefinition.NodeSelector
 		result.nodeName = workload.JobDefinition.NodeName
@@ -601,7 +605,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 					Annotations: params.annotations,
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy:             corev1.RestartPolicyNever,
+					RestartPolicy:             getRestartPolicy(workload.JobDefinition.RestartPolicy, true),
 					SecurityContext:           workload.JobDefinition.PodSecurityContext,
 					Volumes:                   workload.JobDefinition.Volumes,
 					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,
@@ -694,4 +698,20 @@ func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation, step
 	}
 
 	return env
+}
+
+// Collect tenant operation metrics based on the status of the tenant operation
+func collectTenantOperationMetrics(ctop *v1alpha1.CAPTenantOperation) {
+	if isCROConditionReady(ctop.Status.GenericStatus) {
+		// Collect/Increment overall completed tenant operation metrics
+		TenantOperations.WithLabelValues(ctop.Labels[LabelBTPApplicationIdentifierHash], string(ctop.Spec.Operation)).Inc()
+
+		if ctop.Status.State == v1alpha1.CAPTenantOperationStateFailed {
+			// Collect/Increment failed tenant operation metrics with CRO details
+			TenantOperationFailures.WithLabelValues(ctop.Labels[LabelBTPApplicationIdentifierHash], string(ctop.Spec.Operation), ctop.Spec.TenantId, ctop.Namespace, ctop.Name).Inc()
+		}
+
+		// Collect tenant operation duration metrics based on creation time of the tenant operation and current time
+		LastTenantOperationDuration.WithLabelValues(ctop.Labels[LabelBTPApplicationIdentifierHash], ctop.Spec.TenantId).Set(time.Since(ctop.CreationTimestamp.Time).Seconds())
+	}
 }

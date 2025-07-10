@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -16,3 +16,7 @@ type CAPTenantExpansion interface{}
 type CAPTenantOperationExpansion interface{}
 
 type CAPTenantOutputExpansion interface{}
+
+type ClusterDomainExpansion interface{}
+
+type DomainExpansion interface{}

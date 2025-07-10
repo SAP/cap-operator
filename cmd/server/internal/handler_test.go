@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -46,19 +46,8 @@ const (
 	tenantId        = "012012012-1234-1234-123456"
 )
 
-func setup(ca *v1alpha1.CAPApplication, cat *v1alpha1.CAPTenant, ctout *v1alpha1.CAPTenantOutput, client *http.Client) *SubscriptionHandler {
-	crdObjects := []runtime.Object{}
-	if ca != nil {
-		crdObjects = append(crdObjects, ca)
-	}
-	if cat != nil {
-		crdObjects = append(crdObjects, cat)
-	}
-	if ctout != nil {
-		crdObjects = append(crdObjects, ctout)
-	}
-
-	subHandler := NewSubscriptionHandler(fake.NewSimpleClientset(crdObjects...), k8sfake.NewSimpleClientset(createSecrets()...))
+func setup(client *http.Client, objects ...runtime.Object) *SubscriptionHandler {
+	subHandler := NewSubscriptionHandler(fake.NewSimpleClientset(objects...), k8sfake.NewSimpleClientset(createSecrets()...))
 	if client != nil {
 		subHandler.httpClientGenerator = &httpTestClientGenerator{client: client}
 	}
@@ -133,7 +122,6 @@ func createCA() *v1alpha1.CAPApplication {
 			},
 		},
 		Spec: v1alpha1.CAPApplicationSpec{
-			Domains:         v1alpha1.ApplicationDomains{Primary: "app.sme.sap.com", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}},
 			GlobalAccountId: globalAccountId,
 			BTPAppName:      appName,
 			Provider: v1alpha1.BTPTenantIdentification{
@@ -217,6 +205,41 @@ func createCAT(ready bool) *v1alpha1.CAPTenant {
 	return cat
 }
 
+func createDomain() *v1alpha1.Domain {
+	return &v1alpha1.Domain{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "primary-domain",
+			Namespace: v1.NamespaceDefault,
+		},
+		Spec: v1alpha1.DomainSpec{
+			Domain: "auth.service.local",
+			IngressSelector: map[string]string{
+				"istio": "ingressgateway",
+				"app":   "istio-ingressgateway",
+			},
+			TLSMode:   v1alpha1.TlsModeSimple,
+			DNSTarget: "in.service.local",
+		},
+	}
+}
+
+func createClusterDomain() *v1alpha1.ClusterDomain {
+	return &v1alpha1.ClusterDomain{
+		ObjectMeta: v1.ObjectMeta{
+			Name: "external-domain",
+		},
+		Spec: v1alpha1.DomainSpec{
+			Domain: "external.service.sap",
+			IngressSelector: map[string]string{
+				"istio": "ingressgateway",
+				"app":   "istio-ingressgateway",
+			},
+			TLSMode:   v1alpha1.TlsModeSimple,
+			DNSTarget: "in.service.sap",
+		},
+	}
+}
+
 func TestMain(m *testing.M) {
 	m.Run()
 }
@@ -224,7 +247,7 @@ func TestMain(m *testing.M) {
 func Test_IncorrectMethod(t *testing.T) {
 	res := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPatch, RequestPath, strings.NewReader(`{"foo": "bar"}`))
-	subHandler := setup(nil, nil, nil, nil)
+	subHandler := setup(nil)
 	subHandler.HandleRequest(res, req)
 	if res.Code != http.StatusMethodNotAllowed {
 		t.Errorf("Expected status '%d', received '%d'", http.StatusMethodNotAllowed, res.Code)
@@ -257,6 +280,10 @@ func Test_provisioning(t *testing.T) {
 		existingTenantOutput  bool
 		expectedStatusCode    int
 		expectedResponse      Result
+		existingDomain        bool
+		existingClusterDomain bool
+		invalidDomain         bool
+		invalidClusterDomain  bool
 	}{
 		{
 			name:               "Invalid Provisioning Request",
@@ -287,11 +314,55 @@ func Test_provisioning(t *testing.T) {
 			},
 		},
 		{
-			name:               "Provisioning Request valid",
+			name:               "Provisioning Request valid (without domains)",
 			method:             http.MethodPut,
 			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:         true,
 			expectedStatusCode: http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceCreated,
+			},
+		},
+		{
+			name:               "Provisioning Request valid (invalid domain)",
+			method:             http.MethodPut,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			createCROs:         true,
+			invalidDomain:      true,
+			expectedStatusCode: http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceCreated,
+			},
+		},
+		{
+			name:                 "Provisioning Request valid (invalid clusterdomains)",
+			method:               http.MethodPut,
+			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			createCROs:           true,
+			invalidClusterDomain: true,
+			expectedStatusCode:   http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceCreated,
+			},
+		},
+		{
+			name:               "Provisioning Request valid (with domain)",
+			method:             http.MethodPut,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			createCROs:         true,
+			existingDomain:     true,
+			expectedStatusCode: http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceCreated,
+			},
+		},
+		{
+			name:                  "Provisioning Request valid (with Cluster domain)",
+			method:                http.MethodPut,
+			body:                  `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			createCROs:            true,
+			existingClusterDomain: true,
+			expectedStatusCode:    http.StatusAccepted,
 			expectedResponse: Result{
 				Message: ResourceCreated,
 			},
@@ -352,6 +423,12 @@ func Test_provisioning(t *testing.T) {
 			var ca *v1alpha1.CAPApplication
 			var cat *v1alpha1.CAPTenant
 			var ctout *v1alpha1.CAPTenantOutput
+			runtimeObjs := []runtime.Object{}
+			if testData.existingDomain {
+				runtimeObjs = append(runtimeObjs, createDomain())
+			} else if testData.existingClusterDomain {
+				runtimeObjs = append(runtimeObjs, createClusterDomain())
+			}
 			if testData.createCROs {
 				ca = createCA()
 				if testData.withAdditionalData {
@@ -361,18 +438,33 @@ func Test_provisioning(t *testing.T) {
 						ca.Annotations = map[string]string{AnnotationSaaSAdditionalOutput: "{foo\":\"bar\"}"} //invalid json
 					}
 				}
+				// Update the CA with the correct domainRefs if needed
+				if testData.existingDomain {
+					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "Domain", Name: "primary-domain"}}
+				} else if testData.existingClusterDomain {
+					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "ClusterDomain", Name: "external-domain"}}
+				} else if testData.invalidDomain {
+					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "Domain", Name: "foo"}}
+				} else if testData.invalidClusterDomain {
+					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "ClusterDomain", Name: "foo"}}
+				}
+				runtimeObjs = append(runtimeObjs, ca)
 			}
 			if testData.existingTenant {
 				cat = createCAT(testData.withAdditionalData)
+				runtimeObjs = append(runtimeObjs, cat)
 			}
 			if testData.existingTenantOutput {
 				ctout = &v1alpha1.CAPTenantOutput{ObjectMeta: v1.ObjectMeta{Name: caName + "-provider", Namespace: v1.NamespaceDefault, Labels: map[string]string{LabelTenantId: tenantId}}, Spec: v1alpha1.CAPTenantOutputSpec{SubscriptionCallbackData: "{\"foo3\":\"bar3\"}"}}
+				runtimeObjs = append(runtimeObjs, ctout)
 			}
+
 			client, tokenString, err := SetupValidTokenAndIssuerForSubscriptionTests("appname!b14")
 			if err != nil {
 				t.Fatal(err.Error())
 			}
-			subHandler := setup(ca, cat, ctout, client)
+
+			subHandler := setup(client, runtimeObjs...)
 
 			res := httptest.NewRecorder()
 			req := httptest.NewRequest(testData.method, RequestPath, strings.NewReader(testData.body))
@@ -455,11 +547,14 @@ func Test_deprovisioning(t *testing.T) {
 		t.Run(testData.name, func(t *testing.T) {
 			var ca *v1alpha1.CAPApplication
 			var cat *v1alpha1.CAPTenant
+			runtimeObjs := []runtime.Object{}
 			if testData.createCROs {
 				ca = createCA()
+				runtimeObjs = append(runtimeObjs, ca)
 			}
 			if testData.existingTenant {
 				cat = createCAT(false)
+				runtimeObjs = append(runtimeObjs, cat)
 			}
 
 			// set custom client for testing
@@ -467,7 +562,7 @@ func Test_deprovisioning(t *testing.T) {
 			if err != nil {
 				t.Fatal(err.Error())
 			}
-			subHandler := setup(ca, cat, nil, client)
+			subHandler := setup(client, runtimeObjs...)
 
 			res := httptest.NewRecorder()
 			req := httptest.NewRequest(testData.method, RequestPath, strings.NewReader(testData.body))
@@ -635,7 +730,7 @@ func TestAsyncCallback(t *testing.T) {
 		saasData.CredentialType = p.useCredentialType
 		t.Run(p.testName, func(t *testing.T) {
 			client := createCallbackTestServer(context.TODO(), t, &p)
-			subHandler := setup(nil, nil, nil, client)
+			subHandler := setup(client)
 			subHandler.handleAsyncCallback(
 				ctx,
 				saasData,
@@ -652,7 +747,7 @@ func TestAsyncCallback(t *testing.T) {
 func TestCheckTenantStatusContextCancellationAsyncTimeout(t *testing.T) {
 	execTestsWithBLI(t, "Check Tenant Status Context Cancellation AsyncTimeout", []string{"ERP4SMEPREPWORKAPPPLAT-2240"}, func(t *testing.T) {
 		// test context cancellation (like deadline)
-		subHandler := setup(nil, nil, nil, nil)
+		subHandler := setup(nil)
 		notify := make(chan bool)
 		go func() {
 			r := subHandler.checkCAPTenantStatus(context.Background(), "default", "test-cat", true, "4000")
@@ -675,7 +770,7 @@ func TestCheckTenantStatusContextCancellationAsyncTimeout(t *testing.T) {
 func TestCheckTenantStatusTenantReady(t *testing.T) {
 	// test context cancellation (like deadline)
 	cat := createCAT(true)
-	subHandler := setup(nil, cat, nil, nil)
+	subHandler := setup(nil, cat)
 	r := subHandler.checkCAPTenantStatus(context.TODO(), cat.Namespace, cat.Name, true, "")
 
 	if r != true {
@@ -687,7 +782,7 @@ func TestCheckTenantStatusWithCallbacktimeout(t *testing.T) {
 	execTestsWithBLI(t, "Check Tenant Status With Callback timeout", []string{"ERP4SMEPREPWORKAPPPLAT-2240"}, func(t *testing.T) {
 		// test context cancellation (like deadline)
 		cat := createCAT(false)
-		subHandler := setup(nil, cat, nil, nil)
+		subHandler := setup(nil, cat)
 		r := subHandler.checkCAPTenantStatus(context.TODO(), cat.Namespace, cat.Name, true, "4000")
 
 		if r != false {
@@ -701,7 +796,7 @@ func TestMultiXSUAA(t *testing.T) {
 		// CA without "sme.sap.com/primary-xsuaa" annotation
 		ca := createCA()
 
-		subHandler := setup(ca, nil, nil, nil)
+		subHandler := setup(nil, ca)
 		uaaCreds := subHandler.getXSUAADetails(ca, "Test")
 
 		if uaaCreds.AuthUrl != "https://app-domain.auth.service.local" {

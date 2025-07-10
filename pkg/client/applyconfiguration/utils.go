@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -57,12 +57,22 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.CAPTenantSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantStatus"):
 		return &smesapcomv1alpha1.CAPTenantStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterDomain"):
+		return &smesapcomv1alpha1.ClusterDomainApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CommonDetails"):
 		return &smesapcomv1alpha1.CommonDetailsApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DeletionRules"):
 		return &smesapcomv1alpha1.DeletionRulesApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DeploymentDetails"):
 		return &smesapcomv1alpha1.DeploymentDetailsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Domain"):
+		return &smesapcomv1alpha1.DomainApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainRef"):
+		return &smesapcomv1alpha1.DomainRefApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainSpec"):
+		return &smesapcomv1alpha1.DomainSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainStatus"):
+		return &smesapcomv1alpha1.DomainStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("GenericStatus"):
 		return &smesapcomv1alpha1.GenericStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("JobDetails"):
@@ -75,6 +85,10 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.NameValueApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Ports"):
 		return &smesapcomv1alpha1.PortsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Route"):
+		return &smesapcomv1alpha1.RouteApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ServiceExposure"):
+		return &smesapcomv1alpha1.ServiceExposureApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ServiceInfo"):
 		return &smesapcomv1alpha1.ServiceInfoApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("TenantOperations"):

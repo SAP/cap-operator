@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -60,7 +60,6 @@ func TestInvalidVersion(t *testing.T) {
 		TestData{
 			description: "new captenant with invalid version",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/captenant/cat-14.initial.yaml",
 			},
@@ -80,32 +79,12 @@ func TestCAPTenantStartProvisioning(t *testing.T) {
 		TestData{
 			description: "new captenant start provisioning (with secondary domains)",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/captenant/cat-03.initial.yaml",
 			},
 			expectedResources: "testdata/captenant/cat-03.expected.yaml",
 			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPTenant: {{Namespace: "default", Name: "test-cap-01-consumer"}}},
-		},
-	)
-}
-
-func TestCAPTenantProvisioningCompletedDNSEntriesNotReady(t *testing.T) {
-	reconcileTestItem(
-		context.TODO(), t,
-		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
-		TestData{
-			description: "captenant provisioning operation completed dns entries not ready",
-			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
-				"testdata/common/capapplication.yaml",
-				"testdata/common/capapplicationversion-v1.yaml",
-				"testdata/captenant/provider-tenant-dnsentry-not-ready.yaml",
-				"testdata/captenant/cat-04.initial.yaml",
-			},
-			expectedResources: "testdata/captenant/cat-04.initial.yaml", // expect the same resource state
-			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPTenant: {{Namespace: "default", Name: "test-cap-01-provider"}}},
 		},
 	)
 }
@@ -117,11 +96,10 @@ func TestCAPTenantProvisioningCompleted(t *testing.T) {
 		TestData{
 			description: "captenant provisioning operation completed (creates virtual service and destination rule)",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
 				"testdata/common/capapplication.yaml",
-				"testdata/common/operator-gateway.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
-				"testdata/captenant/provider-tenant-dnsentry.yaml",
 				"testdata/captenant/cat-04.initial.yaml",
 			},
 			expectedResources: "testdata/captenant/cat-04.expected.yaml",
@@ -137,19 +115,18 @@ func TestCAPTenantProvisioningCompletedDestinationRuleModificationFailure(t *tes
 		TestData{
 			description: "captenant provisioning operation completed (destination rule creation fails)",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
 				"testdata/common/capapplication.yaml",
-				"testdata/common/operator-gateway.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
-				"testdata/captenant/provider-tenant-dnsentry.yaml",
 				"testdata/captenant/cat-04.initial.yaml",
 			},
 			expectError:           true,
-			mockErrorForResources: []ResourceAction{{Verb: "create", Group: "networking.istio.io", Version: "v1beta1", Resource: "destinationrules", Namespace: "default", Name: "test-cap-01-provider"}},
+			mockErrorForResources: []ResourceAction{{Verb: "create", Group: "networking.istio.io", Version: "v1", Resource: "destinationrules", Namespace: "default", Name: "test-cap-01-provider"}},
 			backlogItems:          []string{"ERP4SMEPREPWORKAPPPLAT-2811"},
 		},
 	)
-	if err.Error() != "mocked api error (destinationrules.networking.istio.io/v1beta1)" {
+	if err.Error() != "mocked api error (destinationrules.networking.istio.io/v1)" {
 		t.Error("error message is different from expected")
 	}
 }
@@ -161,7 +138,8 @@ func TestCAPTenantProvisioningFailed(t *testing.T) {
 		TestData{
 			description: "captenant provisioning operation failed",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/captenant/cat-05.initial.yaml",
@@ -178,7 +156,6 @@ func TestCAPTenantProvisioningRequestFailedWithInvalidEnv(t *testing.T) {
 		TestData{
 			description: "captenant provisioning operation failed due to invalid env (status reason)",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-invalid-env.yaml",
 				"testdata/captenant/cat-26.initial.yaml",
@@ -195,7 +172,6 @@ func TestCAPTenantProvisioningRequestDeleted(t *testing.T) {
 		TestData{
 			description: "captenant provisioning operation deleted while tenant is provisioning",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/captenant/cat-20.initial.yaml",
@@ -213,7 +189,6 @@ func TestCAPTenantWaitingForProvisioning(t *testing.T) {
 		TestData{
 			description: "captenant waiting for provisioning operation",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/captenant/cat-06.initial.yaml",
@@ -231,7 +206,6 @@ func TestCAPTenantStartUpgradeWithStrategyAlways(t *testing.T) {
 		TestData{
 			description: "captenant start upgrade from ready state with strategy always",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2.yaml",
@@ -250,8 +224,8 @@ func TestCAPTenantStartUpgradeWithStrategyNever(t *testing.T) {
 		TestData{
 			description: "captenant start upgrade from ready state with strategy never ",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
-				"testdata/common/operator-gateway.yaml",
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2.yaml",
@@ -271,7 +245,6 @@ func TestCAPTenantDeprovisioningFromReady(t *testing.T) {
 		TestData{
 			description: "captenant deprovisioning from ready",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2.yaml",
@@ -290,7 +263,6 @@ func TestCAPTenantDeprovisioningCompleted(t *testing.T) {
 		TestData{
 			description: "captenant deprovisioning completed",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/captenant/cat-10.initial.yaml",
@@ -307,7 +279,6 @@ func TestCAPTenantDeprovisioningFromProvisioningError(t *testing.T) {
 		TestData{
 			description: "captenant deprovisioning from provisioning error",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/captenant/cat-11.initial.yaml",
@@ -324,12 +295,11 @@ func TestCAPTenantUpgradeOperationCompleted(t *testing.T) {
 		TestData{
 			description: "captenant upgrade operation completed expecting virtual service, destination rule adjustments",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
 				"testdata/common/capapplication.yaml",
-				"testdata/common/operator-gateway.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2.yaml",
-				"testdata/captenant/provider-tenant-dnsentry.yaml",
 				"testdata/captenant/provider-tenant-vs-v1.yaml",
 				"testdata/captenant/provider-tenant-dr-v1.yaml",
 				"testdata/captenant/cat-13.initial.yaml",
@@ -349,12 +319,11 @@ func TestCAPTenantUpgradeOperationCompletedPreviousVersionsLimited(t *testing.T)
 		TestData{
 			description: "captenant upgrade operation completed expecting limited previous versions in status to be adjusted",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
 				"testdata/common/capapplication.yaml",
-				"testdata/common/operator-gateway.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2.yaml",
-				"testdata/captenant/provider-tenant-dnsentry.yaml",
 				"testdata/captenant/provider-tenant-vs-v1.yaml",
 				"testdata/captenant/provider-tenant-dr-v1.yaml",
 				"testdata/captenant/cat-29.initial.yaml",
@@ -372,11 +341,11 @@ func TestCAPTenantUpgradeRequestCompletedIncorrectVirtualServiceOwner(t *testing
 		TestData{
 			description: "captenant upgrade operation completed, existing virtual service owner wrong",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2.yaml",
-				"testdata/captenant/provider-tenant-dnsentry.yaml",
 				"testdata/captenant/cat-22.initial.yaml",
 			},
 			expectError: true,
@@ -394,12 +363,11 @@ func TestCAPTenantUpgradeRequestCompletedWithDeletionTriggered(t *testing.T) {
 		TestData{
 			description: "captenant upgrade operation completed and deletion timestamp set",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
 				"testdata/common/capapplication.yaml",
-				"testdata/common/operator-gateway.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2.yaml",
-				"testdata/captenant/provider-tenant-dnsentry.yaml",
 				"testdata/captenant/cat-21.initial.yaml",
 			},
 			expectedResources: "testdata/captenant/cat-21.expected.yaml",
@@ -415,78 +383,15 @@ func TestCAPTenantSubdomainChange(t *testing.T) {
 		TestData{
 			description: "update captenant subdomain (no existing destination rule)",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
 				"testdata/common/capapplication.yaml",
-				"testdata/common/operator-gateway.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2.yaml",
-				"testdata/captenant/changed-provider-tenant-dnsentry.yaml",
 				"testdata/captenant/cat-15.initial.yaml",
 			},
 			expectedResources: "testdata/captenant/cat-15.expected.yaml",
 			backlogItems:      []string{"ERP4SMEPREPWORKAPPPLAT-2811"},
-		},
-	)
-}
-
-func TestAdjustVirtualServiceWithoutOperatorGateway(t *testing.T) {
-	reconcileTestItem(
-		context.TODO(), t,
-		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
-		TestData{
-			description: "reconcile virtual service (subdomain change) when operator gateway is not ready",
-			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
-				"testdata/common/capapplication.yaml",
-				"testdata/common/capapplicationversion-v1.yaml",
-				"testdata/common/capapplicationversion-v2.yaml",
-				"testdata/captenant/changed-provider-tenant-dnsentry.yaml",
-				"testdata/captenant/cat-15.initial.yaml",
-			},
-			expectedResources: "testdata/captenant/cat-16.expected.yaml",
-			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPTenant: {{Namespace: "default", Name: "test-cap-01-provider"}}},
-		},
-	)
-}
-
-func TestCAPTenantDNSEntryModified(t *testing.T) {
-	reconcileTestItem(
-		context.TODO(), t,
-		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
-		TestData{
-			description: "reconcile DNS Entry (subdomain change) update from existing DNSEntry",
-			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
-				"testdata/common/operator-gateway.yaml",
-				"testdata/common/capapplication.yaml",
-				"testdata/common/capapplicationversion-v1.yaml",
-				"testdata/common/capapplicationversion-v2.yaml",
-				"testdata/captenant/to-be-updated-provider-tenant-dnsentry.yaml",
-				"testdata/captenant/cat-17.initial.yaml",
-			},
-			expectedResources: "testdata/captenant/cat-17.expected.yaml",
-			// DeleteCollection does not work for fake test client - the common_test framework currently mocks it by matching (only) labels
-			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-1817", "ERP4SMEPREPWORKAPPPLAT-2707", "ERP4SMEPREPWORKAPPPLAT-2811"},
-		},
-	)
-}
-
-func TestCAPTenantDNSEntryDeletedInCluster(t *testing.T) {
-	reconcileTestItem(
-		context.TODO(), t,
-		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
-		TestData{
-			description: "reconcile DNS Entry (subdomain change) when existing DNSEntry was deleted in cluster",
-			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
-				"testdata/common/operator-gateway.yaml",
-				"testdata/common/capapplication.yaml",
-				"testdata/common/capapplicationversion-v1.yaml",
-				"testdata/common/capapplicationversion-v2.yaml",
-				"testdata/captenant/cat-15.initial.yaml",
-			},
-			expectedResources: "testdata/captenant/cat-17.expected.yaml",
-			backlogItems:      []string{"ERP4SMEPREPWORKAPPPLAT-1817", "ERP4SMEPREPWORKAPPPLAT-2707"},
 		},
 	)
 }
@@ -498,8 +403,8 @@ func TestCAPTenantWithUpgradeErrorSameVersion(t *testing.T) {
 		TestData{
 			description: "tenant in UpgradeError state, no spec update, failed mtxrequest exists - expect no new mtxrequest",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
-				"testdata/common/operator-gateway.yaml",
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2.yaml",
@@ -520,7 +425,6 @@ func TestCAPTenantWithUpgradeErrorUpdatedVersion(t *testing.T) {
 		TestData{
 			description: "tenant in UpgradeError state, spec version incremented, failed mtxrequest exists - expect new mtxrequest to be created",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2.yaml",
@@ -543,7 +447,6 @@ func TestCAPTenantWithUpgradeErrorSameVersionMTXRequestRemoved(t *testing.T) {
 		TestData{
 			description: "tenant in UpgradeError state, no spec update, failed mtxrequest removed - expect new mtxrequest",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2.yaml",
@@ -564,7 +467,6 @@ func TestCAPTenantUpgradeWithoutTenantOperationWorkloadInVersion(t *testing.T) {
 			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-2136"},
 			description:  "captenant start upgrade deriving TenantOperation workload from CAP workload",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2-no-mtx-workload.yaml",
@@ -584,7 +486,6 @@ func TestCAPTenantStartProvisioningWithMultipleOperationSteps(t *testing.T) {
 			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-2136"},
 			description:  "captenant start provisioning with version containing multiple operation steps",
 			initialResources: []string{
-				"testdata/common/istio-ingress.yaml",
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v2-multiple-tenant-ops.yaml",
 				"testdata/captenant/cat-28.initial.yaml",
@@ -593,4 +494,67 @@ func TestCAPTenantStartProvisioningWithMultipleOperationSteps(t *testing.T) {
 			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPTenant: {{Namespace: "default", Name: "test-cap-01-consumer"}}},
 		},
 	)
+}
+
+func TestCAPTenantVSHeaders(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "update captenant VS with headers",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/capapplication-vs-headers.yaml",
+				"testdata/common/capapplicationversion-v1.yaml",
+				"testdata/common/capapplicationversion-v2.yaml",
+				"testdata/captenant/cat-30.initial.yaml",
+			},
+			expectedResources: "testdata/captenant/cat-30.expected.yaml",
+		},
+	)
+}
+
+func TestCAPTenantVSHeadersErrorReq(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "update captenant VS with headers",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/capapplication-vs-headers-error-req.yaml",
+				"testdata/common/capapplicationversion-v1.yaml",
+				"testdata/common/capapplicationversion-v2.yaml",
+				"testdata/captenant/cat-30.initial.yaml",
+			},
+			expectError: true,
+		},
+	)
+	if err.Error() != `error getting headers via CA annotations for VirtualService default.test-cap-01-provider, error: invalid character '"' after object key:value pair` {
+		t.Error("error message is different from expected, actual:", err.Error())
+	}
+}
+
+func TestCAPTenantVSHeadersErrorRes(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "update captenant VS with headers",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/capapplication-vs-headers-error-res.yaml",
+				"testdata/common/capapplicationversion-v1.yaml",
+				"testdata/common/capapplicationversion-v2.yaml",
+				"testdata/captenant/cat-30.initial.yaml",
+			},
+			expectError: true,
+		},
+	)
+	if err.Error() != `error getting headers via CA annotations for VirtualService default.test-cap-01-provider, error: invalid character 'b' after object key` {
+		t.Error("error message is different from expected, actual:", err.Error())
+	}
 }

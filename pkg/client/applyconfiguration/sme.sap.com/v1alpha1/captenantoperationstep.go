@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,15 +8,15 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 )
 
 // CAPTenantOperationStepApplyConfiguration represents a declarative configuration of the CAPTenantOperationStep type for use
 // with apply.
 type CAPTenantOperationStepApplyConfiguration struct {
-	Name              *string           `json:"name,omitempty"`
-	Type              *v1alpha1.JobType `json:"type,omitempty"`
-	ContinueOnFailure *bool             `json:"continueOnFailure,omitempty"`
+	Name              *string                    `json:"name,omitempty"`
+	Type              *smesapcomv1alpha1.JobType `json:"type,omitempty"`
+	ContinueOnFailure *bool                      `json:"continueOnFailure,omitempty"`
 }
 
 // CAPTenantOperationStepApplyConfiguration constructs a declarative configuration of the CAPTenantOperationStep type for use with
@@ -36,7 +36,7 @@ func (b *CAPTenantOperationStepApplyConfiguration) WithName(value string) *CAPTe
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.
-func (b *CAPTenantOperationStepApplyConfiguration) WithType(value v1alpha1.JobType) *CAPTenantOperationStepApplyConfiguration {
+func (b *CAPTenantOperationStepApplyConfiguration) WithType(value smesapcomv1alpha1.JobType) *CAPTenantOperationStepApplyConfiguration {
 	b.Type = &value
 	return b
 }

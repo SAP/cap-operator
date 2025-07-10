@@ -1,0 +1,89 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: Domain
+metadata:
+  name: test-cap-01-primary
+  namespace: default
+  finalizers:
+  - sme.sap.com/domain
+  labels:
+    sme.sap.com/domain-host-hash: d8b11ae7b1f04e357f32290b81db58c247dac748
+spec:
+  dnsMode: Subdomain
+  domain: app-domain.test.local
+  ingressSelector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  tlsMode: Simple
+status:
+  conditions:
+  - message: Processing domain resources
+    reason: Processing
+    status: "False"
+    type: Ready
+  state: Processing
+  dnsTarget: public-ingress.operator.testing.local
+  observedDomain: app-domain.test.local
+  gatewayName: test-cap-01-primary-gen
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+    dns.gardener.cloud/class: garden
+    sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
+    sme.sap.com/resource-hash: 4771a56b83e1d5c230c81d27a14bfd408f82c5c1daa02271c61c2058047aab9f
+  generateName: test-cap-01-primary-
+  labels:
+    sme.sap.com/btp-app-identifier-hash: "f20cc8aeb2003b3abc33f749a16bd53544b6bab2"
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
+    sme.sap.com/subdomain-hash: a033a528b603fed46f861d4b3542c417b99d41c8
+  name: test-cap-01-primary-gen
+  namespace: default
+  ownerReferences:
+  - apiVersion: sme.sap.com/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Domain
+    name: test-cap-01-primary
+spec:
+  dnsName: 'api.app-domain.test.local'
+  targets:
+  - public-ingress.operator.testing.local
+  ttl: 600
+  cnameLookupInterval: 30
+status:
+  state: ""
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  annotations:
+    sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
+    sme.sap.com/resource-hash: 5b5634ce9ed5d6e0944ab5fa99a8ce5449376977093569bfbf38228f9da48615
+  generateName: test-cap-01-primary-
+  labels:
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
+  name: test-cap-01-primary-gen
+  namespace: default
+  ownerReferences:
+  - apiVersion: sme.sap.com/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Domain
+    name: test-cap-01-primary
+spec:
+  ingress:
+  - from:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          app: istio-ingressgateway
+          istio: ingressgateway
+  podSelector:
+    matchLabels:
+      sme.sap.com/category: Workload
+      sme.sap.com/exposed-workload: "true"
+  policyTypes:
+  - Ingress

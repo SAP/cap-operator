@@ -1,13 +1,14 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
 package util
 
 import (
+	"slices"
+
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	"golang.org/x/exp/slices"
 )
 
 const (

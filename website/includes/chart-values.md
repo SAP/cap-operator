@@ -13,6 +13,11 @@
 | topologySpreadConstraints | list | `[]` | Default topology spread constraints (can be overwritten on component level) |
 | podLabels | object | `{}` | Additional pod labels for all components |
 | podAnnotations | object | `{}` | Additional pod annotations for all components |
+| monitoring | object | `{"enabled":false,"grafana":{"dashboard":{"configMapLabels":{"grafana_dashboard":"1"}}},"serviceMonitorSelectorLabels":{}}` | Monitoring configuration for all components |
+| monitoring.enabled | bool | `false` | Optionally enable Prometheus monitoring for all components (disabled by default) |
+| monitoring.serviceMonitorSelectorLabels | object | `{}` | Prometheus service monitor selector labels |
+| monitoring.grafana | object | `{"dashboard":{"configMapLabels":{"grafana_dashboard":"1"}}}` | Grafana configuration |
+| monitoring.grafana.dashboard.configMapLabels | object | `{"grafana_dashboard":"1"}` | Labels for selecting ConfigMaps with dashboards in Grafana |
 | controller.replicas | int | `1` | Replicas |
 | controller.image.repository | string | `"ghcr.io/sap/cap-operator/controller"` | Image repository |
 | controller.image.tag | string | `""` | Image tag |
@@ -34,7 +39,8 @@
 | controller.volumes | list | `[]` | Optionally specify list of additional volumes for the controller pod(s) |
 | controller.volumeMounts | list | `[]` | Optionally specify list of additional volumeMounts for the controller container(s) |
 | controller.dnsTarget | string | `""` | The dns target mentioned on the public ingress gateway service used in the cluster |
-| controller.versionMonitoring.prometheusAddress | string | `""` | The URL of the Prometheus server from which metrics related to managed application versions can be queried  |
+| controller.detailedOperationalMetrics | bool | `false` | Optionally enable detailed opertational metrics for the controller by setting this to true |
+| controller.versionMonitoring.prometheusAddress | string | `""` | The URL of the Prometheus server from which metrics related to managed application versions can be queried |
 | controller.versionMonitoring.metricsEvaluationInterval | string | `"1h"` | The duration (example 2h) after which versions are evaluated for deletion; based on specified workload metrics |
 | controller.versionMonitoring.promClientAcquireRetryDelay | string | `"1h"` | The duration (example 10m) to wait before retrying to acquire Prometheus client and verify connection, after a failed attempt |
 | subscriptionServer.replicas | int | `1` | Replicas |
@@ -62,6 +68,15 @@
 | subscriptionServer.ingressGatewayLabels | object | `{"app":"istio-ingressgateway","istio":"ingressgateway"}` | Labels used to identify the istio ingress-gateway component |
 | subscriptionServer.dnsTarget | string | `"public-ingress.clusters.cs.services.sap"` | The dns target mentioned on the public ingress gateway service used in the cluster |
 | subscriptionServer.domain | string | `"cap-operator.clusters.cs.services.sap"` | The domain under which the cap operator subscription server would be available |
+| subscriptionServer.certificateManager | string | `"Gardener"` | Certificate manager which can be either `Gardener` or `CertManager` |
+| subscriptionServer.certificateConfig | object | `{"certManager":{"issuerGroup":"","issuerKind":"","issuerName":""},"gardener":{"issuerName":"","issuerNamespace":""}}` | Certificate configuration |
+| subscriptionServer.certificateConfig.gardener | object | `{"issuerName":"","issuerNamespace":""}` | Optionally specify the corresponding certificate configuration |
+| subscriptionServer.certificateConfig.gardener.issuerName | string | `""` | Issuer name |
+| subscriptionServer.certificateConfig.gardener.issuerNamespace | string | `""` | Issuer namespace |
+| subscriptionServer.certificateConfig.certManager | object | `{"issuerGroup":"","issuerKind":"","issuerName":""}` | Cert Manager configuration |
+| subscriptionServer.certificateConfig.certManager.issuerGroup | string | `""` | Issuer group |
+| subscriptionServer.certificateConfig.certManager.issuerKind | string | `""` | Issuer kind |
+| subscriptionServer.certificateConfig.certManager.issuerName | string | `""` | Issuer name |
 | webhook.sidecar | bool | `false` | Side car to mount admission review |
 | webhook.replicas | int | `1` | Replicas |
 | webhook.image.repository | string | `"ghcr.io/sap/cap-operator/web-hooks"` | Image repository |
@@ -85,3 +100,8 @@
 | webhook.service.type | string | `"ClusterIP"` | Service type |
 | webhook.service.port | int | `443` | Service port |
 | webhook.service.targetPort | int | `1443` | Target port |
+| webhook.certificateManager | string | `"Default"` | Certificate manager which can be either `Default` or `CertManager` |
+| webhook.certificateConfig | object | `{"certManager":{"issuerGroup":"","issuerKind":"","issuerName":""}}` | Optionally specify the corresponding certificate configuration |
+| webhook.certificateConfig.certManager.issuerGroup | string | `""` | Issuer group |
+| webhook.certificateConfig.certManager.issuerKind | string | `""` | Issuer kind |
+| webhook.certificateConfig.certManager.issuerName | string | `""` | Issuer name |

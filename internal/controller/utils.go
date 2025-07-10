@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -9,13 +9,15 @@ import (
 	"context"
 	"crypto/sha1"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	"golang.org/x/exp/slices"
+	networkingv1 "istio.io/api/networking/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog/v2"
@@ -103,9 +105,7 @@ func isCROConditionReady(status v1alpha1.GenericStatus) bool {
 }
 
 func addFinalizer(finalizers *[]string, finalizerType string) bool {
-	finalizerExists := slices.ContainsFunc(*finalizers, func(f string) bool {
-		return f == finalizerType
-	})
+	finalizerExists := slices.Contains(*finalizers, finalizerType)
 
 	if !finalizerExists {
 		*finalizers = append(*finalizers, finalizerType)
@@ -188,6 +188,17 @@ func sha1Sum(source ...string) string {
 	return fmt.Sprintf("%x", sum)
 }
 
+func serializeAndHash[T any](o T) (string, error) {
+	// Serialize the object to JSON
+	data, err := json.Marshal(o)
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize object: %w", err)
+	}
+
+	// Return the hash as a hex string
+	return sha256Sum(string(data)), nil
+}
+
 func amendObjectMetadata(object *metav1.ObjectMeta, annotation string, hashLabel string, annotationValue string, hashedValue string) (updated bool) {
 	// Add hashed label with the hashed identifier value
 	if _, ok := object.Labels[hashLabel]; !ok {
@@ -227,6 +238,15 @@ func updateLabelAnnotationMetadata(object *metav1.ObjectMeta, appMetadata *appMe
 	}
 
 	return updated
+}
+
+func convertTlsMode(m v1alpha1.TLSMode) networkingv1.ServerTLSSettings_TLSmode {
+	switch m {
+	case v1alpha1.TlsModeMutual:
+		return networkingv1.ServerTLSSettings_MUTUAL
+	default:
+		return networkingv1.ServerTLSSettings_SIMPLE
+	}
 }
 
 func (c *Controller) setCAStatusError(ctx context.Context, itemKey NamespacedResourceKey, err error) {

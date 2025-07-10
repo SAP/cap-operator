@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -21,7 +21,11 @@ import (
 func main() {
 	klog.SetLogger(util.GetLogger())
 	subHandler := getSubscriptionHandler()
-	http.HandleFunc("/provision/", subHandler.HandleRequest)
+
+	http.HandleFunc("/provision/", util.InstrumentHttpHandler(subHandler.HandleRequest, "cap_op_subscription_requests", "subscription-server requests."))
+
+	// Initialize/start metrics server
+	util.InitMetricsServer()
 
 	// Default port
 	port := "4000"

@@ -7,9 +7,54 @@ description: >
   How to deploy a new CAP-based application
 ---
 
-Just by defining two resources provided by CAP Operator, namely `capapplications.sme.sap.com` and `capapplicationversions.sme.sap.com`, it's possible to deploy a multi-tenant CAP application and start using it. These resources are _namespaced_ and so the CAP Operator will create all related resources (deployments, gateways, jobs etc.) within the same namespace.
+Deploying a multi-tenant CAP application involves defining several key resources provided by the CAP Operator. These resources help manage the application's runtime components and external traffic routing.
 
-The object, `CAPApplication`, describes the high-level attributes of an application such as the SAP BTP account where it is hosted, the consumed SAP BTP services, domains where the application routes will be made available etc. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplication).
+## Key Resources
+
+1. **CAPApplication** (`capapplications.sme.sap.com`): This resource is namespaced, meaning it is confined to a specific namespace within your cluster. It represents the application itself.
+
+2. **CAPApplicationVersion** (`capapplicationversions.sme.sap.com`): Also namespaced, this resource specifies the version of the application you are deploying. It ensures that all runtime components like deployments, services, and jobs are created with the specified image version in the same namespace.
+
+3. **Domain Resources**: These resources determine how external traffic reaches your application and how DNS and TLS settings are applied. You can choose between:
+   - **Domain** (`domains.sme.sap.com`): A namespaced resource intended for a single application, typically for internal domain use within your application or cluster.
+   - **ClusterDomain** (`clusterdomains.sme.sap.com`): A cluster-scoped resource that can be used across multiple applications within the cluster.
+
+## Deployment Process
+
+To deploy your application, ensure that the `CAPApplication` and `CAPApplicationVersion` resources are created within the same namespace. This allows the CAP Operator to manage all associated application runtime components. For external traffic management, define either a `Domain` or `ClusterDomain` resource based on your application's needs.
+
+```yaml
+apiVersion: sme.sap.com/v1alpha1
+kind: Domain
+metadata:
+  namespace: cap-app-01
+  name: cap-app-01-primary
+spec:
+  domain: my.cluster.shoot.url.k8s.example.com
+  ingressSelector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  tlsMode: Simple
+  dnsMode: Wildcard
+```
+
+The `ClusterDomain` resource is not namespaced and is suited for global or shared domain configurations. For example, multiple applications can share the same external domain. If needed, either create a new one or reuse an existing one in the cluster. See [API Reference](../../reference/#sme.sap.com/v1alpha1.ClusterDomain).
+
+```yaml
+apiVersion: sme.sap.com/v1alpha1
+kind: ClusterDomain
+metadata:
+  name: common-external-domain
+spec:
+  domain: my.example.com
+  ingressSelector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  tlsMode: Simple
+  dnsMode: Subdomain
+```
+
+The `CAPApplication` resource describes the high-level attributes of an application such as the SAP BTP account where it is hosted, the consumed SAP BTP services, list of `Domain` and `ClusterDomain` resources etc. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplication).
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -42,22 +87,18 @@ spec:
       - class: portal
         name: app-portal
         secret: cap-app-01-portal-bind-cf
-  domains:
-    istioIngressGatewayLabels: # <-- labels used to identify the Istio ingress gateway (the values provided here are the default values)
-      - name: app
-        value: istio-ingressgateway
-      - name: istio
-        value: ingressgateway
-    primary: "cap-app-01.cluster.shoot.url.k8s.example.com" # <-- primary domain where the application is exposed. Each tenant will have access to a subdomain of this domain. Ensure that this is at most 62 chars long.
-    secondary:
-      - "alt.shoot.example.com"
+  domainRefs:
+  - kind: Domain
+    name: cap-app-01-primary # <-- reference to Domain resource in the same namespace
+  - kind: ClusterDomain
+    name: common-external-domain # <-- reference to ClusterDomain resource in the cluster (either new or existing)
   globalAccountId: global-account-id
   provider:
     subDomain: cap-app-01-provider
     tenantId: e55d7b5-279-48be-a7b0-aa2bae55d7b5
 ```
 
-The object, `CAPApplicationVersion`, describes the different components of an application version including the container images to be used and the services consumed by each component. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
+The `CAPApplicationVersion` describes the different components of an application version including the container images to be used and the services consumed by each component. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
 
 The `CAPApplicationVersion` must be created in the same namespace as the `CAPApplication` and refers to it.
 
@@ -84,8 +125,8 @@ spec:
         env:
           - name: CDS_ENV
             value: production
-          - name: CDS_MTX_PROVISIONING_CONTAINER
-            value: '{"provisioning_parameters": { "database_id": "16e25c51-5455-4b17-a4d7-43545345345"}}'
+          - name: CDS_CONFIG
+            value: '{ "requires":{"cds.xt.DeploymentService":{"hdi": { "create":{ "database_id": "16e25c51-5455-4b17-a4d7-43545345345" } } } } }'
     - name: app-router
       consumedBTPServices:
         - app-uaa
@@ -100,7 +141,7 @@ spec:
           - name: PORT
             value: 4000
           - name: TENANT_HOST_PATTERN
-            value: "^(.*).(cap-app-01.cluster.shoot.canary.k8s-hana.ondemand.co|alt.shoot.example.com)"
+            value: "^(.*).(my.cluster.shoot.url.k8s.example.com|my.example.com)"
     - name: service-content
       consumedBTPServices:
         - app-uaa
