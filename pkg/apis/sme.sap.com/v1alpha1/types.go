@@ -725,7 +725,7 @@ type DomainSpec struct {
 }
 
 type CertConfig struct {
-	// AdditionalCACertificate can be used to provide certificates for verifying client side certificates in Mutual TLS mode.
+	// Used to specify additional CA certificate that may be used for verifying client certificates in Mutual TLS mode
 	AdditionalCACertificate string `json:"additionalCACertificate,omitempty"`
 }
 

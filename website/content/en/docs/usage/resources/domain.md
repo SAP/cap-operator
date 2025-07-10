@@ -67,4 +67,4 @@ spec:
 
 - The `dnsTarget` field is optional. If specified, it will be used; otherwise, it will be derived from the Istio Ingress Gateway via `ingressSelector`.
 - `Gateway` and `DNSEntry` will be created in the same namespace as the `Domain` resource while the `Certificates` will be created in the namespace where Istio Ingress Gateway is present.
-- In some cases, such as when X509 client authentication is enforced on the Istio Gateway by setting `tlsMode` to `Mutual`, additional CA certificates must be provided to Istio. These certificates can be specified in the `certConfig.additionalCACertificate` field.
+- In cases when X509 client authentication is enforced on the Istio Gateway by setting `tlsMode` to `Mutual`, additional CA certificates are needed by Istio for verifying client certificates. These can be specified in the `certConfig.additionalCACertificate` field.
