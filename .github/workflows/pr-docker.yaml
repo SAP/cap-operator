@@ -1,0 +1,92 @@
+name: Build Docker on Label
+
+on:
+  pull_request:
+    types: [labeled, closed]
+
+env:
+  LABEL_TRIGGER: build-docker
+  REGISTRY: ghcr.io
+
+jobs:
+  build-on-label:
+    if: github.event.action == 'labeled' && github.event.label.name == env.LABEL_TRIGGER
+    strategy:
+      matrix:
+        workload: ["controller", "server", "web-hooks"]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to the Container registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+
+    - name: Prepare repository name
+      id: prepare-repository-name
+      run: |
+        repository=$REGISTRY/${{ github.repository }}/pr-image/${{ matrix.workload }}
+        echo "repository=${repository,,}" >> $GITHUB_OUTPUT
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        file: build/${{ matrix.workload }}/Dockerfile
+        platforms: linux/amd64,linux/arm64
+        context: .
+        cache-from: |
+          type=gha,scope=${{ matrix.workload }}-sha-${{ github.sha }}
+          type=gha,scope=${{ github.ref_name }}-${{ matrix.workload }}
+          type=gha,scope=${{ github.base_ref || 'main' }}
+          type=gha,scope=main
+        cache-to: |
+          type=gha,scope=${{ matrix.workload }}-sha-${{ github.sha }},mode=max
+          type=gha,scope=${{ github.ref_name }}-${{ matrix.workload }},mode=max
+        push: true
+        tags: pr-${{ github.event.pull_request.number }}
+        labels: pr-${{ github.event.pull_request.number }}
+
+  cleanup:
+    if: github.event.action == 'closed'
+    strategy:
+      matrix:
+        workload: ["controller", "server", "web-hooks"]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - name: Delete image tag from GHCR
+      env:
+        IMAGE_REPO: ${{ env.REGISTRY }}/${{ github.repository }}/pr-image/${{ matrix.workload }}
+        IMAGE_TAG: pr-${{ github.event.pull_request.number }}
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "Trying to delete $IMAGE_REPO:$IMAGE_TAG"
+
+        # Convert repo to lowercase
+        IMAGE_REPO_LOWER=$(echo "$IMAGE_REPO" | tr '[:upper:]' '[:lower:]')
+        MANIFEST_DIGEST=$(curl -sSL -H "Authorization: Bearer $GH_TOKEN" \
+          -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+          "https://${{ env.REGISTRY }}/v2/${IMAGE_REPO_LOWER#${{ env.REGISTRY }}/}/manifests/$IMAGE_TAG" \
+          | jq -r '.config.digest')
+
+        if [[ "$MANIFEST_DIGEST" == null || -z "$MANIFEST_DIGEST" ]]; then
+          echo "No manifest found for $IMAGE_REPO_LOWER:$IMAGE_TAG"
+        else
+          echo "Deleting manifest $MANIFEST_DIGEST"
+          curl -X DELETE \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            "https://${{ env.REGISTRY }}/v2/${IMAGE_REPO_LOWER#${{ env.REGISTRY }}/}/manifests/$MANIFEST_DIGEST"
+        fi
