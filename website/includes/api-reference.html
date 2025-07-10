@@ -776,6 +776,19 @@ string
 <p>DNS Target for traffic to this domain</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>certConfig</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CertConfig">
+CertConfig
+</a>
+</em>
+</td>
+<td>
+<p>Certificate configuration</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -909,6 +922,19 @@ string
 </td>
 <td>
 <p>DNS Target for traffic to this domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>certConfig</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CertConfig">
+CertConfig
+</a>
+</em>
+</td>
+<td>
+<p>Certificate configuration</p>
 </td>
 </tr>
 </table>
@@ -1930,6 +1956,34 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
+<h3 id="sme.sap.com/v1alpha1.CertConfig">CertConfig
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainSpec">DomainSpec</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>additionalCACertificate</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>AdditionalCACertificate can be used to provide certificates for verifying client side certificates in Mutual TLS mode.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="sme.sap.com/v1alpha1.CommonDetails">CommonDetails
 </h3>
 <p>
@@ -2499,6 +2553,19 @@ string
 </td>
 <td>
 <p>DNS Target for traffic to this domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>certConfig</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CertConfig">
+CertConfig
+</a>
+</em>
+</td>
+<td>
+<p>Certificate configuration</p>
 </td>
 </tr>
 </tbody>
@@ -3483,5 +3550,5 @@ If not specified, CAP Operator will not attempt to create a ServiceMonitor for t
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>50011c0</code>.
+on git commit <code>4784d43</code>.
 </em></p>

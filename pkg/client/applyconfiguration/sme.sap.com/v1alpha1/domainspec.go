@@ -14,11 +14,12 @@ import (
 // DomainSpecApplyConfiguration represents a declarative configuration of the DomainSpec type for use
 // with apply.
 type DomainSpecApplyConfiguration struct {
-	Domain          *string                    `json:"domain,omitempty"`
-	IngressSelector map[string]string          `json:"ingressSelector,omitempty"`
-	TLSMode         *smesapcomv1alpha1.TLSMode `json:"tlsMode,omitempty"`
-	DNSMode         *smesapcomv1alpha1.DNSMode `json:"dnsMode,omitempty"`
-	DNSTarget       *string                    `json:"dnsTarget,omitempty"`
+	Domain          *string                       `json:"domain,omitempty"`
+	IngressSelector map[string]string             `json:"ingressSelector,omitempty"`
+	TLSMode         *smesapcomv1alpha1.TLSMode    `json:"tlsMode,omitempty"`
+	DNSMode         *smesapcomv1alpha1.DNSMode    `json:"dnsMode,omitempty"`
+	DNSTarget       *string                       `json:"dnsTarget,omitempty"`
+	CertConfig      *CertConfigApplyConfiguration `json:"certConfig,omitempty"`
 }
 
 // DomainSpecApplyConfiguration constructs a declarative configuration of the DomainSpec type for use with
@@ -70,5 +71,13 @@ func (b *DomainSpecApplyConfiguration) WithDNSMode(value smesapcomv1alpha1.DNSMo
 // If called multiple times, the DNSTarget field is set to the value of the last call.
 func (b *DomainSpecApplyConfiguration) WithDNSTarget(value string) *DomainSpecApplyConfiguration {
 	b.DNSTarget = &value
+	return b
+}
+
+// WithCertConfig sets the CertConfig field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the CertConfig field is set to the value of the last call.
+func (b *DomainSpecApplyConfiguration) WithCertConfig(value *CertConfigApplyConfiguration) *DomainSpecApplyConfiguration {
+	b.CertConfig = value
 	return b
 }

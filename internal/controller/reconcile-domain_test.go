@@ -76,6 +76,22 @@ func TestDomain_ProcessingWithIngress(t *testing.T) {
 	)
 }
 
+func TestDomain_ProcessingWithIngressWithAdditionalCACertificate(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress - ObservedDomain getting set, cert, secret and gateway getting created",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-additionalCACertificate.yaml",
+			},
+			expectedResources: "testdata/domain/domain-processing-observedDom-cert-secret-gateway.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+}
+
 func TestDomain_ProcessingWithIngressCertManager(t *testing.T) {
 	os.Setenv(certManagerEnv, certManagerCertManagerIO)
 
@@ -89,6 +105,26 @@ func TestDomain_ProcessingWithIngressCertManager(t *testing.T) {
 				"testdata/domain/domain-processing.yaml",
 			},
 			expectedResources: "testdata/domain/domain-processing-observedDom-certManager-gateway.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+
+	os.Setenv(certManagerEnv, "")
+}
+
+func TestDomain_ProcessingWithIngressCertManagerWithAdditionalCACertificate(t *testing.T) {
+	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress - ObservedDomain getting set, certManager, secret and gateway getting created",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-additionalCACertificate.yaml",
+			},
+			expectedResources: "testdata/domain/domain-processing-observedDom-certManager-secret-gateway.yaml",
 			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
 		},
 	)
@@ -241,6 +277,25 @@ func TestDomain_Updatedomain(t *testing.T) {
 				"testdata/domain/primary-dns-ready.yaml",
 			},
 			expectedResources: "testdata/domain/domain-update.expected.yaml",
+		},
+	)
+}
+
+func TestDomain_UpdateAdditionalCACertificate(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain updated - gateway and dns getting updated",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-additionalCaCertificate-update.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+				"testdata/domain/additional-caCertificate-secret.yaml",
+			},
+			expectedResources: "testdata/domain/domain-additionalCaCertificate-update.expected.yaml",
 		},
 	)
 }

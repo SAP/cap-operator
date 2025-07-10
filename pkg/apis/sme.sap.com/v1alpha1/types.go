@@ -720,6 +720,13 @@ type DomainSpec struct {
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
 	// DNS Target for traffic to this domain
 	DNSTarget string `json:"dnsTarget,omitempty"`
+	// Certificate configuration
+	CertConfig *CertConfig `json:"certConfig,omitempty"`
+}
+
+type CertConfig struct {
+	// AdditionalCACertificate can be used to provide certificates for verifying client side certificates in Mutual TLS mode.
+	AdditionalCACertificate string `json:"additionalCACertificate,omitempty"`
 }
 
 // +kubebuilder:validation:Enum=Simple;Mutual
