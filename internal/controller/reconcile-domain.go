@@ -509,13 +509,7 @@ func handleAdditionalCACertificate[T v1alpha1.DomainEntity](ctx context.Context,
 	}
 
 	if bundle == "" {
-		// If the bundle has been removed, clean up the secret if it exists
-		if secretExists {
-			if err := c.kubeClient.CoreV1().Secrets(credentialNamespace).Delete(ctx, secretName, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
-				return fmt.Errorf("failed to delete stale certificate bundle secret %s for %s: %w", secretName, ownerId, err)
-			}
-		}
-		return nil
+		return deleteCACertSecretIfExists(ctx, c, credentialNamespace, secretName, secretExists, ownerId)
 	}
 
 	// Prepare new secret data
@@ -566,6 +560,15 @@ func handleAdditionalCACertificate[T v1alpha1.DomainEntity](ctx context.Context,
 		return fmt.Errorf("failed to create additional certificate bundle secret for %s: %w", ownerId, err)
 	}
 
+	return nil
+}
+
+func deleteCACertSecretIfExists(ctx context.Context, c *Controller, credentialNamespace, secretName string, secretExists bool, ownerId string) error {
+	if secretExists {
+		if err := c.kubeClient.CoreV1().Secrets(credentialNamespace).Delete(ctx, secretName, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to delete stale certificate bundle secret %s for %s: %w", secretName, ownerId, err)
+		}
+	}
 	return nil
 }
 
