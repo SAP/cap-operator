@@ -10,7 +10,7 @@
 CAP Operator manages the lifecycle operations involved in running multi-tenant CAP applications on Kubernetes clusters, primarily project "Gardener" managed clusters.
 
 #### Documentation
-Visit the [Documentation](https://sap.github.io/cap-operator/docs) to find out how to install and use the CAP Operator
+Visit the [Documentation](https://sap.github.io/cap-operator/docs) to find out how to install and use the CAP Operator.
 
 #### Setup
 The operator can be deployed using the [helm chart](https://github.com/sap/cap-operator-lifecycle/tree/main/chart) which is part of [CAP Operator Lifecycle](https://github.com/sap/cap-operator-lifecycle) repo.
