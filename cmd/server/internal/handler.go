@@ -35,6 +35,7 @@ import (
 
 const (
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
+	AnnotationSubscriptionGUID          = "sme.sap.com/subscription-guid"
 	AnnotationSaaSAdditionalOutput      = "sme.sap.com/saas-additional-output"
 	AnnotationSubscriptionDomain        = "sme.sap.com/subscription-domain"
 )
@@ -42,6 +43,8 @@ const (
 const (
 	LabelBTPApplicationIdentifierHash = "sme.sap.com/btp-app-identifier-hash"
 	LabelTenantId                     = "sme.sap.com/btp-tenant-id"
+	LabelTenantType                   = "sme.sap.com/tenant-type"
+	LabelSubscriptionGUIDHash         = "sme.sap.com/subscription-guid-hash"
 )
 
 const (
@@ -156,16 +159,20 @@ func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
 			return &Result{Tenant: nil, Message: err.Error()}
 		}
 		util.LogInfo("Creating tenant", TenantProvisioning, ca, nil)
+		subscriptionGUID := reqType["subscriptionGUID"].(string)
 		tenant, _ = s.Clientset.SmeV1alpha1().CAPTenants(ca.Namespace).Create(context.TODO(), &v1alpha1.CAPTenant{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: ca.Name + "-",
 				Namespace:    ca.Namespace,
 				Annotations: map[string]string{
 					AnnotationSubscriptionContextSecret: secret.Name, // Store the secret name in the tenant annotation
+					AnnotationSubscriptionGUID:          subscriptionGUID,
 				},
 				Labels: map[string]string{
 					LabelBTPApplicationIdentifierHash: sha1Sum(reqType["globalAccountGUID"].(string), reqType["subscriptionAppName"].(string)),
 					LabelTenantId:                     reqType["subscribedTenantId"].(string),
+					LabelSubscriptionGUIDHash:         sha1Sum(subscriptionGUID),
+					LabelTenantType:                   "consumer", // Default tenant type for consumer tenants
 				},
 			},
 			Spec: v1alpha1.CAPTenantSpec{
