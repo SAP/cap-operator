@@ -503,11 +503,7 @@ func handleAdditionalCACertificate[T v1alpha1.DomainEntity](ctx context.Context,
 	}
 
 	// Extract the additional ca certificate
-	caCert := ""
-	if dom.GetSpec().CertConfig != nil {
-		caCert = dom.GetSpec().CertConfig.AdditionalCACertificate
-	}
-
+	caCert := extractAdditionalCACert(dom)
 	if caCert == "" {
 		if secretExists {
 			if err := c.kubeClient.CoreV1().Secrets(credentialNamespace).Delete(ctx, secretName, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
@@ -542,30 +538,37 @@ func handleAdditionalCACertificate[T v1alpha1.DomainEntity](ctx context.Context,
 		return nil
 	}
 
-	return createAdditionalCACertificateSecret(ctx, c, dom, secretData, secretName, credentialNamespace, secretDataHash, ownerId)
+	return createAdditionalCACertificateSecret(ctx, c, secretName, credentialNamespace, secretData, map[string]string{
+		LabelOwnerIdentifierHash: sha1Sum(ownerId),
+		LabelOwnerGeneration:     fmt.Sprintf("%d", dom.GetMetadata().Generation),
+	}, map[string]string{
+		AnnotationResourceHash:    secretDataHash,
+		AnnotationOwnerIdentifier: ownerId,
+	})
 }
 
-func createAdditionalCACertificateSecret[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, secretData map[string][]byte, name, namespace, secretDataHash, ownerId string) error {
+func extractAdditionalCACert[T v1alpha1.DomainEntity](dom T) string {
+	if dom.GetSpec().CertConfig != nil {
+		return dom.GetSpec().CertConfig.AdditionalCACertificate
+	}
+	return ""
+}
+
+func createAdditionalCACertificateSecret(ctx context.Context, c *Controller, name, namespace string, secretData map[string][]byte, labels, annotations map[string]string) error {
 	// create a secret
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
-			Labels: map[string]string{
-				LabelOwnerIdentifierHash: sha1Sum(ownerId),
-				LabelOwnerGeneration:     fmt.Sprintf("%d", dom.GetMetadata().Generation),
-			},
-			Annotations: map[string]string{
-				AnnotationResourceHash:    secretDataHash,
-				AnnotationOwnerIdentifier: ownerId,
-			},
+			Name:        name,
+			Namespace:   namespace,
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Data: secretData,
 		Type: corev1.SecretTypeOpaque,
 	}
 
 	if _, err := c.kubeClient.CoreV1().Secrets(namespace).Create(ctx, secret, metav1.CreateOptions{}); err != nil {
-		return fmt.Errorf("failed to create additional ca certificate secret for %s: %w", ownerId, err)
+		return fmt.Errorf("failed to create additional ca certificate secret for %s: %w", annotations[AnnotationOwnerIdentifier], err)
 	}
 
 	return nil
@@ -1200,7 +1203,7 @@ func deleteAdditionalCACertificateSecret[T v1alpha1.DomainEntity](ctx context.Co
 		LabelSelector: selector.String(),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to list additional bundle certificate secrets for %s: %w", ownerId, err)
+		return fmt.Errorf("failed to list additional ca certificate secrets for %s: %w", ownerId, err)
 	}
 	if len(secretList.Items) == 0 {
 		// No secret found, nothing to delete
@@ -1210,7 +1213,7 @@ func deleteAdditionalCACertificateSecret[T v1alpha1.DomainEntity](ctx context.Co
 	// Delete all secrets matching the selector
 	for _, secret := range secretList.Items {
 		if err := c.kubeClient.CoreV1().Secrets(secret.Namespace).Delete(ctx, secret.Name, metav1.DeleteOptions{}); err != nil && !errors.IsNotFound(err) {
-			return fmt.Errorf("failed to delete additional bundle certificate secret %s.%s for %s: %w", secret.Namespace, secret.Name, ownerId, err)
+			return fmt.Errorf("failed to delete additional ca certificate secret %s.%s for %s: %w", secret.Namespace, secret.Name, ownerId, err)
 		}
 	}
 
