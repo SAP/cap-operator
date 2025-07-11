@@ -5,7 +5,8 @@ metadata:
   namespace: default
   labels:
     sme.sap.com/domain-host-hash: d8b11ae7b1f04e357f32290b81db58c247dac748
-  deletionTimestamp: "2022-03-22T13:24:38Z"
+  finalizers:
+  - sme.sap.com/domain
 spec:
   dnsMode: Wildcard
   domain: app-domain.test.local
@@ -13,15 +14,13 @@ spec:
     app: istio-ingressgateway
     istio: ingressgateway
   tlsMode: Simple
-  certConfig:
-    additionalCACertificate: dummy-cert-content
 status:
   conditions:
-  - message: deleting domain resources
-    reason: Deleting
+  - message: Processing domain resources
+    reason: Processing
     status: "False"
     type: Ready
-  state: Deleting
+  state: Processing
   dnsTarget: public-ingress.operator.testing.local
   observedDomain: app-domain.test.local
   gatewayName: test-cap-01-primary-gen
