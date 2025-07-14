@@ -286,7 +286,7 @@ func TestDomain_UpdateAdditionalCACertificate(t *testing.T) {
 		context.TODO(), t,
 		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
 		TestData{
-			description: "Domain updated - gateway and dns getting updated",
+			description: "Domain updated - Additional CA Certificate getting updated",
 			initialResources: []string{
 				"testdata/domain/istio-ingress.yaml",
 				"testdata/domain/domain-additionalCaCertificate-update.yaml",
@@ -300,12 +300,60 @@ func TestDomain_UpdateAdditionalCACertificate(t *testing.T) {
 	)
 }
 
+func TestDomain_UpdateAdditionalCACertificateGetError(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain update - Additional CA Certificate update failed; exisiting secret get returned error",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-additionalCaCertificate-update.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+				"testdata/domain/additional-caCertificate-secret.yaml",
+			},
+			expectError:           true,
+			mockErrorForResources: []ResourceAction{{Verb: "get", Group: "", Version: "v1", Resource: "secrets", Namespace: "*", Name: "*"}},
+		},
+	)
+
+	if err.Error() != "failed to reconcile additional ca certificate secret for Domain.default.test-cap-01-primary: failed to get existing secret: mocked api error (secrets./v1)" {
+		t.Error("Wrong error message")
+	}
+}
+
+func TestDomain_UpdateAdditionalCACertificateUpdateError(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain update - Additional CA Certificate update failed as exisiting secret update returned error",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-additionalCaCertificate-update.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+				"testdata/domain/additional-caCertificate-secret.yaml",
+			},
+			expectError:           true,
+			mockErrorForResources: []ResourceAction{{Verb: "update", Group: "", Version: "v1", Resource: "secrets", Namespace: "*", Name: "*"}},
+		},
+	)
+
+	if err.Error() != "failed to reconcile additional ca certificate secret for Domain.default.test-cap-01-primary: failed to update additional ca certificate secret for Domain.default.test-cap-01-primary: mocked api error (secrets./v1)" {
+		t.Error("Wrong error message")
+	}
+}
+
 func TestDomain_RemoveAdditionalCACertificate(t *testing.T) {
 	reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
 		TestData{
-			description: "Domain updated - gateway and dns getting updated",
+			description: "Domain updated - Additional CA Certificate secret getting deleted",
 			initialResources: []string{
 				"testdata/domain/istio-ingress.yaml",
 				"testdata/domain/domain-processing.yaml",
@@ -318,6 +366,30 @@ func TestDomain_RemoveAdditionalCACertificate(t *testing.T) {
 			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
 		},
 	)
+}
+
+func TestDomain_RemoveAdditionalCACertificateDeleteError(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain update - Additional CA Certificate secret delete error",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+				"testdata/domain/additional-caCertificate-secret.yaml",
+			},
+			expectError:           true,
+			mockErrorForResources: []ResourceAction{{Verb: "delete", Group: "", Version: "v1", Resource: "secrets", Namespace: "*", Name: "*"}},
+		},
+	)
+
+	if err.Error() != "failed to reconcile additional ca certificate secret for Domain.default.test-cap-01-primary: failed to delete stale ca certificate secret default--test-cap-01-primary-gardener-cacert for Domain.default.test-cap-01-primary: mocked api error (secrets./v1)" {
+		t.Error("Wrong error message")
+	}
 }
 
 func TestDomain_UpdatedomainWithCertManager(t *testing.T) {
@@ -371,6 +443,46 @@ func TestDomain_DeletingWithCert(t *testing.T) {
 			expectedResources: "testdata/domain/domain-deleting-no-finalizer.yaml",
 		},
 	)
+}
+
+func TestDomain_DeletingWithCertSecretListError(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain deleting with certificates and additionalCaCertificateSecret - Secret list error",
+			initialResources: []string{
+				"testdata/domain/domain-deleting.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/additional-caCertificate-secret.yaml",
+			},
+			expectError:           true,
+			mockErrorForResources: []ResourceAction{{Verb: "list", Group: "", Version: "v1", Resource: "secrets", Namespace: "*", Name: "*"}},
+		},
+	)
+	if err.Error() != "failed to delete additional ca certificate secret for Domain.default.test-cap-01-primary: failed to list additional ca certificate secrets for Domain.default.test-cap-01-primary: mocked api error (secrets./v1)" {
+		t.Error("Wrong error message")
+	}
+}
+
+func TestDomain_DeletingWithCertSecretDeleteError(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain deleting with certificates and additionalCaCertificateSecret - Secret delete error",
+			initialResources: []string{
+				"testdata/domain/domain-deleting.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/additional-caCertificate-secret.yaml",
+			},
+			expectError:           true,
+			mockErrorForResources: []ResourceAction{{Verb: "delete", Group: "", Version: "v1", Resource: "secrets", Namespace: "*", Name: "*"}},
+		},
+	)
+	if err.Error() != "failed to delete additional ca certificate secret for Domain.default.test-cap-01-primary: failed to delete additional ca certificate secret istio-system.default--test-cap-01-primary-gardener-cacert for Domain.default.test-cap-01-primary: mocked api error (secrets./v1)" {
+		t.Error("Wrong error message")
+	}
 }
 
 func TestDomain_DeletingWithCertManager(t *testing.T) {
