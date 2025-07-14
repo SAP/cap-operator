@@ -38,6 +38,11 @@ spec:
             type: object
           spec:
             properties:
+              certConfig:
+                properties:
+                  additionalCACertificate:
+                    type: string
+                type: object
               dnsMode:
                 default: None
                 enum:
