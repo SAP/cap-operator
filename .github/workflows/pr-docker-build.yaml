@@ -71,6 +71,8 @@ jobs:
     needs: build-on-label
     if: success()
     runs-on: ubuntu-22.04
+    permissions:
+      contents: read
     steps:
       - name: Add PR image info to workflow summary
         run: |
