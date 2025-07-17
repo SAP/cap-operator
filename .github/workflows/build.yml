@@ -44,6 +44,26 @@ jobs:
         name: test-coverage
         path: coverage.out
   
+  vet:
+    name: Go Vet / Format
+    runs-on: ubuntu-24.04
+    steps:
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v4
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version-file: 'go.mod'
+        cache: true
+
+    - name: Run go vet
+      run: go vet ./...
+    
+    - name: Run gofmt
+      run: res="$(gofmt -d -l -s ./)" && echo "$res" && test -z "$res"
+   
   analysis:
     name: Analyze with Sonar Cloud
     needs: build

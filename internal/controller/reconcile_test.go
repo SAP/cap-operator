@@ -222,7 +222,7 @@ func createCatCRO(caName string, tenantType string, withFinalizers bool) *v1alph
 		},
 	}
 
-	if tenantType == ProviderTenantType {
+	if tenantType == TenantTypeProvider {
 		cat.Spec.BTPTenantIdentification.TenantId = providerTenantId
 		cat.Spec.BTPTenantIdentification.SubDomain = providerSubDomain
 	} else {

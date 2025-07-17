@@ -3,6 +3,8 @@ kind: CAPTenant
 metadata:
   name: test-cap-01-provider
   namespace: default
+  labels:
+    sme.sap.com/tenant-type: provider
 spec:
   capApplicationInstance: test-cap-01
   subDomain: my-provider

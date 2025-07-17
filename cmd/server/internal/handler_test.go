@@ -46,7 +46,7 @@ const (
 	globalAccountId  = "cap-app-global"
 	subDomain        = "foo"
 	tenantId         = "012012012-1234-1234-123456"
-	subscriptionGUID = "234512012-zdfg-acbcd-122456"
+	subscriptionGUID = "012301234-2345-6789-ABCDEF"
 )
 
 func setup(client *http.Client, secrets []runtime.Object, objects ...runtime.Object) *SubscriptionHandler {

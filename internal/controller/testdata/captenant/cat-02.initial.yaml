@@ -3,6 +3,11 @@ kind: CAPTenant
 metadata:
   name: test-cap-01-consumer
   namespace: default
+  labels:
+    sme.sap.com/tenant-type: consumer
+    sme.sap.com/subscription-guid-hash: 4b10784b8123e511c428113ec738a8c7c822d84e
+  annotations:
+    sme.sap.com/subscription-guid: 38b55555f64b627466e54862859719df031eea0f
 spec:
   capApplicationInstance: test-cap-01
   subDomain: my-consumer

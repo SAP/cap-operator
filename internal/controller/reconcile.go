@@ -74,10 +74,7 @@ var (
 	tTLSecondsAfterFinishedValue int32 = 300
 )
 
-const (
-	ProviderTenantType = "provider"
-	ConsumerTenantType = "consumer"
-)
+const TenantTypeProvider = "provider"
 
 // Use a different name for sticky cookie than the one from approuter (JSESSIONID) used for session handling
 const RouterHttpCookieName = "CAPOP_ROUTER_STICKY"
