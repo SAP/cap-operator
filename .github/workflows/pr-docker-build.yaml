@@ -17,6 +17,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      pr-number: ${{ github.event.pull_request.number }}
 
     steps:
     - name: Checkout repository
@@ -63,3 +65,21 @@ jobs:
         push: true
         tags: ${{ steps.extract-metadata.outputs.tags }}
         labels: ${{ steps.extract-metadata.outputs.labels }}
+
+  summary:
+    name: PR Docker Image Summary
+    needs: build-on-label
+    if: success()
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Add PR image info to workflow summary
+        run: |
+          PR=${{ needs.build-on-label.outputs.pr-number }}
+          IMAGE_BASE="ghcr.io/cap-operator-sap/pr-image"
+
+          echo "### 🚀 Docker Images Built for PR #$PR" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- \`$IMAGE_BASE/controller:pr-$PR\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`$IMAGE_BASE/server:pr-$PR\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`$IMAGE_BASE/web-hooks:pr-$PR\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
