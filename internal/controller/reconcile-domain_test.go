@@ -297,6 +297,7 @@ func TestDomain_Updatedomain(t *testing.T) {
 				"testdata/domain/primary-dns-ready.yaml",
 			},
 			expectedResources: "testdata/domain/domain-update.expected.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
 		},
 	)
 }
@@ -328,7 +329,7 @@ func TestDomain_UpdateAdditionalCACertificateNoHashChange(t *testing.T) {
 			description: "Domain updated - Additional CA Certificate not getting updated as hash did not change",
 			initialResources: []string{
 				"testdata/domain/istio-ingress.yaml",
-				"testdata/domain/domain-processing-observedDom-cert-secret-gateway.yaml",
+				"testdata/domain/domain-processing-additionalCACertificate.yaml",
 				"testdata/domain/primary-certificate-ready.yaml",
 				"testdata/domain/primary-gateway.yaml",
 				"testdata/domain/primary-dns-ready.yaml",
@@ -447,6 +448,7 @@ func TestDomain_UpdatedomainWithCertManager(t *testing.T) {
 				"testdata/domain/primary-dns-ready.yaml",
 			},
 			expectedResources: "testdata/domain/domain-update.expected-certManager.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
 		},
 	)
 
@@ -651,6 +653,58 @@ func TestClusterDomain_DeletingFinalizerRemoved(t *testing.T) {
 				"testdata/domain/cluster-domain-deleting.yaml",
 			},
 			expectedResources: "testdata/domain/cluster-domain-deleting-no-finalizer.yaml",
+		},
+	)
+}
+
+func TestDomain_UpdateOldDNS(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain reconciled - dns labels getting updated",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-old-dns.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+			},
+			expectedResources: "testdata/domain/domain-processing-updated-dns.yaml",
+		},
+	)
+}
+
+func TestDomain_CustomDNSServices(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain with CustomDNS templates and CA service only - dns and netpol getting created",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-with-customDNS-processing.yaml",
+				"testdata/domain/ca-services-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-with-customDNS-services.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+}
+
+func TestDomain_CustomDNSTenants(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain with CustomDNS templates and CA with provider tenant - dns and netpol getting created",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-with-customDNS-processing.yaml",
+				"testdata/capapplication/ca-06.expected.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-with-customDNS-tenant.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
 		},
 	)
 }

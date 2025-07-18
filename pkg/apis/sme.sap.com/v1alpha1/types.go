@@ -717,11 +717,22 @@ type DomainSpec struct {
 	// +kubebuilder:default:=None
 	// DNS mode controls the creation of DNS entries related to the domain
 	DNSMode DNSMode `json:"dnsMode"`
+	// DNS templates allows usage of go templates for generating DNS entries when [DNSMode] is set to `Custom`
+	// +kubebuilder:validation:MaxItems=10
+	DNSTemplates []DNSTemplate `json:"dnsTemplates,omitempty"`
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
 	// DNS Target for traffic to this domain
 	DNSTarget string `json:"dnsTarget,omitempty"`
 	// Certificate configuration
 	CertConfig *CertConfig `json:"certConfig,omitempty"`
+}
+
+// DNSTemplate supports the creation of DNS entries using go templates See: https://pkg.go.dev/text/template
+type DNSTemplate struct {
+	// Domain name for which a DNS record will be created
+	Name string `json:"name"`
+	// Target of the DNS reord
+	Target string `json:"target"`
 }
 
 type CertConfig struct {
@@ -739,7 +750,7 @@ const (
 	TlsModeMutual TLSMode = "Mutual"
 )
 
-// +kubebuilder:validation:Enum=None;Wildcard;Subdomain
+// +kubebuilder:validation:Enum=None;Wildcard;Subdomain;Custom
 type DNSMode string
 
 const (
@@ -749,6 +760,8 @@ const (
 	DnsModeWildcard DNSMode = "Wildcard"
 	// A DNS entry will be created for each subdomain specified by the applications using this domain
 	DnsModeSubdomain DNSMode = "Subdomain"
+	// A DNS entry will be created according to configuration in `[DNSTemplate]`
+	DnsModeCustom DNSMode = "Custom"
 )
 
 type DomainStatus struct {

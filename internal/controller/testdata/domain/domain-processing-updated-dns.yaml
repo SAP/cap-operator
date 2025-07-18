@@ -16,11 +16,11 @@ spec:
   tlsMode: Simple
 status:
   conditions:
-  - message: Processing domain resources
-    reason: Processing
-    status: "False"
+  - message: Domain resources are ready
+    reason: Ready
+    status: "True"
     type: Ready
-  state: Processing
+  state: Ready
   dnsTarget: public-ingress.operator.testing.local
   observedDomain: app-domain.test.local
   gatewayName: test-cap-01-primary-gen
@@ -38,6 +38,7 @@ metadata:
     sme.sap.com/owner-generation: "0"
     sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
     sme.sap.com/dns-name-hash: 7f91a70a773eaf2e8e9c78020ddadf7f66119300
+    sme.sap.com/subdomain-hash: df58248c414f342c81e056b40bee12d17a08bf61
   name: test-cap-01-primary-gen
   namespace: default
   ownerReferences:
@@ -53,5 +54,4 @@ spec:
   - public-ingress.operator.testing.local
   ttl: 600
 status:
-  state: ""
-
+  state: Ready

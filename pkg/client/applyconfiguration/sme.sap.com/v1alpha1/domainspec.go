@@ -14,12 +14,13 @@ import (
 // DomainSpecApplyConfiguration represents a declarative configuration of the DomainSpec type for use
 // with apply.
 type DomainSpecApplyConfiguration struct {
-	Domain          *string                       `json:"domain,omitempty"`
-	IngressSelector map[string]string             `json:"ingressSelector,omitempty"`
-	TLSMode         *smesapcomv1alpha1.TLSMode    `json:"tlsMode,omitempty"`
-	DNSMode         *smesapcomv1alpha1.DNSMode    `json:"dnsMode,omitempty"`
-	DNSTarget       *string                       `json:"dnsTarget,omitempty"`
-	CertConfig      *CertConfigApplyConfiguration `json:"certConfig,omitempty"`
+	Domain          *string                         `json:"domain,omitempty"`
+	IngressSelector map[string]string               `json:"ingressSelector,omitempty"`
+	TLSMode         *smesapcomv1alpha1.TLSMode      `json:"tlsMode,omitempty"`
+	DNSMode         *smesapcomv1alpha1.DNSMode      `json:"dnsMode,omitempty"`
+	DNSTemplates    []DNSTemplateApplyConfiguration `json:"dnsTemplates,omitempty"`
+	DNSTarget       *string                         `json:"dnsTarget,omitempty"`
+	CertConfig      *CertConfigApplyConfiguration   `json:"certConfig,omitempty"`
 }
 
 // DomainSpecApplyConfiguration constructs a declarative configuration of the DomainSpec type for use with
@@ -63,6 +64,19 @@ func (b *DomainSpecApplyConfiguration) WithTLSMode(value smesapcomv1alpha1.TLSMo
 // If called multiple times, the DNSMode field is set to the value of the last call.
 func (b *DomainSpecApplyConfiguration) WithDNSMode(value smesapcomv1alpha1.DNSMode) *DomainSpecApplyConfiguration {
 	b.DNSMode = &value
+	return b
+}
+
+// WithDNSTemplates adds the given value to the DNSTemplates field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the DNSTemplates field.
+func (b *DomainSpecApplyConfiguration) WithDNSTemplates(values ...*DNSTemplateApplyConfiguration) *DomainSpecApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithDNSTemplates")
+		}
+		b.DNSTemplates = append(b.DNSTemplates, *values[i])
+	}
 	return b
 }
 
