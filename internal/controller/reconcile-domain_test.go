@@ -297,6 +297,7 @@ func TestDomain_Updatedomain(t *testing.T) {
 				"testdata/domain/primary-dns-ready.yaml",
 			},
 			expectedResources: "testdata/domain/domain-update.expected.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
 		},
 	)
 }
@@ -447,6 +448,7 @@ func TestDomain_UpdatedomainWithCertManager(t *testing.T) {
 				"testdata/domain/primary-dns-ready.yaml",
 			},
 			expectedResources: "testdata/domain/domain-update.expected-certManager.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
 		},
 	)
 
@@ -651,6 +653,23 @@ func TestClusterDomain_DeletingFinalizerRemoved(t *testing.T) {
 				"testdata/domain/cluster-domain-deleting.yaml",
 			},
 			expectedResources: "testdata/domain/cluster-domain-deleting-no-finalizer.yaml",
+		},
+	)
+}
+
+func TestDomain_UpdateOldDNS(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain reconciled - dns labels getting updated",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-old-dns.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+			},
+			expectedResources: "testdata/domain/domain-processing-updated-dns.yaml",
 		},
 	)
 }
