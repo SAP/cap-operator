@@ -67,6 +67,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.DeletionRulesApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DeploymentDetails"):
 		return &smesapcomv1alpha1.DeploymentDetailsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DNSTemplate"):
+		return &smesapcomv1alpha1.DNSTemplateApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Domain"):
 		return &smesapcomv1alpha1.DomainApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("DomainRef"):

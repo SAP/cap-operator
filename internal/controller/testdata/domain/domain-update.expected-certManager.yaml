@@ -16,11 +16,11 @@ spec:
   tlsMode: Simple
 status:
   conditions:
-  - message: Domain resources are ready
-    reason: Ready
-    status: "True"
+  - message: Processing domain resources
+    reason: Processing
+    status: "False"
     type: Ready
-  state: Ready
+  state: Processing
   dnsTarget: public-ingress.operator.testing.local
   observedDomain: app-domain-dup.test.local
   gatewayName: test-cap-01-primary-gen
@@ -63,13 +63,13 @@ metadata:
   annotations:
     dns.gardener.cloud/class: garden
     sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
-    sme.sap.com/resource-hash: d9ccf51ead1f6a2c8634259f546de958bae8f91183fc453f52157fd60248cfab
+    sme.sap.com/resource-hash: 4c5ea718c70d8b8302c1735d7e354da96845be52b85f17366f47f9cfcaaf8238
   generateName: test-cap-01-primary-
   labels:
     sme.sap.com/btp-app-identifier-hash: ""
     sme.sap.com/owner-generation: "0"
     sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
-    sme.sap.com/subdomain-hash: df58248c414f342c81e056b40bee12d17a08bf61
+    sme.sap.com/dns-name-hash: 3ac8d1a341cef9a79b0e7a9115bc65406ed9b656
   name: test-cap-01-primary-gen
   namespace: default
   ownerReferences:
@@ -79,8 +79,10 @@ metadata:
     kind: Domain
     name: test-cap-01-primary
 spec:
+  cnameLookupInterval: 30
   dnsName: '*.app-domain-dup.test.local'
   targets:
   - public-ingress.operator.testing.local
+  ttl: 600
 status:
-  state: Ready
+  state: ""

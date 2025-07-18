@@ -20,8 +20,8 @@ spec:
   ingressSelector:
     app: istio-ingressgateway
     istio: ingressgateway
-  tlsMode: Simple        # Simple (default) or  Mutual
-  dnsMode: Subdomain     # Wildcard or Subdomain or None (default)
+  tlsMode: Mutual        # Simple (default) or  Mutual
+  dnsMode: Subdomain     # Custom or Wildcard or Subdomain or None (default)
   dnsTarget: public-ingress.cluster.domain # Optional
   certConfig: # Optional
     additionalCACertificate: |
