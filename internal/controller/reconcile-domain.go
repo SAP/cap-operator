@@ -68,10 +68,6 @@ func (c *Controller) reconcileDomain(ctx context.Context, item QueueItem, _ int)
 		}
 	}()
 
-	if dom.DeletionTimestamp != nil {
-		return handleDomainResourceDeletion(ctx, c, dom)
-	}
-
 	return reconcileDomainEntity(ctx, c, dom, dom.Namespace)
 }
 
@@ -96,10 +92,6 @@ func (c *Controller) reconcileClusterDomain(ctx context.Context, item QueueItem,
 			err = statusErr
 		}
 	}()
-
-	if dom.DeletionTimestamp != nil {
-		return handleDomainResourceDeletion(ctx, c, dom)
-	}
 
 	return reconcileDomainEntity(ctx, c, dom, util.GetNamespace())
 }
@@ -147,11 +139,10 @@ func (c *Controller) updateClusterDomainStatus(ctx context.Context, dom *v1alpha
 }
 
 func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, subResourceNamespace string) (result *ReconcileResult, err error) {
-	defer func() {
-		if err != nil {
-			dom.SetStatusWithReadyCondition(v1alpha1.DomainStateError, metav1.ConditionFalse, "ProcessingError", err.Error())
-		}
-	}()
+	// Check if the domain resource is being deleted
+	if dom.GetMetadata().DeletionTimestamp != nil {
+		return handleDomainResourceDeletion(ctx, c, dom)
+	}
 
 	if dom.GetStatus().State != v1alpha1.DomainStateProcessing {
 		// set processing status
@@ -159,7 +150,63 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 		return NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0), nil
 	}
 
-	// (1) check for duplicate domains
+	defer func() {
+		if err != nil {
+			dom.SetStatusWithReadyCondition(v1alpha1.DomainStateError, metav1.ConditionFalse, "ProcessingError", err.Error())
+		}
+	}()
+
+	// process the domain realted resources
+	if result, err = processDomainEntity(ctx, c, dom, subResourceNamespace); err != nil || result != nil {
+		return
+	}
+
+	if result, err = checkDomainResourcesReady(ctx, dom, c); err != nil || result != nil {
+		return
+	}
+
+	// Resource is ready, so we can set the status to ready
+	dom.SetStatusWithReadyCondition(v1alpha1.DomainStateReady, metav1.ConditionTrue, "Ready", "Domain resources are ready")
+	return
+
+}
+
+func checkDomainResourcesReady[T v1alpha1.DomainEntity](ctx context.Context, dom T, c *Controller) (result *ReconcileResult, err error) {
+	var message string
+	var resource string
+	ready := false
+	ownerId := formOwnerIdFromDomain(dom)
+
+	defer func() {
+		if err == nil && ready {
+
+			return
+		}
+		if err == nil {
+			message = "Waiting for " + resource + " to be ready"
+			result = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 3*time.Second)
+		} else {
+			message = err.Error()
+		}
+		c.Event(runtime.Object(dom), nil, corev1.EventTypeWarning, DomainEventCertificateNotReady, EventActionProcessingDomainResources, message)
+	}()
+
+	// wait for certificate to be ready
+	if ready, err = areCertificatesReady(ctx, c, ownerId); err != nil || !ready {
+		resource = "certificate"
+		return
+	}
+
+	// wait for dns entries to be ready
+	if ready, err = areDnsEntriesReady(ctx, c, ownerId); err != nil || !ready {
+		resource = "dns entries"
+		return
+	}
+	return
+}
+
+func processDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, subResourceNamespace string) (result *ReconcileResult, err error) {
+	// check for duplicate domains
 	if result, err = handleDuplicateDomainHosts(c, dom); err != nil || result != nil {
 		return
 	}
@@ -172,7 +219,7 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 		subResourceName = subResourceName[:57] // Istio Gateway name limit is 63 characters, but we need to reserve space for the generated name prefix
 	}
 
-	// (2) get ingress information
+	// get ingress information
 	var (
 		ingressInfo *ingressGatewayInfo
 	)
@@ -182,57 +229,39 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 	}
 	dom.GetStatus().DnsTarget = sanitizeDNSTarget(ingressInfo.DNSTarget)
 
-	// (3) reconcile certificate
+	// reconcile certificate
 	credentialName, err := handleDomainCertificate(ctx, c, dom, ingressInfo.Namespace, subResourceName, subResourceNamespace, ownerId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reconcile domain certificate for %s: %w", ownerId, err)
 	}
 
+	// handle addtional ca certificate(s)
 	if err := handleAdditionalCACertificate(ctx, c, dom, credentialName, ingressInfo.Namespace, ownerId); err != nil {
 		return nil, fmt.Errorf("failed to reconcile additional ca certificate secret for %s: %w", ownerId, err)
 	}
 
-	// (4) reconcile gateway
+	// reconcile gateway
 	err = handleDomainGateway(ctx, c, dom, credentialName, subResourceName, subResourceNamespace, ownerId)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reconcile domain gateway for %s: %w", ownerId, err)
 	}
 
-	// (5) notify applications in case of domain changes
+	// notify applications in case of domain changes
 	if dom.GetSpec().Domain != dom.GetStatus().ObservedDomain {
 		return notifyReferencingApplications(c, dom, result)
 	}
 
-	// (6) handle network policy from the ingress gateway to the workload
+	// handle network policy from the ingress gateway to the workload
 	if err = handleDomainNetworkPolicies(ctx, c, dom, ownerId, subResourceName); err != nil {
 		return nil, fmt.Errorf("failed to reconcile domain network policies for %s: %w", ownerId, err)
 	}
 
-	// (7) handle dns entries
+	// handle dns entries
 	err = handleDnsEntries(ctx, c, dom, ownerId, subResourceName, subResourceNamespace)
 	if err != nil {
 		return nil, fmt.Errorf("failed to reconcile domain dns entries for %s: %w", ownerId, err)
 	}
 
-	// (8) wait for certificate to be ready
-	if ready, err := areCertificatesReady(ctx, c, []T{dom}); err != nil || !ready {
-		if err == nil {
-			c.Event(runtime.Object(dom), nil, corev1.EventTypeWarning, DomainEventCertificateNotReady, EventActionProcessingDomainResources, "Waiting for certificate to be ready")
-			result = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 3*time.Second)
-		}
-		return result, err
-	}
-
-	// (9) wait for dns entries to be ready
-	if ready, err := areDnsEntriesReady(ctx, c, []T{dom}, ""); err != nil || !ready {
-		if err == nil {
-			c.Event(runtime.Object(dom), nil, corev1.EventTypeWarning, DomainEventDNSEntriesNotReady, EventActionProcessingDomainResources, "Waiting for dns entries to be ready")
-			result = NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 3*time.Second)
-		}
-		return result, err
-	}
-
-	dom.SetStatusWithReadyCondition(v1alpha1.DomainStateReady, metav1.ConditionTrue, "Ready", "Domain resources are ready")
 	return
 }
 
@@ -1006,77 +1035,16 @@ func handleDomainNetworkPolicyForNamespace[T v1alpha1.DomainEntity](ctx context.
 	return err
 }
 
-func areCertificatesReady[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, doms []T) (ready bool, err error) {
-	ownerIdHashes := []string{}
-	domainMap := map[string]T{}
-	for i := range doms {
-		hash := sha1Sum(formOwnerIdFromDomain(doms[i]))
-		ownerIdHashes = append(ownerIdHashes, hash)
-		domainMap[hash] = doms[i]
-	}
-	selector := newSelectorForOwnerIdentifierHashes(ownerIdHashes)
-	h := CreateCertificateManager(c)
-	certs, err := h.ListCertificates(ctx, metav1.NamespaceAll, selector)
-	if err != nil {
-		return false, fmt.Errorf("failed to list certificates: %w", err)
-	}
-
-	for i := range certs {
-		cert := certs[i]
-		oidHash := cert.GetLabels()[LabelOwnerIdentifierHash]
-		if dom, ok := domainMap[oidHash]; ok {
-			var ready bool
-			if ready, err = h.IsCertificateReady(cert); err != nil || !ready {
-				if err != nil {
-					c.Event(runtime.Object(dom), nil, corev1.EventTypeWarning, DomainEventCertificateNotReady, EventActionProcessingDomainResources, err.Error())
-				}
-				return ready, err
-			}
-		} else {
-			// expected related domain for the certificate
-			return false, fmt.Errorf("failed to match domain for certificate %s.%s", cert.GetNamespace(), cert.GetName())
-		}
-		delete(domainMap, oidHash)
-	}
-
-	if len(domainMap) > 0 {
-		// not all domains have a certificate
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func areDnsEntriesReady[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, doms []T, subdomain string) (ready bool, err error) {
+func areDnsEntriesReady(ctx context.Context, c *Controller, ownerId string) (ready bool, err error) {
 	if dnsManager() != dnsManagerGardener {
 		// assume ready if not using gardener dns manager
 		return true, nil
 	}
 
-	ownerIdHashes := []string{}
-	domainMap := map[string]T{}
-	for i := range doms {
-		switch doms[i].GetSpec().DNSMode {
-		case v1alpha1.DnsModeNone:
-			// skip dns entry check for domains with dns mode none
-			continue
-		case v1alpha1.DnsModeWildcard:
-			// skip dns entry check for domains with dns mode mode wildcard when a specific subdomain is provided
-			if subdomain != "" {
-				continue
-			}
-		}
-		hash := sha1Sum(formOwnerIdFromDomain(doms[i]))
-		ownerIdHashes = append(ownerIdHashes, hash)
-		domainMap[hash] = doms[i]
-	}
-	selector := newSelectorForOwnerIdentifierHashes(ownerIdHashes)
-	if subdomain != "" {
-		// add subdomain hash to the selector
-		subdomainHash := sha1Sum(subdomain)
-		subdomainReq, _ := labels.NewRequirement(LabelSubdomainHash, selection.Equals, []string{subdomainHash})
-		selector = selector.Add(*subdomainReq)
-	}
+	// create a label selector to filter dns entries by owner identifier hash
+	selector := labels.SelectorFromSet(labels.Set{
+		LabelOwnerIdentifierHash: sha1Sum(ownerId),
+	})
 
 	// list all dns entries which match the the domains (and subdomain, if supplied)
 	dnsEntries, err := c.gardenerDNSClient.DnsV1alpha1().DNSEntries(corev1.NamespaceAll).List(ctx, metav1.ListOptions{
@@ -1085,26 +1053,18 @@ func areDnsEntriesReady[T v1alpha1.DomainEntity](ctx context.Context, c *Control
 	if err != nil {
 		return false, fmt.Errorf("failed to list dns entries: %w", err)
 	}
+
+	// Check all matching dns entries
 	for _, entry := range dnsEntries.Items {
-		dom, ok := domainMap[entry.Labels[LabelOwnerIdentifierHash]]
-		if !ok {
-			// expected related domain for the dns entry
-			return false, fmt.Errorf("failed to match domain for dns entry %s.%s", entry.Namespace, entry.Name)
-		}
 		// check for ready state
-		if entry.Status.State == dnsv1alpha1.STATE_ERROR {
-			return false, fmt.Errorf("%s in state %s for %s: %s", dnsv1alpha1.DNSEntryKind, dnsv1alpha1.STATE_ERROR, formOwnerIdFromDomain(dom), *entry.Status.Message)
+		if entry.Status.State == dnsv1alpha1.StateError || entry.Status.State == dnsv1alpha1.StateInvalid {
+			return false, fmt.Errorf("%s in state %s for %s: %s", dnsv1alpha1.DNSEntryKind, entry.Status.State, ownerId, *entry.Status.Message)
 		} else if entry.Status.State != dnsv1alpha1.STATE_READY {
 			return false, nil
 		}
 	}
 
 	return true, nil
-}
-
-func newSelectorForOwnerIdentifierHashes(ownerIdHashes []string) labels.Selector {
-	ownerReq, _ := labels.NewRequirement(LabelOwnerIdentifierHash, selection.In, ownerIdHashes)
-	return labels.NewSelector().Add(*ownerReq)
 }
 
 func fetchDomainResourcesFromCache(c *Controller, refs []v1alpha1.DomainRef, namespace string) ([]*v1alpha1.Domain, []*v1alpha1.ClusterDomain, error) {
