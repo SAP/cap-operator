@@ -212,13 +212,7 @@ func (h *CertificateManager) IsCertificateReady(cert ManagedCertificate) (bool, 
 	switch h.managerType {
 	case certManagerCertManagerIO:
 		if c, ok := cert.(*certManagerv1.Certificate); ok {
-			readyCond := getCertManagerReadyCondition(c)
-			// check for ready state
-			if readyCond == nil || readyCond.Status == certManagermetav1.ConditionUnknown {
-				return false, nil
-			} else if readyCond.Status == certManagermetav1.ConditionFalse {
-				return false, fmt.Errorf("%s not ready: %s %s", certManagerv1.CertificateKind, certv1alpha1.StateError, readyCond.Message)
-			}
+			return isCertManagerCertReady(c)
 		} else {
 			return false, fmt.Errorf("failed to cast certificate to cert-manager type")
 		}
@@ -235,17 +229,6 @@ func (h *CertificateManager) IsCertificateReady(cert ManagedCertificate) (bool, 
 		}
 	}
 	return true, nil
-}
-
-func getCertManagerReadyCondition(certificate *certManagerv1.Certificate) *certManagerv1.CertificateCondition {
-	var readyCond *certManagerv1.CertificateCondition
-	for _, cond := range certificate.Status.Conditions {
-		if cond.Type == certManagerv1.CertificateConditionReady {
-			readyCond = &cond
-			break
-		}
-	}
-	return readyCond
 }
 
 type ManagedCertificate interface {
@@ -289,4 +272,44 @@ func (o *ManagedCertificateInfo) getCertManagerCertificateSpec() certManagerv1.C
 			Name: "cluster-ca",
 		},
 	}
+}
+
+func isCertManagerCertReady(certificate *certManagerv1.Certificate) (bool, error) {
+	var readyCond *certManagerv1.CertificateCondition
+	for _, cond := range certificate.Status.Conditions {
+		if cond.Type == certManagerv1.CertificateConditionReady {
+			readyCond = &cond
+			break
+		}
+	}
+	// check for ready state
+	if readyCond == nil || readyCond.Status == certManagermetav1.ConditionUnknown {
+		return false, nil
+	} else if readyCond.Status == certManagermetav1.ConditionFalse {
+		return false, fmt.Errorf("%s not ready: %s %s", certManagerv1.CertificateKind, certv1alpha1.StateError, readyCond.Message)
+	}
+	return true, nil
+}
+
+func areCertificatesReady(ctx context.Context, c *Controller, ownerId string) (ready bool, err error) {
+	// create a label selector to filter certificates by owner identifier hash
+	selector := labels.SelectorFromSet(labels.Set{
+		LabelOwnerIdentifierHash: sha1Sum(ownerId),
+	})
+
+	h := CreateCertificateManager(c)
+	certs, err := h.ListCertificates(ctx, metav1.NamespaceAll, selector)
+	if err != nil {
+		return false, fmt.Errorf("failed to list certificates: %w", err)
+	}
+
+	for i := range certs {
+		cert := certs[i]
+		var ready bool
+		if ready, err = h.IsCertificateReady(cert); err != nil || !ready {
+			return ready, err
+		}
+	}
+
+	return true, nil
 }
