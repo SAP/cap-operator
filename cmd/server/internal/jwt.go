@@ -27,8 +27,8 @@ type XSUAAConfig struct {
 	// one of xsappname OR clientid must be part of the audience
 	XSAppName string
 	ClientID  string
-	// all requested scopes must be fulfilled
-	RequiredScopes []string
+	// at least one expected scope must be fulfilled
+	ExpectedScopes []string
 }
 
 type XSUAAJWTClaims struct {
@@ -221,12 +221,12 @@ func adjustForNamespace(s []string, ignoreIfNotNamespaced bool) []string {
 func verifyScopes(claims *XSUAAJWTClaims, config *XSUAAConfig) bool {
 	scope := claims.Scope
 	tokenScope := convertToMap(scope)
-	for _, expected := range config.RequiredScopes {
-		if _, ok := tokenScope[expected]; !ok {
-			return false // all expected scopes should match
+	for _, expected := range config.ExpectedScopes {
+		if _, ok := tokenScope[expected]; ok {
+			return true // at least 1 expected scope should match
 		}
 	}
-	return true
+	return false
 }
 
 // Create a dummy lookup map
