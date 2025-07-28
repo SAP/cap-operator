@@ -7,7 +7,7 @@ require (
 	github.com/MicahParks/keyfunc/v3 v3.4.0
 	github.com/cert-manager/cert-manager v1.18.2
 	github.com/gardener/cert-management v0.17.8
-	github.com/gardener/external-dns-management v0.25.2
+	github.com/gardener/external-dns-management v0.26.0
 	github.com/go-logr/logr v1.4.3
 	github.com/go-logr/zapr v1.3.0
 	github.com/golang-jwt/jwt/v5 v5.2.3
@@ -83,5 +83,5 @@ require (
 	sigs.k8s.io/gateway-api v1.3.0 // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
-	sigs.k8s.io/yaml v1.5.0 // indirect
+	sigs.k8s.io/yaml v1.6.0 // indirect
 )
