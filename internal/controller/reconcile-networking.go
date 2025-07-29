@@ -30,6 +30,8 @@ const (
 	EventServiceVirtualServiceModificationFailed = "ServiceVirtualServiceModificationFailed"
 )
 
+const serviceDNSSuffix = ".svc.cluster.local"
+
 func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
 	var (
 		reason, message        string
@@ -122,7 +124,7 @@ func (c *Controller) getUpdatedTenantDestinationRuleObject(cat *v1alpha1.CAPTena
 	}
 
 	spec := &networkingv1.DestinationRule{
-		Host: routerPortInfo.WorkloadName + ServiceSuffix + "." + cat.Namespace + ".svc.cluster.local",
+		Host: routerPortInfo.WorkloadName + ServiceSuffix + "." + cat.Namespace + serviceDNSSuffix,
 		TrafficPolicy: &networkingv1.TrafficPolicy{
 			LoadBalancer: &networkingv1.LoadBalancerSettings{
 				LbPolicy: &networkingv1.LoadBalancerSettings_ConsistentHash{
@@ -222,7 +224,7 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(cat *v1alpha1.CAPTenan
 			},
 			Route: []*networkingv1.HTTPRouteDestination{{
 				Destination: &networkingv1.Destination{
-					Host: routerPortInfo.WorkloadName + ServiceSuffix + "." + cat.Namespace + ".svc.cluster.local",
+					Host: routerPortInfo.WorkloadName + ServiceSuffix + "." + cat.Namespace + serviceDNSSuffix,
 					Port: &networkingv1.PortSelector{Number: uint32(routerPortInfo.Ports[0].Port)},
 				},
 				Weight:  100,
@@ -410,7 +412,7 @@ func (c *Controller) getUpdatedServiceVirtualServiceObject(vs *istionwv1.Virtual
 			},
 			Route: []*networkingv1.HTTPRouteDestination{{
 				Destination: &networkingv1.Destination{
-					Host: getWorkloadName(cavName, route.WorkloadName) + ServiceSuffix + "." + ca.Namespace + ".svc.cluster.local",
+					Host: getWorkloadName(cavName, route.WorkloadName) + ServiceSuffix + "." + ca.Namespace + serviceDNSSuffix,
 					Port: &networkingv1.PortSelector{Number: uint32(route.Port)},
 				},
 				Headers: headers,
