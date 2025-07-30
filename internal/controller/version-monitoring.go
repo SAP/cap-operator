@@ -212,6 +212,9 @@ func (c *Controller) getCleanupRelevantVersions(ca *v1alpha1.CAPApplication) ([]
 		return nil, err
 	}
 
+	// Explicitly exclude the latest Ready version from cleanup
+	excludedVersions[latestReadyVersion.Spec.Version] = true
+
 	outdatedVersions := []*v1alpha1.CAPApplicationVersion{}
 	cavs, _ := c.getCachedCAPApplicationVersions(ca) // ignoring error as this is not critical
 	for i := range cavs {
