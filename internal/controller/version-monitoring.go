@@ -389,7 +389,7 @@ func evaluateMetric(ctx context.Context, rule *v1alpha1.MetricRule, job, ns stri
 			klog.ErrorS(err, "error parsing threshold value", "value", rule.ThresholdValue, "metric", rule.Name)
 			return false, err
 		}
-		klog.InfoS("parsed prometheus query result and threshold", "threshold", threshold.String(), "result", sample.Value.String(), "query", query)
+		klog.InfoS("parsed prometheus query result and threshold", "threshold", threshold.String(), "query_result", sample.Value.String(), "query", query)
 		return sample.Value <= threshold, nil
 	} else {
 		// there could be no results if the version was not transmitting metrics for a very long time
