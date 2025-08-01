@@ -225,7 +225,7 @@ func processDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Contro
 		return nil, fmt.Errorf("failed to reconcile domain certificate for %s: %w", ownerId, err)
 	}
 
-	// handle addtional ca certificate(s)
+	// handle additional ca certificate(s)
 	if err := handleAdditionalCACertificate(ctx, c, dom, credentialName, ingressInfo.Namespace, ownerId); err != nil {
 		return nil, fmt.Errorf("failed to reconcile additional ca certificate secret for %s: %w", ownerId, err)
 	}
