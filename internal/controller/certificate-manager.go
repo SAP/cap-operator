@@ -34,6 +34,45 @@ func CreateCertificateManager(c *Controller) *CertificateManager {
 	return &CertificateManager{c: c, managerType: certificateManager()}
 }
 
+func (h *CertificateManager) handleCertificate(ctx context.Context, info *ManagedCertificateInfo) (err error) {
+	selector := labels.SelectorFromSet(labels.Set{
+		LabelOwnerIdentifierHash: sha1Sum(info.OwnerId),
+	})
+	certs, err := h.ListCertificates(ctx, metav1.NamespaceAll, selector)
+	if err != nil {
+		return fmt.Errorf("failed to list certificates for %s: %w", info.OwnerId, err)
+	}
+
+	hash := info.Hash()
+
+	certsForDeletion := []ManagedCertificate{}
+	var (
+		selectedCert ManagedCertificate
+		consistent   bool
+	)
+	for i, cert := range certs {
+		selectedCert = cert
+		consistent = cert.GetAnnotations()[AnnotationResourceHash] == hash
+
+		if !consistent && len(certs)-1 < i || (h.managerType == certManagerCertManagerIO && (cert.GetNamespace() != info.CredentialNamespace)) {
+			certsForDeletion = append(certsForDeletion, cert)
+		}
+	}
+
+	if len(certsForDeletion) > 0 {
+		if err = h.DeleteCertificates(ctx, certsForDeletion); err != nil {
+			return fmt.Errorf("failed to delete outdated certificates for %s: %w", info.OwnerId, err)
+		}
+	}
+
+	if selectedCert == nil { // create
+		err = h.CreateCertificate(ctx, info)
+	} else if !consistent { // update
+		err = h.UpdateCertificate(ctx, selectedCert, info)
+	}
+	return
+}
+
 func (h *CertificateManager) GetCredentialName(namespace string, name string) string {
 	credentialSuffix := gardenerCredentialSuffix
 	if h.managerType == certManagerCertManagerIO {
