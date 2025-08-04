@@ -447,13 +447,6 @@ func handleDomainGateway[T v1alpha1.DomainEntity](ctx context.Context, c *Contro
 
 func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, credentialNamespace, name, namespace, ownerId string) (credentialName string, err error) {
 	h := CreateCertificateManager(c)
-	selector := labels.SelectorFromSet(labels.Set{
-		LabelOwnerIdentifierHash: sha1Sum(ownerId),
-	})
-	certs, err := h.ListCertificates(ctx, metav1.NamespaceAll, selector)
-	if err != nil {
-		return "", fmt.Errorf("failed to list certificates for %s: %w", ownerId, err)
-	}
 
 	credentialName = h.GetCredentialName(namespace, name)
 
@@ -466,49 +459,8 @@ func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Co
 		OwnerId:             ownerId,
 		OwnerGeneration:     dom.GetMetadata().Generation,
 	}
-	hash := info.Hash()
 
-	certsForDeletion := []ManagedCertificate{}
-	var (
-		selectedCert ManagedCertificate
-		consistent   bool
-	)
-	for i := range certs {
-		cert := certs[i]
-		if h.managerType == certManagerCertManagerIO && (cert.GetNamespace() != credentialNamespace || consistent) {
-			certsForDeletion = append(certsForDeletion, cert)
-			continue
-		}
-		if cert.GetAnnotations()[AnnotationResourceHash] == hash {
-			// this certificate is already up to date
-			if selectedCert != nil {
-				certsForDeletion = append(certsForDeletion, selectedCert)
-			}
-			selectedCert = cert
-			consistent = true
-			continue
-		}
-		if selectedCert == nil {
-			// this is the first certificate that is not consistent
-			selectedCert = cert
-			continue
-		}
-		certsForDeletion = append(certsForDeletion, cert)
-	}
-
-	if len(certsForDeletion) > 0 {
-		if err = h.DeleteCertificates(ctx, certsForDeletion); err != nil {
-			return "", fmt.Errorf("failed to delete outdated certificates for %s: %w", ownerId, err)
-		}
-	}
-
-	if selectedCert == nil { // create
-		err = h.CreateCertificate(ctx, info)
-	} else if !consistent { // update
-		err = h.UpdateCertificate(ctx, selectedCert, info)
-	}
-
-	return
+	return credentialName, h.handleCertificate(ctx, info)
 }
 
 func handleAdditionalCACertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, credentialName, credentialNamespace string, ownerId string) error {
