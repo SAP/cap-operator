@@ -4,7 +4,7 @@ go 1.24.5
 
 require (
 	github.com/MicahParks/jwkset v0.9.6
-	github.com/MicahParks/keyfunc/v3 v3.4.0
+	github.com/MicahParks/keyfunc/v3 v3.5.0
 	github.com/cert-manager/cert-manager v1.18.2
 	github.com/gardener/cert-management v0.17.8
 	github.com/gardener/external-dns-management v0.26.0
@@ -14,7 +14,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
-	github.com/lestrrat-go/jwx/v3 v3.0.9
+	github.com/lestrrat-go/jwx/v3 v3.0.10
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.84.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.84.0
 	github.com/prometheus/client_golang v1.23.0
@@ -73,7 +73,7 @@ require (
 	golang.org/x/term v0.33.0 // indirect
 	golang.org/x/text v0.27.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250728155136-f173205681a0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250804133106-a7a43d27e69b // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
