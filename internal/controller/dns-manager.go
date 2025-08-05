@@ -171,6 +171,11 @@ func getDnsInfo[T v1alpha1.DomainEntity](c *Controller, dom T) (resolvedDNSInfo 
 	tpl := template.New("dnsTemplate").Funcs(sprig.FuncMap())
 
 	resolvedDNSInfo = []*dnsInfo{}
+	checkAndAppendDNSInfo := func(dnsInfo *dnsInfo) {
+		if dnsInfo != nil {
+			resolvedDNSInfo = append(resolvedDNSInfo, dnsInfo)
+		}
+	}
 
 	for _, dnsTemplate := range dnsTemplates {
 		var parsedDnsInfo *dnsInfo
@@ -180,6 +185,8 @@ func getDnsInfo[T v1alpha1.DomainEntity](c *Controller, dom T) (resolvedDNSInfo 
 			if err != nil {
 				return nil, err
 			}
+			checkAndAppendDNSInfo(parsedDnsInfo)
+			continue
 		}
 		for subDomain, appId := range subdomainInfo {
 			domVars["subDomain"] = subDomain
@@ -188,9 +195,7 @@ func getDnsInfo[T v1alpha1.DomainEntity](c *Controller, dom T) (resolvedDNSInfo 
 				return nil, err
 			}
 			parsedDnsInfo.appId = appId
-		}
-		if parsedDnsInfo != nil {
-			resolvedDNSInfo = append(resolvedDNSInfo, parsedDnsInfo)
+			checkAndAppendDNSInfo(parsedDnsInfo)
 		}
 	}
 
