@@ -63,7 +63,7 @@ func SetupValidTokenAndIssuerForSubscriptionTests(xsappname string) (*http.Clien
 		UAADomain:      jwtTestUAADomain,
 		XSAppName:      xsappname,
 		ClientID:       "some-client-id",
-		RequiredScopes: []string{xsappname + ".Callback", xsappname + ".mtcallback"},
+		ExpectedScopes: []string{xsappname + ".Callback"},
 	}, &jwtTestParameters{})
 }
 
@@ -83,7 +83,7 @@ func setupTokenAndIssuer(config *XSUAAConfig, params *jwtTestParameters) (*http.
 		return nil, "", fmt.Errorf("error generating rsa key: %s", err.Error())
 	}
 	claims := XSUAAJWTClaims{
-		Scope:           config.RequiredScopes,
+		Scope:           config.ExpectedScopes,
 		ClientID:        brokerApp,
 		AuthorizedParty: brokerApp,
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -199,7 +199,7 @@ var testXSUAAConfig *XSUAAConfig = &XSUAAConfig{
 	UAADomain:      jwtTestUAADomain,
 	XSAppName:      "myxsappname",
 	ClientID:       "some-client-id",
-	RequiredScopes: []string{"myxsappname.Callback", "myxsappname.mtcallback"},
+	ExpectedScopes: []string{"myxsappname.mtcallback"},
 }
 
 func testVerifyValidToken(t *testing.T) {
@@ -218,7 +218,7 @@ func testValidTokenWithBrokerClientId(t *testing.T) {
 	brokerXSUAAConfig := &XSUAAConfig{
 		UAADomain:      testXSUAAConfig.UAADomain,
 		ClientID:       testXSUAAConfig.ClientID,
-		RequiredScopes: testXSUAAConfig.RequiredScopes,
+		ExpectedScopes: testXSUAAConfig.ExpectedScopes,
 		XSAppName:      "xsapp!b4711",
 	}
 	client, tokenString, err := setupTokenAndIssuer(brokerXSUAAConfig, &jwtTestParameters{clientIsBroker: true})
