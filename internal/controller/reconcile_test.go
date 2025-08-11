@@ -45,7 +45,6 @@ const (
 	globalAccountId    = "global-id-test"
 	primaryDomain      = "app.sme.sap.com"
 	secondaryDomain    = "sec.sme.sap.com"
-	dnsTarget          = "public-ingress.some.cluster.sap"
 	defaultVersion     = "0.0.1"
 )
 

@@ -212,6 +212,9 @@ func (c *Controller) getCleanupRelevantVersions(ca *v1alpha1.CAPApplication) ([]
 		return nil, err
 	}
 
+	// Explicitly exclude the latest Ready version from cleanup
+	excludedVersions[latestReadyVersion.Spec.Version] = true
+
 	outdatedVersions := []*v1alpha1.CAPApplicationVersion{}
 	cavs, _ := c.getCachedCAPApplicationVersions(ca) // ignoring error as this is not critical
 	for i := range cavs {
@@ -386,7 +389,7 @@ func evaluateMetric(ctx context.Context, rule *v1alpha1.MetricRule, job, ns stri
 			klog.ErrorS(err, "error parsing threshold value", "value", rule.ThresholdValue, "metric", rule.Name)
 			return false, err
 		}
-		klog.InfoS("parsed prometheus query result and threshold", "threshold", threshold.String(), "result", sample.Value.String(), "query", query)
+		klog.InfoS("parsed prometheus query result and threshold", "threshold", threshold.String(), "query_result", sample.Value.String(), "query", query)
 		return sample.Value <= threshold, nil
 	} else {
 		// there could be no results if the version was not transmitting metrics for a very long time

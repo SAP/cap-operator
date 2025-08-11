@@ -34,6 +34,45 @@ func CreateCertificateManager(c *Controller) *CertificateManager {
 	return &CertificateManager{c: c, managerType: certificateManager()}
 }
 
+func (h *CertificateManager) handleCertificate(ctx context.Context, info *ManagedCertificateInfo) (err error) {
+	selector := labels.SelectorFromSet(labels.Set{
+		LabelOwnerIdentifierHash: sha1Sum(info.OwnerId),
+	})
+	certs, err := h.ListCertificates(ctx, metav1.NamespaceAll, selector)
+	if err != nil {
+		return fmt.Errorf("failed to list certificates for %s: %w", info.OwnerId, err)
+	}
+
+	hash := info.Hash()
+
+	certsForDeletion := []ManagedCertificate{}
+	var (
+		selectedCert ManagedCertificate
+		consistent   bool
+	)
+	for i, cert := range certs {
+		selectedCert = cert
+		consistent = cert.GetAnnotations()[AnnotationResourceHash] == hash
+
+		if !consistent && len(certs)-1 < i || (h.managerType == certManagerCertManagerIO && (cert.GetNamespace() != info.CredentialNamespace)) {
+			certsForDeletion = append(certsForDeletion, cert)
+		}
+	}
+
+	if len(certsForDeletion) > 0 {
+		if err = h.DeleteCertificates(ctx, certsForDeletion); err != nil {
+			return fmt.Errorf("failed to delete outdated certificates for %s: %w", info.OwnerId, err)
+		}
+	}
+
+	if selectedCert == nil { // create
+		err = h.CreateCertificate(ctx, info)
+	} else if !consistent { // update
+		err = h.UpdateCertificate(ctx, selectedCert, info)
+	}
+	return
+}
+
 func (h *CertificateManager) GetCredentialName(namespace string, name string) string {
 	credentialSuffix := gardenerCredentialSuffix
 	if h.managerType == certManagerCertManagerIO {
@@ -108,36 +147,36 @@ func (h *CertificateManager) RemoveCertificateFinalizers(ctx context.Context, ce
 	updGroup, updCtx := errgroup.WithContext(ctx)
 	for i := range certs {
 		cert := certs[i]
-		switch h.managerType {
-		case certManagerCertManagerIO:
-			if c, ok := cert.(*certManagerv1.Certificate); ok {
-				updGroup.Go(func() error {
-					var err error
-					// remove Finalizer from cert-manager Certificate
-					if removeFinalizer(&c.Finalizers, FinalizerDomain) {
-						_, err = h.c.certManagerCertificateClient.CertmanagerV1().Certificates(c.Namespace).Update(updCtx, c, metav1.UpdateOptions{})
-					}
-					return err
-				})
-			}
-		default:
-			if c, ok := cert.(*certv1alpha1.Certificate); ok {
-				updGroup.Go(func() error {
-					var err error
-					// remove Finalizer from gardener Certificate
-					if removeFinalizer(&c.Finalizers, FinalizerDomain) {
-						_, err = h.c.gardenerCertificateClient.CertV1alpha1().Certificates(c.Namespace).Update(updCtx, c, metav1.UpdateOptions{})
-					}
-					return err
-				})
-			}
-		}
+		updGroup.Go(func() error {
+			return h.removeManagedCertificateFinalizer(updCtx, cert)
+		})
 	}
 
 	if err = updGroup.Wait(); err != nil {
 		return fmt.Errorf("failed to remove finalizer from certificate: %w", err)
 	}
 	return
+}
+
+func (h *CertificateManager) removeManagedCertificateFinalizer(ctx context.Context, cert ManagedCertificate) error {
+	var err error
+	switch h.managerType {
+	case certManagerCertManagerIO:
+		if c, ok := cert.(*certManagerv1.Certificate); ok {
+			// remove Finalizer from cert-manager Certificate
+			if removeFinalizer(&c.Finalizers, FinalizerDomain) {
+				_, err = h.c.certManagerCertificateClient.CertmanagerV1().Certificates(c.Namespace).Update(ctx, c, metav1.UpdateOptions{})
+			}
+		}
+	default:
+		if c, ok := cert.(*certv1alpha1.Certificate); ok {
+			// remove Finalizer from gardener Certificate
+			if removeFinalizer(&c.Finalizers, FinalizerDomain) {
+				_, err = h.c.gardenerCertificateClient.CertV1alpha1().Certificates(c.Namespace).Update(ctx, c, metav1.UpdateOptions{})
+			}
+		}
+	}
+	return err
 }
 
 func (h *CertificateManager) UpdateCertificate(ctx context.Context, cert ManagedCertificate, info *ManagedCertificateInfo) (err error) {
@@ -212,13 +251,7 @@ func (h *CertificateManager) IsCertificateReady(cert ManagedCertificate) (bool, 
 	switch h.managerType {
 	case certManagerCertManagerIO:
 		if c, ok := cert.(*certManagerv1.Certificate); ok {
-			readyCond := getCertManagerReadyCondition(c)
-			// check for ready state
-			if readyCond == nil || readyCond.Status == certManagermetav1.ConditionUnknown {
-				return false, nil
-			} else if readyCond.Status == certManagermetav1.ConditionFalse {
-				return false, fmt.Errorf("%s not ready: %s %s", certManagerv1.CertificateKind, certv1alpha1.StateError, readyCond.Message)
-			}
+			return isCertManagerCertReady(c)
 		} else {
 			return false, fmt.Errorf("failed to cast certificate to cert-manager type")
 		}
@@ -235,17 +268,6 @@ func (h *CertificateManager) IsCertificateReady(cert ManagedCertificate) (bool, 
 		}
 	}
 	return true, nil
-}
-
-func getCertManagerReadyCondition(certificate *certManagerv1.Certificate) *certManagerv1.CertificateCondition {
-	var readyCond *certManagerv1.CertificateCondition
-	for _, cond := range certificate.Status.Conditions {
-		if cond.Type == certManagerv1.CertificateConditionReady {
-			readyCond = &cond
-			break
-		}
-	}
-	return readyCond
 }
 
 type ManagedCertificate interface {
@@ -289,4 +311,44 @@ func (o *ManagedCertificateInfo) getCertManagerCertificateSpec() certManagerv1.C
 			Name: "cluster-ca",
 		},
 	}
+}
+
+func isCertManagerCertReady(certificate *certManagerv1.Certificate) (bool, error) {
+	var readyCond *certManagerv1.CertificateCondition
+	for _, cond := range certificate.Status.Conditions {
+		if cond.Type == certManagerv1.CertificateConditionReady {
+			readyCond = &cond
+			break
+		}
+	}
+	// check for ready state
+	if readyCond == nil || readyCond.Status == certManagermetav1.ConditionUnknown {
+		return false, nil
+	} else if readyCond.Status == certManagermetav1.ConditionFalse {
+		return false, fmt.Errorf("%s not ready: %s %s", certManagerv1.CertificateKind, certv1alpha1.StateError, readyCond.Message)
+	}
+	return true, nil
+}
+
+func areCertificatesReady(ctx context.Context, c *Controller, ownerId string) (ready bool, err error) {
+	// create a label selector to filter certificates by owner identifier hash
+	selector := labels.SelectorFromSet(labels.Set{
+		LabelOwnerIdentifierHash: sha1Sum(ownerId),
+	})
+
+	h := CreateCertificateManager(c)
+	certs, err := h.ListCertificates(ctx, metav1.NamespaceAll, selector)
+	if err != nil {
+		return false, fmt.Errorf("failed to list certificates: %w", err)
+	}
+
+	for i := range certs {
+		cert := certs[i]
+		var ready bool
+		if ready, err = h.IsCertificateReady(cert); err != nil || !ready {
+			return ready, err
+		}
+	}
+
+	return true, nil
 }

@@ -49,10 +49,24 @@ spec:
                 - None
                 - Wildcard
                 - Subdomain
+                - Custom
                 type: string
               dnsTarget:
                 pattern: ^[a-z0-9-.]+$
                 type: string
+              dnsTemplates:
+                items:
+                  properties:
+                    name:
+                      type: string
+                    target:
+                      type: string
+                  required:
+                  - name
+                  - target
+                  type: object
+                maxItems: 10
+                type: array
               domain:
                 pattern: ^[a-z0-9-.]+$
                 type: string

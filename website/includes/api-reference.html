@@ -767,6 +767,19 @@ DNSMode
 </tr>
 <tr>
 <td>
+<code>dnsTemplates</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DNSTemplate">
+[]DNSTemplate
+</a>
+</em>
+</td>
+<td>
+<p>DNS templates allows usage of go templates for generating DNS entries when [DNSMode] is set to <code>Custom</code></p>
+</td>
+</tr>
+<tr>
+<td>
 <code>dnsTarget</code><br/>
 <em>
 string
@@ -911,6 +924,19 @@ DNSMode
 </td>
 <td>
 <p>DNS mode controls the creation of DNS entries related to the domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsTemplates</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DNSTemplate">
+[]DNSTemplate
+</a>
+</em>
+</td>
+<td>
+<p>DNS templates allows usage of go templates for generating DNS entries when [DNSMode] is set to <code>Custom</code></p>
 </td>
 </tr>
 <tr>
@@ -2249,7 +2275,10 @@ Kubernetes core/v1.RestartPolicy
 <th>Description</th>
 </tr>
 </thead>
-<tbody><tr><td><p>&#34;None&#34;</p></td>
+<tbody><tr><td><p>&#34;Custom&#34;</p></td>
+<td><p>A DNS entry will be created according to configuration in <code>[DNSTemplate]</code></p>
+</td>
+</tr><tr><td><p>&#34;None&#34;</p></td>
 <td><p>No DNS entries will be created (Default)</p>
 </td>
 </tr><tr><td><p>&#34;Subdomain&#34;</p></td>
@@ -2259,6 +2288,46 @@ Kubernetes core/v1.RestartPolicy
 <td><p>Wildcard DNS entry will be created</p>
 </td>
 </tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DNSTemplate">DNSTemplate
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainSpec">DomainSpec</a>)
+</p>
+<div>
+<p>DNSTemplate supports the creation of DNS entries using go templates See: <a href="https://pkg.go.dev/text/template">https://pkg.go.dev/text/template</a></p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Domain name for which a DNS record will be created</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>target</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Target of the DNS reord</p>
+</td>
+</tr>
+</tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.DeletionRules">DeletionRules
 </h3>
@@ -2542,6 +2611,19 @@ DNSMode
 </td>
 <td>
 <p>DNS mode controls the creation of DNS entries related to the domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsTemplates</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DNSTemplate">
+[]DNSTemplate
+</a>
+</em>
+</td>
+<td>
+<p>DNS templates allows usage of go templates for generating DNS entries when [DNSMode] is set to <code>Custom</code></p>
 </td>
 </tr>
 <tr>
@@ -3550,5 +3632,5 @@ If not specified, CAP Operator will not attempt to create a ServiceMonitor for t
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>dfbe53b</code>.
+on git commit <code>b006730</code>.
 </em></p>

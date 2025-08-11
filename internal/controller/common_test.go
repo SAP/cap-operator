@@ -69,6 +69,8 @@ var gvrKindMap map[string]string = map[string]string{
 	"servicemonitors.monitoring.coreos.com/v1":    "ServiceMonitor",
 }
 
+var createKindMap map[string]int
+
 // adds fixed suffix "gen" to newly created objects with generateName
 var generateNameCreateHandler k8stesting.ReactionFunc = func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 	create := action.(k8stesting.CreateAction)
@@ -76,7 +78,14 @@ var generateNameCreateHandler k8stesting.ReactionFunc = func(action k8stesting.A
 	mo, ok := obj.(metav1.Object)
 	if ok {
 		if mo.GetGenerateName() != "" && mo.GetName() == "" {
-			mo.SetName(mo.GetGenerateName() + "gen")
+			objectKindKey := action.GetResource().String() + mo.GetGenerateName()
+			if i, ok := createKindMap[objectKindKey]; !ok {
+				mo.SetName(mo.GetGenerateName() + "gen")
+				createKindMap[objectKindKey] = 1
+			} else {
+				mo.SetName(mo.GetGenerateName() + "gen" + fmt.Sprintf("%d", i))
+				createKindMap[objectKindKey] = i + 1
+			}
 		}
 	}
 
@@ -232,6 +241,7 @@ func addForDiscovery(c *k8stesting.Fake, resources []schema.GroupVersionResource
 }
 
 func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAction, discoverResources []schema.GroupVersionResource) *Controller {
+	createKindMap = map[string]int{}
 	// add schemes for various client sets
 	smeScheme.AddToScheme(scheme.Scheme)
 	gardenercertscheme.AddToScheme(scheme.Scheme)
