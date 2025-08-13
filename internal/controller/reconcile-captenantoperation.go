@@ -51,6 +51,7 @@ type tentantOperationWorkload struct {
 	tolerations               []corev1.Toleration
 	backoffLimit              *int32
 	ttlSecondsAfterFinished   *int32
+	activeDeadlineSeconds     *int64
 	restartPolicy             corev1.RestartPolicy
 }
 
@@ -479,6 +480,7 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            derivedWorkload.backoffLimit,
 			TTLSecondsAfterFinished: derivedWorkload.ttlSecondsAfterFinished,
+			ActiveDeadlineSeconds:   derivedWorkload.activeDeadlineSeconds,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      params.labels,
@@ -575,6 +577,7 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 		if workload.JobDefinition.TTLSecondsAfterFinished != nil {
 			result.ttlSecondsAfterFinished = workload.JobDefinition.TTLSecondsAfterFinished
 		}
+		result.activeDeadlineSeconds = workload.JobDefinition.ActiveDeadlineSeconds
 		result.restartPolicy = workload.JobDefinition.RestartPolicy
 		result.affinity = workload.JobDefinition.Affinity
 		result.nodeSelector = workload.JobDefinition.NodeSelector
@@ -599,6 +602,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            workload.JobDefinition.BackoffLimit,
 			TTLSecondsAfterFinished: workload.JobDefinition.TTLSecondsAfterFinished,
+			ActiveDeadlineSeconds:   workload.JobDefinition.ActiveDeadlineSeconds,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      params.labels,

@@ -335,6 +335,7 @@ func newContentDeploymentJob(cav *v1alpha1.CAPApplicationVersion, workload *v1al
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            workload.JobDefinition.BackoffLimit,
 			TTLSecondsAfterFinished: workload.JobDefinition.TTLSecondsAfterFinished,
+			ActiveDeadlineSeconds:   workload.JobDefinition.ActiveDeadlineSeconds,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: annotations,
