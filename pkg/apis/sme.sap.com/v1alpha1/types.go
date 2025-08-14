@@ -742,7 +742,7 @@ type CertConfig struct {
 	AdditionalCACertificate string `json:"additionalCACertificate,omitempty"`
 }
 
-// +kubebuilder:validation:Enum=Simple;Mutual
+// +kubebuilder:validation:Enum=Simple;Mutual;OptionalMutual
 type TLSMode string
 
 const (
@@ -750,6 +750,8 @@ const (
 	TlsModeSimple TLSMode = "Simple"
 	// Mutual TLS Mode
 	TlsModeMutual TLSMode = "Mutual"
+	// Optional Mutual TLS Mode
+	TlsModeOptionalMutual TLSMode = "OptionalMutual"
 )
 
 // +kubebuilder:validation:Enum=None;Wildcard;Subdomain;Custom

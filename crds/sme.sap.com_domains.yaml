@@ -79,6 +79,7 @@ spec:
                 enum:
                 - Simple
                 - Mutual
+                - OptionalMutual
                 type: string
             required:
             - dnsMode
