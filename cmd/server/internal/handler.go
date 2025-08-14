@@ -322,10 +322,11 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 
 	token := authHeader[7:]
 	err := VerifyXSUAAJWTToken(context.TODO(), token, &XSUAAConfig{
-		UAADomain:      saasData.UAADomain,
-		ClientID:       saasData.ClientId,
-		XSAppName:      uaaData.XSAppName,
-		RequiredScopes: []string{uaaData.XSAppName + ".Callback", uaaData.XSAppName + ".mtcallback"},
+		UAADomain: saasData.UAADomain,
+		ClientID:  saasData.ClientId,
+		XSAppName: uaaData.XSAppName,
+		// `.Callback` is the scope usually used by approuter and `.mtcallback` is used by CAP. Either one of these may be present.
+		ExpectedScopes: []string{uaaData.XSAppName + ".Callback", uaaData.XSAppName + ".mtcallback"},
 	}, s.httpClientGenerator.NewHTTPClient())
 	if err != nil {
 		util.LogError(err, "failed token validation", step, "checkAuthorization", nil, "XSAppName", uaaData.XSAppName)
