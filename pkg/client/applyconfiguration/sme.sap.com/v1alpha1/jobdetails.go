@@ -19,6 +19,7 @@ type JobDetailsApplyConfiguration struct {
 	Type                            *smesapcomv1alpha1.JobType `json:"type,omitempty"`
 	BackoffLimit                    *int32                     `json:"backoffLimit,omitempty"`
 	TTLSecondsAfterFinished         *int32                     `json:"ttlSecondsAfterFinished,omitempty"`
+	ActiveDeadlineSeconds           *int64                     `json:"activeDeadlineSeconds,omitempty"`
 }
 
 // JobDetailsApplyConfiguration constructs a declarative configuration of the JobDetails type for use with
@@ -222,5 +223,13 @@ func (b *JobDetailsApplyConfiguration) WithBackoffLimit(value int32) *JobDetails
 // If called multiple times, the TTLSecondsAfterFinished field is set to the value of the last call.
 func (b *JobDetailsApplyConfiguration) WithTTLSecondsAfterFinished(value int32) *JobDetailsApplyConfiguration {
 	b.TTLSecondsAfterFinished = &value
+	return b
+}
+
+// WithActiveDeadlineSeconds sets the ActiveDeadlineSeconds field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ActiveDeadlineSeconds field is set to the value of the last call.
+func (b *JobDetailsApplyConfiguration) WithActiveDeadlineSeconds(value int64) *JobDetailsApplyConfiguration {
+	b.ActiveDeadlineSeconds = &value
 	return b
 }

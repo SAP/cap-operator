@@ -2640,6 +2640,9 @@ spec:
                       type: object
                     jobDefinition:
                       properties:
+                        activeDeadlineSeconds:
+                          format: int64
+                          type: integer
                         affinity:
                           properties:
                             nodeAffinity:
