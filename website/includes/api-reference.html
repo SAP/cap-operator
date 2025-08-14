@@ -2872,6 +2872,17 @@ int32
 <p>Specifies the time after which the job may be cleaned up.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>activeDeadlineSeconds</code><br/>
+<em>
+int64
+</em>
+</td>
+<td>
+<p>Specifies the duration in sections for which the job may be continuously active.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.JobType">JobType
@@ -3372,6 +3383,9 @@ string
 <tbody><tr><td><p>&#34;Mutual&#34;</p></td>
 <td><p>Mutual TLS Mode</p>
 </td>
+</tr><tr><td><p>&#34;OptionalMutual&#34;</p></td>
+<td><p>Optional Mutual TLS Mode</p>
+</td>
 </tr><tr><td><p>&#34;Simple&#34;</p></td>
 <td><p>Simple TLS Mode (Default)</p>
 </td>
@@ -3632,5 +3646,5 @@ If not specified, CAP Operator will not attempt to create a ServiceMonitor for t
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>b006730</code>.
+on git commit <code>ffa6a15</code>.
 </em></p>

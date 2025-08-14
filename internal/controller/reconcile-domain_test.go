@@ -170,6 +170,41 @@ func TestDomain_ProcessingWithIngressCertGateway(t *testing.T) {
 	)
 }
 
+func TestDomain_Mutual(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress, ObservedDomain set, cert, dns and updated gateway with mutual TLS ready - Domain ready",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-mutual.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/primary-gateway.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-mutual-ready.yaml",
+		},
+	)
+}
+
+func TestDomain_OptionalMutual(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress, ObservedDomain set, cert, dns and missing gateway with Optional Mutual TLS ready - Domain ready",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-optional-mutual.yaml",
+				"testdata/domain/primary-certificate-ready.yaml",
+				"testdata/domain/primary-dns-ready.yaml",
+			},
+			expectedResources: "testdata/domain/domain-optional-mutual-ready.yaml",
+		},
+	)
+}
+
 func TestDomain_Ready(t *testing.T) {
 	reconcileTestItem(
 		context.TODO(), t,
