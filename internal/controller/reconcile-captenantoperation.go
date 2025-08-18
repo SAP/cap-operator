@@ -690,12 +690,13 @@ func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation, step
 
 	if stepType == v1alpha1.JobTenantOperation {
 		var operation string
-		if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
+		switch ctop.Spec.Operation {
+		case v1alpha1.CAPTenantOperationTypeProvisioning:
 			operation = "subscribe"
 			env = append(env, corev1.EnvVar{Name: EnvCAPOpSubscriptionPayload, ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: ctop.Annotations[AnnotationSubscriptionContextSecret]}, Key: SubscriptionContext}}})
-		} else if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeUpgrade {
+		case v1alpha1.CAPTenantOperationTypeUpgrade:
 			operation = "upgrade"
-		} else { // deprovisioning
+		default: // deprovisioning
 			operation = "unsubscribe"
 		}
 		env = append(env, corev1.EnvVar{Name: EnvCAPOpTenantMtxsOperation, Value: operation})
