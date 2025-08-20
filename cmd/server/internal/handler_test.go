@@ -1055,9 +1055,10 @@ func TestAsyncCallback(t *testing.T) {
 				}
 
 				var payload any
-				if subscriptionType == SaaS {
+				switch subscriptionType {
+				case SaaS:
 					payload = &SaaSCallbackResponse{}
-				} else if subscriptionType == SMS {
+				case SMS:
 					payload = &SmsCallbackResponse{}
 				}
 				body, err := io.ReadAll(r.Body)

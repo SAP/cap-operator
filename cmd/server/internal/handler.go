@@ -263,6 +263,32 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 	return &Result{Tenant: tenant, Message: message(created)}
 }
 
+func extractTimeoutInMillis(appUrls string, isSMS bool) string {
+	if appUrls == "" {
+		return ""
+	}
+
+	var appUrlsMap map[string]any
+	err := json.Unmarshal([]byte(appUrls), &appUrlsMap)
+	if err != nil {
+		util.LogError(err, "Error unmarshalling AppUrls", "getCallbackReqInfo", nil, nil)
+		return ""
+	}
+
+	if isSMS {
+		if asyncCallbacks, ok := appUrlsMap["subscriptionCallbacks"].(map[string]any); ok {
+			if timeoutInMillis, ok := asyncCallbacks["async"].(map[string]any)["timeoutInMillis"]; ok {
+				return fmt.Sprintf("%v", timeoutInMillis)
+			}
+		}
+	} else {
+		if timeoutInMillis, ok := appUrlsMap["callbackTimeoutMillis"]; ok {
+			return fmt.Sprintf("%v", timeoutInMillis)
+		}
+	}
+	return ""
+}
+
 func (s *SubscriptionHandler) getCallbackReqInfo(subscriptionType subscriptionType, callbackPath string, saasData *util.SaasRegistryCredentials, smsData *util.SmsCredentials) *util.CallbackReqInfo {
 	var callbackReqInfo = &util.CallbackReqInfo{}
 
@@ -283,31 +309,6 @@ func (s *SubscriptionHandler) getCallbackReqInfo(subscriptionType subscriptionTy
 		assignIfNotEmpty(&callbackReqInfo.ClientSecret, source.ClientSecret)
 	}
 
-	parseAppUrls := func(appUrls string, isSMS bool) {
-		if appUrls == "" {
-			return
-		}
-
-		var appUrlsMap map[string]any
-		err := json.Unmarshal([]byte(appUrls), &appUrlsMap)
-		if err != nil {
-			util.LogError(err, "Error unmarshalling AppUrls", "getCallbackReqInfo", nil, nil)
-			return
-		}
-
-		if isSMS {
-			if asyncCallbacks, ok := appUrlsMap["subscriptionCallbacks"].(map[string]any); ok {
-				if timeoutInMillis, ok := asyncCallbacks["async"].(map[string]any)["timeoutInMillis"]; ok {
-					callbackReqInfo.CallbackTimeoutMillis = fmt.Sprintf("%v", timeoutInMillis)
-				}
-			}
-		} else {
-			if timeoutInMillis, ok := appUrlsMap["callbackTimeoutMillis"]; ok {
-				callbackReqInfo.CallbackTimeoutMillis = fmt.Sprintf("%v", timeoutInMillis)
-			}
-		}
-	}
-
 	// Assign callback
 	assignIfNotEmpty(&callbackReqInfo.CallbackPath, callbackPath)
 
@@ -316,13 +317,13 @@ func (s *SubscriptionHandler) getCallbackReqInfo(subscriptionType subscriptionTy
 		if smsData != nil {
 			assignCommonFields(smsData.CredentialData)
 			assignIfNotEmpty(&callbackReqInfo.CallbackUrl, smsData.SubscriptionManagerUrl)
-			parseAppUrls(smsData.AppUrls, true)
+			callbackReqInfo.CallbackTimeoutMillis = extractTimeoutInMillis(smsData.AppUrls, true)
 		}
 	default:
 		if saasData != nil {
 			assignCommonFields(saasData.CredentialData)
 			assignIfNotEmpty(&callbackReqInfo.CallbackUrl, saasData.SaasManagerUrl)
-			parseAppUrls(saasData.AppUrls, false)
+			callbackReqInfo.CallbackTimeoutMillis = extractTimeoutInMillis(saasData.AppUrls, false)
 		}
 	}
 
@@ -512,34 +513,35 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 }
 
 func (s *SubscriptionHandler) checkCertIssuerAndSubject(xForwardedClientCert string, smsData *util.SmsCredentials, step string) error {
+	const checkCertIssuerAndSubjectFailed = "certificate issuer and subject check failed"
 	if xForwardedClientCert == "" {
 		err := errors.New("x-forwarded-client-cert header is empty")
-		util.LogError(err, "certificate issuer and subject check failed", step, "checkCertIssuerAndSubject", nil)
+		util.LogError(err, checkCertIssuerAndSubjectFailed, step, "checkCertIssuerAndSubject", nil)
 		return err
 	}
 
 	// Decode PEM block
 	decodedValue, err := url.QueryUnescape(xForwardedClientCert)
 	if err != nil {
-		util.LogError(err, "certificate issuer and subject check failed", step, "checkCertIssuerAndSubject", nil)
+		util.LogError(err, checkCertIssuerAndSubjectFailed, step, "checkCertIssuerAndSubject", nil)
 		return err
 	}
 
 	block, _ := pem.Decode([]byte(decodedValue))
 	if block == nil {
 		err := errors.New("failed to decode PEM block")
-		util.LogError(err, "certificate issuer and subject check failed", step, "checkCertIssuerAndSubject", nil)
+		util.LogError(err, checkCertIssuerAndSubjectFailed, step, "checkCertIssuerAndSubject", nil)
 		return err
 	}
 
 	cert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		util.LogError(err, "certificate issuer and subject check failed", step, "checkCertIssuerAndSubject", nil)
+		util.LogError(err, checkCertIssuerAndSubjectFailed, step, "checkCertIssuerAndSubject", nil)
 		return err
 	}
 
 	if err := s.checkCertificate(cert, smsData); err != nil {
-		util.LogError(err, "certificate check failed", step, "checkCertIssuerAndSubject", nil)
+		util.LogError(err, checkCertIssuerAndSubjectFailed, step, "checkCertIssuerAndSubject", nil)
 		return err
 	}
 	return nil
