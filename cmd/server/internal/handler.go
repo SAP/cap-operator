@@ -538,7 +538,7 @@ func (s *SubscriptionHandler) checkCertIssuerAndSubject(xForwardedClientCert str
 		return err
 	}
 
-	if s.checkCertificate(cert, smsData) != nil {
+	if err := s.checkCertificate(cert, smsData); err != nil {
 		util.LogError(err, "certificate check failed", step, "checkCertIssuerAndSubject", nil)
 		return err
 	}
