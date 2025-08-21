@@ -165,9 +165,9 @@ var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *C
 
 	// check and reconcile tenant virtual service
 	// adjust virtual service only when tenant is finalizing (after provisioning or upgrade)
-	requeue, err := c.reconcileTenantNetworking(ctx, cat, ctop.Spec.CAPApplicationVersionInstance, ca)
-	if err != nil || requeue != nil {
-		return requeue, err
+	err = c.reconcileTenantNetworking(ctx, cat, ctop.Spec.CAPApplicationVersionInstance, ca)
+	if err != nil {
+		return nil, err
 	}
 
 	// the ObservedGeneration of the tenant should be updated here (when Ready)
@@ -249,8 +249,8 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, _ i
 	}
 
 	if cat.DeletionTimestamp == nil && cat.Status.CurrentCAPApplicationVersionInstance != "" {
-		requeue, err = c.reconcileTenantNetworking(ctx, cat, cat.Status.CurrentCAPApplicationVersionInstance, nil)
-		if requeue == nil && err == nil {
+		err = c.reconcileTenantNetworking(ctx, cat, cat.Status.CurrentCAPApplicationVersionInstance, nil)
+		if err == nil {
 			util.LogInfo("Tenant processing completed", string(Ready), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		}
 	}

@@ -1032,40 +1032,46 @@ func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alph
 	}
 
 	for _, contentJobName := range getContentJobInOrder(cav) {
-
 		job := getContentJobName(contentJobName, cav)
 
-		// Get the contentDeploy job with the name expected for this CAV instance
-		// The job could get deleted after sometime. So we should also check the finished job list on the CAV status.
-		contentDeployJob, err := c.kubeInformerFactory.Batch().V1().Jobs().Lister().Jobs(cav.Namespace).Get(job)
-		if err != nil && !cav.CheckFinishedJobs(job) {
-			return true, nil
-		}
-
-		numOfFinishedJobsBeforeUpd := len(cav.Status.FinishedJobs)
-		if err := checkAndUpdateJobStatusFinishedJobs(contentDeployJob, cav); err != nil {
-			util.LogError(err, "Error in content job", string(Processing), cav, contentDeployJob, "version", cav.Spec.Version)
-			return false, err
-		}
-
-		if numOfFinishedJobsBeforeUpd != len(cav.Status.FinishedJobs) {
-			if err := c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ReadyForProcessing"}); err != nil {
-				return false, err
-			}
-		}
-
-		// If the job is still running, set processing to true
-		if !cav.CheckFinishedJobs(job) {
-			util.LogInfo("Waiting for content job(s) to complete", string(Processing), cav, nil, util.DependentName, job, util.DependentKind, "Job", "version", cav.Spec.Version)
-			return true, nil
+		if processing, err := c.processContentJob(ctx, cav, job); processing || err != nil {
+			return processing, err
 		}
 	}
 
 	// All Jobs are executed
 	if cav.Status.State != v1alpha1.CAPApplicationVersionStateReady {
-		// Only log this state if cav is not already in Ready state as the resource might be reconciled again
 		util.LogInfo("Content job(s) completed", string(Processing), cav, nil, "version", cav.Spec.Version)
 	}
+	return false, nil
+}
+
+func (c *Controller) processContentJob(ctx context.Context, cav *v1alpha1.CAPApplicationVersion, job string) (bool, error) {
+	// Get the contentDeploy job with the name expected for this CAV instance
+	// The job could get deleted after sometime. So we should also check the finished job list on the CAV status.
+	contentDeployJob, err := c.kubeInformerFactory.Batch().V1().Jobs().Lister().Jobs(cav.Namespace).Get(job)
+	if err != nil && !cav.CheckFinishedJobs(job) {
+		return true, nil
+	}
+
+	numOfFinishedJobsBeforeUpd := len(cav.Status.FinishedJobs)
+	if err := checkAndUpdateJobStatusFinishedJobs(contentDeployJob, cav); err != nil {
+		util.LogError(err, "Error in content job", string(Processing), cav, contentDeployJob, "version", cav.Spec.Version)
+		return false, err
+	}
+
+	if numOfFinishedJobsBeforeUpd != len(cav.Status.FinishedJobs) {
+		if err := c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ReadyForProcessing"}); err != nil {
+			return false, err
+		}
+	}
+
+	// If the job is still running, set processing to true
+	if !cav.CheckFinishedJobs(job) {
+		util.LogInfo("Waiting for content job(s) to complete", string(Processing), cav, nil, util.DependentName, job, util.DependentKind, "Job", "version", cav.Spec.Version)
+		return true, nil
+	}
+
 	return false, nil
 }
 
