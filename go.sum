@@ -103,10 +103,10 @@ github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.84.1 h1:NEQAo0Cl1gf9sJ3oI1QzczS3BF6ySvSSH36mwOZDuhI=
-github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.84.1/go.mod h1:MruMqbSS9aYrKhBImrO9X9g52hwz3I0B+tcoeAwkmuM=
-github.com/prometheus-operator/prometheus-operator/pkg/client v0.84.1 h1:VgjWJqUgjLWs5JNziNBo+7r6AzNyktT7Ibs/HfB7Lcc=
-github.com/prometheus-operator/prometheus-operator/pkg/client v0.84.1/go.mod h1:ZjOuYKhuRzx4TSoZ3ocQQulPngg7beT5ZMBbeQx65sA=
+github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.85.0 h1:oY+F5FZFmCjCyzkHWPjVQpzvnvEB/0FP+iyzDUUlqFc=
+github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.85.0/go.mod h1:VB7wtBmDT6W2RJHzsvPZlBId+EnmeQA0d33fFTXvraM=
+github.com/prometheus-operator/prometheus-operator/pkg/client v0.85.0 h1:OdW3Vnmoa2pM5PfRyQaSEO+UN5yamEUS1MuhwE0PxbY=
+github.com/prometheus-operator/prometheus-operator/pkg/client v0.85.0/go.mod h1:5ctipSFkXKeXig01Or0aXKNaaBQFWZAAK1zzYWz9YZY=
 github.com/prometheus/client_golang v1.23.0 h1:ust4zpdl9r4trLY/gSjlm07PuiBq2ynaXXlptpfy8Uc=
 github.com/prometheus/client_golang v1.23.0/go.mod h1:i/o0R9ByOnHX0McrTMTyhYvKE4haaf2mW08I+jGAjEE=
 github.com/prometheus/client_model v0.6.2 h1:oBsgwpGs7iVziMvrGhE53c/GrLUsZdHnqNwqPLxwZyk=
@@ -194,8 +194,8 @@ golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8T
 golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 gomodules.xyz/jsonpatch/v2 v2.5.0 h1:JELs8RLM12qJGXU4u/TO3V25KW8GreMKl9pdkk14RM0=
 gomodules.xyz/jsonpatch/v2 v2.5.0/go.mod h1:AH3dM2RI6uoBZxn3LVrfvJ3E0/9dG4cSrbuBJT4moAY=
-google.golang.org/genproto/googleapis/api v0.0.0-20250818200422-3122310a409c h1:AtEkQdl5b6zsybXcbz00j1LwNodDuH6hVifIaNqk7NQ=
-google.golang.org/genproto/googleapis/api v0.0.0-20250818200422-3122310a409c/go.mod h1:ea2MjsO70ssTfCjiwHgI0ZFqcw45Ksuk2ckf9G468GA=
+google.golang.org/genproto/googleapis/api v0.0.0-20250826171959-ef028d996bc1 h1:APHvLLYBhtZvsbnpkfknDZ7NyH4z5+ub/I0u8L3Oz6g=
+google.golang.org/genproto/googleapis/api v0.0.0-20250826171959-ef028d996bc1/go.mod h1:xUjFWUnWDpZ/C0Gu0qloASKFb6f8/QXiiXhSPFsD668=
 google.golang.org/protobuf v1.36.8 h1:xHScyCOEuuwZEc6UtSOvPbAT4zRh0xcNRYekJwfqyMc=
 google.golang.org/protobuf v1.36.8/go.mod h1:fuxRtAxBytpl4zzqUh6/eyUujkJdNiuEkXntxiD/uRU=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
