@@ -30,9 +30,12 @@ const (
 	EventServiceVirtualServiceModificationFailed = "ServiceVirtualServiceModificationFailed"
 )
 
-const serviceDNSSuffix = ".svc.cluster.local"
-const AnnotationLogoutEndpoint = "sme.sap.com/app-logout-endpoint"
-const AnnotationEnableSessionAffinity = "sme.sap.com/enable-session-affinity"
+const (
+	serviceDNSSuffix                = ".svc.cluster.local"
+	setCookie                       = "Set-Cookie"
+	AnnotationLogoutEndpoint        = "sme.sap.com/app-logout-endpoint"
+	AnnotationEnableSessionAffinity = "sme.sap.com/enable-session-affinity"
+)
 
 func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (err error) {
 	var (
@@ -464,20 +467,20 @@ func enhanceHeadersWithCookie(headers *networkingv1.Headers, cookie string, op s
 		}
 		switch op {
 		case "add":
-			h.Response.Add["Set-Cookie"] = cookie
+			h.Response.Add[setCookie] = cookie
 		case "set":
-			h.Response.Set["Set-Cookie"] = cookie
+			h.Response.Set[setCookie] = cookie
 		}
 		return h
 	}
 
 	if op == "add" {
 		return &networkingv1.Headers{Response: &networkingv1.Headers_HeaderOperations{
-			Add: map[string]string{"Set-Cookie": cookie},
+			Add: map[string]string{setCookie: cookie},
 		}}
 	}
 	return &networkingv1.Headers{Response: &networkingv1.Headers_HeaderOperations{
-		Set: map[string]string{"Set-Cookie": cookie},
+		Set: map[string]string{setCookie: cookie},
 	}}
 }
 
