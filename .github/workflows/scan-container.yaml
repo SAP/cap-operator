@@ -1,0 +1,39 @@
+name: Vulnerability Scan
+on:
+
+  schedule:
+    - cron:  '30 21 * * *'
+
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Image tag to scan'
+        required: false
+        default: 'latest'
+        type: string
+
+permissions:
+  packages: read
+  security-events: write
+  
+jobs:  
+  scan:
+    name: Scan container image
+    strategy:
+      matrix:
+        workload: ["controller", "server", "web-hooks"]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Run vulnerability scanner
+        uses: aquasecurity/trivy-action@0.32.0
+        with:
+          image-ref: ghcr.io/sap/cap-operator/${{ matrix.workload }}:${{ inputs.version || 'latest' }}
+          scanners: 'vuln'
+          version: 'v0.65.0'
+          format: 'sarif'
+          output: 'vuln-${{ matrix.workload }}.sarif'
+
+      - name: Upload results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'vuln-${{ matrix.workload }}.sarif'
