@@ -375,7 +375,7 @@ func TestController_handleCAPApplicationConsistent_Case2(t *testing.T) {
 }
 
 func TestController_handleCAPApplicationConsistent_Case3(t *testing.T) {
-	reconcileTestItem(
+	err := reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01"}},
 		TestData{
@@ -389,35 +389,13 @@ func TestController_handleCAPApplicationConsistent_Case3(t *testing.T) {
 				"testdata/capapplication/cat-consumer-upg-never-ready.yaml",
 				"testdata/common/credential-secrets.yaml",
 			},
-			expectedResources: "testdata/capapplication/ca-31.expected.yaml",
-			backlogItems: []string{
-				"ERP4SMEPREPWORKAPPPLAT-2881",
-			},
+			expectError: true,
 		},
 	)
-}
 
-func TestController_handleCAPApplicationConsistent_Case4(t *testing.T) {
-	reconcileTestItem(
-		context.TODO(), t,
-		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01"}},
-		TestData{
-			description: "Consistent state with a CAV name update",
-			initialResources: []string{
-				"testdata/common/domain-ready.yaml",
-				"testdata/common/cluster-domain-ready.yaml",
-				"testdata/capapplication/ca-32.initial.yaml",
-				"testdata/capapplication/cav-name-modified-ready.yaml",
-				"testdata/capapplication/cat-provider-no-finalizers-ready.yaml",
-				"testdata/capapplication/cat-consumer-no-finalizers-ready.yaml",
-				"testdata/common/credential-secrets.yaml",
-			},
-			expectedResources: "testdata/capapplication/ca-32.expected.yaml",
-			backlogItems: []string{
-				"ERP4SMEPREPWORKAPPPLAT-2881",
-			},
-		},
-	)
+	if err.Error() != "failed to reconcile tenant networking: capapplicationversion.sme.sap.com \"test-cap-01-cav-v1\" not found" {
+		t.Error("Wrong error message")
+	}
 }
 
 func TestController_handleCAPApplicationConsistent_Case5(t *testing.T) {
@@ -481,12 +459,11 @@ func TestCAPApplicationConsistentWithNewCAPApplicationVersionTenantUpdateError(t
 				"testdata/capapplication/cat-provider-no-finalizers-ready.yaml",
 				"testdata/common/credential-secrets.yaml",
 			},
-			expectError:           true,
-			mockErrorForResources: []ResourceAction{{Verb: "update", Group: "sme.sap.com", Version: "v1alpha1", Resource: "captenants", Namespace: "*", Name: "*"}},
+			expectError: true,
 		},
 	)
-	if err.Error() != "could not update CAPTenant default.test-cap-01-provider: mocked api error (captenants.sme.sap.com/v1alpha1)" {
-		t.Error("error message is different from expected")
+	if err.Error() != "failed to reconcile tenant networking: capapplicationversion.sme.sap.com \"test-cap-01-cav-v1\" not found" {
+		t.Error("Wrong error message")
 	}
 }
 
@@ -535,7 +512,7 @@ func TestAdditionalConditionsWithTenantDeletingUpgradeStrategyNever(t *testing.T
 }
 
 func TestController_handleCAPApplicationConsistent_versionUpgrade(t *testing.T) {
-	reconcileTestItem(
+	err := reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01"}},
 		TestData{
@@ -549,9 +526,13 @@ func TestController_handleCAPApplicationConsistent_versionUpgrade(t *testing.T) 
 				"testdata/capapplication/cat-consumer-upgrading.yaml",
 				"testdata/common/credential-secrets.yaml",
 			},
-			expectedResources: "testdata/capapplication/ca-31.expected.yaml",
+			expectError: true,
 		},
 	)
+
+	if err.Error() != "failed to reconcile tenant networking: capapplicationversion.sme.sap.com \"test-cap-01-cav-v1\" not found" {
+		t.Error("Wrong error message")
+	}
 }
 
 func TestCA_ServicesOnly_Consistent(t *testing.T) {

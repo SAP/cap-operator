@@ -163,6 +163,10 @@ var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *C
 		return NewReconcileResultWithResource(ResourceCAPTenant, cat.Name, cat.Namespace, 10*time.Second), nil
 	}
 
+	// set current CAPApplicationVersionInstance and update previous versions
+	// required for tenant networking reconciliation as it relies on the current and previous version in the status of the tenant
+	cat.SetStatusCAPApplicationVersion(ctop.Spec.CAPApplicationVersionInstance)
+
 	// check and reconcile tenant virtual service
 	// adjust virtual service only when tenant is finalizing (after provisioning or upgrade)
 	err = c.reconcileTenantNetworking(ctx, cat, ctop.Spec.CAPApplicationVersionInstance, ca)
@@ -172,7 +176,6 @@ var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *C
 
 	// the ObservedGeneration of the tenant should be updated here (when Ready)
 	cat.SetStatusWithReadyCondition(target.state, target.conditionStatus, target.conditionReason, message)
-	cat.SetStatusCAPApplicationVersion(ctop.Spec.CAPApplicationVersionInstance)
 	return getTenantReconcileResultConsideringDeletion(cat, nil), nil
 }
 
@@ -242,7 +245,11 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, _ i
 	}
 
 	if cat.DeletionTimestamp == nil && cat.Status.CurrentCAPApplicationVersionInstance != "" {
-		err = c.reconcileTenantNetworking(ctx, cat, cat.Status.CurrentCAPApplicationVersionInstance, nil)
+		ca, caGetErr := c.getCachedCAPApplication(cat.Namespace, cat.Spec.CAPApplicationInstance)
+		if caGetErr != nil {
+			return nil, caGetErr
+		}
+		err = c.reconcileTenantNetworking(ctx, cat, cat.Status.CurrentCAPApplicationVersionInstance, ca)
 		if err == nil {
 			util.LogInfo("Tenant processing completed", string(Ready), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		}
