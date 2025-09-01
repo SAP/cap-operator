@@ -16,6 +16,7 @@ import (
 
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -134,7 +135,12 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 		return
 	}
 
-	// step 6 - check and set consistent status
+	// step 6 - reconcile tenant destination rules and virtualservices
+	if err = c.reconcileTenantDestinationRulesAndVirtualServices(ctx, ca); err != nil {
+		return
+	}
+
+	// step 7 - check and set consistent status
 	return c.verifyApplicationConsistent(ctx, ca)
 }
 
@@ -152,6 +158,37 @@ func (c *Controller) verifyApplicationConsistent(ctx context.Context, ca *v1alph
 
 	// Check for newer CAPApplicationVersion
 	return nil, c.checkNewCAPApplicationVersion(ctx, ca)
+}
+
+func (c *Controller) reconcileTenantDestinationRulesAndVirtualServices(ctx context.Context, ca *v1alpha1.CAPApplication) error {
+	if ca.IsServicesOnly() {
+		return nil
+	}
+
+	tenants, err := c.getRelevantTenantsForCA(ca)
+	if err != nil {
+		return err
+	}
+
+	// Reconcile destination rules and virtual services for each tenant
+	netUpdGrp, netUpdCtx := errgroup.WithContext(ctx)
+	for _, t := range tenants {
+		// skip for tenants in provisioning
+		if t.Status.CurrentCAPApplicationVersionInstance == "" {
+			continue
+		}
+
+		tenant := t
+		netUpdGrp.Go(func() error {
+			return c.reconcileTenantNetworking(netUpdCtx, tenant, tenant.Status.CurrentCAPApplicationVersionInstance, ca)
+		})
+	}
+
+	if err = netUpdGrp.Wait(); err != nil {
+		return fmt.Errorf("failed to reconcile tenant networking: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1alpha1.CAPApplication) error {
