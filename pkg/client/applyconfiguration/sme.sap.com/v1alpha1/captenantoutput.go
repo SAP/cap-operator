@@ -31,6 +31,7 @@ func CAPTenantOutput(name, namespace string) *CAPTenantOutputApplyConfiguration 
 	b.WithAPIVersion("sme.sap.com/v1alpha1")
 	return b
 }
+func (b CAPTenantOutputApplyConfiguration) IsApplyConfiguration() {}
 
 // WithKind sets the Kind field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
@@ -198,8 +199,24 @@ func (b *CAPTenantOutputApplyConfiguration) WithSpec(value *CAPTenantOutputSpecA
 	return b
 }
 
+// GetKind retrieves the value of the Kind field in the declarative configuration.
+func (b *CAPTenantOutputApplyConfiguration) GetKind() *string {
+	return b.TypeMetaApplyConfiguration.Kind
+}
+
+// GetAPIVersion retrieves the value of the APIVersion field in the declarative configuration.
+func (b *CAPTenantOutputApplyConfiguration) GetAPIVersion() *string {
+	return b.TypeMetaApplyConfiguration.APIVersion
+}
+
 // GetName retrieves the value of the Name field in the declarative configuration.
 func (b *CAPTenantOutputApplyConfiguration) GetName() *string {
 	b.ensureObjectMetaApplyConfigurationExists()
 	return b.ObjectMetaApplyConfiguration.Name
+}
+
+// GetNamespace retrieves the value of the Namespace field in the declarative configuration.
+func (b *CAPTenantOutputApplyConfiguration) GetNamespace() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Namespace
 }
