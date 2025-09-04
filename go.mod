@@ -15,17 +15,17 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v3 v3.0.10
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.85.1-0.20250903092146-7929e7b6aded
-	github.com/prometheus-operator/prometheus-operator/pkg/client v0.85.1-0.20250903092146-7929e7b6aded
-	github.com/prometheus/client_golang v1.23.0
-	github.com/prometheus/common v0.65.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.85.1-0.20250903133202-1752e81763f8
+	github.com/prometheus-operator/prometheus-operator/pkg/client v0.85.1-0.20250903133202-1752e81763f8
+	github.com/prometheus/client_golang v1.23.1
+	github.com/prometheus/common v0.66.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/mod v0.27.0
 	golang.org/x/sync v0.16.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	google.golang.org/protobuf v1.36.8
-	istio.io/api v1.27.0
-	istio.io/client-go v1.27.0
+	istio.io/api v1.27.1
+	istio.io/client-go v1.27.1
 	k8s.io/api v0.34.0
 	k8s.io/apimachinery v0.34.0
 	k8s.io/client-go v0.34.0
@@ -58,6 +58,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
+	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/lestrrat-go/blackmagic v1.0.4 // indirect
@@ -87,6 +88,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20250826171959-ef028d996bc1 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.34.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20250902184714-7fc278399c7f // indirect
