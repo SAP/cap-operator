@@ -1,4 +1,4 @@
-name: Publish artifacts (CRD yaml) on Release
+name: Publish artifacts on Release
 
 on:
   release:
@@ -36,3 +36,49 @@ jobs:
             -H "Content-Type: $(file -b --mime-type $file)" \
             --data-binary @$file \
             "$upload_url?name=$(basename $file)"
+
+  extract-version:
+    name: Extract version from tag
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.extract-version.outputs.version }}
+      repo: ${{ steps.extract-version.outputs.repo }}
+
+    steps:
+      - name: Extract version
+        id: extract-version
+        run: |
+          version=$(echo "${{ github.event.release.tag_name }}" | sed 's/^v//')
+          echo "version=$version" >> $GITHUB_OUTPUT
+          repo=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "repo=$repo" >> $GITHUB_OUTPUT
+
+  generate_sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-24.04
+    needs: extract-version
+    strategy:
+      matrix:
+        workload: ["controller", "server", "web-hooks"]
+
+    steps:
+      - name: Wait for Docker image to be available
+        id: wait-for-images
+        timeout-minutes: 10
+        run: |
+          version=${{ needs.extract-version.outputs.version }}
+          repo=${{ needs.extract-version.outputs.repo }}
+          GHCR_TOKEN=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
+          echo "Waiting for Docker image to be available"
+          echo "Checking image: ghcr.io/$repo/${{ matrix.workload }}:$version"
+          until [[ $(curl -H "Authorization: Bearer ${GHCR_TOKEN}" -s "https://ghcr.io/v2/$repo/${{ matrix.workload }}/tags/list" | jq -r '.tags[-1]') = $version ]]; do
+            echo "Image ghcr.io/$repo/${{ matrix.workload }}:$version not available yet. Waiting..."
+            sleep 30
+          done
+          echo "Image ghcr.io/$repo/${{ matrix.workload }}:$version is now available."
+
+      - name: SBOM action (syft)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ghcr.io/${{ needs.extract-version.outputs.repo }}/${{ matrix.workload }}:${{ needs.extract-version.outputs.version }}
+          format: cyclonedx-json
