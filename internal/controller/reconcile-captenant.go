@@ -235,13 +235,6 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, _ i
 		return requeue, nil
 	}
 
-	// if cat.DeletionTimestamp == nil {
-	// 	// Create relevant DNSEntries for this tenant. DNS entries are checked before setting the tenant as ready
-	// 	if err = c.reconcileTenantDNSEntries(ctx, cat); err != nil {
-	// 		return
-	// 	}
-	// }
-
 	// create and track CAPTenantOperations based on state, deletion timestamp, version change etc.
 	requeue, err = c.handleTenantOperationsForCAPTenant(ctx, cat)
 	if err != nil || requeue != nil {
@@ -249,7 +242,11 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, _ i
 	}
 
 	if cat.DeletionTimestamp == nil && cat.Status.CurrentCAPApplicationVersionInstance != "" {
-		err = c.reconcileTenantNetworking(ctx, cat, cat.Status.CurrentCAPApplicationVersionInstance, nil)
+		ca, cavGetErr := c.getCachedCAPApplication(cat.Namespace, cat.Spec.CAPApplicationInstance)
+		if cavGetErr != nil {
+			return nil, cavGetErr
+		}
+		err = c.reconcileTenantNetworking(ctx, cat, cat.Status.CurrentCAPApplicationVersionInstance, ca)
 		if err == nil {
 			util.LogInfo("Tenant processing completed", string(Ready), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		}
