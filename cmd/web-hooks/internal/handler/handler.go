@@ -235,30 +235,9 @@ func getWorkloadTypeCount(workloads []v1alpha1.WorkloadDetails) (map[string]int,
 
 		if workload.DeploymentDefinition != nil {
 			deploymentWorkloadCnt += 1
-		}
-
-		if workload.DeploymentDefinition != nil && workload.DeploymentDefinition.Type == v1alpha1.DeploymentCAP {
-			workloadTypeCount[string(v1alpha1.DeploymentCAP)] += 1
-		}
-
-		if workload.DeploymentDefinition != nil && workload.DeploymentDefinition.Type == v1alpha1.DeploymentRouter {
-			workloadTypeCount[string(v1alpha1.DeploymentRouter)] += 1
-		}
-
-		if workload.DeploymentDefinition != nil && workload.DeploymentDefinition.Type == v1alpha1.DeploymentService {
-			workloadTypeCount[string(v1alpha1.DeploymentService)] += 1
-		}
-
-		if workload.JobDefinition != nil && workload.JobDefinition.Type == v1alpha1.JobContent {
-			workloadTypeCount[string(v1alpha1.JobContent)] += 1
-		}
-
-		if workload.JobDefinition != nil && workload.JobDefinition.Type == v1alpha1.JobTenantOperation {
-			workloadTypeCount[string(v1alpha1.JobTenantOperation)] += 1
-		}
-
-		if workload.JobDefinition != nil && workload.JobDefinition.Type == v1alpha1.JobCustomTenantOperation {
-			workloadTypeCount[string(v1alpha1.JobCustomTenantOperation)] += 1
+			workloadTypeCount[string(workload.DeploymentDefinition.Type)] += 1
+		} else if workload.JobDefinition != nil {
+			workloadTypeCount[string(workload.JobDefinition.Type)] += 1
 		}
 	}
 
@@ -580,20 +559,7 @@ func (wh *WebhookHandler) validateCAPApplicationVersion(w http.ResponseWriter, a
 
 	// check: on create
 	if admissionReview.Request.Operation == admissionv1.Create {
-		// Check: CAPApplication exists
-		if capAppExistsValidate := wh.checkCAPAppExists(&cavObjNew); !capAppExistsValidate.allowed {
-			return capAppExistsValidate
-		}
-
-		if workloadValidate := validateWorkloads(&cavObjNew); !workloadValidate.allowed {
-			return workloadValidate
-		}
-
-		if serviceExposureValidate := checkServiceExposure(&cavObjNew); !serviceExposureValidate.allowed {
-			return serviceExposureValidate
-		}
-
-		return validateTenantOperations(&cavObjNew)
+		return wh.checkCAVCreate(&cavObjNew)
 
 	}
 
@@ -605,6 +571,23 @@ func (wh *WebhookHandler) validateCAPApplicationVersion(w http.ResponseWriter, a
 		}
 	}
 	return validAdmissionReviewObj()
+}
+
+func (wh *WebhookHandler) checkCAVCreate(cav *ResponseCav) validateResource {
+	// Check: CAPApplication exists
+	if capAppExistsValidate := wh.checkCAPAppExists(cav); !capAppExistsValidate.allowed {
+		return capAppExistsValidate
+	}
+
+	if workloadValidate := validateWorkloads(cav); !workloadValidate.allowed {
+		return workloadValidate
+	}
+
+	if serviceExposureValidate := checkServiceExposure(cav); !serviceExposureValidate.allowed {
+		return serviceExposureValidate
+	}
+
+	return validateTenantOperations(cav)
 }
 
 func (wh *WebhookHandler) checkCaIsConsistent(catObjOld ResponseCat) validateResource {
@@ -758,33 +741,32 @@ func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissio
 	}
 	if admissionReview.Request.Operation == admissionv1.Update || admissionReview.Request.Operation == admissionv1.Create {
 		// Note: Object is nil for "DELETE" operation
-
 		if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &caObjNew, v1alpha1.CAPApplicationKind); !validatedResource.allowed {
 			return validatedResource
 		}
+	}
 
-		// check: update on .Spec.Provider
-		if admissionReview.Request.Operation == admissionv1.Update && !cmp.Equal(caObjNew.Spec.Provider, caObjOld.Spec.Provider) {
-			return validateResource{
-				allowed: false,
-				message: fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
-			}
+	// check: update on .Spec.Provider
+	if admissionReview.Request.Operation == admissionv1.Update && !cmp.Equal(caObjNew.Spec.Provider, caObjOld.Spec.Provider) {
+		return validateResource{
+			allowed: false,
+			message: fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
 		}
+	}
 
-		// Domains are DEPRECATED
-		if admissionReview.Request.Operation == admissionv1.Create && !cmp.Equal(caObjNew.Spec.Domains, v1alpha1.ApplicationDomains{}) {
-			return validateResource{
-				allowed: false,
-				message: fmt.Sprintf(DomainsDeprecated, InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
-			}
+	// Domains are DEPRECATED
+	if admissionReview.Request.Operation == admissionv1.Create && !cmp.Equal(caObjNew.Spec.Domains, v1alpha1.ApplicationDomains{}) {
+		return validateResource{
+			allowed: false,
+			message: fmt.Sprintf(DomainsDeprecated, InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
 		}
+	}
 
-		// check: cannot switch from domainRefs to domains
-		if admissionReview.Request.Operation == admissionv1.Update && (len(caObjOld.Spec.DomainRefs) > 0 && !cmp.Equal(caObjNew.Spec.Domains, v1alpha1.ApplicationDomains{})) {
-			return validateResource{
-				allowed: false,
-				message: fmt.Sprintf(DomainsDeprecated, InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
-			}
+	// check: cannot switch from domainRefs to domains
+	if admissionReview.Request.Operation == admissionv1.Update && (len(caObjOld.Spec.DomainRefs) > 0 && !cmp.Equal(caObjNew.Spec.Domains, v1alpha1.ApplicationDomains{})) {
+		return validateResource{
+			allowed: false,
+			message: fmt.Sprintf(DomainsDeprecated, InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
 		}
 	}
 
@@ -823,29 +805,21 @@ func (wh *WebhookHandler) Validate(w http.ResponseWriter, r *http.Request) {
 
 	switch admissionReview.Request.Kind.Kind {
 	case v1alpha1.CAPApplicationVersionKind:
-		if validation = wh.validateCAPApplicationVersion(w, admissionReview); validation.errorOccured {
-			return
-		}
+		validation = wh.validateCAPApplicationVersion(w, admissionReview)
 	case v1alpha1.CAPTenantKind:
-		if validation = wh.validateCAPTenant(w, admissionReview); validation.errorOccured {
-			return
-		}
+		validation = wh.validateCAPTenant(w, admissionReview)
 	case v1alpha1.CAPApplicationKind:
-		if validation = wh.validateCAPApplication(w, admissionReview); validation.errorOccured {
-			return
-		}
+		validation = wh.validateCAPApplication(w, admissionReview)
 	case v1alpha1.CAPTenantOutputKind:
-		if validation = wh.validateCAPTenantOutput(w, admissionReview); validation.errorOccured {
-			return
-		}
+		validation = wh.validateCAPTenantOutput(w, admissionReview)
 	case v1alpha1.ClusterDomainKind:
-		if validation = wh.validateClusterDomain(w, admissionReview); validation.errorOccured {
-			return
-		}
+		validation = wh.validateClusterDomain(w, admissionReview)
 	case v1alpha1.DomainKind:
-		if validation = wh.validateDomain(w, admissionReview); validation.errorOccured {
-			return
-		}
+		validation = wh.validateDomain(w, admissionReview)
+	}
+
+	if validation.errorOccured {
+		return
 	}
 
 	// prepare response

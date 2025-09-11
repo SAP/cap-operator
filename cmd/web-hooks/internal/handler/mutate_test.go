@@ -37,8 +37,6 @@ func marshalJSON(obj interface{}) []byte {
 	return b
 }
 
-const invalidJSON = `{"invalid json"}`
-
 type testReader struct{}
 
 func (tr *testReader) Read(p []byte) (n int, err error) {

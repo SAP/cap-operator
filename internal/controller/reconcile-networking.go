@@ -32,7 +32,7 @@ const (
 
 const serviceDNSSuffix = ".svc.cluster.local"
 
-func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
+func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (err error) {
 	var (
 		reason, message        string
 		drModified, vsModified bool
@@ -271,7 +271,7 @@ func (c *Controller) updateVirtualServiceSpecFromDomainReferences(spec *networki
 	return nil
 }
 
-func (c *Controller) reconcileServiceNetworking(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (requeue *ReconcileResult, err error) {
+func (c *Controller) reconcileServiceNetworking(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (err error) {
 	var (
 		reason, message string
 		vsModified      bool

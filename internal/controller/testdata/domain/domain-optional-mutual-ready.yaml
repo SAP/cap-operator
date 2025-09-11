@@ -1,0 +1,59 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: Domain
+metadata:
+  name: test-cap-01-primary
+  namespace: default
+  finalizers:
+  - sme.sap.com/domain
+  labels:
+    sme.sap.com/domain-host-hash: d8b11ae7b1f04e357f32290b81db58c247dac748
+spec:
+  dnsMode: Wildcard
+  domain: app-domain.test.local
+  ingressSelector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  tlsMode: OptionalMutual
+status:
+  conditions:
+  - message: Domain resources are ready
+    reason: Ready
+    status: "True"
+    type: Ready
+  state: Ready
+  dnsTarget: public-ingress.operator.testing.local
+  observedDomain: app-domain.test.local
+  gatewayName: test-cap-01-primary-gen
+---
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
+    sme.sap.com/resource-hash: 59a9af3add07934bdaf43c11b6e99bad92317a55008768eb07b58d517f37a891
+  labels:
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
+  name: test-cap-01-primary-gen
+  generateName: test-cap-01-primary-
+  namespace: default
+  ownerReferences:
+  - apiVersion: sme.sap.com/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Domain
+    name: test-cap-01-primary
+spec:
+  selector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  servers:
+  - hosts:
+    - ./*.app-domain.test.local
+    port:
+      name: https
+      number: 443
+      protocol: HTTPS
+    tls:
+      credentialName: default--test-cap-01-primary-gardener
+      mode: OPTIONAL_MUTUAL

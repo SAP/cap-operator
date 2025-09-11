@@ -21,7 +21,7 @@ spec:
   ingressSelector:
     app: istio-ingressgateway
     istio: ingressgateway
-  tlsMode: Simple        # Simple (default) or  Mutual
+  tlsMode: Simple        # Simple (default) or  Mutual or OptionalMutual
   dnsMode: Wildcard      # Custom or Wildcard or Subdomain or None (default)
   dnsTarget: public-ingress.cluster.domain # Optional
 
@@ -29,4 +29,4 @@ spec:
 
 - The `dnsTarget` field is optional. If specified, it will be used; otherwise, it will be derived from the Istio Ingress Gateway via `ingressSelector`.
 - `Gateway` and `DNSEntry` will be created in the same namespace as the `Domain` resource while the `Certificates` will be created in the namespace where Istio Ingress Gateway is present.
-- In cases when X509 client authentication is enforced on the Istio Gateway by setting `tlsMode` to `Mutual`, additional CA certificates are needed by Istio for verifying client certificates. These can be specified in the `certConfig.additionalCACertificate` field.
+- In cases when X509 client authentication is enforced on the Istio Gateway by setting `tlsMode` to `Mutual` or `OptionalMutual`, additional CA certificates are needed by Istio for verifying client certificates. These can be specified in the `certConfig.additionalCACertificate` field.

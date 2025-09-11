@@ -561,11 +561,12 @@ func updateWorkloadPortInfo(cavName string, workloadName string, deploymentType 
 	var workloadPortInfo *servicePortInfo
 	if len(servicePorts) == 0 {
 		// Use fallback defaults
-		if deploymentType == v1alpha1.DeploymentRouter {
+		switch deploymentType {
+		case v1alpha1.DeploymentRouter:
 			servicePorts = []corev1.ServicePort{
 				{Name: "router-svc-port", Port: defaultRouterPort},
 			}
-		} else if deploymentType == v1alpha1.DeploymentCAP {
+		case v1alpha1.DeploymentCAP:
 			servicePorts = []corev1.ServicePort{
 				{Name: "server-svc-port", Port: defaultServerPort},
 			}
