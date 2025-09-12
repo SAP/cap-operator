@@ -135,12 +135,7 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 		return
 	}
 
-	// step 6 - reconcile tenant destination rules and virtualservices
-	if err = c.reconcileTenantDestinationRulesAndVirtualServices(ctx, ca); err != nil {
-		return
-	}
-
-	// step 7 - check and set consistent status
+	// step 6 - check and set consistent status; check for newer versions and trigger tenant networking updates
 	return c.verifyApplicationConsistent(ctx, ca)
 }
 
@@ -157,41 +152,10 @@ func (c *Controller) verifyApplicationConsistent(ctx context.Context, ca *v1alph
 	}
 
 	// Check for newer CAPApplicationVersion
-	return nil, c.checkNewCAPApplicationVersion(ctx, ca)
+	return nil, c.checkNewCavAndTenantNetworking(ctx, ca)
 }
 
-func (c *Controller) reconcileTenantDestinationRulesAndVirtualServices(ctx context.Context, ca *v1alpha1.CAPApplication) error {
-	if ca.IsServicesOnly() {
-		return nil
-	}
-
-	tenants, err := c.getRelevantTenantsForCA(ca)
-	if err != nil {
-		return err
-	}
-
-	// Reconcile destination rules and virtual services for each tenant
-	netUpdGrp, netUpdCtx := errgroup.WithContext(ctx)
-	for _, t := range tenants {
-		// skip for tenants in provisioning
-		if t.Status.CurrentCAPApplicationVersionInstance == "" {
-			continue
-		}
-
-		tenant := t
-		netUpdGrp.Go(func() error {
-			return c.reconcileTenantNetworking(netUpdCtx, tenant, tenant.Status.CurrentCAPApplicationVersionInstance, ca)
-		})
-	}
-
-	if err = netUpdGrp.Wait(); err != nil {
-		return fmt.Errorf("failed to reconcile tenant networking: %w", err)
-	}
-
-	return nil
-}
-
-func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1alpha1.CAPApplication) error {
+func (c *Controller) checkNewCavAndTenantNetworking(ctx context.Context, ca *v1alpha1.CAPApplication) error {
 	cav, err := c.getLatestReadyCAPApplicationVersion(ca, false)
 	if err != nil {
 		return err
@@ -202,8 +166,17 @@ func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1al
 	if err != nil || len(tenants) == 0 {
 		return err
 	}
+
+	netUpdGrp, netUpdCtx := errgroup.WithContext(ctx)
 	updated := false
 	for _, tenant := range tenants {
+		if tenant.Status.CurrentCAPApplicationVersionInstance != "" {
+			t := tenant
+			netUpdGrp.Go(func() error {
+				return c.reconcileTenantNetworking(netUpdCtx, t, t.Status.CurrentCAPApplicationVersionInstance, ca)
+			})
+		}
+
 		if tenant.Spec.VersionUpgradeStrategy == v1alpha1.VersionUpgradeStrategyTypeNever {
 			// Skip non relevant tenants
 			continue
@@ -227,6 +200,11 @@ func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1al
 			updated = true
 		}
 	}
+
+	if err = netUpdGrp.Wait(); err != nil {
+		return fmt.Errorf("failed to reconcile tenant networking: %w", err)
+	}
+
 	if updated {
 		msg := fmt.Sprintf("new version %s.%s was used to trigger tenant upgrades", cav.Namespace, cav.Name)
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, CAPApplicationEventNewCAVTriggeredTenantUpgrade, msg)

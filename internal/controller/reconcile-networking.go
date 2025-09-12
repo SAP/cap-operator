@@ -137,31 +137,37 @@ func (c *Controller) reconcileTenantDestinationRuleForPrevCav(ctx context.Contex
 
 func (c *Controller) handleSessionAffinityEnabled(ctx context.Context, cat *v1alpha1.CAPTenant) (bool, error) {
 	var modified bool
+	var err error
 	prevCav := cat.Status.PreviousCAPApplicationVersions[len(cat.Status.PreviousCAPApplicationVersions)-1]
 
 	// Check if previous CAV exists
 	_, cavGetErr := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(prevCav)
-	if errors.IsNotFound(cavGetErr) {
+	switch {
+	case errors.IsNotFound(cavGetErr):
 		// CAV doesn't exist, cleanup its DR
-		if err := c.deleteDRIfExists(ctx, cat.Namespace, cat.Name+"-"+prevCav); err != nil {
+		modified, err = c.deleteDRIfExists(ctx, cat.Namespace, cat.Name+"-"+prevCav)
+		if err != nil {
 			return false, err
 		}
-		modified = true
-	} else {
+	case cavGetErr != nil:
+		// Some other error occurred while fetching CAV
+		return false, cavGetErr
+	default:
 		// CAV exists, reconcile its DR
-		if _, err := c.reconcileTenantDestinationRule(ctx, cat, cat.Name+"-"+prevCav, prevCav); err != nil {
+		modified, err = c.reconcileTenantDestinationRule(ctx, cat, cat.Name+"-"+prevCav, prevCav)
+		if err != nil {
 			return false, err
 		}
-		modified = true
 	}
 
 	// Clean up second-to-last CAV DR if it exists
 	if len(cat.Status.PreviousCAPApplicationVersions) > 1 {
 		secondLastCav := cat.Status.PreviousCAPApplicationVersions[len(cat.Status.PreviousCAPApplicationVersions)-2]
-		if err := c.deleteDRIfExists(ctx, cat.Namespace, cat.Name+"-"+secondLastCav); err != nil {
+		drDeleted, err := c.deleteDRIfExists(ctx, cat.Namespace, cat.Name+"-"+secondLastCav)
+		if err != nil {
 			return false, err
 		}
-		modified = true
+		modified = modified || drDeleted
 	}
 
 	return modified, nil
@@ -190,15 +196,16 @@ func (c *Controller) cleanupAllPreviousCavDRs(ctx context.Context, cat *v1alpha1
 	return modified, nil
 }
 
-func (c *Controller) deleteDRIfExists(ctx context.Context, namespace, drName string) error {
-	_, err := c.istioClient.NetworkingV1().DestinationRules(namespace).Get(ctx, drName, metav1.GetOptions{})
-	if errors.IsNotFound(err) {
-		return nil
+func (c *Controller) deleteDRIfExists(ctx context.Context, namespace, drName string) (bool, error) {
+	err := c.istioClient.NetworkingV1().DestinationRules(namespace).Delete(ctx, drName, metav1.DeleteOptions{})
+	switch {
+	case errors.IsNotFound(err):
+		return false, nil // Nothing to delete
+	case err != nil:
+		return false, err // Unexpected error
+	default:
+		return true, nil // Deleted successfully
 	}
-	if err != nil {
-		return err
-	}
-	return c.istioClient.NetworkingV1().DestinationRules(namespace).Delete(ctx, drName, metav1.DeleteOptions{})
 }
 
 func (c *Controller) getUpdatedTenantDestinationRuleObject(cat *v1alpha1.CAPTenant, dr *istionwv1.DestinationRule, cavName string) (modified bool, err error) {
