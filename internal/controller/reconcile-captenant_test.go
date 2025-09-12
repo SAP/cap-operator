@@ -558,3 +558,135 @@ func TestCAPTenantVSHeadersErrorRes(t *testing.T) {
 		t.Error("error message is different from expected, actual:", err.Error())
 	}
 }
+
+func TestCAPTenantProvisioningCompletedWithSessionAffinityEnabled(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "captenant provisioning operation completed (creates virtual service and destination rule) with session affinity enabled",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/capapplication-session-affinity.yaml",
+				"testdata/common/capapplicationversion-v1.yaml",
+				"testdata/captenant/cat-04.initial.yaml",
+			},
+			expectedResources: "testdata/captenant/cat-with-session-affinity-dr-vs.yaml",
+		},
+	)
+}
+
+func TestCAPTenantProvisioningCompletedWithSessionAffinityEnabledAndVsheaders(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "captenant provisioning operation completed (creates virtual service and destination rule) with session affinity enabled and virtual service headers",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/capapplication-session-affinity-vs-headers.yaml",
+				"testdata/common/capapplicationversion-v1.yaml",
+				"testdata/captenant/cat-04.initial.yaml",
+			},
+			expectedResources: "testdata/captenant/cat-with-session-affinity-dr-vs-headers.yaml",
+		},
+	)
+}
+
+func TestCAPTenantProvisioningCompletedWithSessionAffinityEnabledCustomLogout(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "captenant provisioning operation completed (creates virtual service and destination rule) with session affinity enabled using custom logout routes",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/capapplication-session-affinity.yaml",
+				"testdata/common/capapplicationversion-v1-custom-logout-endpoint.yaml",
+				"testdata/captenant/cat-04.initial.yaml",
+			},
+			expectedResources: "testdata/captenant/cat-with-session-affinity-dr-vs-logout-endpoint.yaml",
+		},
+	)
+}
+
+func TestCAPTenantUpgradeOperationCompletedWithSessionAffinityEnabled(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "captenant upgrade operation completed expecting virtual service, destination rule adjustments with session affinity enabled",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/capapplication-session-affinity.yaml",
+				"testdata/common/capapplicationversion-v1.yaml",
+				"testdata/common/capapplicationversion-v2.yaml",
+				"testdata/captenant/provider-tenant-vs-v1.yaml",
+				"testdata/captenant/provider-tenant-dr-v1.yaml",
+				"testdata/captenant/cat-13.initial.yaml",
+			},
+			expectedResources: "testdata/captenant/cat-with-session-affinity-dr-vs-upgrade.yaml",
+		},
+	)
+}
+
+func TestCAPTenantUpgradedThirdTimeWithSessionAffinityEnabled(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "captenant upgraded third time - expecting virtual service, destination rule adjustments by removing config corresponding to v1 and by adding config for v3",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/capapplication-session-affinity.yaml",
+				"testdata/common/capapplicationversion-v1.yaml",
+				"testdata/common/capapplicationversion-v2.yaml",
+				"testdata/common/capapplicationversion-v3.yaml",
+				"testdata/captenant/cat-with-session-affinity-dr-vs-upgrade-to-cav-v3.yaml",
+			},
+			expectedResources: "testdata/captenant/cat-with-session-affinity-dr-vs-upgrade-to-cav-v3.expected.yaml",
+		},
+	)
+}
+
+func TestCAPTenantUpgradeOperationCompletedWithSessionAffinityEnabledAndPreviousCAVRemoved(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "captenant upgraded - expecting virtual service, destination rule adjustments after removing previous cav v1",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/capapplication-session-affinity.yaml",
+				"testdata/common/capapplicationversion-v2.yaml",
+				"testdata/captenant/cat-with-session-affinity-dr-vs-upgrade.yaml",
+			},
+			expectedResources: "testdata/captenant/cat-with-session-affinity-dr-vs-prev-cav-removed.yaml",
+		},
+	)
+}
+
+func TestCAPTenantUpgradeOperationCompletedWithSessionAffinitySwitchedFromEnabledToDisabled(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "captenant upgraded - expecting virtual service, destination rule adjustments after switching session affinity from enabled to disabled",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/capapplication.yaml",
+				"testdata/common/capapplicationversion-v1.yaml",
+				"testdata/common/capapplicationversion-v2.yaml",
+				"testdata/captenant/cat-with-session-affinity-dr-vs-upgrade.yaml",
+			},
+			expectedResources: "testdata/captenant/cat-with-session-affinity-disabled-dr-vs.yaml",
+		},
+	)
+}

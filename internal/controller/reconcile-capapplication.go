@@ -16,6 +16,7 @@ import (
 
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -134,7 +135,7 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 		return
 	}
 
-	// step 6 - check and set consistent status
+	// step 6 - check and set consistent status; check for newer versions and trigger tenant networking updates
 	return c.verifyApplicationConsistent(ctx, ca)
 }
 
@@ -151,10 +152,10 @@ func (c *Controller) verifyApplicationConsistent(ctx context.Context, ca *v1alph
 	}
 
 	// Check for newer CAPApplicationVersion
-	return nil, c.checkNewCAPApplicationVersion(ctx, ca)
+	return nil, c.checkNewCavAndTenantNetworking(ctx, ca)
 }
 
-func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1alpha1.CAPApplication) error {
+func (c *Controller) checkNewCavAndTenantNetworking(ctx context.Context, ca *v1alpha1.CAPApplication) error {
 	cav, err := c.getLatestReadyCAPApplicationVersion(ca, false)
 	if err != nil {
 		return err
@@ -165,8 +166,17 @@ func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1al
 	if err != nil || len(tenants) == 0 {
 		return err
 	}
+
+	netUpdGrp, netUpdCtx := errgroup.WithContext(ctx)
 	updated := false
 	for _, tenant := range tenants {
+		if tenant.Status.CurrentCAPApplicationVersionInstance != "" {
+			t := tenant
+			netUpdGrp.Go(func() error {
+				return c.reconcileTenantNetworking(netUpdCtx, t, t.Status.CurrentCAPApplicationVersionInstance, ca)
+			})
+		}
+
 		if tenant.Spec.VersionUpgradeStrategy == v1alpha1.VersionUpgradeStrategyTypeNever {
 			// Skip non relevant tenants
 			continue
@@ -190,6 +200,11 @@ func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1al
 			updated = true
 		}
 	}
+
+	if err = netUpdGrp.Wait(); err != nil {
+		return fmt.Errorf("failed to reconcile tenant networking: %w", err)
+	}
+
 	if updated {
 		msg := fmt.Sprintf("new version %s.%s was used to trigger tenant upgrades", cav.Namespace, cav.Name)
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, CAPApplicationEventNewCAVTriggeredTenantUpgrade, msg)

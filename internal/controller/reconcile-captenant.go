@@ -163,6 +163,9 @@ var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *C
 		return NewReconcileResultWithResource(ResourceCAPTenant, cat.Name, cat.Namespace, 10*time.Second), nil
 	}
 
+	// set current CAPApplicationVersionInstance and update previous versions
+	cat.SetStatusCAPApplicationVersion(ctop.Spec.CAPApplicationVersionInstance)
+
 	// check and reconcile tenant virtual service
 	// adjust virtual service only when tenant is finalizing (after provisioning or upgrade)
 	err = c.reconcileTenantNetworking(ctx, cat, ctop.Spec.CAPApplicationVersionInstance, ca)
@@ -172,7 +175,6 @@ var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *C
 
 	// the ObservedGeneration of the tenant should be updated here (when Ready)
 	cat.SetStatusWithReadyCondition(target.state, target.conditionStatus, target.conditionReason, message)
-	cat.SetStatusCAPApplicationVersion(ctop.Spec.CAPApplicationVersionInstance)
 	return getTenantReconcileResultConsideringDeletion(cat, nil), nil
 }
 
@@ -235,13 +237,6 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, _ i
 		return requeue, nil
 	}
 
-	// if cat.DeletionTimestamp == nil {
-	// 	// Create relevant DNSEntries for this tenant. DNS entries are checked before setting the tenant as ready
-	// 	if err = c.reconcileTenantDNSEntries(ctx, cat); err != nil {
-	// 		return
-	// 	}
-	// }
-
 	// create and track CAPTenantOperations based on state, deletion timestamp, version change etc.
 	requeue, err = c.handleTenantOperationsForCAPTenant(ctx, cat)
 	if err != nil || requeue != nil {
@@ -249,7 +244,11 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, _ i
 	}
 
 	if cat.DeletionTimestamp == nil && cat.Status.CurrentCAPApplicationVersionInstance != "" {
-		err = c.reconcileTenantNetworking(ctx, cat, cat.Status.CurrentCAPApplicationVersionInstance, nil)
+		ca, cavGetErr := c.getCachedCAPApplication(cat.Namespace, cat.Spec.CAPApplicationInstance)
+		if cavGetErr != nil {
+			return nil, cavGetErr
+		}
+		err = c.reconcileTenantNetworking(ctx, cat, cat.Status.CurrentCAPApplicationVersionInstance, ca)
 		if err == nil {
 			util.LogInfo("Tenant processing completed", string(Ready), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		}
