@@ -690,3 +690,26 @@ func TestCAPTenantUpgradeOperationCompletedWithSessionAffinitySwitchedFromEnable
 		},
 	)
 }
+
+func TestCAPTenantUpgradeOperationCompletedWithSessionAffinityEnabledAndPreviousCAVRemovedButDRDeletionFailed(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "captenant upgraded - expecting virtual service, destination rule adjustments after removing previous cav v1 but DR deletion fails for some reason",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/capapplication-session-affinity.yaml",
+				"testdata/common/capapplicationversion-v2.yaml",
+				"testdata/captenant/cat-with-session-affinity-dr-vs-upgrade.yaml",
+			},
+			mockErrorForResources: []ResourceAction{{Verb: "delete", Group: "networking.istio.io", Version: "v1", Resource: "destinationrules", Namespace: "*", Name: "test-cap-01-provider-test-cap-01-cav-v1"}},
+			expectError:           true,
+		},
+	)
+
+	if err.Error() != "mocked api error (destinationrules.networking.istio.io/v1)" {
+		t.Error("error message is different from expected, actual:", err.Error())
+	}
+}
