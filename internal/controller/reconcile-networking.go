@@ -33,7 +33,7 @@ const (
 const (
 	serviceDNSSuffix                = ".svc.cluster.local"
 	setCookie                       = "Set-Cookie"
-	AnnotationLogoutEndpoint        = "sme.sap.com/app-logout-endpoint"
+	AnnotationLogoutEndpoint        = "sme.sap.com/logout-endpoint"
 	AnnotationEnableSessionAffinity = "sme.sap.com/enable-session-affinity"
 )
 

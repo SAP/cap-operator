@@ -164,6 +164,7 @@ var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *C
 	}
 
 	// set current CAPApplicationVersionInstance and update previous versions
+	// required for tenant networking reconciliation as it relies on the current and previous version in the status of the tenant
 	cat.SetStatusCAPApplicationVersion(ctop.Spec.CAPApplicationVersionInstance)
 
 	// check and reconcile tenant virtual service
