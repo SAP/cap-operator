@@ -389,7 +389,6 @@ func TestController_handleCAPApplicationConsistent_Case3(t *testing.T) {
 				"testdata/capapplication/cat-consumer-upg-never-ready.yaml",
 				"testdata/common/credential-secrets.yaml",
 			},
-			//expectedResources: "testdata/capapplication/ca-31.expected.yaml",
 			expectError: true,
 		},
 	)
