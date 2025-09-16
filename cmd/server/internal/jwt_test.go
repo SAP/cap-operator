@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -25,11 +25,11 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/lestrrat-go/jwx/v2/jwk"
+	"github.com/lestrrat-go/jwx/v3/jwk"
 )
 
 type JWKeys struct {
-	Keys []jwk.RSAPublicKey `json:"keys"`
+	Keys []jwk.Key `json:"keys"`
 }
 
 type rsaKeyParams struct {
@@ -42,14 +42,17 @@ const jwksKeyID = "test-key-rsa"
 const jwtTestUAADomain = "auth.service.local"
 const testSubdomain = "test-subdomain"
 
+const tokenKeysPath = "/token_keys"
+const https = "https://"
+const brokerApp = "srv-broker!b14"
+
 func createRSAKey() (*rsaKeyParams, error) {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	key, _ := jwk.FromRaw(privateKey.PublicKey)
-	publicKey := key.(jwk.RSAPublicKey)
-	publicKey.Set(jwk.KeyIDKey, jwksKeyID)
-	publicKey.Set(jwk.KeyUsageKey, "sig")
+	key, _ := jwk.PublicKeyOf(privateKey)
+	key.Set(jwk.KeyIDKey, jwksKeyID)
+	key.Set(jwk.KeyUsageKey, "sig")
 	return &rsaKeyParams{
-		jwks:  &JWKeys{Keys: []jwk.RSAPublicKey{publicKey}},
+		jwks:  &JWKeys{Keys: []jwk.Key{key}},
 		key:   privateKey,
 		keyID: jwksKeyID,
 	}, nil
@@ -60,7 +63,7 @@ func SetupValidTokenAndIssuerForSubscriptionTests(xsappname string) (*http.Clien
 		UAADomain:      jwtTestUAADomain,
 		XSAppName:      xsappname,
 		ClientID:       "some-client-id",
-		RequiredScopes: []string{xsappname + ".Callback", xsappname + ".mtcallback"},
+		ExpectedScopes: []string{xsappname + ".Callback"},
 	}, &jwtTestParameters{})
 }
 
@@ -80,13 +83,13 @@ func setupTokenAndIssuer(config *XSUAAConfig, params *jwtTestParameters) (*http.
 		return nil, "", fmt.Errorf("error generating rsa key: %s", err.Error())
 	}
 	claims := XSUAAJWTClaims{
-		Scope:           config.RequiredScopes,
-		ClientID:        "srv-broker!b14",
-		AuthorizedParty: "srv-broker!b14",
+		Scope:           config.ExpectedScopes,
+		ClientID:        brokerApp,
+		AuthorizedParty: brokerApp,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Audience:  jwt.ClaimStrings{config.XSAppName, "srv-broker!b14"},
+			Audience:  jwt.ClaimStrings{config.XSAppName, brokerApp},
 			ID:        "jwt-token-01",
-			Issuer:    "https://" + strings.Join([]string{testSubdomain, config.UAADomain}, ".") + "/token",
+			Issuer:    https + strings.Join([]string{testSubdomain, config.UAADomain}, ".") + "/token",
 			Subject:   "jwt-token-01",
 			IssuedAt:  jwt.NewNumericDate(time.Now().Add(-30 * time.Minute)),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
@@ -114,9 +117,9 @@ func setupTokenAndIssuer(config *XSUAAConfig, params *jwtTestParameters) (*http.
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 
 	if params.invalidJKUHeader {
-		token.Header["jku"] = "https://" + strings.Join([]string{testSubdomain, "foo.bar.local"}, ".") + "/token_keys"
+		token.Header["jku"] = https + strings.Join([]string{testSubdomain, "foo.bar.local"}, ".") + tokenKeysPath
 	} else {
-		token.Header["jku"] = "https://" + strings.Join([]string{testSubdomain, config.UAADomain}, ".") + "/token_keys"
+		token.Header["jku"] = https + strings.Join([]string{testSubdomain, config.UAADomain}, ".") + tokenKeysPath
 	}
 
 	token.Header["kid"] = rsaKey.keyID
@@ -160,8 +163,8 @@ func createJWTTestTLSServer(ctx context.Context, jwks *JWKeys) (*http.Client, er
 		var body []byte
 		switch r.URL.Path {
 		case "/.well-known/openid-configuration":
-			body, _ = json.Marshal(OpenIDConfig{JWKSURI: "https://" + domain + "/token_keys", SigningAlgorithmsSupported: []string{"RS256"}})
-		case "/token_keys":
+			body, _ = json.Marshal(OpenIDConfig{JWKSURI: https + domain + tokenKeysPath, SigningAlgorithmsSupported: []string{"RS256"}})
+		case tokenKeysPath:
 			body, _ = json.MarshalIndent(jwks, "", "    ")
 		}
 		w.Write(body)
@@ -196,7 +199,7 @@ var testXSUAAConfig *XSUAAConfig = &XSUAAConfig{
 	UAADomain:      jwtTestUAADomain,
 	XSAppName:      "myxsappname",
 	ClientID:       "some-client-id",
-	RequiredScopes: []string{"myxsappname.Callback", "myxsappname.mtcallback"},
+	ExpectedScopes: []string{"myxsappname.mtcallback"},
 }
 
 func testVerifyValidToken(t *testing.T) {
@@ -215,7 +218,7 @@ func testValidTokenWithBrokerClientId(t *testing.T) {
 	brokerXSUAAConfig := &XSUAAConfig{
 		UAADomain:      testXSUAAConfig.UAADomain,
 		ClientID:       testXSUAAConfig.ClientID,
-		RequiredScopes: testXSUAAConfig.RequiredScopes,
+		ExpectedScopes: testXSUAAConfig.ExpectedScopes,
 		XSAppName:      "xsapp!b4711",
 	}
 	client, tokenString, err := setupTokenAndIssuer(brokerXSUAAConfig, &jwtTestParameters{clientIsBroker: true})

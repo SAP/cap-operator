@@ -10,17 +10,17 @@ description: >
 
 To install CAP operator components, we recommend using the [Helm chart](https://github.com/sap/cap-operator-lifecycle/tree/main/chart) that is published as an OCI package at `oci://ghcr.io/sap/cap-operator-lifecycle/helm/cap-operator`.
 
-### Installation
+## Installation
 
 Create a namespace and install the Helm chart in that namespace by specifying the `domain` and the `dnsTarget` for your subscription server, either 
 
-- #### As command line parameters:
+- ### As command line parameters:
   ```bash
   kubectl create namespace cap-operator-system
   helm upgrade -i -n cap-operator-system cap-operator oci://ghcr.io/sap/cap-operator-lifecycle/helm/cap-operator --set subscriptionServer.domain=cap-operator.<CLUSTER-DOMAIN> --set subscriptionServer.dnsTarget=public-ingress.<CLUSTER-DOMAIN>
   ```
 
-- #### Or as a `YAML` file with the values:
+- ### Or as a `YAML` file with the values:
   ```bash
   kubectl create namespace cap-operator-system
   helm upgrade -i -n cap-operator-system cap-operator oci://ghcr.io/sap/cap-operator-lifecycle/helm/cap-operator -f my-cap-operator-values.yaml
@@ -32,9 +32,9 @@ Create a namespace and install the Helm chart in that namespace by specifying th
     domain: cap-operator.<CLUSTER-DOMAIN>   
   ```
 
-### Optional steps
+## Optional steps
 
-- #### Enable Service Monitors for metrics emitted by controller and subscription server
+- ### Enable Service Monitors for metrics emitted by controller and subscription server
 
   To enable Monitoring via [metrics](docs/usage/operator-metrics) emitted by CAP Operator components, the following value can be specified:
   ```yaml
@@ -46,7 +46,7 @@ Create a namespace and install the Helm chart in that namespace by specifying th
   controller:
       detailedOperationalMetrics: true
   ```
-- #### Setup Prometheus Integration for _Version Monitoring_
+- ### Setup Prometheus Integration for _Version Monitoring_
 
   To use the [Version Monitoring](docs/usage/version-monitoring/) feature of the CAP Operator, a [Prometheus](https://prometheus.io/) server URL can be provided to the CAP Operator. When installing the CAP Operator using the Helm chart, the following values can be specified in the values:
   ```yaml

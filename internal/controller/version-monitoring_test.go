@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -222,7 +222,7 @@ func TestVersionSelectionForCleanup(t *testing.T) {
 			c := setupTestControllerWithInitialResources(t, tc.resources)
 			orc := &cleanupOrchestrator{queue: workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[NamespacedResourceKey]())}
 			defer orc.queue.ShutDown()
-			err := c.queueVersionsForCleanupEvaluation(context.TODO(), orc)
+			err := c.queueVersionsForCleanupEvaluation(orc)
 			if err != nil {
 				if !tc.expectError {
 					t.Errorf("not expecting error for test case %s -> error: %s", tc.name, err.Error())

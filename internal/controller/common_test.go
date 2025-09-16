@@ -1,11 +1,12 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
 package controller
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -16,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/exp/constraints"
+	"google.golang.org/protobuf/testing/protocmp"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	certManagerv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
@@ -28,7 +29,7 @@ import (
 	gardenerdnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	gardenerdnsfake "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/fake"
 	gardenerdnsscheme "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/scheme"
-	"github.com/google/go-cmp/cmp"
+	gocmp "github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promopFake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
@@ -44,6 +45,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -62,8 +64,12 @@ var gvrKindMap map[string]string = map[string]string{
 	"captenants.sme.sap.com/v1alpha1":             "CAPTenant",
 	"capapplications.sme.sap.com/v1alpha1":        "CAPApplication",
 	"capapplicationversions.sme.sap.com/v1alpha1": "CAPApplicationVersion",
+	"domains.sme.sap.com/v1alpha1":                "Domain",
+	"clusterdomains.sme.sap.com/v1alpha1":         "ClusterDomain",
 	"servicemonitors.monitoring.coreos.com/v1":    "ServiceMonitor",
 }
+
+var createKindMap map[string]int
 
 // adds fixed suffix "gen" to newly created objects with generateName
 var generateNameCreateHandler k8stesting.ReactionFunc = func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
@@ -72,14 +78,21 @@ var generateNameCreateHandler k8stesting.ReactionFunc = func(action k8stesting.A
 	mo, ok := obj.(metav1.Object)
 	if ok {
 		if mo.GetGenerateName() != "" && mo.GetName() == "" {
-			mo.SetName(mo.GetGenerateName() + "gen")
+			objectKindKey := action.GetResource().String() + mo.GetGenerateName()
+			if i, ok := createKindMap[objectKindKey]; !ok {
+				mo.SetName(mo.GetGenerateName() + "gen")
+				createKindMap[objectKindKey] = 1
+			} else {
+				mo.SetName(mo.GetGenerateName() + "gen" + fmt.Sprintf("%d", i))
+				createKindMap[objectKindKey] = i + 1
+			}
 		}
 	}
 
 	return false, obj, nil
 }
 
-func getErrorReactorWithResources(t *testing.T, items []ResourceAction) k8stesting.ReactionFunc {
+func getErrorReactorWithResources(items []ResourceAction) k8stesting.ReactionFunc {
 	actionItems := items
 	return func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 		gvr := action.GetResource()
@@ -153,6 +166,10 @@ var removeStatusTimestampHandler k8stesting.ReactionFunc = func(action k8stestin
 			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
 		case *v1alpha1.CAPTenantOperation:
 			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
+		case *v1alpha1.Domain:
+			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
+		case *v1alpha1.ClusterDomain:
+			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
 		}
 	}
 
@@ -212,11 +229,7 @@ func addForDiscovery(c *k8stesting.Fake, resources []schema.GroupVersionResource
 	for i := range resources {
 		r := resources[i]
 		gv := fmt.Sprintf("%s/%s", r.Group, r.Version)
-		if v, ok := m[gv]; ok {
-			v = append(v, r)
-		} else {
-			m[gv] = []schema.GroupVersionResource{r}
-		}
+		m[gv] = append(m[gv], r)
 	}
 	for k, v := range m {
 		apiResources := []metav1.APIResource{}
@@ -228,6 +241,7 @@ func addForDiscovery(c *k8stesting.Fake, resources []schema.GroupVersionResource
 }
 
 func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAction, discoverResources []schema.GroupVersionResource) *Controller {
+	createKindMap = map[string]int{}
 	// add schemes for various client sets
 	smeScheme.AddToScheme(scheme.Scheme)
 	gardenercertscheme.AddToScheme(scheme.Scheme)
@@ -250,22 +264,22 @@ func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAc
 	copClient.PrependReactor("create", "*", generateNameCreateHandler)
 	copClient.PrependReactor("update", "*", removeStatusTimestampHandler)
 	copClient.PrependReactor("delete-collection", "*", getDeleteCollectionHandler(t, copClient))
-	copClient.PrependReactor("*", "*", getErrorReactorWithResources(t, items))
+	copClient.PrependReactor("*", "*", getErrorReactorWithResources(items))
 
 	istioClient.PrependReactor("create", "*", generateNameCreateHandler)
 	istioClient.PrependReactor("delete-collection", "*", getDeleteCollectionHandler(t, istioClient))
-	istioClient.PrependReactor("*", "*", getErrorReactorWithResources(t, items))
+	istioClient.PrependReactor("*", "*", getErrorReactorWithResources(items))
 
 	coreClient.PrependReactor("create", "*", generateNameCreateHandler)
 	coreClient.PrependReactor("create", "*", generateNameCreateHandler)
-	coreClient.PrependReactor("*", "*", getErrorReactorWithResources(t, items))
+	coreClient.PrependReactor("*", "*", getErrorReactorWithResources(items))
 
 	gardenerDNSClient.PrependReactor("create", "*", generateNameCreateHandler)
-	gardenerDNSClient.PrependReactor("*", "*", getErrorReactorWithResources(t, items))
+	gardenerDNSClient.PrependReactor("*", "*", getErrorReactorWithResources(items))
 	gardenerDNSClient.PrependReactor("delete-collection", "*", getDeleteCollectionHandler(t, gardenerDNSClient))
 
 	gardenerCertClient.PrependReactor("create", "*", generateNameCreateHandler)
-	gardenerCertClient.PrependReactor("*", "*", getErrorReactorWithResources(t, items))
+	gardenerCertClient.PrependReactor("*", "*", getErrorReactorWithResources(items))
 	gardenerCertClient.PrependReactor("delete-collection", "*", getDeleteCollectionHandler(t, gardenerDNSClient))
 
 	c := NewController(coreClient, copClient, istioClient, gardenerCertClient, certManagerClient, gardenerDNSClient, promopClient)
@@ -343,8 +357,10 @@ func reconcileTestItem(ctx context.Context, t *testing.T, item QueueItem, data T
 			requeue, err = c.reconcileCAPTenant(ctx, item, data.attempts)
 		case ResourceCAPTenantOperation:
 			requeue, err = c.reconcileCAPTenantOperation(ctx, item, data.attempts)
-		case ResourceOperatorDomains:
-			err = c.reconcileOperatorDomains(ctx, item, data.attempts)
+		case ResourceDomain:
+			requeue, err = c.reconcileDomain(ctx, item, data.attempts)
+		case ResourceClusterDomain:
+			requeue, err = c.reconcileClusterDomain(ctx, item, data.attempts)
 		default:
 			t.Error("unidentified queue item for testing")
 		}
@@ -408,7 +424,7 @@ func verifyItemsForRequeue(expected map[int][]NamespacedResourceKey, result *Rec
 	return nil
 }
 
-func getComaSeparatedKeys[K constraints.Ordered, T any](m map[K]T, stringer func(key K) string) string {
+func getComaSeparatedKeys[K cmp.Ordered, T any](m map[K]T, stringer func(key K) string) string {
 	s := []string{}
 	for k := range m {
 		var n string
@@ -543,6 +559,13 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 		}
 		fakeClient.Tracker().Add(obj)
 		err = c.gardenerDNSInformerFactory.Dns().V1alpha1().DNSEntries().Informer().GetIndexer().Add(obj)
+	case *networkingv1.NetworkPolicy:
+		fakeClient, ok := c.kubeClient.(*k8sfake.Clientset)
+		if !ok {
+			return fmt.Errorf("controller is not using a fake clientset")
+		}
+		fakeClient.Tracker().Add(obj)
+		err = c.kubeInformerFactory.Networking().V1().NetworkPolicies().Informer().GetIndexer().Add(obj)
 	case *istionwv1.Gateway, *istionwv1.VirtualService, *istionwv1.DestinationRule:
 		fakeClient, ok := c.istioClient.(*istiofake.Clientset)
 		if !ok {
@@ -563,7 +586,7 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 			fakeClient.Tracker().Create(schema.GroupVersionResource{Group: "networking.istio.io", Version: "v1", Resource: "destinationrules"}, obj, metaObj.GetNamespace())
 			err = c.istioInformerFactory.Networking().V1().DestinationRules().Informer().GetIndexer().Add(obj)
 		}
-	case *v1alpha1.CAPApplication, *v1alpha1.CAPApplicationVersion, *v1alpha1.CAPTenant, *v1alpha1.CAPTenantOperation:
+	case *v1alpha1.CAPApplication, *v1alpha1.CAPApplicationVersion, *v1alpha1.CAPTenant, *v1alpha1.CAPTenantOperation, *v1alpha1.Domain, *v1alpha1.ClusterDomain:
 		fakeClient, ok := c.crdClient.(*copfake.Clientset)
 		if !ok {
 			return fmt.Errorf("controller is not using a fake clientset")
@@ -578,9 +601,19 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 			err = c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Informer().GetIndexer().Add(obj)
 		case *v1alpha1.CAPTenantOperation:
 			err = c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Informer().GetIndexer().Add(obj)
+		case *v1alpha1.Domain:
+			err = c.crdInformerFactory.Sme().V1alpha1().Domains().Informer().GetIndexer().Add(obj)
+		case *v1alpha1.ClusterDomain:
+			err = c.crdInformerFactory.Sme().V1alpha1().ClusterDomains().Informer().GetIndexer().Add(obj)
 		}
 	case *monv1.ServiceMonitor:
 		fakeClient, ok := c.promClient.(*promopFake.Clientset)
+		if !ok {
+			return fmt.Errorf("controller is not using a fake clientset")
+		}
+		fakeClient.Tracker().Add(obj)
+	case *discoveryv1.EndpointSlice:
+		fakeClient, ok := c.kubeClient.(*k8sfake.Clientset)
 		if !ok {
 			return fmt.Errorf("controller is not using a fake clientset")
 		}
@@ -617,9 +650,9 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 	case *networkingv1.NetworkPolicy:
 		actual, err = c.kubeClient.(*k8sfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("networkpolicies"), mo.GetNamespace(), mo.GetName())
 	case *gardenercertv1alpha1.Certificate:
-		actual, err = c.gardenerCertificateClient.(*gardenercertfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("certificates.cert.gardener.cloud"), mo.GetNamespace(), mo.GetName())
+		actual, err = c.gardenerCertificateClient.(*gardenercertfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("certificates"), mo.GetNamespace(), mo.GetName())
 	case *certManagerv1.Certificate:
-		actual, err = c.certManagerCertificateClient.(*certManagerFake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("certificates.cert.gardener.cloud"), mo.GetNamespace(), mo.GetName())
+		actual, err = c.certManagerCertificateClient.(*certManagerFake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("certificates"), mo.GetNamespace(), mo.GetName())
 	case *gardenerdnsv1alpha1.DNSEntry:
 		actual, err = c.gardenerDNSClient.(*gardenerdnsfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("dnsentries"), mo.GetNamespace(), mo.GetName())
 	case *istionwv1.Gateway, *istionwv1.VirtualService, *istionwv1.DestinationRule:
@@ -632,7 +665,7 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 		case *istionwv1.Gateway:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("gateways"), mo.GetNamespace(), mo.GetName())
 		}
-	case *v1alpha1.CAPApplication, *v1alpha1.CAPApplicationVersion, *v1alpha1.CAPTenant, *v1alpha1.CAPTenantOperation:
+	case *v1alpha1.CAPApplication, *v1alpha1.CAPApplicationVersion, *v1alpha1.CAPTenant, *v1alpha1.CAPTenantOperation, *v1alpha1.Domain, *v1alpha1.ClusterDomain:
 		fakeClient := c.crdClient.(*copfake.Clientset)
 		switch expected.(type) {
 		case *v1alpha1.CAPApplication:
@@ -643,10 +676,16 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("captenants"), mo.GetNamespace(), mo.GetName())
 		case *v1alpha1.CAPTenantOperation:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("captenantoperations"), mo.GetNamespace(), mo.GetName())
+		case *v1alpha1.Domain:
+			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("domains"), mo.GetNamespace(), mo.GetName())
+		case *v1alpha1.ClusterDomain:
+			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("clusterdomains"), metav1.NamespaceAll, mo.GetName())
 		}
 	case *monv1.ServiceMonitor:
 		fakeClient := c.promClient.(*promopFake.Clientset)
 		actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("servicemonitors"), mo.GetNamespace(), mo.GetName())
+	case *discoveryv1.EndpointSlice:
+		actual, err = c.kubeClient.(*k8sfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("endpointslices"), mo.GetNamespace(), mo.GetName())
 	default:
 		return fmt.Errorf("unknown expected object type")
 	}
@@ -661,13 +700,14 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 }
 
 func compareResourceFields(actual runtime.Object, expected runtime.Object, t *testing.T, kind string, namespace string, name string) {
-	if diff := cmp.Diff(
+	if diff := gocmp.Diff(
 		actual, expected,
-		cmp.FilterPath(func(p cmp.Path) bool {
+		protocmp.Transform(),
+		gocmp.FilterPath(func(p gocmp.Path) bool {
 			// NOTE: do not compare the type metadata as this is not guaranteed to be filled from the fake client
 			return p.String() == "TypeMeta"
-		}, cmp.Ignore()),
-		cmp.FilterPath(func(p cmp.Path) bool {
+		}, gocmp.Ignore()),
+		gocmp.FilterPath(func(p gocmp.Path) bool {
 			// Ignore relevant Unexported fields introduced recently by istio in Spec
 			ps := p.String()
 			return ps == "Spec" || strings.HasPrefix(ps, "Spec.")
@@ -688,7 +728,7 @@ func compareResourceFields(actual runtime.Object, expected runtime.Object, t *te
 			istionetworkingv1.LoadBalancerSettings_ConsistentHashLB_HTTPCookie{},
 			durationpb.Duration{},
 		)),
-		cmp.FilterPath(func(p cmp.Path) bool {
+		gocmp.FilterPath(func(p gocmp.Path) bool {
 			// Ignore relevant Unexported fields introduced recently by istio in Status
 			ps := p.String()
 			return ps == "Status" || strings.HasPrefix(ps, "Status.")

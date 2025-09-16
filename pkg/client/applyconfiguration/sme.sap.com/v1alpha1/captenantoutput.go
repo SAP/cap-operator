@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -31,12 +31,13 @@ func CAPTenantOutput(name, namespace string) *CAPTenantOutputApplyConfiguration 
 	b.WithAPIVersion("sme.sap.com/v1alpha1")
 	return b
 }
+func (b CAPTenantOutputApplyConfiguration) IsApplyConfiguration() {}
 
 // WithKind sets the Kind field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Kind field is set to the value of the last call.
 func (b *CAPTenantOutputApplyConfiguration) WithKind(value string) *CAPTenantOutputApplyConfiguration {
-	b.Kind = &value
+	b.TypeMetaApplyConfiguration.Kind = &value
 	return b
 }
 
@@ -44,7 +45,7 @@ func (b *CAPTenantOutputApplyConfiguration) WithKind(value string) *CAPTenantOut
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the APIVersion field is set to the value of the last call.
 func (b *CAPTenantOutputApplyConfiguration) WithAPIVersion(value string) *CAPTenantOutputApplyConfiguration {
-	b.APIVersion = &value
+	b.TypeMetaApplyConfiguration.APIVersion = &value
 	return b
 }
 
@@ -53,7 +54,7 @@ func (b *CAPTenantOutputApplyConfiguration) WithAPIVersion(value string) *CAPTen
 // If called multiple times, the Name field is set to the value of the last call.
 func (b *CAPTenantOutputApplyConfiguration) WithName(value string) *CAPTenantOutputApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Name = &value
+	b.ObjectMetaApplyConfiguration.Name = &value
 	return b
 }
 
@@ -62,7 +63,7 @@ func (b *CAPTenantOutputApplyConfiguration) WithName(value string) *CAPTenantOut
 // If called multiple times, the GenerateName field is set to the value of the last call.
 func (b *CAPTenantOutputApplyConfiguration) WithGenerateName(value string) *CAPTenantOutputApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.GenerateName = &value
+	b.ObjectMetaApplyConfiguration.GenerateName = &value
 	return b
 }
 
@@ -71,7 +72,7 @@ func (b *CAPTenantOutputApplyConfiguration) WithGenerateName(value string) *CAPT
 // If called multiple times, the Namespace field is set to the value of the last call.
 func (b *CAPTenantOutputApplyConfiguration) WithNamespace(value string) *CAPTenantOutputApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Namespace = &value
+	b.ObjectMetaApplyConfiguration.Namespace = &value
 	return b
 }
 
@@ -80,7 +81,7 @@ func (b *CAPTenantOutputApplyConfiguration) WithNamespace(value string) *CAPTena
 // If called multiple times, the UID field is set to the value of the last call.
 func (b *CAPTenantOutputApplyConfiguration) WithUID(value types.UID) *CAPTenantOutputApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.UID = &value
+	b.ObjectMetaApplyConfiguration.UID = &value
 	return b
 }
 
@@ -89,7 +90,7 @@ func (b *CAPTenantOutputApplyConfiguration) WithUID(value types.UID) *CAPTenantO
 // If called multiple times, the ResourceVersion field is set to the value of the last call.
 func (b *CAPTenantOutputApplyConfiguration) WithResourceVersion(value string) *CAPTenantOutputApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.ResourceVersion = &value
+	b.ObjectMetaApplyConfiguration.ResourceVersion = &value
 	return b
 }
 
@@ -98,7 +99,7 @@ func (b *CAPTenantOutputApplyConfiguration) WithResourceVersion(value string) *C
 // If called multiple times, the Generation field is set to the value of the last call.
 func (b *CAPTenantOutputApplyConfiguration) WithGeneration(value int64) *CAPTenantOutputApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.Generation = &value
+	b.ObjectMetaApplyConfiguration.Generation = &value
 	return b
 }
 
@@ -107,7 +108,7 @@ func (b *CAPTenantOutputApplyConfiguration) WithGeneration(value int64) *CAPTena
 // If called multiple times, the CreationTimestamp field is set to the value of the last call.
 func (b *CAPTenantOutputApplyConfiguration) WithCreationTimestamp(value metav1.Time) *CAPTenantOutputApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.CreationTimestamp = &value
+	b.ObjectMetaApplyConfiguration.CreationTimestamp = &value
 	return b
 }
 
@@ -116,7 +117,7 @@ func (b *CAPTenantOutputApplyConfiguration) WithCreationTimestamp(value metav1.T
 // If called multiple times, the DeletionTimestamp field is set to the value of the last call.
 func (b *CAPTenantOutputApplyConfiguration) WithDeletionTimestamp(value metav1.Time) *CAPTenantOutputApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionTimestamp = &value
+	b.ObjectMetaApplyConfiguration.DeletionTimestamp = &value
 	return b
 }
 
@@ -125,7 +126,7 @@ func (b *CAPTenantOutputApplyConfiguration) WithDeletionTimestamp(value metav1.T
 // If called multiple times, the DeletionGracePeriodSeconds field is set to the value of the last call.
 func (b *CAPTenantOutputApplyConfiguration) WithDeletionGracePeriodSeconds(value int64) *CAPTenantOutputApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	b.DeletionGracePeriodSeconds = &value
+	b.ObjectMetaApplyConfiguration.DeletionGracePeriodSeconds = &value
 	return b
 }
 
@@ -135,11 +136,11 @@ func (b *CAPTenantOutputApplyConfiguration) WithDeletionGracePeriodSeconds(value
 // overwriting an existing map entries in Labels field with the same key.
 func (b *CAPTenantOutputApplyConfiguration) WithLabels(entries map[string]string) *CAPTenantOutputApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Labels == nil && len(entries) > 0 {
-		b.Labels = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Labels == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Labels = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Labels[k] = v
+		b.ObjectMetaApplyConfiguration.Labels[k] = v
 	}
 	return b
 }
@@ -150,11 +151,11 @@ func (b *CAPTenantOutputApplyConfiguration) WithLabels(entries map[string]string
 // overwriting an existing map entries in Annotations field with the same key.
 func (b *CAPTenantOutputApplyConfiguration) WithAnnotations(entries map[string]string) *CAPTenantOutputApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
-	if b.Annotations == nil && len(entries) > 0 {
-		b.Annotations = make(map[string]string, len(entries))
+	if b.ObjectMetaApplyConfiguration.Annotations == nil && len(entries) > 0 {
+		b.ObjectMetaApplyConfiguration.Annotations = make(map[string]string, len(entries))
 	}
 	for k, v := range entries {
-		b.Annotations[k] = v
+		b.ObjectMetaApplyConfiguration.Annotations[k] = v
 	}
 	return b
 }
@@ -168,7 +169,7 @@ func (b *CAPTenantOutputApplyConfiguration) WithOwnerReferences(values ...*v1.Ow
 		if values[i] == nil {
 			panic("nil value passed to WithOwnerReferences")
 		}
-		b.OwnerReferences = append(b.OwnerReferences, *values[i])
+		b.ObjectMetaApplyConfiguration.OwnerReferences = append(b.ObjectMetaApplyConfiguration.OwnerReferences, *values[i])
 	}
 	return b
 }
@@ -179,7 +180,7 @@ func (b *CAPTenantOutputApplyConfiguration) WithOwnerReferences(values ...*v1.Ow
 func (b *CAPTenantOutputApplyConfiguration) WithFinalizers(values ...string) *CAPTenantOutputApplyConfiguration {
 	b.ensureObjectMetaApplyConfigurationExists()
 	for i := range values {
-		b.Finalizers = append(b.Finalizers, values[i])
+		b.ObjectMetaApplyConfiguration.Finalizers = append(b.ObjectMetaApplyConfiguration.Finalizers, values[i])
 	}
 	return b
 }
@@ -198,8 +199,24 @@ func (b *CAPTenantOutputApplyConfiguration) WithSpec(value *CAPTenantOutputSpecA
 	return b
 }
 
+// GetKind retrieves the value of the Kind field in the declarative configuration.
+func (b *CAPTenantOutputApplyConfiguration) GetKind() *string {
+	return b.TypeMetaApplyConfiguration.Kind
+}
+
+// GetAPIVersion retrieves the value of the APIVersion field in the declarative configuration.
+func (b *CAPTenantOutputApplyConfiguration) GetAPIVersion() *string {
+	return b.TypeMetaApplyConfiguration.APIVersion
+}
+
 // GetName retrieves the value of the Name field in the declarative configuration.
 func (b *CAPTenantOutputApplyConfiguration) GetName() *string {
 	b.ensureObjectMetaApplyConfigurationExists()
-	return b.Name
+	return b.ObjectMetaApplyConfiguration.Name
+}
+
+// GetNamespace retrieves the value of the Namespace field in the declarative configuration.
+func (b *CAPTenantOutputApplyConfiguration) GetNamespace() *string {
+	b.ensureObjectMetaApplyConfigurationExists()
+	return b.ObjectMetaApplyConfiguration.Namespace
 }

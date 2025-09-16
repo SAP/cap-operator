@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,10 +8,10 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha1"
+	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	applyconfigurationsmesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha1"
 	scheme "github.com/sap/cap-operator/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -27,36 +27,37 @@ type CAPApplicationsGetter interface {
 
 // CAPApplicationInterface has methods to work with CAPApplication resources.
 type CAPApplicationInterface interface {
-	Create(ctx context.Context, cAPApplication *v1alpha1.CAPApplication, opts v1.CreateOptions) (*v1alpha1.CAPApplication, error)
-	Update(ctx context.Context, cAPApplication *v1alpha1.CAPApplication, opts v1.UpdateOptions) (*v1alpha1.CAPApplication, error)
+	Create(ctx context.Context, cAPApplication *smesapcomv1alpha1.CAPApplication, opts v1.CreateOptions) (*smesapcomv1alpha1.CAPApplication, error)
+	Update(ctx context.Context, cAPApplication *smesapcomv1alpha1.CAPApplication, opts v1.UpdateOptions) (*smesapcomv1alpha1.CAPApplication, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, cAPApplication *v1alpha1.CAPApplication, opts v1.UpdateOptions) (*v1alpha1.CAPApplication, error)
+	UpdateStatus(ctx context.Context, cAPApplication *smesapcomv1alpha1.CAPApplication, opts v1.UpdateOptions) (*smesapcomv1alpha1.CAPApplication, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.CAPApplication, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.CAPApplicationList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*smesapcomv1alpha1.CAPApplication, error)
+	List(ctx context.Context, opts v1.ListOptions) (*smesapcomv1alpha1.CAPApplicationList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.CAPApplication, err error)
-	Apply(ctx context.Context, cAPApplication *smesapcomv1alpha1.CAPApplicationApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.CAPApplication, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *smesapcomv1alpha1.CAPApplication, err error)
+	Apply(ctx context.Context, cAPApplication *applyconfigurationsmesapcomv1alpha1.CAPApplicationApplyConfiguration, opts v1.ApplyOptions) (result *smesapcomv1alpha1.CAPApplication, err error)
 	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
-	ApplyStatus(ctx context.Context, cAPApplication *smesapcomv1alpha1.CAPApplicationApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.CAPApplication, err error)
+	ApplyStatus(ctx context.Context, cAPApplication *applyconfigurationsmesapcomv1alpha1.CAPApplicationApplyConfiguration, opts v1.ApplyOptions) (result *smesapcomv1alpha1.CAPApplication, err error)
 	CAPApplicationExpansion
 }
 
 // cAPApplications implements CAPApplicationInterface
 type cAPApplications struct {
-	*gentype.ClientWithListAndApply[*v1alpha1.CAPApplication, *v1alpha1.CAPApplicationList, *smesapcomv1alpha1.CAPApplicationApplyConfiguration]
+	*gentype.ClientWithListAndApply[*smesapcomv1alpha1.CAPApplication, *smesapcomv1alpha1.CAPApplicationList, *applyconfigurationsmesapcomv1alpha1.CAPApplicationApplyConfiguration]
 }
 
 // newCAPApplications returns a CAPApplications
 func newCAPApplications(c *SmeV1alpha1Client, namespace string) *cAPApplications {
 	return &cAPApplications{
-		gentype.NewClientWithListAndApply[*v1alpha1.CAPApplication, *v1alpha1.CAPApplicationList, *smesapcomv1alpha1.CAPApplicationApplyConfiguration](
+		gentype.NewClientWithListAndApply[*smesapcomv1alpha1.CAPApplication, *smesapcomv1alpha1.CAPApplicationList, *applyconfigurationsmesapcomv1alpha1.CAPApplicationApplyConfiguration](
 			"capapplications",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.CAPApplication { return &v1alpha1.CAPApplication{} },
-			func() *v1alpha1.CAPApplicationList { return &v1alpha1.CAPApplicationList{} }),
+			func() *smesapcomv1alpha1.CAPApplication { return &smesapcomv1alpha1.CAPApplication{} },
+			func() *smesapcomv1alpha1.CAPApplicationList { return &smesapcomv1alpha1.CAPApplicationList{} },
+		),
 	}
 }

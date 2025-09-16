@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -51,6 +51,8 @@ type tentantOperationWorkload struct {
 	tolerations               []corev1.Toleration
 	backoffLimit              *int32
 	ttlSecondsAfterFinished   *int32
+	activeDeadlineSeconds     *int64
+	restartPolicy             corev1.RestartPolicy
 }
 
 const (
@@ -76,7 +78,7 @@ const (
 	EventActionTrackJob  = "TrackJob"
 )
 
-func (c *Controller) reconcileCAPTenantOperation(ctx context.Context, item QueueItem, attempts int) (result *ReconcileResult, err error) {
+func (c *Controller) reconcileCAPTenantOperation(ctx context.Context, item QueueItem, _ int) (result *ReconcileResult, err error) {
 	// cached, err := c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Lister().CAPTenantOperations(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
 	cached, err := c.crdClient.SmeV1alpha1().CAPTenantOperations(item.ResourceKey.Namespace).Get(ctx, item.ResourceKey.Name, metav1.GetOptions{})
 
@@ -478,13 +480,14 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            derivedWorkload.backoffLimit,
 			TTLSecondsAfterFinished: derivedWorkload.ttlSecondsAfterFinished,
+			ActiveDeadlineSeconds:   derivedWorkload.activeDeadlineSeconds,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      params.labels,
 					Annotations: params.annotations,
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy:             corev1.RestartPolicyNever,
+					RestartPolicy:             getRestartPolicy(derivedWorkload.restartPolicy, true),
 					ImagePullSecrets:          params.imagePullSecrets,
 					Containers:                getContainers(ctop, derivedWorkload, workload, params),
 					InitContainers:            *updateInitContainers(derivedWorkload.initContainers, getCTOPEnv(params, ctop, v1alpha1.JobTenantOperation), params.vcapSecretName),
@@ -574,6 +577,8 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 		if workload.JobDefinition.TTLSecondsAfterFinished != nil {
 			result.ttlSecondsAfterFinished = workload.JobDefinition.TTLSecondsAfterFinished
 		}
+		result.activeDeadlineSeconds = workload.JobDefinition.ActiveDeadlineSeconds
+		result.restartPolicy = workload.JobDefinition.RestartPolicy
 		result.affinity = workload.JobDefinition.Affinity
 		result.nodeSelector = workload.JobDefinition.NodeSelector
 		result.nodeName = workload.JobDefinition.NodeName
@@ -597,13 +602,14 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            workload.JobDefinition.BackoffLimit,
 			TTLSecondsAfterFinished: workload.JobDefinition.TTLSecondsAfterFinished,
+			ActiveDeadlineSeconds:   workload.JobDefinition.ActiveDeadlineSeconds,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      params.labels,
 					Annotations: params.annotations,
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy:             corev1.RestartPolicyNever,
+					RestartPolicy:             getRestartPolicy(workload.JobDefinition.RestartPolicy, true),
 					SecurityContext:           workload.JobDefinition.PodSecurityContext,
 					Volumes:                   workload.JobDefinition.Volumes,
 					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,
@@ -684,12 +690,13 @@ func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation, step
 
 	if stepType == v1alpha1.JobTenantOperation {
 		var operation string
-		if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
+		switch ctop.Spec.Operation {
+		case v1alpha1.CAPTenantOperationTypeProvisioning:
 			operation = "subscribe"
 			env = append(env, corev1.EnvVar{Name: EnvCAPOpSubscriptionPayload, ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: ctop.Annotations[AnnotationSubscriptionContextSecret]}, Key: SubscriptionContext}}})
-		} else if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeUpgrade {
+		case v1alpha1.CAPTenantOperationTypeUpgrade:
 			operation = "upgrade"
-		} else { // deprovisioning
+		default: // deprovisioning
 			operation = "unsubscribe"
 		}
 		env = append(env, corev1.EnvVar{Name: EnvCAPOpTenantMtxsOperation, Value: operation})

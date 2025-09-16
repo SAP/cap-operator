@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -30,7 +30,7 @@ func CAPApplicationVersionStatus() *CAPApplicationVersionStatusApplyConfiguratio
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ObservedGeneration field is set to the value of the last call.
 func (b *CAPApplicationVersionStatusApplyConfiguration) WithObservedGeneration(value int64) *CAPApplicationVersionStatusApplyConfiguration {
-	b.ObservedGeneration = &value
+	b.GenericStatusApplyConfiguration.ObservedGeneration = &value
 	return b
 }
 
@@ -42,7 +42,7 @@ func (b *CAPApplicationVersionStatusApplyConfiguration) WithConditions(values ..
 		if values[i] == nil {
 			panic("nil value passed to WithConditions")
 		}
-		b.Conditions = append(b.Conditions, *values[i])
+		b.GenericStatusApplyConfiguration.Conditions = append(b.GenericStatusApplyConfiguration.Conditions, *values[i])
 	}
 	return b
 }

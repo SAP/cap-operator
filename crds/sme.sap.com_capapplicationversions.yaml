@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.4
+    controller-gen.kubebuilder.io/version: v0.19.0
   name: capapplicationversions.sme.sap.com
 spec:
   group: sme.sap.com
@@ -44,6 +44,31 @@ spec:
               registrySecrets:
                 items:
                   type: string
+                type: array
+              serviceExposures:
+                items:
+                  properties:
+                    routes:
+                      items:
+                        properties:
+                          path:
+                            type: string
+                          port:
+                            format: int32
+                            type: integer
+                          workloadName:
+                            type: string
+                        required:
+                        - port
+                        - workloadName
+                        type: object
+                      type: array
+                    subDomain:
+                      type: string
+                  required:
+                  - routes
+                  - subDomain
+                  type: object
                 type: array
               tenantOperations:
                 properties:
@@ -580,6 +605,23 @@ spec:
                                     - fieldPath
                                     type: object
                                     x-kubernetes-map-type: atomic
+                                  fileKeyRef:
+                                    properties:
+                                      key:
+                                        type: string
+                                      optional:
+                                        default: false
+                                        type: boolean
+                                      path:
+                                        type: string
+                                      volumeName:
+                                        type: string
+                                    required:
+                                    - key
+                                    - path
+                                    - volumeName
+                                    type: object
+                                    x-kubernetes-map-type: atomic
                                   resourceFieldRef:
                                     properties:
                                       containerName:
@@ -661,6 +703,23 @@ spec:
                                               type: string
                                           required:
                                           - fieldPath
+                                          type: object
+                                          x-kubernetes-map-type: atomic
+                                        fileKeyRef:
+                                          properties:
+                                            key:
+                                              type: string
+                                            optional:
+                                              default: false
+                                              type: boolean
+                                            path:
+                                              type: string
+                                            volumeName:
+                                              type: string
+                                          required:
+                                          - key
+                                          - path
+                                          - volumeName
                                           type: object
                                           x-kubernetes-map-type: atomic
                                         resourceFieldRef:
@@ -852,6 +911,8 @@ spec:
                                         - port
                                         type: object
                                     type: object
+                                  stopSignal:
+                                    type: string
                                 type: object
                               livenessProbe:
                                 properties:
@@ -1089,6 +1150,29 @@ spec:
                                 type: object
                               restartPolicy:
                                 type: string
+                              restartPolicyRules:
+                                items:
+                                  properties:
+                                    action:
+                                      type: string
+                                    exitCodes:
+                                      properties:
+                                        operator:
+                                          type: string
+                                        values:
+                                          items:
+                                            format: int32
+                                            type: integer
+                                          type: array
+                                          x-kubernetes-list-type: set
+                                      required:
+                                      - operator
+                                      type: object
+                                  required:
+                                  - action
+                                  type: object
+                                type: array
+                                x-kubernetes-list-type: atomic
                               securityContext:
                                 properties:
                                   allowPrivilegeEscalation:
@@ -1460,6 +1544,8 @@ spec:
                             runAsUser:
                               format: int64
                               type: integer
+                            seLinuxChangePolicy:
+                              type: string
                             seLinuxOptions:
                               properties:
                                 level:
@@ -1654,6 +1740,8 @@ spec:
                                 x-kubernetes-int-or-string: true
                               type: object
                           type: object
+                        restartPolicy:
+                          type: string
                         securityContext:
                           properties:
                             allowPrivilegeEscalation:
@@ -2416,6 +2504,25 @@ spec:
                                               type: array
                                               x-kubernetes-list-type: atomic
                                           type: object
+                                        podCertificate:
+                                          properties:
+                                            certificateChainPath:
+                                              type: string
+                                            credentialBundlePath:
+                                              type: string
+                                            keyPath:
+                                              type: string
+                                            keyType:
+                                              type: string
+                                            maxExpirationSeconds:
+                                              format: int32
+                                              type: integer
+                                            signerName:
+                                              type: string
+                                          required:
+                                          - keyType
+                                          - signerName
+                                          type: object
                                         secret:
                                           properties:
                                             items:
@@ -2609,6 +2716,9 @@ spec:
                       type: object
                     jobDefinition:
                       properties:
+                        activeDeadlineSeconds:
+                          format: int64
+                          type: integer
                         affinity:
                           properties:
                             nodeAffinity:
@@ -3091,6 +3201,23 @@ spec:
                                     - fieldPath
                                     type: object
                                     x-kubernetes-map-type: atomic
+                                  fileKeyRef:
+                                    properties:
+                                      key:
+                                        type: string
+                                      optional:
+                                        default: false
+                                        type: boolean
+                                      path:
+                                        type: string
+                                      volumeName:
+                                        type: string
+                                    required:
+                                    - key
+                                    - path
+                                    - volumeName
+                                    type: object
+                                    x-kubernetes-map-type: atomic
                                   resourceFieldRef:
                                     properties:
                                       containerName:
@@ -3172,6 +3299,23 @@ spec:
                                               type: string
                                           required:
                                           - fieldPath
+                                          type: object
+                                          x-kubernetes-map-type: atomic
+                                        fileKeyRef:
+                                          properties:
+                                            key:
+                                              type: string
+                                            optional:
+                                              default: false
+                                              type: boolean
+                                            path:
+                                              type: string
+                                            volumeName:
+                                              type: string
+                                          required:
+                                          - key
+                                          - path
+                                          - volumeName
                                           type: object
                                           x-kubernetes-map-type: atomic
                                         resourceFieldRef:
@@ -3363,6 +3507,8 @@ spec:
                                         - port
                                         type: object
                                     type: object
+                                  stopSignal:
+                                    type: string
                                 type: object
                               livenessProbe:
                                 properties:
@@ -3600,6 +3746,29 @@ spec:
                                 type: object
                               restartPolicy:
                                 type: string
+                              restartPolicyRules:
+                                items:
+                                  properties:
+                                    action:
+                                      type: string
+                                    exitCodes:
+                                      properties:
+                                        operator:
+                                          type: string
+                                        values:
+                                          items:
+                                            format: int32
+                                            type: integer
+                                          type: array
+                                          x-kubernetes-list-type: set
+                                      required:
+                                      - operator
+                                      type: object
+                                  required:
+                                  - action
+                                  type: object
+                                type: array
+                                x-kubernetes-list-type: atomic
                               securityContext:
                                 properties:
                                   allowPrivilegeEscalation:
@@ -3839,6 +4008,8 @@ spec:
                             runAsUser:
                               format: int64
                               type: integer
+                            seLinuxChangePolicy:
+                              type: string
                             seLinuxOptions:
                               properties:
                                 level:
@@ -3927,6 +4098,8 @@ spec:
                                 x-kubernetes-int-or-string: true
                               type: object
                           type: object
+                        restartPolicy:
+                          type: string
                         securityContext:
                           properties:
                             allowPrivilegeEscalation:
@@ -4691,6 +4864,25 @@ spec:
                                                 type: object
                                               type: array
                                               x-kubernetes-list-type: atomic
+                                          type: object
+                                        podCertificate:
+                                          properties:
+                                            certificateChainPath:
+                                              type: string
+                                            credentialBundlePath:
+                                              type: string
+                                            keyPath:
+                                              type: string
+                                            keyType:
+                                              type: string
+                                            maxExpirationSeconds:
+                                              format: int32
+                                              type: integer
+                                            signerName:
+                                              type: string
+                                          required:
+                                          - keyType
+                                          - signerName
                                           type: object
                                         secret:
                                           properties:

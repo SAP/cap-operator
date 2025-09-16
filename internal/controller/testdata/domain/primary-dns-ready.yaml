@@ -1,0 +1,29 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+    dns.gardener.cloud/class: garden
+    sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
+    sme.sap.com/resource-hash: 8d75feef05a17c4d0ac51fa33c1439065af397aefd5ba43c2defb44254ec4598
+  generateName: test-cap-01-primary-
+  labels:
+    sme.sap.com/btp-app-identifier-hash: ""
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
+    sme.sap.com/dns-name-hash: 7f91a70a773eaf2e8e9c78020ddadf7f66119300
+  name: test-cap-01-primary-gen
+  namespace: default
+  ownerReferences:
+  - apiVersion: sme.sap.com/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Domain
+    name: test-cap-01-primary
+spec:
+  cnameLookupInterval: 30
+  dnsName: '*.app-domain.test.local'
+  targets:
+  - public-ingress.operator.testing.local
+  ttl: 600
+status:
+  state: Ready

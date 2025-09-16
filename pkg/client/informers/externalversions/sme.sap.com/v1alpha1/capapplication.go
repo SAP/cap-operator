@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,13 +8,13 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	apissmesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	versioned "github.com/sap/cap-operator/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/sap/cap-operator/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/sap/cap-operator/pkg/client/listers/sme.sap.com/v1alpha1"
+	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/listers/sme.sap.com/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -25,7 +25,7 @@ import (
 // CAPApplications.
 type CAPApplicationInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.CAPApplicationLister
+	Lister() smesapcomv1alpha1.CAPApplicationLister
 }
 
 type cAPApplicationInformer struct {
@@ -51,16 +51,28 @@ func NewFilteredCAPApplicationInformer(client versioned.Interface, namespace str
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.SmeV1alpha1().CAPApplications(namespace).List(context.TODO(), options)
+				return client.SmeV1alpha1().CAPApplications(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.SmeV1alpha1().CAPApplications(namespace).Watch(context.TODO(), options)
+				return client.SmeV1alpha1().CAPApplications(namespace).Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.SmeV1alpha1().CAPApplications(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.SmeV1alpha1().CAPApplications(namespace).Watch(ctx, options)
 			},
 		},
-		&smesapcomv1alpha1.CAPApplication{},
+		&apissmesapcomv1alpha1.CAPApplication{},
 		resyncPeriod,
 		indexers,
 	)
@@ -71,9 +83,9 @@ func (f *cAPApplicationInformer) defaultInformer(client versioned.Interface, res
 }
 
 func (f *cAPApplicationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&smesapcomv1alpha1.CAPApplication{}, f.defaultInformer)
+	return f.factory.InformerFor(&apissmesapcomv1alpha1.CAPApplication{}, f.defaultInformer)
 }
 
-func (f *cAPApplicationInformer) Lister() v1alpha1.CAPApplicationLister {
-	return v1alpha1.NewCAPApplicationLister(f.Informer().GetIndexer())
+func (f *cAPApplicationInformer) Lister() smesapcomv1alpha1.CAPApplicationLister {
+	return smesapcomv1alpha1.NewCAPApplicationLister(f.Informer().GetIndexer())
 }

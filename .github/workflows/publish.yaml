@@ -8,14 +8,17 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: write # allows uploading release assets
+
 jobs:
   generate_crd:
     name: Generate CRD
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4     
+        uses: actions/checkout@v5
       
       - name: Generate and Upload CRD
         run: |

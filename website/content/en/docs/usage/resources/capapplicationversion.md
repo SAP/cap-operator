@@ -50,7 +50,7 @@ consumedBTPServices: # <-- an array of service instance names referencing the SA
   - cap-uaa
   - cap-saas-reg
 deploymentDefinition:
-  type: CAP # <-- possible values are CAP / Router / Additional
+  type: CAP # <-- possible values are CAP / Router / Additional / Service
   image: some.repo.example.com/cap-app/server:3.22.11 # <-- container image
   env: # <-- (optional) same as in core v1 pod.spec.containers.env
     - name: SAY
@@ -118,8 +118,8 @@ workloads:
       env:
         - name: CDS_ENV
           value: production
-        - name: CDS_MTX_PROVISIONING_CONTAINER
-          value: '{"provisioning_parameters": { "database_id": "16e25c51-5455-4b17-a4d7-43545345345"}}'
+        - name: CDS_CONFIG
+          value: '{ "requires":{"cds.xt.DeploymentService":{"hdi": { "create":{ "database_id": "16e25c51-5455-4b17-a4d7-43545345345" } } } } }'
   - name: "notify-upgrade"
     consumedServices: # ...
     jobDefinition:
@@ -189,6 +189,64 @@ spec:
     - content-deployer-ui
 ```
 
+### Services / Tenant independent workloads
+
+```yaml
+spec:
+  workloads: 
+    - name: cap-backend-service
+      consumedBTPServices: # <-- an array of service instance names referencing the SAP BTP services defined in the CAPApplication resource
+        - cap-uaa
+        - cap-saas-reg
+      deploymentDefinition:
+        type: Service # <-- possible values are CAP / Router / Additional / Service
+        image: some.repo.example.com/cap-app/server:3.22.11 # <-- container image
+        env: # <-- (optional) same as in core v1 pod.spec.containers.env
+          - name: SAY
+            value: "I'm GROOT"
+        replicas: 3 # <-- (optional) replicas for scaling
+        ports: # Some configs like routerDestinationName are not relevant for ServicesOnly scenario
+          - name: app-port
+            port: 4004
+          - name: tech-port
+            port: 4005
+          - name: api
+            port: 8000
+            appProtocol: http
+    - name: service-content
+      consumedBTPServices:
+        - app-uaa
+        - app-html5-repo-host
+        - app-portal
+      jobDefinition:
+        type: Content
+        image: app.some.repo.example.com/approuter/content:0.0.1
+        backoffLimit: 1
+  serviceExposures:
+    - subDomain: service
+      routes:
+        - workloadName: cap-backend-service
+          port: 4004
+    - subDomain: api
+      routes:
+        - workloadName: cap-backend-service
+          port: 8000
+          path: /api
+```
+
+Here too the `type` of the deployment is important to indicate how the operator handles this workload. For Services Only scenario only `Service` type is valid. You can also have jobs of type `Content` to deploy application content related to UI, DB as needed.
+
+_Other attributes can be configured as documented._
+
+#### Port configuration
+
+It's possible to define which (and how many) ports exposed by a deployment container are exposed inside the cluster (via services of type `ClusterIP`). The port definition includes a `name` in addition to the `port` number being exposed.
+
+For service only workloads the `routerDestinationName` is not relevant.
+
+The port configurations are mandatory and cannot be omitted.
+
+
 ### Full Example
 
 ```yaml
@@ -214,8 +272,8 @@ spec:
         env:
           - name: CDS_ENV
             value: production
-          - name: CDS_MTX_PROVISIONING_CONTAINER
-            value: '{"provisioning_parameters": { "database_id": "16e25c51-5455-4b17-a4d7-43545345345"}}'
+          - name: CDS_CONFIG
+            value: '{ "requires":{"cds.xt.DeploymentService":{"hdi": { "create":{ "database_id": "16e25c51-5455-4b17-a4d7-43545345345" } } } } }'
         replicas: 3
         ports:
           - name: app-port
@@ -327,8 +385,8 @@ spec:
         env:
           - name: CDS_ENV
             value: production
-          - name: CDS_MTX_PROVISIONING_CONTAINER
-            value: '{"provisioning_parameters": { "database_id": "16e25c51-5455-4b17-a4d7-43545345345"}}'
+          - name: CDS_CONFIG
+            value: '{ "requires":{"cds.xt.DeploymentService":{"hdi": { "create":{ "database_id": "16e25c51-5455-4b17-a4d7-43545345345" } } } } }'
     - name: "notify-upgrade"
       consumedServices: []
       jobDefinition:

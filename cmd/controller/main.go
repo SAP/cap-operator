@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -117,6 +117,16 @@ func main() {
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
 				klog.InfoS("Started leading: ", LeaseLockName, leaseLockId)
+
+				migrationDone := make(chan bool, 1)
+				go func() {
+					migrationDone <- migrateToDomainRefs(crdClient, istioClient, certClient, certManagerClient, dnsClient)
+				}()
+				if ok := <-migrationDone; !ok {
+					klog.Errorf("Migration failed; not starting controller")
+					os.Exit(1)
+				}
+
 				c := controller.NewController(coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient, promClient)
 				go c.Start(ctx)
 			},

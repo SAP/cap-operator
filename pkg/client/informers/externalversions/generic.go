@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,7 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package externalversions
 
 import (
-	"fmt"
+	fmt "fmt"
 
 	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -52,6 +52,10 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Sme().V1alpha1().CAPTenantOperations().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("captenantoutputs"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Sme().V1alpha1().CAPTenantOutputs().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("clusterdomains"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Sme().V1alpha1().ClusterDomains().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("domains"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Sme().V1alpha1().Domains().Informer()}, nil
 
 	}
 

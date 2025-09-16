@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,13 +8,13 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 )
 
 // CAPTenantOperationSpecApplyConfiguration represents a declarative configuration of the CAPTenantOperationSpec type for use
 // with apply.
 type CAPTenantOperationSpecApplyConfiguration struct {
-	Operation                                 *v1alpha1.CAPTenantOperationType `json:"operation,omitempty"`
+	Operation                                 *smesapcomv1alpha1.CAPTenantOperationType `json:"operation,omitempty"`
 	BTPTenantIdentificationApplyConfiguration `json:",inline"`
 	CAPApplicationVersionInstance             *string                                    `json:"capApplicationVersionInstance,omitempty"`
 	Steps                                     []CAPTenantOperationStepApplyConfiguration `json:"steps,omitempty"`
@@ -29,7 +29,7 @@ func CAPTenantOperationSpec() *CAPTenantOperationSpecApplyConfiguration {
 // WithOperation sets the Operation field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Operation field is set to the value of the last call.
-func (b *CAPTenantOperationSpecApplyConfiguration) WithOperation(value v1alpha1.CAPTenantOperationType) *CAPTenantOperationSpecApplyConfiguration {
+func (b *CAPTenantOperationSpecApplyConfiguration) WithOperation(value smesapcomv1alpha1.CAPTenantOperationType) *CAPTenantOperationSpecApplyConfiguration {
 	b.Operation = &value
 	return b
 }
@@ -38,7 +38,7 @@ func (b *CAPTenantOperationSpecApplyConfiguration) WithOperation(value v1alpha1.
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the SubDomain field is set to the value of the last call.
 func (b *CAPTenantOperationSpecApplyConfiguration) WithSubDomain(value string) *CAPTenantOperationSpecApplyConfiguration {
-	b.SubDomain = &value
+	b.BTPTenantIdentificationApplyConfiguration.SubDomain = &value
 	return b
 }
 
@@ -46,7 +46,7 @@ func (b *CAPTenantOperationSpecApplyConfiguration) WithSubDomain(value string) *
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the TenantId field is set to the value of the last call.
 func (b *CAPTenantOperationSpecApplyConfiguration) WithTenantId(value string) *CAPTenantOperationSpecApplyConfiguration {
-	b.TenantId = &value
+	b.BTPTenantIdentificationApplyConfiguration.TenantId = &value
 	return b
 }
 

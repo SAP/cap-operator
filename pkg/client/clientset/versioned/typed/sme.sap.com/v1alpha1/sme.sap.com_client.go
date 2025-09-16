@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,10 +8,10 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
-	"net/http"
+	http "net/http"
 
-	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	"github.com/sap/cap-operator/pkg/client/clientset/versioned/scheme"
+	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	scheme "github.com/sap/cap-operator/pkg/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
@@ -22,6 +22,8 @@ type SmeV1alpha1Interface interface {
 	CAPTenantsGetter
 	CAPTenantOperationsGetter
 	CAPTenantOutputsGetter
+	ClusterDomainsGetter
+	DomainsGetter
 }
 
 // SmeV1alpha1Client is used to interact with features provided by the sme.sap.com group.
@@ -49,14 +51,20 @@ func (c *SmeV1alpha1Client) CAPTenantOutputs(namespace string) CAPTenantOutputIn
 	return newCAPTenantOutputs(c, namespace)
 }
 
+func (c *SmeV1alpha1Client) ClusterDomains(namespace string) ClusterDomainInterface {
+	return newClusterDomains(c, namespace)
+}
+
+func (c *SmeV1alpha1Client) Domains(namespace string) DomainInterface {
+	return newDomains(c, namespace)
+}
+
 // NewForConfig creates a new SmeV1alpha1Client for the given config.
 // NewForConfig is equivalent to NewForConfigAndClient(c, httpClient),
 // where httpClient was generated with rest.HTTPClientFor(c).
 func NewForConfig(c *rest.Config) (*SmeV1alpha1Client, error) {
 	config := *c
-	if err := setConfigDefaults(&config); err != nil {
-		return nil, err
-	}
+	setConfigDefaults(&config)
 	httpClient, err := rest.HTTPClientFor(&config)
 	if err != nil {
 		return nil, err
@@ -68,9 +76,7 @@ func NewForConfig(c *rest.Config) (*SmeV1alpha1Client, error) {
 // Note the http client provided takes precedence over the configured transport values.
 func NewForConfigAndClient(c *rest.Config, h *http.Client) (*SmeV1alpha1Client, error) {
 	config := *c
-	if err := setConfigDefaults(&config); err != nil {
-		return nil, err
-	}
+	setConfigDefaults(&config)
 	client, err := rest.RESTClientForConfigAndClient(&config, h)
 	if err != nil {
 		return nil, err
@@ -93,17 +99,15 @@ func New(c rest.Interface) *SmeV1alpha1Client {
 	return &SmeV1alpha1Client{c}
 }
 
-func setConfigDefaults(config *rest.Config) error {
-	gv := v1alpha1.SchemeGroupVersion
+func setConfigDefaults(config *rest.Config) {
+	gv := smesapcomv1alpha1.SchemeGroupVersion
 	config.GroupVersion = &gv
 	config.APIPath = "/apis"
-	config.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+	config.NegotiatedSerializer = rest.CodecFactoryForGeneratedClient(scheme.Scheme, scheme.Codecs).WithoutConversion()
 
 	if config.UserAgent == "" {
 		config.UserAgent = rest.DefaultKubernetesUserAgent()
 	}
-
-	return nil
 }
 
 // RESTClient returns a RESTClient that is used to communicate

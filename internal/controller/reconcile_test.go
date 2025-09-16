@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -45,16 +45,7 @@ const (
 	globalAccountId    = "global-id-test"
 	primaryDomain      = "app.sme.sap.com"
 	secondaryDomain    = "sec.sme.sap.com"
-	dnsTarget          = "public-ingress.some.cluster.sap"
 	defaultVersion     = "0.0.1"
-)
-
-const (
-	ingressGWName        = "ingressGw"
-	istioSystemNamespace = "istio-system"
-	gatewayName          = btpApplicationName + "-" + GatewaySuffix
-	certificateName      = btpApplicationName + "-" + CertificateSuffix
-	dnsEntryName         = btpApplicationName + "-" + PrimaryDnsSuffix
 )
 
 type ingressResources struct {
@@ -73,42 +64,6 @@ type testResources struct {
 	certManagerCert *certManagerv1.Certificate
 	dnsEntry        *dnsv1alpha1.DNSEntry
 	preventStart    bool
-}
-
-func createIngressResource(name string, ca *v1alpha1.CAPApplication, dnsTarget string) *ingressResources {
-	ingressLabelSelector := map[string]string{}
-	svcName := "istioingress-gateway"
-	namespace := istioSystemNamespace
-	if name != ingressGWName {
-		svcName = name
-		namespace = metav1.NamespaceDefault
-	}
-	for _, label := range ca.Spec.Domains.IstioIngressGatewayLabels {
-		ingressLabelSelector[label.Name] = label.Value
-	}
-
-	return &ingressResources{
-		pod: &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-				Labels:    ingressLabelSelector,
-			},
-		},
-		service: &corev1.Service{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      svcName,
-				Namespace: namespace,
-				Annotations: map[string]string{
-					AnnotationGardenerDNSTarget: dnsTarget,
-				},
-			},
-			Spec: corev1.ServiceSpec{
-				Type:     corev1.ServiceTypeLoadBalancer,
-				Selector: ingressLabelSelector,
-			},
-		},
-	}
 }
 
 func createCaCRO(name string, withFinalizer bool) *v1alpha1.CAPApplication {
@@ -266,7 +221,7 @@ func createCatCRO(caName string, tenantType string, withFinalizers bool) *v1alph
 		},
 	}
 
-	if tenantType == ProviderTenantType {
+	if tenantType == TenantTypeProvider {
 		cat.Spec.BTPTenantIdentification.TenantId = providerTenantId
 		cat.Spec.BTPTenantIdentification.SubDomain = providerSubDomain
 	} else {
@@ -494,7 +449,7 @@ func TestGetLatestReadyCAPApplicationVersion(t *testing.T) {
 				cavs: cavs,
 			})
 
-			latestCav, err := c.getLatestReadyCAPApplicationVersion(context.TODO(), ca, false)
+			latestCav, err := c.getLatestReadyCAPApplicationVersion(ca, false)
 
 			if test.status == v1alpha1.CAPApplicationVersionStateReady || test.status == "mixed" {
 				if err != nil {
@@ -589,7 +544,7 @@ func TestGetLatestCAPApplicationVersion(t *testing.T) {
 				cavs: cavs,
 			})
 
-			latestCav, err := c.getLatestCAPApplicationVersion(context.TODO(), ca)
+			latestCav, err := c.getLatestCAPApplicationVersion(ca)
 
 			if test.expectError == false {
 				if err != nil {

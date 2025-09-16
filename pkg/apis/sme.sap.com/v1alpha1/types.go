@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -23,6 +23,10 @@ const (
 	CAPTenantOperationResource    = "captenantoperations"
 	CAPTenantOutputKind           = "CAPTenantOutput"
 	CAPTenantOutputResource       = "captenantouputs"
+	DomainKind                    = "Domain"
+	DomainResource                = "domains"
+	ClusterDomainKind             = "ClusterDomain"
+	ClusterDomainResource         = "clusterdomains"
 )
 
 // +kubebuilder:resource:shortName=ca
@@ -48,10 +52,14 @@ type CAPApplicationStatus struct {
 	// +kubebuilder:validation:Enum="";Consistent;Processing;Error;Deleting
 	// State of CAPApplication
 	State CAPApplicationState `json:"state"`
+	// Represents whether this is a services only scenario
+	ServicesOnly *bool `json:"servicesOnly,omitempty"`
 	// Hash representing last known application domains
 	DomainSpecHash string `json:"domainSpecHash,omitempty"`
 	// The last time a full reconciliation was completed
 	LastFullReconciliationTime metav1.Time `json:"lastFullReconciliationTime,omitempty"`
+	// Last known application subdomains
+	ObservedSubdomains []string `json:"observedSubdomains,omitempty"`
 }
 
 type CAPApplicationState string
@@ -78,25 +86,37 @@ type CAPApplicationList struct {
 
 // CAPApplicationSpec defines the desired state of CAPApplication
 type CAPApplicationSpec struct {
-	// Domains used by the application
-	Domains ApplicationDomains `json:"domains"`
+	// Domains used by the application (new)
+	DomainRefs []DomainRef `json:"domainRefs,omitempty"`
+	// [DEPRECATED] Domains used by the application // Will be removed in future versions
+	Domains ApplicationDomains `json:"domains,omitempty"`
 	// SAP BTP Global Account Identifier where services are entitles for the current application
 	GlobalAccountId string `json:"globalAccountId"`
 	// Short name for the application (similar to BTP XSAPPNAME)
 	// +kubebuilder:validation:Pattern=^[a-z0-9_-]+$
 	BTPAppName string `json:"btpAppName"`
 	// Provider subaccount where application services are created
-	Provider BTPTenantIdentification `json:"provider"`
+	Provider BTPTenantIdentification `json:"provider,omitempty"`
 	// SAP BTP Services consumed by the application
 	BTP BTP `json:"btp"`
 }
 
+// Domain references
+type DomainRef struct {
+	// +kubebuilder:validation:Enum=Domain;ClusterDomain
+	Kind string `json:"kind"`
+	Name string `json:"name"`
+}
+
 // Application domains
+//
+// Deprecated: ApplicationDomains exists for historical compatibility and should not be used.
+// This will be removed in future versions. Use DomainRef instead.
 type ApplicationDomains struct {
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
 	// +kubebuilder:validation:MaxLength=62
 	// Primary application domain will be used to generate a wildcard TLS certificate. In project "Gardener" managed clusters this is (usually) a subdomain of the cluster domain
-	Primary string `json:"primary"`
+	Primary string `json:"primary,omitempty"`
 	// +kubebuilder:validation:items:Pattern=^[a-z0-9-.]+$
 	// Customer specific domains to serve application endpoints (optional)
 	Secondary []string `json:"secondary,omitempty"`
@@ -105,7 +125,7 @@ type ApplicationDomains struct {
 	DnsTarget string `json:"dnsTarget,omitempty"`
 	// +kubebuilder:validation:MinItems=1
 	// Labels used to identify the istio ingress-gateway component and its corresponding namespace. Usually {"app":"istio-ingressgateway","istio":"ingressgateway"}
-	IstioIngressGatewayLabels []NameValue `json:"istioIngressGatewayLabels"`
+	IstioIngressGatewayLabels []NameValue `json:"istioIngressGatewayLabels,omitempty"`
 }
 
 //Workaround for pattern for string items +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
@@ -224,6 +244,8 @@ type CAPApplicationVersionSpec struct {
 	TenantOperations *TenantOperations `json:"tenantOperations,omitempty"`
 	// Content Jobs may be used to specify the sequence of content jobs when several jobs exist
 	ContentJobs []string `json:"contentJobs,omitempty"`
+	// Configuration for the service(s) to be exposed (relevant only for 'Service' type deployment workloads)
+	ServiceExposures []ServiceExposure `json:"serviceExposures,omitempty"`
 }
 
 // WorkloadDetails specifies the details of the Workload
@@ -257,6 +279,24 @@ type DeploymentDetails struct {
 	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty"`
 	// Workload monitoring specification
 	Monitoring *WorkloadMonitoring `json:"monitoring,omitempty"`
+}
+
+// ServiceExposure specifies the details of the VirtualService to be exposed for `Service` type workload(s)
+type ServiceExposure struct {
+	// Subdomain under which the service is exposed (used as the Key for identifying the VirtualService)
+	SubDomain string `json:"subDomain"`
+	// Routes specifies the routing configuration (http match) for the exposed service
+	Routes []Route `json:"routes"`
+}
+
+// Routing configuration (http match) for the exposed service
+type Route struct {
+	// Name of the workload (eventually a service to route requests to); must be a valid workload name (Deployment)
+	WorkloadName string `json:"workloadName"`
+	// Port number used for the service (must be present in the workload/service)
+	Port int32 `json:"port"`
+	// A unique routing path used (as a match/prefix) to route requests to the workload (when omitted, "/" would be used)
+	Path string `json:"path,omitempty"`
 }
 
 // WorkloadMonitoring specifies the metrics related to the workload
@@ -335,6 +375,8 @@ const (
 	DeploymentRouter DeploymentType = "Router"
 	// Additional deployment type
 	DeploymentAdditional DeploymentType = "Additional"
+	// Service deployment type
+	DeploymentService DeploymentType = "Service"
 )
 
 // JobDetails specifies the details of the Job
@@ -346,6 +388,8 @@ type JobDetails struct {
 	BackoffLimit *int32 `json:"backoffLimit,omitempty"`
 	// Specifies the time after which the job may be cleaned up.
 	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished,omitempty"`
+	// Specifies the duration in sections for which the job may be continuously active.
+	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty"`
 }
 
 // Type of Job
@@ -398,6 +442,8 @@ type CommonDetails struct {
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 	// List of containers executed before the main container is started
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
+	// Restart policy for the Pod. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
+	RestartPolicy corev1.RestartPolicy `json:"restartPolicy,omitempty"`
 }
 
 // Configuration of Service Ports for the deployment
@@ -632,4 +678,143 @@ type CAPTenantOutputList struct {
 type CAPTenantOutputSpec struct {
 	// +kubebuilder:validation:nullable
 	SubscriptionCallbackData string `json:"subscriptionCallbackData,omitempty"`
+}
+
+// +kubebuilder:resource:shortName=dom
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Domain",type="string",JSONPath=".spec.domain"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Domain is the schema for domains API
+type Domain struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	// Domains spec
+	Spec DomainSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
+	// Domain status
+	Status DomainStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// DomainList contains a list of Domain
+type DomainList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []Domain `json:"items"`
+}
+
+type DomainSpec struct {
+	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
+	// Domain used by an application
+	Domain string `json:"domain"`
+	// Selector is the set of labels used to select the ingress pods handling the domain
+	IngressSelector map[string]string `json:"ingressSelector"`
+	// +kubebuilder:default:=Simple
+	// TLS mode for the generated (Istio) Gateway resource. Set this to Mutual when using mTLS with an external gateway.
+	TLSMode TLSMode `json:"tlsMode"`
+	// +kubebuilder:default:=None
+	// DNS mode controls the creation of DNS entries related to the domain
+	DNSMode DNSMode `json:"dnsMode"`
+	// DNS templates allows usage of go templates for generating DNS entries when [DNSMode] is set to `Custom`
+	// +kubebuilder:validation:MaxItems=10
+	DNSTemplates []DNSTemplate `json:"dnsTemplates,omitempty"`
+	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
+	// DNS Target for traffic to this domain
+	DNSTarget string `json:"dnsTarget,omitempty"`
+	// Certificate configuration
+	CertConfig *CertConfig `json:"certConfig,omitempty"`
+}
+
+// DNSTemplate supports the creation of DNS entries using go templates See: https://pkg.go.dev/text/template
+type DNSTemplate struct {
+	// Domain name for which a DNS record will be created
+	Name string `json:"name"`
+	// Target of the DNS reord
+	Target string `json:"target"`
+}
+
+type CertConfig struct {
+	// Used to specify additional CA certificate that may be used for verifying client certificates in Mutual TLS mode
+	AdditionalCACertificate string `json:"additionalCACertificate,omitempty"`
+}
+
+// +kubebuilder:validation:Enum=Simple;Mutual;OptionalMutual
+type TLSMode string
+
+const (
+	// Simple TLS Mode (Default)
+	TlsModeSimple TLSMode = "Simple"
+	// Mutual TLS Mode
+	TlsModeMutual TLSMode = "Mutual"
+	// Optional Mutual TLS Mode
+	TlsModeOptionalMutual TLSMode = "OptionalMutual"
+)
+
+// +kubebuilder:validation:Enum=None;Wildcard;Subdomain;Custom
+type DNSMode string
+
+const (
+	// No DNS entries will be created (Default)
+	DnsModeNone DNSMode = "None"
+	// Wildcard DNS entry will be created
+	DnsModeWildcard DNSMode = "Wildcard"
+	// A DNS entry will be created for each subdomain specified by the applications using this domain
+	DnsModeSubdomain DNSMode = "Subdomain"
+	// A DNS entry will be created according to configuration in `[DNSTemplate]`
+	DnsModeCustom DNSMode = "Custom"
+)
+
+type DomainStatus struct {
+	GenericStatus `json:",inline"`
+	// State of the Domain
+	State DomainState `json:"state"`
+	// Effective DNS Target identified for this domain
+	DnsTarget string `json:"dnsTarget,omitempty"`
+	// Gateway name used for the domain
+	GatewayName string `json:"gatewayName,omitempty"`
+	// domain observed during last reconciliation
+	ObservedDomain string `json:"observedDomain,omitempty"`
+}
+
+// +kubebuilder:validation:Enum="";Ready;Error;Processing;Deleting
+type DomainState string
+
+const (
+	DomainStateProcessing DomainState = "Processing"
+	DomainStateError      DomainState = "Error"
+	DomainStateDeleting   DomainState = "Deleting"
+	DomainStateReady      DomainState = "Ready"
+)
+
+// +kubebuilder:resource:scope=Cluster,shortName=cdom
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Domain",type="string",JSONPath=".spec.domain"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ClusterDomain is the schema for clusterdomains API
+type ClusterDomain struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	// ClusterDomains spec
+	Spec DomainSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
+	// ClusterDomain status
+	Status DomainStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ClusterDomainList contains a list of ClusterDomain
+type ClusterDomainList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []ClusterDomain `json:"items"`
 }

@@ -7,11 +7,13 @@ metadata:
     sme.sap.com/owner-generation: "2"
     sme.sap.com/owner-identifier-hash: 1f74ae2fbff71a708786a4df4bb2ca87ec603581
     sme.sap.com/tenant-type: consumer
+    sme.sap.com/subscription-guid-hash: 4b10784b8123e511c428113ec738a8c7c822d84e
   annotations:
     sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
     sme.sap.com/owner-identifier: default.test-cap-01
     sme.sap.com/btp-tenant-id: "provider-tenant-id"
     sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/subscription-guid: 38b55555f64b627466e54862859719df031eea0f
   name: test-cap-01-consumer
   namespace: default
   ownerReferences:

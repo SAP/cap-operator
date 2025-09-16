@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -38,7 +38,7 @@ func (b *CAPTenantSpecApplyConfiguration) WithCAPApplicationInstance(value strin
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the SubDomain field is set to the value of the last call.
 func (b *CAPTenantSpecApplyConfiguration) WithSubDomain(value string) *CAPTenantSpecApplyConfiguration {
-	b.SubDomain = &value
+	b.BTPTenantIdentificationApplyConfiguration.SubDomain = &value
 	return b
 }
 
@@ -46,7 +46,7 @@ func (b *CAPTenantSpecApplyConfiguration) WithSubDomain(value string) *CAPTenant
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the TenantId field is set to the value of the last call.
 func (b *CAPTenantSpecApplyConfiguration) WithTenantId(value string) *CAPTenantSpecApplyConfiguration {
-	b.TenantId = &value
+	b.BTPTenantIdentificationApplyConfiguration.TenantId = &value
 	return b
 }
 

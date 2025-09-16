@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -148,7 +148,7 @@ func initializeVersionCleanupOrchestrator(ctx context.Context, mEnv *monitoringE
 func (c *Controller) scheduleVersionCollectionForCleanup(ctx context.Context, orc *cleanupOrchestrator, restart chan<- bool) {
 	defer recoverVersionCleanupRoutine(restart)
 	for {
-		if err := c.queueVersionsForCleanupEvaluation(ctx, orc); err != nil {
+		if err := c.queueVersionsForCleanupEvaluation(orc); err != nil {
 			klog.ErrorS(err, "could not select applications for version cleanup evaluation")
 		}
 		select {
@@ -160,7 +160,7 @@ func (c *Controller) scheduleVersionCollectionForCleanup(ctx context.Context, or
 	}
 }
 
-func (c *Controller) queueVersionsForCleanupEvaluation(ctx context.Context, orc *cleanupOrchestrator) error {
+func (c *Controller) queueVersionsForCleanupEvaluation(orc *cleanupOrchestrator) error {
 	lister := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister()
 	cas, err := lister.List(labels.Everything())
 	if err != nil {
@@ -172,7 +172,7 @@ func (c *Controller) queueVersionsForCleanupEvaluation(ctx context.Context, orc 
 		if v, ok := ca.Annotations[AnnotationEnableCleanupMonitoring]; !ok || !(strings.ToLower(v) == "true" || strings.ToLower(v) == "dry-run") {
 			continue
 		}
-		outdated, err := c.getCleanupRelevantVersions(ctx, ca)
+		outdated, err := c.getCleanupRelevantVersions(ca)
 		if err != nil || len(outdated) == 0 {
 			continue
 		}
@@ -184,7 +184,7 @@ func (c *Controller) queueVersionsForCleanupEvaluation(ctx context.Context, orc 
 	return nil
 }
 
-func (c *Controller) getCleanupRelevantVersions(ctx context.Context, ca *v1alpha1.CAPApplication) ([]*v1alpha1.CAPApplicationVersion, error) {
+func (c *Controller) getCleanupRelevantVersions(ca *v1alpha1.CAPApplication) ([]*v1alpha1.CAPApplicationVersion, error) {
 	excludedVersions := map[string]bool{}
 	excludedVersionNames := map[string]bool{}
 
@@ -206,14 +206,17 @@ func (c *Controller) getCleanupRelevantVersions(ctx context.Context, ca *v1alpha
 		}
 	}
 
-	latestReadyVersion, err := c.getLatestReadyCAPApplicationVersion(ctx, ca, true)
+	latestReadyVersion, err := c.getLatestReadyCAPApplicationVersion(ca, true)
 	if err != nil || latestReadyVersion == nil {
 		// if there are no Ready versions yet - do not initiate cleanup
 		return nil, err
 	}
 
+	// Explicitly exclude the latest Ready version from cleanup
+	excludedVersions[latestReadyVersion.Spec.Version] = true
+
 	outdatedVersions := []*v1alpha1.CAPApplicationVersion{}
-	cavs, _ := c.getCachedCAPApplicationVersions(ctx, ca) // ignoring error as this is not critical
+	cavs, _ := c.getCachedCAPApplicationVersions(ca) // ignoring error as this is not critical
 	for i := range cavs {
 		cav := cavs[i]
 		// ignore all versions greater than latest Ready one
@@ -386,7 +389,7 @@ func evaluateMetric(ctx context.Context, rule *v1alpha1.MetricRule, job, ns stri
 			klog.ErrorS(err, "error parsing threshold value", "value", rule.ThresholdValue, "metric", rule.Name)
 			return false, err
 		}
-		klog.InfoS("parsed prometheus query result and threshold", "threshold", threshold.String(), "result", sample.Value.String(), "query", query)
+		klog.InfoS("parsed prometheus query result and threshold", "threshold", threshold.String(), "query_result", sample.Value.String(), "query", query)
 		return sample.Value <= threshold, nil
 	} else {
 		// there could be no results if the version was not transmitting metrics for a very long time

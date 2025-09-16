@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,179 +8,35 @@ SPDX-License-Identifier: Apache-2.0
 package fake
 
 import (
-	"context"
-	json "encoding/json"
-	"fmt"
-
 	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	typedsmesapcomv1alpha1 "github.com/sap/cap-operator/pkg/client/clientset/versioned/typed/sme.sap.com/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeCAPApplications implements CAPApplicationInterface
-type FakeCAPApplications struct {
+// fakeCAPApplications implements CAPApplicationInterface
+type fakeCAPApplications struct {
+	*gentype.FakeClientWithListAndApply[*v1alpha1.CAPApplication, *v1alpha1.CAPApplicationList, *smesapcomv1alpha1.CAPApplicationApplyConfiguration]
 	Fake *FakeSmeV1alpha1
-	ns   string
 }
 
-var capapplicationsResource = v1alpha1.SchemeGroupVersion.WithResource("capapplications")
-
-var capapplicationsKind = v1alpha1.SchemeGroupVersion.WithKind("CAPApplication")
-
-// Get takes name of the cAPApplication, and returns the corresponding cAPApplication object, and an error if there is any.
-func (c *FakeCAPApplications) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.CAPApplication, err error) {
-	emptyResult := &v1alpha1.CAPApplication{}
-	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithOptions(capapplicationsResource, c.ns, name, options), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
+func newFakeCAPApplications(fake *FakeSmeV1alpha1, namespace string) typedsmesapcomv1alpha1.CAPApplicationInterface {
+	return &fakeCAPApplications{
+		gentype.NewFakeClientWithListAndApply[*v1alpha1.CAPApplication, *v1alpha1.CAPApplicationList, *smesapcomv1alpha1.CAPApplicationApplyConfiguration](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("capapplications"),
+			v1alpha1.SchemeGroupVersion.WithKind("CAPApplication"),
+			func() *v1alpha1.CAPApplication { return &v1alpha1.CAPApplication{} },
+			func() *v1alpha1.CAPApplicationList { return &v1alpha1.CAPApplicationList{} },
+			func(dst, src *v1alpha1.CAPApplicationList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.CAPApplicationList) []*v1alpha1.CAPApplication {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.CAPApplicationList, items []*v1alpha1.CAPApplication) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.CAPApplication), err
-}
-
-// List takes label and field selectors, and returns the list of CAPApplications that match those selectors.
-func (c *FakeCAPApplications) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.CAPApplicationList, err error) {
-	emptyResult := &v1alpha1.CAPApplicationList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewListActionWithOptions(capapplicationsResource, capapplicationsKind, c.ns, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.CAPApplicationList{ListMeta: obj.(*v1alpha1.CAPApplicationList).ListMeta}
-	for _, item := range obj.(*v1alpha1.CAPApplicationList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested cAPApplications.
-func (c *FakeCAPApplications) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchActionWithOptions(capapplicationsResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a cAPApplication and creates it.  Returns the server's representation of the cAPApplication, and an error, if there is any.
-func (c *FakeCAPApplications) Create(ctx context.Context, cAPApplication *v1alpha1.CAPApplication, opts v1.CreateOptions) (result *v1alpha1.CAPApplication, err error) {
-	emptyResult := &v1alpha1.CAPApplication{}
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithOptions(capapplicationsResource, c.ns, cAPApplication, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.CAPApplication), err
-}
-
-// Update takes the representation of a cAPApplication and updates it. Returns the server's representation of the cAPApplication, and an error, if there is any.
-func (c *FakeCAPApplications) Update(ctx context.Context, cAPApplication *v1alpha1.CAPApplication, opts v1.UpdateOptions) (result *v1alpha1.CAPApplication, err error) {
-	emptyResult := &v1alpha1.CAPApplication{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithOptions(capapplicationsResource, c.ns, cAPApplication, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.CAPApplication), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeCAPApplications) UpdateStatus(ctx context.Context, cAPApplication *v1alpha1.CAPApplication, opts v1.UpdateOptions) (result *v1alpha1.CAPApplication, err error) {
-	emptyResult := &v1alpha1.CAPApplication{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithOptions(capapplicationsResource, "status", c.ns, cAPApplication, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.CAPApplication), err
-}
-
-// Delete takes name of the cAPApplication and deletes it. Returns an error if one occurs.
-func (c *FakeCAPApplications) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(capapplicationsResource, c.ns, name, opts), &v1alpha1.CAPApplication{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeCAPApplications) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionActionWithOptions(capapplicationsResource, c.ns, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.CAPApplicationList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched cAPApplication.
-func (c *FakeCAPApplications) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.CAPApplication, err error) {
-	emptyResult := &v1alpha1.CAPApplication{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(capapplicationsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.CAPApplication), err
-}
-
-// Apply takes the given apply declarative configuration, applies it and returns the applied cAPApplication.
-func (c *FakeCAPApplications) Apply(ctx context.Context, cAPApplication *smesapcomv1alpha1.CAPApplicationApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.CAPApplication, err error) {
-	if cAPApplication == nil {
-		return nil, fmt.Errorf("cAPApplication provided to Apply must not be nil")
-	}
-	data, err := json.Marshal(cAPApplication)
-	if err != nil {
-		return nil, err
-	}
-	name := cAPApplication.Name
-	if name == nil {
-		return nil, fmt.Errorf("cAPApplication.Name must be provided to Apply")
-	}
-	emptyResult := &v1alpha1.CAPApplication{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(capapplicationsResource, c.ns, *name, types.ApplyPatchType, data, opts.ToPatchOptions()), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.CAPApplication), err
-}
-
-// ApplyStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
-func (c *FakeCAPApplications) ApplyStatus(ctx context.Context, cAPApplication *smesapcomv1alpha1.CAPApplicationApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.CAPApplication, err error) {
-	if cAPApplication == nil {
-		return nil, fmt.Errorf("cAPApplication provided to Apply must not be nil")
-	}
-	data, err := json.Marshal(cAPApplication)
-	if err != nil {
-		return nil, err
-	}
-	name := cAPApplication.Name
-	if name == nil {
-		return nil, fmt.Errorf("cAPApplication.Name must be provided to Apply")
-	}
-	emptyResult := &v1alpha1.CAPApplication{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(capapplicationsResource, c.ns, *name, types.ApplyPatchType, data, opts.ToPatchOptions(), "status"), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.CAPApplication), err
 }

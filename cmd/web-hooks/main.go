@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -70,6 +70,7 @@ func main() {
 	}
 
 	http.HandleFunc("/validate", whHandler.Validate)
+	http.HandleFunc("/mutate", whHandler.Mutate)
 
 	if parameters.tlsEnabled {
 		klog.Fatal(http.ListenAndServeTLS(":"+strconv.Itoa(parameters.port), parameters.certFile, parameters.keyFile, nil))

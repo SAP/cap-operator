@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -35,6 +35,7 @@ import (
 
 const (
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
+	AnnotationSubscriptionGUID          = "sme.sap.com/subscription-guid"
 	AnnotationSaaSAdditionalOutput      = "sme.sap.com/saas-additional-output"
 	AnnotationSubscriptionDomain        = "sme.sap.com/subscription-domain"
 )
@@ -42,6 +43,8 @@ const (
 const (
 	LabelBTPApplicationIdentifierHash = "sme.sap.com/btp-app-identifier-hash"
 	LabelTenantId                     = "sme.sap.com/btp-tenant-id"
+	LabelTenantType                   = "sme.sap.com/tenant-type"
+	LabelSubscriptionGUIDHash         = "sme.sap.com/subscription-guid-hash"
 )
 
 const (
@@ -165,16 +168,20 @@ func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
 			return &Result{Tenant: nil, Message: err.Error()}
 		}
 		util.LogInfo("Creating tenant", TenantProvisioning, ca, nil)
+		subscriptionGUID := reqType["subscriptionGUID"].(string)
 		tenant, _ = s.Clientset.SmeV1alpha1().CAPTenants(ca.Namespace).Create(context.TODO(), &v1alpha1.CAPTenant{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: ca.Name + "-",
 				Namespace:    ca.Namespace,
 				Annotations: map[string]string{
 					AnnotationSubscriptionContextSecret: secret.Name, // Store the secret name in the tenant annotation
+					AnnotationSubscriptionGUID:          subscriptionGUID,
 				},
 				Labels: map[string]string{
 					LabelBTPApplicationIdentifierHash: sha1Sum(reqType["globalAccountGUID"].(string), reqType["subscriptionAppName"].(string)),
 					LabelTenantId:                     reqType["subscribedTenantId"].(string),
+					LabelSubscriptionGUIDHash:         sha1Sum(subscriptionGUID),
+					LabelTenantType:                   "consumer", // Default tenant type for consumer tenants
 				},
 			},
 			Spec: v1alpha1.CAPTenantSpec{
@@ -324,10 +331,11 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 
 	token := authHeader[7:]
 	err := VerifyXSUAAJWTToken(context.TODO(), token, &XSUAAConfig{
-		UAADomain:      saasData.UAADomain,
-		ClientID:       saasData.ClientId,
-		XSAppName:      uaaData.XSAppName,
-		RequiredScopes: []string{uaaData.XSAppName + ".Callback", uaaData.XSAppName + ".mtcallback"},
+		UAADomain: saasData.UAADomain,
+		ClientID:  saasData.ClientId,
+		XSAppName: uaaData.XSAppName,
+		// `.Callback` is the scope usually used by approuter and `.mtcallback` is used by CAP. Either one of these may be present.
+		ExpectedScopes: []string{uaaData.XSAppName + ".Callback", uaaData.XSAppName + ".mtcallback"},
 	}, s.httpClientGenerator.NewHTTPClient())
 	if err != nil {
 		util.LogError(err, "failed token validation", step, "checkAuthorization", nil, "XSAppName", uaaData.XSAppName)
@@ -339,7 +347,7 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1.CAPApplication, saasData *util.SaasRegistryCredentials, req *http.Request, tenantIn tenantInfo, isProvisioning bool) {
 	subscriptionDomain := ca.Annotations[AnnotationSubscriptionDomain]
 	if subscriptionDomain == "" {
-		subscriptionDomain = ca.Spec.Domains.Primary
+		subscriptionDomain = s.getPrimaryDomain(ca)
 	}
 	appUrl := "https://" + tenantIn.tenantSubDomain + "." + subscriptionDomain
 	asyncCallbackPath := req.Header.Get("STATUS_CALLBACK")
@@ -383,6 +391,33 @@ func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1
 	}()
 
 	util.LogInfo("Waiting for async saas callback after checks...", step, ca, nil, "tenantName", tenantName)
+}
+
+func (s *SubscriptionHandler) getPrimaryDomain(ca *v1alpha1.CAPApplication) string {
+	// If no domainRefs are specified, return an empty string
+	if len(ca.Spec.DomainRefs) == 0 {
+		return ""
+	}
+	// Return the first domain as the primary domain
+	primaryDomainRef := ca.Spec.DomainRefs[0]
+	domain := ""
+	if primaryDomainRef.Kind == v1alpha1.DomainKind {
+		primaryDom, err := s.Clientset.SmeV1alpha1().Domains(ca.Namespace).Get(context.TODO(), primaryDomainRef.Name, metav1.GetOptions{})
+		if err != nil {
+			util.LogError(err, "Error getting primary domain", TenantProvisioning, ca, nil, "domainRef", primaryDomainRef.Name)
+		} else if primaryDom != nil {
+			domain = primaryDom.Spec.Domain
+		}
+	} else {
+		primaryDom, err := s.Clientset.SmeV1alpha1().ClusterDomains(metav1.NamespaceAll).Get(context.TODO(), primaryDomainRef.Name, metav1.GetOptions{})
+		if err != nil {
+			util.LogError(err, "Error getting primary cluster domain", TenantProvisioning, ca, nil, "domainRef", primaryDomainRef.Name)
+		} else if primaryDom != nil {
+			domain = primaryDom.Spec.Domain
+		}
+	}
+	// Return the primary domain if it exists, else return an empty string
+	return domain
 }
 
 func (s *SubscriptionHandler) enrichAdditionalOutput(namespace string, tenantId string, additionalOutput *map[string]any) error {

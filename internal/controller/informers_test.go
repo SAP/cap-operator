@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -95,7 +95,7 @@ func TestController_initializeInformers(t *testing.T) {
 				ResourceCAPApplicationVersion: &dummyType{},
 				ResourceCAPTenant:             &dummyType{},
 				ResourceCAPTenantOperation:    &dummyType{},
-				ResourceOperatorDomains:       &dummyType{},
+				// ResourceOperatorDomains:       &dummyType{},
 			}
 
 			testC := &Controller{

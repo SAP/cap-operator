@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -62,6 +62,20 @@ var (
 		Help:      "Duration of last tenant operation in seconds",
 	}, []string{"app", "tenant_id"})
 
+	// Metrics for overall service operations
+	ServiceOperations = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: CAPOp,
+		Name:      "service_operations",
+		Help:      "Overall number of service operations",
+	}, []string{"app"})
+
+	// Metrics for overall service operations
+	ServiceOperationFailures = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: CAPOp,
+		Name:      "service_operation_failures",
+		Help:      "Service Operations that failed to complete",
+	}, []string{"app", "version", "namespace", "name"})
+
 	/**
 		Note:
 		All the metrics below are for the CAP Operator controller workqueue,
@@ -123,7 +137,7 @@ var (
 )
 
 // Create a variable to hold all the collectors
-var collectors = []prometheus.Collector{ReconcileErrors, Panics, TenantOperations, depth, adds, latency, workDuration, unfinished, longestRunningProcessor, retries}
+var collectors = []prometheus.Collector{ReconcileErrors, Panics, TenantOperations, ServiceOperations, depth, adds, latency, workDuration, unfinished, longestRunningProcessor, retries}
 
 // #region capOperatorMetricsProvider
 // capOperatorMetricsProvider implements workqueue.MetricsProvider
@@ -164,7 +178,7 @@ func (capOperatorMetricsProvider) NewRetriesMetric(name string) workqueue.Counte
 func initializeMetrics() {
 	// Parse DETAILED_OPERATIONAL_METRICS env. to determine if detailed operation metrics are needed
 	if os.Getenv("DETAILED_OPERATIONAL_METRICS") == "true" {
-		collectors = append(collectors, TenantOperationFailures, LastTenantOperationDuration)
+		collectors = append(collectors, TenantOperationFailures, ServiceOperationFailures, LastTenantOperationDuration)
 	}
 
 	// Register CAP Operator metrics

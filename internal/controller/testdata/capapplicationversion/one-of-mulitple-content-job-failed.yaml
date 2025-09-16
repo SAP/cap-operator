@@ -3,15 +3,15 @@ kind: Job
 metadata:
   creationTimestamp: "2022-07-18T12:16:21Z"
   labels:
-    job-name: test-cap-01-cav-v1-content-job-1-content
-  name: test-cap-01-cav-v1-content-job-1-content
+    job-name: test-cap-01-cav-v1-content-job-1
+  name: test-cap-01-cav-v1-content-job-1
   namespace: default
   ownerReferences:
     - apiVersion: sme.sap.com/v1alpha1
       blockOwnerDeletion: true
       controller: true
       kind: CAPApplicationVersion
-      name: test-cap-01-cav-v1-content-job-1-content
+      name: test-cap-01-cav-v1
       uid: 5e64489b-7346-4984-8617-e8c37338b3d8
   resourceVersion: "150625273"
   uid: afb8bcad-72ce-4567-8337-12fc67ef55acb
@@ -29,7 +29,7 @@ spec:
       creationTimestamp: null
       labels:
         controller-uid: afb8bcad-72ce-4567-8337-12fc67ef55acb
-        job-name: test-cap-01-cav-v1-content-job-1-content
+        job-name: test-cap-01-cav-v1-content-job-1
         x4.sap.com/disable-karydia: "true"
     spec:
       containers:
@@ -45,7 +45,7 @@ spec:
                   fieldPath: status.podIP
           envFrom:
             - secretRef:
-                name: test-cap-01-cav-v1-content-job-1-content-gen
+                name: test-cap-01-cav-v1-content-job-1-gen
                 optional: true
           image: bem.common.repositories.cloud.sap/content/bem-content
           imagePullPolicy: Always
@@ -56,7 +56,7 @@ spec:
       dnsPolicy: ClusterFirst
       imagePullSecrets:
         - name: regcred
-      restartPolicy: OnFailure
+      restartPolicy: Never
       schedulerName: default-scheduler
       securityContext: {}
       terminationGracePeriodSeconds: 30

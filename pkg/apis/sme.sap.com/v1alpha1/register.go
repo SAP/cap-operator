@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -57,6 +57,16 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		SchemeGroupVersion,
 		&CAPTenantOutput{},
 		&CAPTenantOutputList{},
+	)
+	scheme.AddKnownTypes(
+		SchemeGroupVersion,
+		&Domain{},
+		&DomainList{},
+	)
+	scheme.AddKnownTypes(
+		SchemeGroupVersion,
+		&ClusterDomain{},
+		&ClusterDomainList{},
 	)
 	metaV1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

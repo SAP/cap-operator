@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/sap/cap-operator/internal/util"
@@ -38,6 +39,8 @@ const (
 	LabelCAVVersion                     = "sme.sap.com/cav-version"
 	LabelRelevantDNSTarget              = "sme.sap.com/relevant-dns-target-hash"
 	LabelDisableKarydia                 = "x4.sap.com/disable-karydia"
+	LabelExposedWorkload                = "sme.sap.com/exposed-workload"
+	LabelDNSNameHash                    = "sme.sap.com/dns-name-hash"
 	AnnotationOwnerIdentifier           = "sme.sap.com/owner-identifier"
 	AnnotationBTPApplicationIdentifier  = "sme.sap.com/btp-app-identifier"
 	AnnotationResourceHash              = "sme.sap.com/resource-hash"
@@ -48,10 +51,13 @@ const (
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
 	AnnotationProviderSubAccountId      = "sme.sap.com/provider-sub-account-id"
 	AnnotationEnableCleanupMonitoring   = "sme.sap.com/enable-cleanup-monitoring"
+	AnnotationVSRouteRequestHeaderSet   = "sme.sap.com/vs-route-request-header-set"  // used to set the header for the vs route request
+	AnnotationVSRouteResponseHeaderSet  = "sme.sap.com/vs-route-response-header-set" // used to set the header for the vs route response
 	FinalizerCAPApplication             = "sme.sap.com/capapplication"
 	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
 	FinalizerCAPTenant                  = "sme.sap.com/captenant"
 	FinalizerCAPTenantOperation         = "sme.sap.com/captenantoperation"
+	FinalizerDomain                     = "sme.sap.com/domain"
 	GardenerDNSClassIdentifier          = "dns.gardener.cloud/class"
 )
 
@@ -68,10 +74,7 @@ var (
 	tTLSecondsAfterFinishedValue int32 = 300
 )
 
-const (
-	ProviderTenantType = "provider"
-	ConsumerTenantType = "consumer"
-)
+const TenantTypeProvider = "provider"
 
 // Use a different name for sticky cookie than the one from approuter (JSESSIONID) used for session handling
 const RouterHttpCookieName = "CAPOP_ROUTER_STICKY"
@@ -195,8 +198,8 @@ func (c *Controller) getCachedCAPTenant(namespace string, value string, valueIsT
 /*
 fetch the latest CAPApplicationVersion in Ready state, for a specified CAPApplication
 */
-func (c *Controller) getLatestReadyCAPApplicationVersion(ctx context.Context, ca *v1alpha1.CAPApplication, avoidNotFound bool) (*v1alpha1.CAPApplicationVersion, error) {
-	cavs, err := c.getCachedCAPApplicationVersions(ctx, ca)
+func (c *Controller) getLatestReadyCAPApplicationVersion(ca *v1alpha1.CAPApplication, avoidNotFound bool) (*v1alpha1.CAPApplicationVersion, error) {
+	cavs, err := c.getCachedCAPApplicationVersions(ca)
 	if err != nil {
 		return nil, err
 	}
@@ -220,8 +223,8 @@ func (c *Controller) getLatestReadyCAPApplicationVersion(ctx context.Context, ca
 /*
 fetch the latest CAPApplicationVersion, for a specified CAPApplication
 */
-func (c *Controller) getLatestCAPApplicationVersion(ctx context.Context, ca *v1alpha1.CAPApplication) (*v1alpha1.CAPApplicationVersion, error) {
-	cavs, err := c.getCachedCAPApplicationVersions(ctx, ca)
+func (c *Controller) getLatestCAPApplicationVersion(ca *v1alpha1.CAPApplication) (*v1alpha1.CAPApplicationVersion, error) {
+	cavs, err := c.getCachedCAPApplicationVersions(ca)
 	if err != nil {
 		return nil, err
 	}
@@ -246,8 +249,8 @@ func (c *Controller) getLatestCAPApplicationVersion(ctx context.Context, ca *v1a
 
 	fetch the relevant CAPApplicationVersion in Ready state, for a specified CAPApplication and version string
 */
-func (c *Controller) getRelevantCAPApplicationVersion(ctx context.Context, ca *v1alpha1.CAPApplication, version string) (*v1alpha1.CAPApplicationVersion, error) {
-	cavs, err := c.getCachedCAPApplicationVersions(ctx, ca)
+func (c *Controller) getRelevantCAPApplicationVersion(ca *v1alpha1.CAPApplication, version string) (*v1alpha1.CAPApplicationVersion, error) {
+	cavs, err := c.getCachedCAPApplicationVersions(ca)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +271,7 @@ func (c *Controller) getRelevantCAPApplicationVersion(ctx context.Context, ca *v
 	return latestCav, err
 }
 
-func (c *Controller) getCachedCAPApplicationVersions(ctx context.Context, ca *v1alpha1.CAPApplication) ([]*v1alpha1.CAPApplicationVersion, error) {
+func (c *Controller) getCachedCAPApplicationVersions(ca *v1alpha1.CAPApplication) ([]*v1alpha1.CAPApplicationVersion, error) {
 	selector, err := labels.ValidatedSelectorFromSet(map[string]string{
 		LabelOwnerIdentifierHash: sha1Sum(ca.Namespace, ca.Name),
 	})
@@ -334,6 +337,31 @@ func (c *Controller) cleanupPreservedSecrets(serviceInfos []v1alpha1.ServiceInfo
 	return err
 }
 
+func (c *Controller) checkServicesOnly(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) error {
+	servicesOnly := !slices.ContainsFunc(cav.Spec.Workloads, func(wd v1alpha1.WorkloadDetails) bool {
+		if wd.JobDefinition != nil {
+			return wd.JobDefinition.Type != v1alpha1.JobContent
+		}
+		return wd.DeploymentDefinition != nil && wd.DeploymentDefinition.Type != v1alpha1.DeploymentService
+	})
+
+	// Check if the CAP Application is already marked with ServicesOnly from a previous version only once the Status is set!
+	if ca.Status.ServicesOnly != nil {
+		if ca.IsServicesOnly() != servicesOnly {
+			serviceErrorPrefix := "without"
+			if servicesOnly {
+				serviceErrorPrefix = "with"
+			}
+			return fmt.Errorf("creating a new version %s only service workloads is not allowed. The CAP Application %s.%s is already marked with ServicesOnly %v from a previous version", serviceErrorPrefix, ca.Namespace, ca.Name, !servicesOnly)
+		}
+	}
+
+	// Set ServicesOnly status according to the first ready CAV workload configuration
+	ca.SetStatusServicesOnly(&servicesOnly)
+
+	return nil
+}
+
 // This method is called to handle NotFound error at the beginning of reconciliation to skip requeue on errors due to deletion of resource
 func handleOperatorResourceErrors(err error) error {
 	// Handle NotFound errors (object was most likely deleted)
@@ -375,7 +403,7 @@ func generateVCAPEnv(ns string, serviceInfos []v1alpha1.ServiceInfo, kubeClient 
 		if envVCAPServices[serviceInfo.Class] == nil {
 			envVCAPServices[serviceInfo.Class] = []map[string]any{}
 		}
-		// Simulate attributes that describe a bound service (@TODO: consider adding tags, binding_name, plan etc..)
+		// Simulate attributes that describe a bound service
 		envVCAPServices[serviceInfo.Class] = append(envVCAPServices[serviceInfo.Class], entry)
 	}
 
@@ -533,11 +561,12 @@ func updateWorkloadPortInfo(cavName string, workloadName string, deploymentType 
 	var workloadPortInfo *servicePortInfo
 	if len(servicePorts) == 0 {
 		// Use fallback defaults
-		if deploymentType == v1alpha1.DeploymentRouter {
+		switch deploymentType {
+		case v1alpha1.DeploymentRouter:
 			servicePorts = []corev1.ServicePort{
 				{Name: "router-svc-port", Port: defaultRouterPort},
 			}
-		} else if deploymentType == v1alpha1.DeploymentCAP {
+		case v1alpha1.DeploymentCAP:
 			servicePorts = []corev1.ServicePort{
 				{Name: "server-svc-port", Port: defaultServerPort},
 			}
@@ -610,4 +639,11 @@ func updateInitContainers(initContainers []corev1.Container, additionalEnv []cor
 
 func getWorkloadName(cavName, workloadName string) string {
 	return fmt.Sprintf("%s-%s", cavName, strings.ToLower(workloadName))
+}
+
+func getRestartPolicy(restartPolicy corev1.RestartPolicy, isJob bool) corev1.RestartPolicy {
+	if isJob && restartPolicy == "" {
+		return corev1.RestartPolicyNever
+	}
+	return restartPolicy
 }

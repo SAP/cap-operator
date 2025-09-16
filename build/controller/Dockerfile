@@ -1,13 +1,9 @@
 # Build stage for go modules
-FROM golang:1.23-alpine as build
-ARG TARGETOS
-ARG TARGETARCH
-ENV CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH}
+FROM --platform=$BUILDPLATFORM golang:1.25-alpine AS build
 
 WORKDIR /build
 
-COPY go.mod go.mod
-COPY go.sum go.sum
+COPY go.mod go.sum .
 
 RUN go mod download
 
@@ -15,10 +11,15 @@ COPY cmd/controller/ cmd/controller/
 COPY pkg/ pkg/
 COPY internal/ internal/
 
-RUN go build -o ./bin/controller ./cmd/controller/
+ARG TARGETOS TARGETARCH
+ENV CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH}
+
+RUN --mount=type=cache,target=/go/pkg \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -o ./bin/controller ./cmd/controller/
 
 # Run Stage
-FROM gcr.io/distroless/static AS final
+FROM gcr.io/distroless/static:nonroot AS final
 
 ENTRYPOINT ["/app/controller"]
 

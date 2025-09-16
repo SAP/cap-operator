@@ -1,0 +1,22 @@
+apiVersion: cert.gardener.cloud/v1alpha1
+kind: Certificate
+metadata:
+  annotations:
+    sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
+    sme.sap.com/resource-hash: d1230403c2273b22d7950e99d2a0cdec0f6cd33a899bcbaa82c60a95e9006c61
+  finalizers:
+  - sme.sap.com/domain
+  generation: 1
+  labels:
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
+  name: test-cap-01-primary-gen
+  namespace: default
+spec:
+  dnsNames:
+  - '*.app-domain.test.local'
+  secretRef:
+    name: default--test-cap-01-primary-gardener
+    namespace: istio-system
+status:
+  state: Ready

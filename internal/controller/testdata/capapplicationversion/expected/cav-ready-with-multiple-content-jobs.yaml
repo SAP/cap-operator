@@ -74,7 +74,7 @@ status:
       observedGeneration: 1
       type: Ready
   finishedJobs:
-    - test-cap-01-cav-v1-content-job-1-content
-    - test-cap-01-cav-v1-content-job-2-content
+    - test-cap-01-cav-v1-content-job-1
+    - test-cap-01-cav-v1-content-job-2
   observedGeneration: 1
   state: Ready

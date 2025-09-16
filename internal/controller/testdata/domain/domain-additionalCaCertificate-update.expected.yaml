@@ -1,0 +1,43 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: Domain
+metadata:
+  name: test-cap-01-primary
+  namespace: default
+  finalizers:
+  - sme.sap.com/domain
+  labels:
+    sme.sap.com/domain-host-hash: d8b11ae7b1f04e357f32290b81db58c247dac748
+spec:
+  dnsMode: Wildcard
+  domain: app-domain.test.local
+  ingressSelector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  tlsMode: Simple
+  certConfig:
+    additionalCACertificate: dummy-cert-content-updated
+status:
+  conditions:
+  - message: Domain resources are ready
+    reason: Ready
+    status: "True"
+    type: Ready
+  state: Ready
+  dnsTarget: public-ingress.operator.testing.local
+  observedDomain: app-domain.test.local
+  gatewayName: test-cap-01-primary-gen
+---
+apiVersion: v1
+data:
+  ca.crt: ZHVtbXktY2VydC1jb250ZW50LXVwZGF0ZWQ=
+kind: Secret
+type: Opaque
+metadata:
+  annotations:
+    sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
+    sme.sap.com/resource-hash: 1543619ffef38accc04c73f20adc5e0add5f7003129e08f98e82518e4b2b64f7
+  labels:
+    sme.sap.com/owner-generation: "0"
+    sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
+  name: default--test-cap-01-primary-gardener-cacert
+  namespace: istio-system

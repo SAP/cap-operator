@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -65,7 +65,8 @@ func NewController(client kubernetes.Interface, crdClient versioned.Interface, i
 		ResourceCAPApplicationVersion: workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPApplicationVersion]}),
 		ResourceCAPTenant:             workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPTenant]}),
 		ResourceCAPTenantOperation:    workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPTenantOperation]}),
-		ResourceOperatorDomains:       workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceOperatorDomains]}),
+		ResourceClusterDomain:         workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceClusterDomain]}),
+		ResourceDomain:                workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceDomain]}),
 	}
 
 	// Use 30mins as the default Resync interval for kube / proprietary  resources
@@ -254,8 +255,10 @@ func (c *Controller) processQueueItem(ctx context.Context, key int) error {
 		result, err = c.reconcileCAPTenant(ctx, item, attempts)
 	case ResourceCAPTenantOperation:
 		result, err = c.reconcileCAPTenantOperation(ctx, item, attempts)
-	case ResourceOperatorDomains:
-		err = c.reconcileOperatorDomains(ctx, item, attempts)
+	case ResourceDomain:
+		result, err = c.reconcileDomain(ctx, item, attempts)
+	case ResourceClusterDomain:
+		result, err = c.reconcileClusterDomain(ctx, item, attempts)
 	default:
 		err = errors.New("unidentified queue item")
 		skipItem = true

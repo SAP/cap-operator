@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -44,6 +44,8 @@ const (
 	versionUpdate
 	imageUpdate
 	emptyUpdate
+	domainsUpdate
+	useDomains
 )
 
 func createCaCRO() *v1alpha1.CAPApplication {
@@ -53,7 +55,16 @@ func createCaCRO() *v1alpha1.CAPApplication {
 			Namespace: metav1.NamespaceDefault,
 		},
 		Spec: v1alpha1.CAPApplicationSpec{
-			Domains:         v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}},
+			DomainRefs: []v1alpha1.DomainRef{
+				{
+					Kind: "Domain",
+					Name: "primaryDomain",
+				},
+				{
+					Kind: "ClusterDomain",
+					Name: "secondaryDomain",
+				},
+			},
 			GlobalAccountId: "globalAccountId",
 			BTPAppName:      "btpApplicationName",
 			Provider: v1alpha1.BTPTenantIdentification{
@@ -151,10 +162,21 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 						TenantId:  tenantId,
 					},
 					BTP: v1alpha1.BTP{},
+					DomainRefs: []v1alpha1.DomainRef{
+						{
+							Kind: "Domain",
+							Name: "primaryDomain",
+						},
+						{
+							Kind: "ClusterDomain",
+							Name: "secondaryDomain",
+						},
+					},
 				},
 				Kind: crdType,
 			}
 		}
+
 		rawBytes, err = json.Marshal(crd)
 		rawBytesOld = rawBytes
 		if operation == admissionv1.Update && err == nil {
@@ -163,7 +185,17 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 				crdOld.Spec.Provider.SubDomain = crdOld.Spec.Provider.SubDomain + "modified"
 				crdOld.Spec.Provider.TenantId = crdOld.Spec.Provider.TenantId + "modified"
 				rawBytesOld, err = json.Marshal(crdOld)
+			} else if change == domainsUpdate {
+				crd.Spec.DomainRefs = []v1alpha1.DomainRef{}
+				crd.Spec.Domains = v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}}
+				rawBytes, err = json.Marshal(crd)
 			}
+		}
+
+		if operation == admissionv1.Create && change == useDomains && err == nil {
+			crd.Spec.DomainRefs = []v1alpha1.DomainRef{}
+			crd.Spec.Domains = v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}}
+			rawBytes, err = json.Marshal(crd)
 		}
 	case v1alpha1.CAPApplicationVersionKind:
 		crd := &ResponseCav{}
@@ -722,6 +754,14 @@ func TestCaInvalidity(t *testing.T) {
 			operation: admissionv1.Update,
 			update:    providerUpdate,
 		},
+		{
+			operation: admissionv1.Update,
+			update:    domainsUpdate,
+		},
+		{
+			operation: admissionv1.Create,
+			update:    useDomains,
+		},
 	}
 	for _, test := range tests {
 		t.Run("Testing CAPApplication invalidity for operation "+string(test.operation), func(t *testing.T) {
@@ -745,6 +785,8 @@ func TestCaInvalidity(t *testing.T) {
 			var errorMessage string
 			if test.update == providerUpdate {
 				errorMessage = fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
+			} else if test.update == domainsUpdate || test.update == useDomains {
+				errorMessage = fmt.Sprintf("%s %s domains are deprecated. Use domainRefs instead in: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
 			}
 
 			if admissionReview.Response.Allowed ||
@@ -763,28 +805,32 @@ func TestCavInvalidity(t *testing.T) {
 		CrdClient: fakeCrdClient.NewSimpleClientset(Ca),
 	}
 	tests := []struct {
-		operation                          admissionv1.Operation
-		duplicateWorkloadName              bool
-		invalidDeploymentType              bool
-		invalidJobType                     bool
-		onlyOneCAPTypeAllowed              bool
-		onlyOneRouterTypeAllowed           bool
-		duplicatePortName                  bool
-		duplicatePortNumber                bool
-		routerDestNameCAPChk               bool
-		routerDestNameRouterChk            bool
-		customTenantOpWithoutSequence      bool
-		tenantOperationSequenceInvalid     bool
-		invalidWorkloadInTenantOpSeq       bool
-		missingTenantOpInSeqProvisioning   bool
-		missingTenantOpInSeqUpgrade        bool
-		missingTenantOpInSeqDeprovisioning bool
-		multipleContentJobsWithNoOrder     bool
-		missingContentJobinContentJobs     bool
-		invalidJobinContentJobs            bool
-		invalidWorkloadName                bool
-		longWorkloadName                   bool
-		backlogItems                       []string
+		operation                           admissionv1.Operation
+		duplicateWorkloadName               bool
+		invalidDeploymentType               bool
+		invalidJobType                      bool
+		onlyOneCAPTypeAllowed               bool
+		onlyOneRouterTypeAllowed            bool
+		duplicatePortName                   bool
+		duplicatePortNumber                 bool
+		routerDestNameCAPChk                bool
+		routerDestNameRouterChk             bool
+		customTenantOpWithoutSequence       bool
+		tenantOperationSequenceInvalid      bool
+		invalidWorkloadInTenantOpSeq        bool
+		missingTenantOpInSeqProvisioning    bool
+		missingTenantOpInSeqUpgrade         bool
+		missingTenantOpInSeqDeprovisioning  bool
+		multipleContentJobsWithNoOrder      bool
+		missingContentJobinContentJobs      bool
+		invalidJobinContentJobs             bool
+		invalidWorkloadName                 bool
+		longDeploymentWorkloadName          bool
+		longContentWorkloadName             bool
+		onlyServiceWorkloads                bool
+		serviceExposureWrongWorkloadName    bool
+		duplicateSubDomainInServiceExposure bool
+		backlogItems                        []string
 	}{
 		{
 			operation:             admissionv1.Create,
@@ -882,9 +928,29 @@ func TestCavInvalidity(t *testing.T) {
 			backlogItems:        []string{},
 		},
 		{
-			operation:        admissionv1.Create,
-			longWorkloadName: true,
-			backlogItems:     []string{},
+			operation:                  admissionv1.Create,
+			longDeploymentWorkloadName: true,
+			backlogItems:               []string{},
+		},
+		{
+			operation:               admissionv1.Create,
+			longContentWorkloadName: true,
+			backlogItems:            []string{},
+		},
+		{
+			operation:            admissionv1.Create,
+			onlyServiceWorkloads: true,
+			backlogItems:         []string{},
+		},
+		{
+			operation:                        admissionv1.Create,
+			serviceExposureWrongWorkloadName: true,
+			backlogItems:                     []string{},
+		},
+		{
+			operation:                           admissionv1.Create,
+			duplicateSubDomainInServiceExposure: true,
+			backlogItems:                        []string{},
 		},
 	}
 	for _, test := range tests {
@@ -1159,8 +1225,92 @@ func TestCavInvalidity(t *testing.T) {
 				crd.Spec.ContentJobs = append(crd.Spec.ContentJobs, "content", "content-2", "dummy")
 			} else if test.invalidWorkloadName == true {
 				crd.Spec.Workloads[0].Name = "WrongWorkloadName"
-			} else if test.longWorkloadName == true {
+			} else if test.longDeploymentWorkloadName == true {
 				crd.Spec.Workloads[0].Name = "extralongworkloadnamecontainingmorethan64characters"
+			} else if test.longContentWorkloadName == true {
+				crd.Spec.Workloads[2].Name = "extralongcontentworkloadnamecontainingmorethan64characters"
+			} else if test.onlyServiceWorkloads == true {
+				for _, workload := range crd.Spec.Workloads {
+					if workload.DeploymentDefinition != nil {
+						workload.DeploymentDefinition.Type = v1alpha1.DeploymentService
+					}
+				}
+
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "tenant-operation",
+					ConsumedBTPServices: []string{},
+					JobDefinition: &v1alpha1.JobDetails{
+						Type: v1alpha1.JobTenantOperation,
+						CommonDetails: v1alpha1.CommonDetails{
+							Image: "foo",
+						},
+					},
+				})
+
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "custom-tenant-operation",
+					ConsumedBTPServices: []string{},
+					JobDefinition: &v1alpha1.JobDetails{
+						Type: v1alpha1.JobCustomTenantOperation,
+						CommonDetails: v1alpha1.CommonDetails{
+							Image: "foo",
+						},
+					},
+				})
+			} else if test.serviceExposureWrongWorkloadName == true {
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "service-1",
+					ConsumedBTPServices: []string{},
+					DeploymentDefinition: &v1alpha1.DeploymentDetails{
+						Type: v1alpha1.DeploymentService,
+						CommonDetails: v1alpha1.CommonDetails{
+							Image: "foo",
+						},
+					},
+				})
+
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+					SubDomain: "svc-subdomain",
+					Routes: []v1alpha1.Route{
+						{
+							WorkloadName: "wrong-name",
+							Port:         4004,
+							Path:         "abc",
+						},
+					},
+				})
+			} else if test.duplicateSubDomainInServiceExposure == true {
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "service-1",
+					ConsumedBTPServices: []string{},
+					DeploymentDefinition: &v1alpha1.DeploymentDetails{
+						Type: v1alpha1.DeploymentService,
+						CommonDetails: v1alpha1.CommonDetails{
+							Image: "foo",
+						},
+					},
+				})
+
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+					SubDomain: "svc-subdomain",
+					Routes: []v1alpha1.Route{
+						{
+							WorkloadName: "service-1",
+							Port:         4004,
+							Path:         "api",
+						},
+					},
+				})
+
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+					SubDomain: "svc-subdomain",
+					Routes: []v1alpha1.Route{
+						{
+							WorkloadName: "service-1",
+							Port:         4004,
+						},
+					},
+				})
 			}
 
 			rawBytes, _ := json.Marshal(crd)
@@ -1185,7 +1335,7 @@ func TestCavInvalidity(t *testing.T) {
 			if test.duplicateWorkloadName == true {
 				errorMessage = fmt.Sprintf("%s %s duplicate workload name: cap-backend", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.invalidDeploymentType == true {
-				errorMessage = fmt.Sprintf("%s %s invalid deployment definition type. Only supported - CAP, Router and Additional", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s invalid deployment definition type. Only supported - CAP, Router, Additional and Service", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.invalidJobType == true {
 				errorMessage = fmt.Sprintf("%s %s invalid job definition type. Only supported - Content, TenantOperation and CustomTenantOperation", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.onlyOneCAPTypeAllowed == true {
@@ -1220,8 +1370,34 @@ func TestCavInvalidity(t *testing.T) {
 				errorMessage = fmt.Sprintf("%s %s job dummy specified as part of ContentJobs is not a valid content job", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.invalidWorkloadName == true {
 				errorMessage = fmt.Sprintf("%s %s Invalid workload name: %s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, "WrongWorkloadName")
-			} else if test.longWorkloadName == true {
-				errorMessage = fmt.Sprintf("%s %s Derived service name: %s for workload %s will exceed 63 character limit. Adjust CAPApplicationVerion resource name or the workload name accordingly", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Name+"-"+"extralongworkloadnamecontainingmorethan64characters"+"-svc", "extralongworkloadnamecontainingmorethan64characters")
+			} else if test.longDeploymentWorkloadName == true {
+				errorMessage = fmt.Sprintf(
+					"%s %s Derived service name '%s' (length %d) exceeds max limit of %d characters. Please shorten CAPApplicationVersion name '%s' or workload name '%s'.",
+					InvalidationMessage,
+					v1alpha1.CAPApplicationVersionKind,
+					crd.Name+"-"+"extralongworkloadnamecontainingmorethan64characters"+"-svc",
+					len(crd.Name+"-"+"extralongworkloadnamecontainingmorethan64characters"+"-svc"),
+					63,
+					crd.Name,
+					"extralongworkloadnamecontainingmorethan64characters",
+				)
+			} else if test.longContentWorkloadName == true {
+				errorMessage = fmt.Sprintf(
+					"%s %s Derived content job pod name '%s' (length %d) exceeds max limit of %d characters. Please shorten CAPApplicationVersion name '%s' or workload name '%s'.",
+					InvalidationMessage,
+					v1alpha1.CAPApplicationVersionKind,
+					crd.Name+"-"+"extralongcontentworkloadnamecontainingmorethan64characters"+"-q4m9c",
+					len(crd.Name+"-"+"extralongcontentworkloadnamecontainingmorethan64characters"+"-q4m9c"),
+					63,
+					crd.Name,
+					"extralongcontentworkloadnamecontainingmorethan64characters",
+				)
+			} else if test.onlyServiceWorkloads == true {
+				errorMessage = fmt.Sprintf(TenantOpJobWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.JobTenantOperation, v1alpha1.JobCustomTenantOperation, v1alpha1.DeploymentService)
+			} else if test.serviceExposureWrongWorkloadName == true {
+				errorMessage = fmt.Sprintf(ServiceExposureWorkloadNameErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].Routes[0].WorkloadName, crd.Spec.ServiceExposures[0].SubDomain)
+			} else if test.duplicateSubDomainInServiceExposure == true {
+				errorMessage = fmt.Sprintf(DuplicateServiceExposureSubDomainErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].SubDomain)
 			}
 
 			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
@@ -1306,6 +1482,208 @@ func TestCtoutInvalidity(t *testing.T) {
 				}
 			} else {
 				if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != fmt.Sprintf("%s %s label %s missing on CAP tenant output %s", InvalidationMessage, v1alpha1.CAPTenantOutputKind, LabelTenantId, "some-ctout") {
+					t.Fatal("validation response error")
+				}
+			}
+		})
+	}
+}
+
+func TestClusterDomainInvalidity(t *testing.T) {
+	tests := []struct {
+		operation              admissionv1.Operation
+		duplicateClusterDomain bool
+		duplicateDomain        bool
+	}{
+		{
+			operation:              admissionv1.Create,
+			duplicateClusterDomain: true,
+		},
+		{
+			operation:       admissionv1.Create,
+			duplicateDomain: true,
+		},
+		{
+			operation:              admissionv1.Update,
+			duplicateClusterDomain: true,
+		},
+		{
+			operation: admissionv1.Update,
+		},
+	}
+	for _, test := range tests {
+		t.Run("Testing ClusterDomain invalidity during "+string(test.operation), func(t *testing.T) {
+			clusterDomain := &v1alpha1.ClusterDomain{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-domain",
+				},
+				Spec: v1alpha1.DomainSpec{
+					Domain: "foo-cluster-domain.com",
+					IngressSelector: map[string]string{
+						"app":   "istio-ingressgateway",
+						"istio": "ingressgateway",
+					},
+				},
+			}
+			domain := &v1alpha1.Domain{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "domain",
+					Namespace: metav1.NamespaceDefault,
+				},
+				Spec: v1alpha1.DomainSpec{
+					Domain: "foo-domain.com",
+					IngressSelector: map[string]string{
+						"app":   "istio-ingressgateway",
+						"istio": "ingressgateway",
+					},
+				},
+			}
+
+			wh := &WebhookHandler{
+				CrdClient: fakeCrdClient.NewSimpleClientset(clusterDomain, domain),
+			}
+
+			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.ClusterDomainKind, clusterDomain.Name, noUpdate)
+			if err != nil {
+				t.Fatal("admission review error")
+			}
+
+			var clusterDomainDup = clusterDomain.DeepCopy()
+			if test.duplicateClusterDomain {
+				clusterDomainDup.Name = clusterDomainDup.Name + "-duplicate"
+			} else if test.duplicateDomain {
+				clusterDomainDup.Name = clusterDomainDup.Name + "-duplicate"
+				clusterDomainDup.Spec.Domain = domain.Spec.Domain
+			}
+
+			rawBytes, _ := json.Marshal(clusterDomainDup)
+			admissionReview.Request.Object.Raw = rawBytes
+			bytesRequest, err := json.Marshal(admissionReview)
+			if err != nil {
+				t.Fatal("marshal error")
+			}
+			request := httptest.NewRequest(http.MethodGet, "/validate", bytes.NewBuffer(bytesRequest))
+			recorder := httptest.NewRecorder()
+
+			wh.Validate(recorder, request)
+
+			admissionReviewRes := admissionv1.AdmissionReview{}
+			bytes, err := io.ReadAll(recorder.Body)
+			if err != nil {
+				t.Fatal("io read error")
+			}
+			universalDeserializer.Decode(bytes, nil, &admissionReviewRes)
+
+			var errorMessage string
+			if test.duplicateClusterDomain {
+				errorMessage = fmt.Sprintf("%s %s %s already exist with domain %s", InvalidationMessage, v1alpha1.ClusterDomainKind, clusterDomain.Name, clusterDomain.Spec.Domain)
+			} else if test.duplicateDomain {
+				errorMessage = fmt.Sprintf("%s %s %s already exist in namespace %s with domain %s", InvalidationMessage, v1alpha1.DomainKind, domain.Name, domain.Namespace, domain.Spec.Domain)
+			}
+
+			if test.duplicateClusterDomain || test.duplicateDomain {
+				if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
+					t.Fatal("validation response error")
+				}
+			}
+		})
+	}
+}
+
+func TestDomainInvalidity(t *testing.T) {
+	tests := []struct {
+		operation              admissionv1.Operation
+		duplicateClusterDomain bool
+		duplicateDomain        bool
+	}{
+		{
+			operation:              admissionv1.Create,
+			duplicateClusterDomain: true,
+		},
+		{
+			operation:       admissionv1.Create,
+			duplicateDomain: true,
+		},
+		{
+			operation:       admissionv1.Update,
+			duplicateDomain: true,
+		},
+		{
+			operation: admissionv1.Update,
+		},
+	}
+	for _, test := range tests {
+		t.Run("Testing Domain invalidity during "+string(test.operation), func(t *testing.T) {
+			clusterDomain := &v1alpha1.ClusterDomain{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "cluster-domain",
+				},
+				Spec: v1alpha1.DomainSpec{
+					Domain: "foo-cluster-domain.com",
+					IngressSelector: map[string]string{
+						"app":   "istio-ingressgateway",
+						"istio": "ingressgateway",
+					},
+				},
+			}
+			domain := &v1alpha1.Domain{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "domain",
+					Namespace: metav1.NamespaceDefault,
+				},
+				Spec: v1alpha1.DomainSpec{
+					Domain: "foo-domain.com",
+					IngressSelector: map[string]string{
+						"app":   "istio-ingressgateway",
+						"istio": "ingressgateway",
+					},
+				},
+			}
+
+			wh := &WebhookHandler{
+				CrdClient: fakeCrdClient.NewSimpleClientset(clusterDomain, domain),
+			}
+
+			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.DomainKind, domain.Name, noUpdate)
+			if err != nil {
+				t.Fatal("admission review error")
+			}
+
+			var domainDup = domain.DeepCopy()
+			if test.duplicateClusterDomain {
+				domainDup.Name = domainDup.Name + "-duplicate"
+				domainDup.Spec.Domain = clusterDomain.Spec.Domain
+			} else if test.duplicateDomain {
+				domainDup.Name = domainDup.Name + "-duplicate"
+			}
+
+			rawBytes, _ := json.Marshal(domainDup)
+			admissionReview.Request.Object.Raw = rawBytes
+			bytesRequest, err := json.Marshal(admissionReview)
+			if err != nil {
+				t.Fatal("marshal error")
+			}
+			request := httptest.NewRequest(http.MethodGet, "/validate", bytes.NewBuffer(bytesRequest))
+			recorder := httptest.NewRecorder()
+
+			wh.Validate(recorder, request)
+
+			admissionReviewRes := admissionv1.AdmissionReview{}
+			bytes, err := io.ReadAll(recorder.Body)
+			if err != nil {
+				t.Fatal("io read error")
+			}
+			universalDeserializer.Decode(bytes, nil, &admissionReviewRes)
+
+			var errorMessage string
+			if test.duplicateClusterDomain {
+				errorMessage = fmt.Sprintf("%s %s %s already exist with domain %s", InvalidationMessage, v1alpha1.ClusterDomainKind, clusterDomain.Name, clusterDomain.Spec.Domain)
+			} else if test.duplicateDomain {
+				errorMessage = fmt.Sprintf("%s %s %s already exist in namespace %s with domain %s", InvalidationMessage, v1alpha1.DomainKind, domain.Name, domain.Namespace, domain.Spec.Domain)
+			}
+
+			if test.duplicateClusterDomain || test.duplicateDomain {
+				if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
 					t.Fatal("validation response error")
 				}
 			}

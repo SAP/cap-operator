@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -8,10 +8,10 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // CAPTenantOperationLister helps list CAPTenantOperations.
@@ -19,7 +19,7 @@ import (
 type CAPTenantOperationLister interface {
 	// List lists all CAPTenantOperations in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.CAPTenantOperation, err error)
+	List(selector labels.Selector) (ret []*smesapcomv1alpha1.CAPTenantOperation, err error)
 	// CAPTenantOperations returns an object that can list and get CAPTenantOperations.
 	CAPTenantOperations(namespace string) CAPTenantOperationNamespaceLister
 	CAPTenantOperationListerExpansion
@@ -27,17 +27,17 @@ type CAPTenantOperationLister interface {
 
 // cAPTenantOperationLister implements the CAPTenantOperationLister interface.
 type cAPTenantOperationLister struct {
-	listers.ResourceIndexer[*v1alpha1.CAPTenantOperation]
+	listers.ResourceIndexer[*smesapcomv1alpha1.CAPTenantOperation]
 }
 
 // NewCAPTenantOperationLister returns a new CAPTenantOperationLister.
 func NewCAPTenantOperationLister(indexer cache.Indexer) CAPTenantOperationLister {
-	return &cAPTenantOperationLister{listers.New[*v1alpha1.CAPTenantOperation](indexer, v1alpha1.Resource("captenantoperation"))}
+	return &cAPTenantOperationLister{listers.New[*smesapcomv1alpha1.CAPTenantOperation](indexer, smesapcomv1alpha1.Resource("captenantoperation"))}
 }
 
 // CAPTenantOperations returns an object that can list and get CAPTenantOperations.
 func (s *cAPTenantOperationLister) CAPTenantOperations(namespace string) CAPTenantOperationNamespaceLister {
-	return cAPTenantOperationNamespaceLister{listers.NewNamespaced[*v1alpha1.CAPTenantOperation](s.ResourceIndexer, namespace)}
+	return cAPTenantOperationNamespaceLister{listers.NewNamespaced[*smesapcomv1alpha1.CAPTenantOperation](s.ResourceIndexer, namespace)}
 }
 
 // CAPTenantOperationNamespaceLister helps list and get CAPTenantOperations.
@@ -45,15 +45,15 @@ func (s *cAPTenantOperationLister) CAPTenantOperations(namespace string) CAPTena
 type CAPTenantOperationNamespaceLister interface {
 	// List lists all CAPTenantOperations in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.CAPTenantOperation, err error)
+	List(selector labels.Selector) (ret []*smesapcomv1alpha1.CAPTenantOperation, err error)
 	// Get retrieves the CAPTenantOperation from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.CAPTenantOperation, error)
+	Get(name string) (*smesapcomv1alpha1.CAPTenantOperation, error)
 	CAPTenantOperationNamespaceListerExpansion
 }
 
 // cAPTenantOperationNamespaceLister implements the CAPTenantOperationNamespaceLister
 // interface.
 type cAPTenantOperationNamespaceLister struct {
-	listers.ResourceIndexer[*v1alpha1.CAPTenantOperation]
+	listers.ResourceIndexer[*smesapcomv1alpha1.CAPTenantOperation]
 }

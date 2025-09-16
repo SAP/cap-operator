@@ -170,6 +170,7 @@ metadata:
     sme.sap.com/category: Workload
     sme.sap.com/workload-name: test-cap-01-cav-v1-app-router
     sme.sap.com/workload-type: Router
+    sme.sap.com/exposed-workload: "true"
     sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
     sme.sap.com/cav-version: "1.2.3"
     sme.sap.com/owner-generation: "1"
@@ -193,6 +194,7 @@ spec:
       sme.sap.com/category: Workload
       sme.sap.com/workload-name: test-cap-01-cav-v1-app-router
       sme.sap.com/workload-type: Router
+      sme.sap.com/exposed-workload: "true"
       sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
       sme.sap.com/cav-version: "1.2.3"
       sme.sap.com/owner-generation: "1"
@@ -205,6 +207,7 @@ spec:
         sme.sap.com/category: Workload
         sme.sap.com/workload-name: test-cap-01-cav-v1-app-router
         sme.sap.com/workload-type: Router
+        sme.sap.com/exposed-workload: "true"
         sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
         sme.sap.com/cav-version: "1.2.3"
         sme.sap.com/owner-generation: "1"
@@ -283,67 +286,6 @@ spec:
       app: test-cap-01
       sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
       sme.sap.com/category: Workload
-      sme.sap.com/cav-version: "1.2.3"
-  policyTypes:
-    - Ingress
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: test-cap-01-cav-v1--in
-  namespace: default
-  ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
-      blockOwnerDeletion: true
-      controller: true
-      kind: CAPApplicationVersion
-      name: test-cap-01-cav-v1
-      uid: 5e64489b-7346-4984-8617-e8c37338b3d8
-spec:
-  ingress:
-    - from:
-        - namespaceSelector: {}
-          podSelector:
-            matchLabels:
-              app: istio-ingressgateway
-              istio: ingressgateway
-  podSelector:
-    matchLabels:
-      app: test-cap-01
-      sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
-      sme.sap.com/category: Workload
-      sme.sap.com/workload-type: Router
-      sme.sap.com/cav-version: "1.2.3"
-  policyTypes:
-    - Ingress
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: test-cap-01-cav-v1-app-router
-  namespace: default
-  ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
-      blockOwnerDeletion: true
-      controller: true
-      kind: CAPApplicationVersion
-      name: test-cap-01-cav-v1
-      uid: 5e64489b-7346-4984-8617-e8c37338b3d8
-spec:
-  ingress:
-    - from:
-        - namespaceSelector: {}
-          podSelector: {}
-      ports:
-        - port: 4004
-        - port: 4007
-  podSelector:
-    matchLabels:
-      app: test-cap-01
-      sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
-      sme.sap.com/category: Workload
-      sme.sap.com/workload-name: test-cap-01-cav-v1-app-router
-      sme.sap.com/workload-type: Router
       sme.sap.com/cav-version: "1.2.3"
   policyTypes:
     - Ingress

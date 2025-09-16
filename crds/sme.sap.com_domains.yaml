@@ -1,0 +1,155 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.19.0
+  name: domains.sme.sap.com
+spec:
+  group: sme.sap.com
+  names:
+    kind: Domain
+    listKind: DomainList
+    plural: domains
+    shortNames:
+    - dom
+    singular: domain
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.domain
+      name: Domain
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.state
+      name: State
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              certConfig:
+                properties:
+                  additionalCACertificate:
+                    type: string
+                type: object
+              dnsMode:
+                default: None
+                enum:
+                - None
+                - Wildcard
+                - Subdomain
+                - Custom
+                type: string
+              dnsTarget:
+                pattern: ^[a-z0-9-.]+$
+                type: string
+              dnsTemplates:
+                items:
+                  properties:
+                    name:
+                      type: string
+                    target:
+                      type: string
+                  required:
+                  - name
+                  - target
+                  type: object
+                maxItems: 10
+                type: array
+              domain:
+                pattern: ^[a-z0-9-.]+$
+                type: string
+              ingressSelector:
+                additionalProperties:
+                  type: string
+                type: object
+              tlsMode:
+                default: Simple
+                enum:
+                - Simple
+                - Mutual
+                - OptionalMutual
+                type: string
+            required:
+            - dnsMode
+            - domain
+            - ingressSelector
+            - tlsMode
+            type: object
+          status:
+            properties:
+              conditions:
+                items:
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              dnsTarget:
+                type: string
+              gatewayName:
+                type: string
+              observedDomain:
+                type: string
+              observedGeneration:
+                format: int64
+                type: integer
+              state:
+                enum:
+                - ""
+                - Ready
+                - Error
+                - Processing
+                - Deleting
+                type: string
+            required:
+            - state
+            type: object
+        required:
+        - metadata
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

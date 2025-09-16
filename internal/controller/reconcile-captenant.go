@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -151,25 +151,23 @@ var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *C
 	if err != nil {
 		return nil, err
 	}
-	// check for dns entries only when there are secondary domains
-	if len(ca.Spec.Domains.Secondary) > 0 {
-		// Check if all Tenant DNSEntries are Ready
-		processing, err := c.checkTenantDNSEntries(ctx, cat)
-		if err != nil {
-			util.LogError(err, "DNS entries error", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
-			return nil, err
-		}
-		if processing {
-			// requeue to iterate this check after a delay
-			return NewReconcileResultWithResource(ResourceCAPTenant, cat.Name, cat.Namespace, 10*time.Second), nil
-		}
+	// check domain references to ensure dns entries are ready
+	ready, err := c.areApplicationDomainReferencesReady(ca)
+	if err != nil {
+		util.LogError(err, "error reading application domain references", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
+		return nil, err
+	}
+	if !ready {
+		util.LogInfo("Domain references are not ready", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
+		// requeue to iterate this check after a delay
+		return NewReconcileResultWithResource(ResourceCAPTenant, cat.Name, cat.Namespace, 10*time.Second), nil
 	}
 
 	// check and reconcile tenant virtual service
 	// adjust virtual service only when tenant is finalizing (after provisioning or upgrade)
-	requeue, err := c.reconcileTenantNetworking(ctx, cat, ctop.Spec.CAPApplicationVersionInstance, ca)
-	if err != nil || requeue != nil {
-		return requeue, err
+	err = c.reconcileTenantNetworking(ctx, cat, ctop.Spec.CAPApplicationVersionInstance, ca)
+	if err != nil {
+		return nil, err
 	}
 
 	// the ObservedGeneration of the tenant should be updated here (when Ready)
@@ -210,7 +208,7 @@ var removeTenantFinalizers = func(ctx context.Context, c *Controller, cat *v1alp
 	return nil, nil
 }
 
-func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, attempts int) (requeue *ReconcileResult, err error) {
+func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, _ int) (requeue *ReconcileResult, err error) {
 	cached, err := c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
 	if err != nil {
 		return nil, handleOperatorResourceErrors(err)
@@ -224,7 +222,7 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, att
 	}()
 
 	// prepare owner refs, labels, finalizers
-	if update, err := c.prepareCAPTenant(ctx, cat); err != nil {
+	if update, err := c.prepareCAPTenant(cat); err != nil {
 		return nil, err
 	} else if update {
 		return c.updateCAPTenant(ctx, cat, true)
@@ -237,12 +235,12 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, att
 		return requeue, nil
 	}
 
-	if cat.DeletionTimestamp == nil {
-		// Create relevant DNSEntries for this tenant. DNS entries are checked before setting the tenant as ready
-		if err = c.reconcileTenantDNSEntries(ctx, cat); err != nil {
-			return
-		}
-	}
+	// if cat.DeletionTimestamp == nil {
+	// 	// Create relevant DNSEntries for this tenant. DNS entries are checked before setting the tenant as ready
+	// 	if err = c.reconcileTenantDNSEntries(ctx, cat); err != nil {
+	// 		return
+	// 	}
+	// }
 
 	// create and track CAPTenantOperations based on state, deletion timestamp, version change etc.
 	requeue, err = c.handleTenantOperationsForCAPTenant(ctx, cat)
@@ -251,8 +249,8 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, att
 	}
 
 	if cat.DeletionTimestamp == nil && cat.Status.CurrentCAPApplicationVersionInstance != "" {
-		requeue, err = c.reconcileTenantNetworking(ctx, cat, cat.Status.CurrentCAPApplicationVersionInstance, nil)
-		if requeue == nil && err == nil {
+		err = c.reconcileTenantNetworking(ctx, cat, cat.Status.CurrentCAPApplicationVersionInstance, nil)
+		if err == nil {
 			util.LogInfo("Tenant processing completed", string(Ready), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		}
 	}
@@ -573,7 +571,7 @@ func (c *Controller) getCAPApplicationVersionForTenantOperationType(ctx context.
 	switch opType {
 	case v1alpha1.CAPTenantOperationTypeProvisioning, v1alpha1.CAPTenantOperationTypeUpgrade: // for provisioning or upgrade - use the relevant CAPApplicationVersion
 		// get relevant CAPApplicationVersion
-		cav, err := c.getRelevantCAPApplicationVersion(ctx, ca, cat.Spec.Version)
+		cav, err := c.getRelevantCAPApplicationVersion(ca, cat.Spec.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -619,18 +617,10 @@ func addCAPTenantLabels(cat *v1alpha1.CAPTenant, ca *v1alpha1.CAPApplication) (u
 		cat.ObjectMeta.Labels[LabelTenantId] = cat.Spec.TenantId
 		updated = true
 	}
-	if _, ok := cat.ObjectMeta.Labels[LabelTenantType]; !ok {
-		if ca.Spec.Provider.TenantId == cat.Spec.TenantId {
-			cat.ObjectMeta.Labels[LabelTenantType] = ProviderTenantType
-		} else {
-			cat.ObjectMeta.Labels[LabelTenantType] = ConsumerTenantType
-		}
-		updated = true
-	}
 	return updated
 }
 
-func (c *Controller) prepareCAPTenant(ctx context.Context, cat *v1alpha1.CAPTenant) (update bool, err error) {
+func (c *Controller) prepareCAPTenant(cat *v1alpha1.CAPTenant) (update bool, err error) {
 	// Do nothing when object is deleted
 	if cat.DeletionTimestamp != nil {
 		return false, nil
@@ -676,7 +666,7 @@ func (c *Controller) tryForTenantUpgrade(ctx context.Context, cat *v1alpha1.CAPT
 	}
 
 	// fetch CAPApplicationVersion as per current tenant spec
-	cav, err := c.getRelevantCAPApplicationVersion(ctx, ca, cat.Spec.Version)
+	cav, err := c.getRelevantCAPApplicationVersion(ca, cat.Spec.Version)
 	if err != nil {
 		return nil, err
 	}
