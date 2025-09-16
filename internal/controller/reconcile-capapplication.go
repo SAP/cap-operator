@@ -168,17 +168,17 @@ func (c *Controller) checkNewCavAndTenantNetworking(ctx context.Context, ca *v1a
 		return err
 	}
 
-	netUpdGrp, netUpdCtx := errgroup.WithContext(ctx)
+	netUpdGrp := errgroup.Group{}
 	updated := false
 	for _, tenant := range tenants {
 		if tenant.Status.CurrentCAPApplicationVersionInstance != "" {
 			t := tenant
 			netUpdGrp.Go(func() error {
-				return c.reconcileTenantNetworking(netUpdCtx, t, t.Status.CurrentCAPApplicationVersionInstance, ca)
+				return c.reconcileTenantNetworking(ctx, t, t.Status.CurrentCAPApplicationVersionInstance, ca)
 			})
 		}
 
-		if upd, err := c.checkForTenantVersionUpgrade(netUpdCtx, ca, cav, tenant); err != nil {
+		if upd, err := c.checkForTenantVersionUpgrade(ctx, ca, cav, tenant); err != nil {
 			return err
 		} else if upd {
 			updated = true

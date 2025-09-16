@@ -245,9 +245,9 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, _ i
 	}
 
 	if cat.DeletionTimestamp == nil && cat.Status.CurrentCAPApplicationVersionInstance != "" {
-		ca, cavGetErr := c.getCachedCAPApplication(cat.Namespace, cat.Spec.CAPApplicationInstance)
-		if cavGetErr != nil {
-			return nil, cavGetErr
+		ca, caGetErr := c.getCachedCAPApplication(cat.Namespace, cat.Spec.CAPApplicationInstance)
+		if caGetErr != nil {
+			return nil, caGetErr
 		}
 		err = c.reconcileTenantNetworking(ctx, cat, cat.Status.CurrentCAPApplicationVersionInstance, ca)
 		if err == nil {
