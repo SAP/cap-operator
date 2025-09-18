@@ -35,14 +35,6 @@ type JsonDN struct {
 	CN string     `json:"CN"`
 }
 
-type NormalizedDN struct {
-	C  string
-	O  string
-	OU FlexibleOU
-	L  string
-	CN string
-}
-
 func sortStrings(slice []string) FlexibleOU {
 	sorted := make([]string, len(slice))
 	copy(sorted, slice)
@@ -58,8 +50,8 @@ func firstOrEmpty(slice []string) string {
 }
 
 // Normalize Go x509 Name
-func normalizeX509(name pkix.Name) NormalizedDN {
-	return NormalizedDN{
+func normalizeX509(name pkix.Name) JsonDN {
+	return JsonDN{
 		C:  firstOrEmpty(name.Country),
 		O:  firstOrEmpty(name.Organization),
 		OU: sortStrings(name.OrganizationalUnit),
@@ -69,8 +61,8 @@ func normalizeX509(name pkix.Name) NormalizedDN {
 }
 
 // Normalize JSON DN
-func normalizeDNJson(jsonDN JsonDN) NormalizedDN {
-	return NormalizedDN{
+func normalizeDNJson(jsonDN JsonDN) JsonDN {
+	return JsonDN{
 		C:  jsonDN.C,
 		O:  jsonDN.O,
 		OU: sortStrings(jsonDN.OU),
@@ -79,7 +71,7 @@ func normalizeDNJson(jsonDN JsonDN) NormalizedDN {
 	}
 }
 
-func compareDN(dn1, dn2 NormalizedDN) bool {
+func compareDN(dn1, dn2 JsonDN) bool {
 	return dn1.C == dn2.C &&
 		dn1.O == dn2.O &&
 		reflect.DeepEqual(dn1.OU, dn2.OU) &&

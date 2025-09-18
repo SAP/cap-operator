@@ -1,4 +1,3 @@
-// write unit tests for certificate check functionality
 package handler
 
 import (
@@ -70,7 +69,7 @@ func TestNormalizeX509(t *testing.T) {
 	}
 	ndn := normalizeX509(name)
 	if ndn.C != "DE" || ndn.O != "SAP" || ndn.L != "Walldorf" || ndn.CN != "test.sap.com" {
-		t.Errorf("unexpected NormalizedDN: %+v", ndn)
+		t.Errorf("unexpected JsonDN: %+v", ndn)
 	}
 	if len(ndn.OU) != 2 || ndn.OU[0] != "A" || ndn.OU[1] != "B" {
 		t.Errorf("unexpected OU: %v", ndn.OU)
@@ -87,7 +86,7 @@ func TestNormalizeDNJson(t *testing.T) {
 	}
 	ndn := normalizeDNJson(jsonDN)
 	if ndn.C != "US" || ndn.O != "Acme" || ndn.L != "NY" || ndn.CN != "acme.com" {
-		t.Errorf("unexpected NormalizedDN: %+v", ndn)
+		t.Errorf("unexpected JsonDN: %+v", ndn)
 	}
 	if len(ndn.OU) != 2 || ndn.OU[0] != "Dev" || ndn.OU[1] != "Ops" {
 		t.Errorf("unexpected OU: %v", ndn.OU)
@@ -95,32 +94,32 @@ func TestNormalizeDNJson(t *testing.T) {
 }
 
 func TestCompareDN_ExactMatch(t *testing.T) {
-	dn1 := NormalizedDN{C: "DE", O: "SAP", OU: FlexibleOU{"A"}, L: "Walldorf", CN: "test"}
-	dn2 := NormalizedDN{C: "DE", O: "SAP", OU: FlexibleOU{"A"}, L: "Walldorf", CN: "test"}
+	dn1 := JsonDN{C: "DE", O: "SAP", OU: FlexibleOU{"A"}, L: "Walldorf", CN: "test"}
+	dn2 := JsonDN{C: "DE", O: "SAP", OU: FlexibleOU{"A"}, L: "Walldorf", CN: "test"}
 	if !compareDN(dn1, dn2) {
 		t.Error("expected match")
 	}
 }
 
 func TestCompareDN_WildcardLocality(t *testing.T) {
-	dn1 := NormalizedDN{C: "DE", O: "SAP", OU: FlexibleOU{"A"}, L: "Walldorf", CN: "test"}
-	dn2 := NormalizedDN{C: "DE", O: "SAP", OU: FlexibleOU{"A"}, L: "*", CN: "test"}
+	dn1 := JsonDN{C: "DE", O: "SAP", OU: FlexibleOU{"A"}, L: "Walldorf", CN: "test"}
+	dn2 := JsonDN{C: "DE", O: "SAP", OU: FlexibleOU{"A"}, L: "*", CN: "test"}
 	if !compareDN(dn1, dn2) {
 		t.Error("expected match with wildcard locality")
 	}
 }
 
 func TestCompareDN_DifferentOU(t *testing.T) {
-	dn1 := NormalizedDN{C: "DE", O: "SAP", OU: FlexibleOU{"A"}, L: "Walldorf", CN: "test"}
-	dn2 := NormalizedDN{C: "DE", O: "SAP", OU: FlexibleOU{"B"}, L: "Walldorf", CN: "test"}
+	dn1 := JsonDN{C: "DE", O: "SAP", OU: FlexibleOU{"A"}, L: "Walldorf", CN: "test"}
+	dn2 := JsonDN{C: "DE", O: "SAP", OU: FlexibleOU{"B"}, L: "Walldorf", CN: "test"}
 	if compareDN(dn1, dn2) {
 		t.Error("expected mismatch due to OU")
 	}
 }
 
 func TestCompareDN_DifferentCN(t *testing.T) {
-	dn1 := NormalizedDN{C: "DE", O: "SAP", OU: FlexibleOU{"A"}, L: "Walldorf", CN: "test1"}
-	dn2 := NormalizedDN{C: "DE", O: "SAP", OU: FlexibleOU{"A"}, L: "Walldorf", CN: "test2"}
+	dn1 := JsonDN{C: "DE", O: "SAP", OU: FlexibleOU{"A"}, L: "Walldorf", CN: "test1"}
+	dn2 := JsonDN{C: "DE", O: "SAP", OU: FlexibleOU{"A"}, L: "Walldorf", CN: "test2"}
 	if compareDN(dn1, dn2) {
 		t.Error("expected mismatch due to CN")
 	}
