@@ -3,7 +3,7 @@ module github.com/sap/cap-operator
 go 1.25.1
 
 require (
-	github.com/MicahParks/jwkset v0.9.6
+	github.com/MicahParks/jwkset v0.10.0
 	github.com/MicahParks/keyfunc/v3 v3.6.1
 	github.com/cert-manager/cert-manager v1.18.2
 	github.com/gardener/cert-management v0.18.0
@@ -14,9 +14,9 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
-	github.com/lestrrat-go/jwx/v3 v3.0.10
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.85.1-0.20250903133202-1752e81763f8
-	github.com/prometheus-operator/prometheus-operator/pkg/client v0.85.1-0.20250903133202-1752e81763f8
+	github.com/lestrrat-go/jwx/v3 v3.0.11
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.85.1-0.20250918153328-cad107a9fe53
+	github.com/prometheus-operator/prometheus-operator/pkg/client v0.85.1-0.20250918153328-cad107a9fe53
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.66.1
 	go.uber.org/zap v1.27.0
@@ -65,7 +65,7 @@ require (
 	github.com/lestrrat-go/httprc/v3 v3.0.1 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/lestrrat-go/option/v2 v2.0.0 // indirect
-	github.com/mailru/easyjson v0.9.0 // indirect
+	github.com/mailru/easyjson v0.9.1 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect

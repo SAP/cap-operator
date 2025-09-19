@@ -170,7 +170,7 @@ params:
 module:
   hugoVersion:
     extended: true
-    min: 0.149.1
+    min: 0.150.0
   imports:
     - path: github.com/google/docsy
       disable: false
