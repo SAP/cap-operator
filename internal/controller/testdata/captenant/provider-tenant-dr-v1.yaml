@@ -8,6 +8,7 @@ metadata:
   labels:
     sme.sap.com/owner-generation: "0"
     sme.sap.com/owner-identifier-hash: db1f1fd7eaeb0e6407c741b7e4b2540044bcc4ec
+    sme.sap.com/tenant-type: provider
   name: test-cap-01-provider
   namespace: default
   ownerReferences:

@@ -52,6 +52,7 @@ metadata:
     sme.sap.com/owner-identifier-hash: db1f1fd7eaeb0e6407c741b7e4b2540044bcc4ec
     sme.sap.com/tenant-operation-type: upgrade
     sme.sap.com/cav-version: "8.9.10"
+    sme.sap.com/tenant-type: provider
   ownerReferences:
     - apiVersion: sme.sap.com/v1alpha1
       blockOwnerDeletion: true

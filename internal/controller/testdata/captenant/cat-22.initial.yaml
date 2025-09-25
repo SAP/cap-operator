@@ -80,6 +80,7 @@ metadata:
   labels:
     sme.sap.com/owner-generation: "1"
     sme.sap.com/owner-identifier: default.test-cap-01-wrong-tenant
+    sme.sap.com/tenant-type: provider
   name: test-cap-01-provider
   namespace: default
   ownerReferences:

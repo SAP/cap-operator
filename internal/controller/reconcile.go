@@ -41,6 +41,7 @@ const (
 	LabelDisableKarydia                 = "x4.sap.com/disable-karydia"
 	LabelExposedWorkload                = "sme.sap.com/exposed-workload"
 	LabelDNSNameHash                    = "sme.sap.com/dns-name-hash"
+	LabelSubscriptionGUID               = "sme.sap.com/subscription-guid"
 	AnnotationOwnerIdentifier           = "sme.sap.com/owner-identifier"
 	AnnotationBTPApplicationIdentifier  = "sme.sap.com/btp-app-identifier"
 	AnnotationResourceHash              = "sme.sap.com/resource-hash"

@@ -127,6 +127,11 @@ func main() {
 					os.Exit(1)
 				}
 
+				checkDone := make(chan bool, 1)
+				go checkGUID(checkDone, coreClient, crdClient)
+				<-checkDone
+				klog.InfoS("check & update of subscriptionGUID label done")
+
 				c := controller.NewController(coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient, promClient)
 				go c.Start(ctx)
 			},
