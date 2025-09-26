@@ -30,13 +30,18 @@ const (
 	EventServiceVirtualServiceModificationFailed = "ServiceVirtualServiceModificationFailed"
 )
 
-const serviceDNSSuffix = ".svc.cluster.local"
+const (
+	serviceDNSSuffix                = ".svc.cluster.local"
+	setCookie                       = "Set-Cookie"
+	AnnotationLogoutEndpoint        = "sme.sap.com/logout-endpoint"
+	AnnotationEnableSessionAffinity = "sme.sap.com/enable-session-affinity"
+)
 
 func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (err error) {
 	var (
-		reason, message        string
-		drModified, vsModified bool
-		eventType              string = corev1.EventTypeNormal
+		reason, message                           string
+		drModified, vsModified, prevCavDrModified bool
+		eventType                                 string = corev1.EventTypeNormal
 	)
 
 	defer func() {
@@ -49,8 +54,15 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 		}
 	}()
 
-	if drModified, err = c.reconcileTenantDestinationRule(ctx, cat, cavName); err != nil {
+	if drModified, err = c.reconcileTenantDestinationRule(ctx, cat, cat.Name, cavName); err != nil {
 		util.LogError(err, "Destination rule reconciliation failed", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
+		reason = CAPTenantEventDestinationRuleModificationFailed
+		return
+	}
+
+	// Enable session affinity
+	if prevCavDrModified, err = c.reconcileTenantDestinationRuleForPrevCav(ctx, ca, cat); err != nil {
+		util.LogError(err, "Destination rule reconciliation failed for previous cav", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		reason = CAPTenantEventDestinationRuleModificationFailed
 		return
 	}
@@ -62,7 +74,7 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 	}
 
 	// update tenant status
-	if drModified || vsModified {
+	if drModified || vsModified || prevCavDrModified {
 		message = fmt.Sprintf("VirtualService (and DestinationRule) %s.%s was reconciled", cat.Namespace, cat.Name)
 		reason = CAPTenantEventTenantNetworkingModified
 		conditionStatus := metav1.ConditionFalse
@@ -75,16 +87,16 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 	return
 }
 
-func (c *Controller) reconcileTenantDestinationRule(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string) (modified bool, err error) {
+func (c *Controller) reconcileTenantDestinationRule(ctx context.Context, cat *v1alpha1.CAPTenant, drName string, cavName string) (modified bool, err error) {
 	var (
 		create, update bool
 		dr             *istionwv1.DestinationRule
 	)
-	dr, err = c.istioClient.NetworkingV1().DestinationRules(cat.Namespace).Get(ctx, cat.Name, metav1.GetOptions{})
+	dr, err = c.istioClient.NetworkingV1().DestinationRules(cat.Namespace).Get(ctx, drName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		dr = &istionwv1.DestinationRule{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:            cat.Name, // keep the same name as CAPTenant to avoid duplicates
+				Name:            drName,
 				Namespace:       cat.Namespace,
 				Labels:          map[string]string{},
 				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(cat, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind))},
@@ -109,6 +121,91 @@ func (c *Controller) reconcileTenantDestinationRule(ctx context.Context, cat *v1
 	}
 
 	return create || update, err
+}
+
+func (c *Controller) reconcileTenantDestinationRuleForPrevCav(ctx context.Context, ca *v1alpha1.CAPApplication, cat *v1alpha1.CAPTenant) (modified bool, err error) {
+	if len(cat.Status.PreviousCAPApplicationVersions) == 0 {
+		return false, nil
+	}
+
+	if ca.Annotations[AnnotationEnableSessionAffinity] == "true" {
+		return c.handleSessionAffinityEnabled(ctx, cat)
+	}
+
+	return c.cleanupAllPreviousCavDRs(ctx, cat)
+}
+
+func (c *Controller) handleSessionAffinityEnabled(ctx context.Context, cat *v1alpha1.CAPTenant) (bool, error) {
+	var modified bool
+	var err error
+	prevCav := cat.Status.PreviousCAPApplicationVersions[len(cat.Status.PreviousCAPApplicationVersions)-1]
+
+	// Check if previous CAV exists
+	_, cavGetErr := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(prevCav)
+	switch {
+	case errors.IsNotFound(cavGetErr):
+		// CAV doesn't exist, cleanup its DR
+		modified, err = c.deleteDRIfExists(ctx, cat.Namespace, cat.Name+"-"+prevCav)
+		if err != nil {
+			return false, err
+		}
+	case cavGetErr != nil:
+		// Some other error occurred while fetching CAV
+		return false, cavGetErr
+	default:
+		// CAV exists, reconcile its DR
+		modified, err = c.reconcileTenantDestinationRule(ctx, cat, cat.Name+"-"+prevCav, prevCav)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	// Clean up second-to-last CAV DR if it exists
+	if len(cat.Status.PreviousCAPApplicationVersions) > 1 {
+		secondLastCav := cat.Status.PreviousCAPApplicationVersions[len(cat.Status.PreviousCAPApplicationVersions)-2]
+		drDeleted, err := c.deleteDRIfExists(ctx, cat.Namespace, cat.Name+"-"+secondLastCav)
+		if err != nil {
+			return false, err
+		}
+		modified = modified || drDeleted
+	}
+
+	return modified, nil
+}
+
+func (c *Controller) cleanupAllPreviousCavDRs(ctx context.Context, cat *v1alpha1.CAPTenant) (bool, error) {
+	drNames := make(map[string]struct{})
+	for _, cav := range cat.Status.PreviousCAPApplicationVersions {
+		drNames[cat.Name+"-"+cav] = struct{}{}
+	}
+
+	drList, err := c.istioClient.NetworkingV1().DestinationRules(cat.Namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return false, err
+	}
+
+	var modified bool
+	for _, dr := range drList.Items {
+		if _, exists := drNames[dr.Name]; exists {
+			if err := c.istioClient.NetworkingV1().DestinationRules(cat.Namespace).Delete(ctx, dr.Name, metav1.DeleteOptions{}); err != nil {
+				return false, err
+			}
+			modified = true
+		}
+	}
+	return modified, nil
+}
+
+func (c *Controller) deleteDRIfExists(ctx context.Context, namespace, drName string) (bool, error) {
+	err := c.istioClient.NetworkingV1().DestinationRules(namespace).Delete(ctx, drName, metav1.DeleteOptions{})
+	switch {
+	case errors.IsNotFound(err):
+		return false, nil // Nothing to delete
+	case err != nil:
+		return false, err // Unexpected error
+	default:
+		return true, nil // Deleted successfully
+	}
 }
 
 func (c *Controller) getUpdatedTenantDestinationRuleObject(cat *v1alpha1.CAPTenant, dr *istionwv1.DestinationRule, cavName string) (modified bool, err error) {
@@ -195,20 +292,8 @@ func (c *Controller) reconcileTenantVirtualService(ctx context.Context, cat *v1a
 }
 
 func (c *Controller) getUpdatedTenantVirtualServiceObject(cat *v1alpha1.CAPTenant, vs *istionwv1.VirtualService, cavName string, ca *v1alpha1.CAPApplication) (modified bool, err error) {
-	if ca == nil {
-		ca, err = c.getCachedCAPApplication(cat.Namespace, cat.Spec.CAPApplicationInstance)
-		if err != nil {
-			return modified, err
-		}
-	}
-
 	// verify owner reference
 	modified, err = c.enforceTenantResourceOwnership(&vs.ObjectMeta, &vs.TypeMeta, cat)
-	if err != nil {
-		return modified, err
-	}
-
-	routerPortInfo, err := c.getRouterServicePortInfo(cavName, ca.Namespace)
 	if err != nil {
 		return modified, err
 	}
@@ -217,8 +302,20 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(cat *v1alpha1.CAPTenan
 	if err != nil {
 		return modified, fmt.Errorf("error getting headers via CA annotations for %s %s.%s, error: %v", vs.Kind, vs.Namespace, vs.Name, err)
 	}
-	spec := &networkingv1.VirtualService{
-		Http: []*networkingv1.HTTPRoute{{
+
+	spec := &networkingv1.VirtualService{}
+	// check if session affinity is enabled
+	if ca.Annotations[AnnotationEnableSessionAffinity] == "true" {
+		spec.Http, err = c.getVirtualServiceHttpRoutes(cat, cavName, headers)
+		if err != nil {
+			return modified, err
+		}
+	} else {
+		routerPortInfo, err := c.getRouterServicePortInfo(cavName, ca.Namespace)
+		if err != nil {
+			return modified, err
+		}
+		spec.Http = []*networkingv1.HTTPRoute{{
 			Match: []*networkingv1.HTTPMatchRequest{
 				{Uri: &networkingv1.StringMatch{MatchType: &networkingv1.StringMatch_Prefix{Prefix: "/"}}},
 			},
@@ -230,8 +327,9 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(cat *v1alpha1.CAPTenan
 				Weight:  100,
 				Headers: headers,
 			}},
-		}},
+		}}
 	}
+
 	err = c.updateVirtualServiceSpecFromDomainReferences(spec, cat.Spec.SubDomain, ca)
 	if err != nil {
 		return modified, err
@@ -250,6 +348,159 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(cat *v1alpha1.CAPTenan
 	}
 
 	return modified, err
+}
+
+func (c *Controller) getVirtualServiceHttpRoutes(cat *v1alpha1.CAPTenant, currentCavName string, headers *networkingv1.Headers) ([]*networkingv1.HTTPRoute, error) {
+	var (
+		httpRoutes []*networkingv1.HTTPRoute
+		prevCav    *v1alpha1.CAPApplicationVersion
+		prevDest   *networkingv1.Destination
+		err        error
+	)
+
+	// Lookup previous CAV (if any)
+	if len(cat.Status.PreviousCAPApplicationVersions) > 0 {
+		prevCavName := cat.Status.PreviousCAPApplicationVersions[len(cat.Status.PreviousCAPApplicationVersions)-1]
+		prevCav, err = c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(prevCavName)
+
+		if err == nil { // only if found
+			if prevDest, err = c.getVirtualServiceHttpRouteDestination(prevCavName, cat.Namespace); err != nil {
+				return nil, err
+			}
+		} else if !errors.IsNotFound(err) {
+			return nil, err
+		}
+	}
+
+	// Lookup current CAV destination
+	currentDest, err := c.getVirtualServiceHttpRouteDestination(currentCavName, cat.Namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	// Retrieve current CAV for logout endpointannotations
+	currentCav, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(currentCavName)
+	if err != nil {
+		return nil, err
+	}
+
+	// --- Add routes ---
+	// Logoff/logout routes
+	if prevDest != nil {
+		httpRoutes = append(httpRoutes, buildVirtualServiceLogOffHttpRoute(prevCav.Name, prevCav.Annotations[AnnotationLogoutEndpoint], prevDest, headers))
+	}
+	httpRoutes = append(httpRoutes, buildVirtualServiceLogOffHttpRoute(currentCavName, currentCav.Annotations[AnnotationLogoutEndpoint], currentDest, headers))
+
+	// Cookie routes
+	if prevDest != nil {
+		httpRoutes = append(httpRoutes, buildVirtualServiceCookieHttpRoute(prevCav.Name, prevDest))
+	}
+	httpRoutes = append(httpRoutes, buildVirtualServiceCookieHttpRoute(currentCavName, currentDest))
+
+	// Default route to current CAV
+	httpRoutes = append(httpRoutes, buildVirtualServiceDefaultHttpRoute(currentCavName, currentDest, headers))
+
+	return httpRoutes, nil
+}
+
+func (c *Controller) getVirtualServiceHttpRouteDestination(cavName string, namespace string) (*networkingv1.Destination, error) {
+	CAVRouterPortInfo, err := c.getRouterServicePortInfo(cavName, namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	return &networkingv1.Destination{
+		Host: CAVRouterPortInfo.WorkloadName + ServiceSuffix + "." + namespace + ".svc.cluster.local",
+		Port: &networkingv1.PortSelector{Number: uint32(CAVRouterPortInfo.Ports[0].Port)},
+	}, nil
+}
+
+func buildVirtualServiceDefaultHttpRoute(cavName string, dest *networkingv1.Destination, headers *networkingv1.Headers) *networkingv1.HTTPRoute {
+	return &networkingv1.HTTPRoute{
+		Route: []*networkingv1.HTTPRouteDestination{{
+			Destination: dest,
+			Weight:      100,
+		}},
+		Headers: enhanceHeadersWithCookie(headers, sessionCookie(cavName), "add"),
+	}
+}
+
+func buildVirtualServiceLogOffHttpRoute(cavName, logoutEndpoint string, dest *networkingv1.Destination, headers *networkingv1.Headers) *networkingv1.HTTPRoute {
+	// Default logout/logoff regex
+	uriRegex := "^|.*(logout|logoff).*"
+	if logoutEndpoint != "" {
+		uriRegex = "^|.*(" + logoutEndpoint + ").*"
+	}
+
+	return &networkingv1.HTTPRoute{
+		Match: []*networkingv1.HTTPMatchRequest{{
+			Headers: map[string]*networkingv1.StringMatch{
+				"Cookie": {MatchType: &networkingv1.StringMatch_Regex{Regex: cookieRegex(cavName)}},
+			},
+			Uri: &networkingv1.StringMatch{
+				MatchType: &networkingv1.StringMatch_Regex{Regex: uriRegex},
+			},
+		}},
+		Route: []*networkingv1.HTTPRouteDestination{{
+			Destination: dest,
+			Weight:      100,
+		}},
+		Headers: enhanceHeadersWithCookie(headers, expiredCookie(cavName), "set"),
+	}
+}
+
+func buildVirtualServiceCookieHttpRoute(cavName string, dest *networkingv1.Destination) *networkingv1.HTTPRoute {
+	return &networkingv1.HTTPRoute{
+		Match: []*networkingv1.HTTPMatchRequest{{
+			Headers: map[string]*networkingv1.StringMatch{
+				"Cookie": {MatchType: &networkingv1.StringMatch_Regex{Regex: cookieRegex(cavName)}},
+			},
+		}},
+		Route: []*networkingv1.HTTPRouteDestination{{
+			Destination: dest,
+			Weight:      100,
+		}},
+	}
+}
+
+func enhanceHeadersWithCookie(headers *networkingv1.Headers, cookie string, op string) *networkingv1.Headers {
+	if headers != nil && headers.Response != nil {
+		h := headers.DeepCopy()
+		if h.Response.Add == nil {
+			h.Response.Add = map[string]string{}
+		}
+		if h.Response.Set == nil {
+			h.Response.Set = map[string]string{}
+		}
+		switch op {
+		case "add":
+			h.Response.Add[setCookie] = cookie
+		case "set":
+			h.Response.Set[setCookie] = cookie
+		}
+		return h
+	}
+
+	if op == "add" {
+		return &networkingv1.Headers{Response: &networkingv1.Headers_HeaderOperations{
+			Add: map[string]string{setCookie: cookie},
+		}}
+	}
+	return &networkingv1.Headers{Response: &networkingv1.Headers_HeaderOperations{
+		Set: map[string]string{setCookie: cookie},
+	}}
+}
+
+func cookieRegex(cavName string) string {
+	return "(^|.*; )COP_CAV=" + cavName + "($|; .*)"
+}
+
+func sessionCookie(cavName string) string {
+	return "COP_CAV=" + cavName + ";Path=/;HttpOnly;Secure"
+}
+
+func expiredCookie(cavName string) string {
+	return "COP_CAV=" + cavName + ";Path=/;HttpOnly;Secure;Max-Age=0"
 }
 
 func (c *Controller) updateVirtualServiceSpecFromDomainReferences(spec *networkingv1.VirtualService, subdomain string, ca *v1alpha1.CAPApplication) error {

@@ -16,6 +16,7 @@ import (
 
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -134,7 +135,7 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 		return
 	}
 
-	// step 6 - check and set consistent status
+	// step 6 - check and set consistent status; check for newer versions and trigger tenant networking updates
 	return c.verifyApplicationConsistent(ctx, ca)
 }
 
@@ -151,10 +152,11 @@ func (c *Controller) verifyApplicationConsistent(ctx context.Context, ca *v1alph
 	}
 
 	// Check for newer CAPApplicationVersion
-	return nil, c.checkNewCAPApplicationVersion(ctx, ca)
+	return nil, c.checkNewCavAndTenantNetworking(ctx, ca)
 }
 
-func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1alpha1.CAPApplication) error {
+func (c *Controller) checkNewCavAndTenantNetworking(ctx context.Context, ca *v1alpha1.CAPApplication) error {
+	// Get the latest CAV for the tenant
 	cav, err := c.getLatestReadyCAPApplicationVersion(ca, false)
 	if err != nil {
 		return err
@@ -165,31 +167,28 @@ func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1al
 	if err != nil || len(tenants) == 0 {
 		return err
 	}
+
+	netUpdGrp := errgroup.Group{}
 	updated := false
 	for _, tenant := range tenants {
-		if tenant.Spec.VersionUpgradeStrategy == v1alpha1.VersionUpgradeStrategyTypeNever {
-			// Skip non relevant tenants
-			continue
+		if tenant.Status.CurrentCAPApplicationVersionInstance != "" {
+			t := tenant
+			netUpdGrp.Go(func() error {
+				return c.reconcileTenantNetworking(ctx, t, t.Status.CurrentCAPApplicationVersionInstance, ca)
+			})
 		}
-		if tenant.Status.State == v1alpha1.CAPTenantStateProvisioning || tenant.Status.State == v1alpha1.CAPTenantStateUpgrading || tenant.Status.State == v1alpha1.CAPTenantStateDeleting {
-			// Skip tenants that are not ready or not in processing or not in error
-			continue
-		}
-		// Assume we may have to update the tenant and prepare a copy
-		cat := tenant.DeepCopy()
 
-		// Check version of tenant
-		if cat.Spec.Version != cav.Spec.Version {
-			// update CAPTenant Spec to point to the latest version
-			cat.Spec.Version = cav.Spec.Version
-			// Trigger update on CAPTenant (modifies Generation) --> which would reconcile the tenant
-			if _, err = c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Update(ctx, cat, metav1.UpdateOptions{}); err != nil {
-				return fmt.Errorf("could not update %s %s.%s: %w", v1alpha1.CAPTenantKind, cat.Namespace, cat.Name, err)
-			}
-			c.Event(tenant, ca, corev1.EventTypeNormal, CAPTenantEventAutoVersionUpdate, EventActionUpgrade, fmt.Sprintf("version updated to %s for initiating tenant upgrade", cav.Spec.Version))
+		if upd, err := c.checkForTenantVersionUpgrade(ctx, ca, cav, tenant); err != nil {
+			return err
+		} else if upd {
 			updated = true
 		}
 	}
+
+	if err = netUpdGrp.Wait(); err != nil {
+		return fmt.Errorf("failed to reconcile tenant networking: %w", err)
+	}
+
 	if updated {
 		msg := fmt.Sprintf("new version %s.%s was used to trigger tenant upgrades", cav.Namespace, cav.Name)
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, CAPApplicationEventNewCAVTriggeredTenantUpgrade, msg)
@@ -198,6 +197,33 @@ func (c *Controller) checkNewCAPApplicationVersion(ctx context.Context, ca *v1al
 		c.Event(ca, nil, corev1.EventTypeNormal, CAPApplicationEventNewCAVTriggeredTenantUpgrade, EventActionCheckForVersion, msg)
 	}
 	return nil
+}
+
+func (c *Controller) checkForTenantVersionUpgrade(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, tenant *v1alpha1.CAPTenant) (bool, error) {
+	if tenant.Spec.VersionUpgradeStrategy == v1alpha1.VersionUpgradeStrategyTypeNever {
+		// Skip non relevant tenants
+		return false, nil
+	}
+	if tenant.Status.State == v1alpha1.CAPTenantStateProvisioning || tenant.Status.State == v1alpha1.CAPTenantStateUpgrading || tenant.Status.State == v1alpha1.CAPTenantStateDeleting {
+		// Skip tenants that are not ready or not in processing or not in error
+		return false, nil
+	}
+
+	// Assume we may have to update the tenant and prepare a copy
+	cat := tenant.DeepCopy()
+
+	// Check version of tenant
+	if cat.Spec.Version != cav.Spec.Version {
+		// update CAPTenant Spec to point to the latest version
+		cat.Spec.Version = cav.Spec.Version
+		// Trigger update on CAPTenant (modifies Generation) --> which would reconcile the tenant
+		if _, err := c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Update(ctx, cat, metav1.UpdateOptions{}); err != nil {
+			return false, fmt.Errorf("could not update %s %s.%s: %w", v1alpha1.CAPTenantKind, cat.Namespace, cat.Name, err)
+		}
+		c.Event(tenant, ca, corev1.EventTypeNormal, CAPTenantEventAutoVersionUpdate, EventActionUpgrade, fmt.Sprintf("version updated to %s for initiating tenant upgrade", cav.Spec.Version))
+		return true, nil
+	}
+	return false, nil
 }
 
 func (c *Controller) checkAdditionalConditions(ca *v1alpha1.CAPApplication, result *ReconcileResult, err error) (*ReconcileResult, error) {
