@@ -105,6 +105,65 @@ func createSecrets() []runtime.Object {
 				"uaadomain": "auth.service.local",
 				"sburl": "internal.auth.service.local",
 				"url": "https://app-domain.auth.service.local",
+				"saasregistryenabled": true,
+				"uaa": {"xsappname": "appname!b15" },
+				"credential-type": "instance-secret"
+			}`),
+		},
+	}, &corev1.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "test-dest-sec",
+			Namespace: v1.NamespaceDefault,
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: map[string][]byte{
+			"credentials": []byte(`{
+				"saas_registry_url": "https://sm.service.local",
+				"clientid": "clientid",
+				"clientsecret": "clientsecret",
+				"uaadomain": "auth.service.local",
+				"sburl": "internal.auth.service.local",
+				"url": "https://app-domain.auth.service.local",
+				"saasregistryenabled": true,
+				"uaa": {"xsappname": "appname!b15" },
+				"credential-type": "instance-secret"
+			}`),
+		},
+	}, &corev1.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "test-html-rt-sec",
+			Namespace: v1.NamespaceDefault,
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: map[string][]byte{
+			"credentials": []byte(`{
+				"saas_registry_url": "https://sm.service.local",
+				"clientid": "clientid",
+				"clientsecret": "clientsecret",
+				"uaadomain": "auth.service.local",
+				"sburl": "internal.auth.service.local",
+				"url": "https://app-domain.auth.service.local",
+				"saasregistryappname": "saasregistryappname",
+				"uaa": {"xsappname": "appname!b15" },
+				"credential-type": "instance-secret"
+			}`),
+		},
+	}, &corev1.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "test-sm-sec",
+			Namespace: v1.NamespaceDefault,
+		},
+		Type: corev1.SecretTypeOpaque,
+		Data: map[string][]byte{
+			"credentials": []byte(`{
+				"saas_registry_url": "https://sm.service.local",
+				"clientid": "clientid",
+				"clientsecret": "clientsecret",
+				"uaadomain": "auth.service.local",
+				"sburl": "internal.auth.service.local",
+				"url": "https://app-domain.auth.service.local",
+				"saasregistryenabled": true,
+				"xsappname": "appname!b15",
 				"credential-type": "instance-secret"
 			}`),
 		},
@@ -820,4 +879,90 @@ func TestMultiXSUAA(t *testing.T) {
 
 func execTestsWithBLI(t *testing.T, name string, backlogItems []string, test func(t *testing.T)) {
 	t.Run(name+", BLIs: "+strings.Join(backlogItems, ", "), test)
+}
+
+func TestGetDependencies(t *testing.T) {
+	tests := []struct {
+		name               string
+		method             string
+		invalidToken       bool
+		invalidURI         bool
+		expectedStatusCode int
+		expectedResponse   []map[string]string
+	}{
+		{
+			name:               "Invalid get dependency request - wrong method",
+			method:             http.MethodPut,
+			expectedStatusCode: http.StatusMethodNotAllowed,
+			expectedResponse:   nil,
+		},
+		{
+			name:               "Not authorized request",
+			method:             http.MethodGet,
+			invalidToken:       true,
+			expectedStatusCode: http.StatusUnauthorized,
+			expectedResponse:   nil,
+		},
+		{
+			name:               "Invalid URI",
+			method:             http.MethodGet,
+			invalidURI:         true,
+			expectedStatusCode: http.StatusBadRequest,
+			expectedResponse:   nil,
+		},
+		{
+			name:               "Valid get dependency request",
+			method:             http.MethodGet,
+			expectedStatusCode: http.StatusOK,
+			expectedResponse: []map[string]string{
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+				{"appId": "appname!b15", "appName": "destination"},
+				{"appId": "appname!b15", "appName": "saasregistryappname"},
+			},
+		},
+	}
+
+	for _, testData := range tests {
+		t.Run(testData.name, func(t *testing.T) {
+			ca := createCA()
+
+			client, tokenString, err := SetupValidTokenAndIssuerForSubscriptionTests("appname!b14")
+			if err != nil {
+				t.Fatal(err.Error())
+			}
+			subHandler := setup(ca, nil, nil, client)
+
+			res := httptest.NewRecorder()
+			var req *http.Request
+			if testData.invalidURI == true {
+				req = httptest.NewRequest(testData.method, "/callback/dependencies/globalAccountId/{appName}", nil)
+				req.SetPathValue("appName", appName)
+			} else {
+				req = httptest.NewRequest(testData.method, "/dependencies/{globalAccountId}/{appName}", nil)
+				req.SetPathValue("globalAccountId", globalAccountId)
+				req.SetPathValue("appName", appName)
+			}
+
+			if testData.invalidToken == true {
+				tokenString = "abc" //invalid token
+			}
+
+			req.Header.Set("Authorization", "Bearer "+tokenString)
+			subHandler.HandleGetDependenciesRequest(res, req)
+
+			if res.Code != testData.expectedStatusCode {
+				t.Errorf("Expected status '%d', received '%d'", testData.expectedStatusCode, res.Code)
+			}
+
+			// Get the relevant response
+			if res.Code == http.StatusOK {
+				resBodyStr := res.Body.String()
+				expectedResponseByte, _ := json.Marshal(testData.expectedResponse)
+				if resBodyStr != string(expectedResponseByte) {
+					t.Error("Unexpected error in expected response: ", res.Body)
+				}
+			}
+		})
+	}
 }
