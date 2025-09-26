@@ -672,6 +672,18 @@ func addCAPTenantOperationLabels(ctop *v1alpha1.CAPTenantOperation, cat *v1alpha
 		ctop.Labels[LabelCAVVersion] = cat.Spec.Version
 		updated = true
 	}
+	if _, ok := ctop.Labels[LabelTenantType]; !ok {
+		// Also update tenant type label
+		ctop.Labels[LabelTenantType] = cat.Labels[LabelTenantType]
+		updated = true
+	}
+	if _, ok := ctop.Labels[LabelSubscriptionGUID]; !ok {
+		// Also update subscription GUID label, if one exists on the tenant
+		if subscriptionGUID, ok := cat.Labels[LabelSubscriptionGUID]; ok && subscriptionGUID != "" {
+			ctop.Labels[LabelSubscriptionGUID] = subscriptionGUID
+			updated = true
+		}
+	}
 	return updated
 }
 

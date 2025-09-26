@@ -399,6 +399,8 @@ func (c *Controller) createCAPTenantOperation(ctx context.Context, cat *v1alpha1
 	labelsMap := map[string]string{
 		LabelOwnerIdentifierHash: sha1Sum(cat.Namespace, cat.Name),
 		LabelTenantOperationType: string(opType),
+		LabelTenantType:          cat.Labels[LabelTenantType],
+		LabelSubscriptionGUID:    cat.Labels[LabelSubscriptionGUID],
 	}
 	selector, err := labels.ValidatedSelectorFromSet(labelsMap)
 	if err != nil {
@@ -711,7 +713,7 @@ func (*Controller) enforceTenantResourceOwnership(objMeta *metav1.ObjectMeta, ty
 		return false, fmt.Errorf("invalid owner reference found for %s %s.%s", typeMeta.Kind, objMeta.Namespace, objMeta.Name)
 	}
 
-	// set labels, but do not set update to true (set based on  owner reference or spec changes)
+	// set labels, but do not set update to true (set based on owner reference or spec changes)
 	if objMeta.Labels == nil {
 		objMeta.Labels = map[string]string{}
 	}
@@ -721,6 +723,19 @@ func (*Controller) enforceTenantResourceOwnership(objMeta *metav1.ObjectMeta, ty
 		objMeta.Annotations = map[string]string{}
 	}
 	objMeta.Annotations[AnnotationOwnerIdentifier] = cat.Namespace + "." + cat.Name
+
+	// Check if subscriptionGUID metadata is present, if not set update to true
+	subscriptionGUID := cat.Labels[LabelSubscriptionGUID]
+	if objMeta.Labels[LabelSubscriptionGUID] != subscriptionGUID {
+		objMeta.Labels[LabelSubscriptionGUID] = subscriptionGUID
+		update = true
+	}
+	// Check if tenantType metadata is present, if not set update to true
+	tenantType := cat.Labels[LabelTenantType]
+	if objMeta.Labels[LabelTenantType] != tenantType {
+		objMeta.Labels[LabelTenantType] = tenantType
+		update = true
+	}
 
 	return update, nil
 }

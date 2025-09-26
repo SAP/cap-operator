@@ -35,7 +35,6 @@ import (
 
 const (
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
-	AnnotationSubscriptionGUID          = "sme.sap.com/subscription-guid"
 	AnnotationSaaSAdditionalOutput      = "sme.sap.com/saas-additional-output"
 	AnnotationSubscriptionDomain        = "sme.sap.com/subscription-domain"
 )
@@ -44,7 +43,7 @@ const (
 	LabelBTPApplicationIdentifierHash = "sme.sap.com/btp-app-identifier-hash"
 	LabelTenantId                     = "sme.sap.com/btp-tenant-id"
 	LabelTenantType                   = "sme.sap.com/tenant-type"
-	LabelSubscriptionGUIDHash         = "sme.sap.com/subscription-guid-hash"
+	LabelSubscriptionGUID             = "sme.sap.com/subscription-guid"
 )
 
 const (
@@ -166,12 +165,11 @@ func (s *SubscriptionHandler) CreateTenant(req *http.Request) *Result {
 				Namespace:    ca.Namespace,
 				Annotations: map[string]string{
 					AnnotationSubscriptionContextSecret: secret.Name, // Store the secret name in the tenant annotation
-					AnnotationSubscriptionGUID:          subscriptionGUID,
 				},
 				Labels: map[string]string{
 					LabelBTPApplicationIdentifierHash: sha1Sum(reqType["globalAccountGUID"].(string), reqType["subscriptionAppName"].(string)),
 					LabelTenantId:                     reqType["subscribedTenantId"].(string),
-					LabelSubscriptionGUIDHash:         sha1Sum(subscriptionGUID),
+					LabelSubscriptionGUID:             subscriptionGUID,
 					LabelTenantType:                   "consumer", // Default tenant type for consumer tenants
 				},
 			},
