@@ -18,11 +18,17 @@ import (
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned"
 )
 
+const (
+	subsctiptionHandlerMetricPrefix = "cap_op_subscription_requests"
+	subscriptionHandlerDesc         = "subscription-server requests."
+)
+
 func main() {
 	klog.SetLogger(util.GetLogger())
 	subHandler := getSubscriptionHandler()
 
-	http.HandleFunc("/provision/", util.InstrumentHttpHandler(subHandler.HandleRequest, "cap_op_subscription_requests", "subscription-server requests."))
+	http.HandleFunc("/provision/", util.InstrumentHttpHandler(subHandler.HandleSaaSRequest, subsctiptionHandlerMetricPrefix, subscriptionHandlerDesc))
+	http.HandleFunc("/sms/provision/", util.InstrumentHttpHandler(subHandler.HandleSMSRequest, subsctiptionHandlerMetricPrefix+"_sms", subscriptionHandlerDesc))
 
 	// Initialize/start metrics server
 	util.InitMetricsServer()
