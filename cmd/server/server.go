@@ -28,7 +28,6 @@ func main() {
 	subHandler := getSubscriptionHandler()
 
 	http.HandleFunc("/provision/", util.InstrumentHttpHandler(subHandler.HandleSaaSRequest, subsctiptionHandlerMetricPrefix, subscriptionHandlerDesc))
-	http.HandleFunc("/saas/provision/", util.InstrumentHttpHandler(subHandler.HandleSaaSRequest, subsctiptionHandlerMetricPrefix+"_saas", subscriptionHandlerDesc))
 	http.HandleFunc("/sms/provision/", util.InstrumentHttpHandler(subHandler.HandleSMSRequest, subsctiptionHandlerMetricPrefix+"_sms", subscriptionHandlerDesc))
 
 	// Initialize/start metrics server
