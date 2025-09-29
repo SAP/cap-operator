@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"slices"
 	"strings"
 	"time"
 
@@ -162,26 +163,25 @@ func verifyClaims(t *jwt.Token, config *XSUAAConfig) error {
 }
 
 func verifyAudience(claims *XSUAAJWTClaims, config *XSUAAConfig) bool {
-	tokenAud := convertToMap(extractAudience(claims))
+	tokenAud := extractAudience(claims)
 	knownAud := appendWithTrim([]string{config.ClientID}, config.XSAppName) // unless XSAPPNAME is provided, don't add it to valid audience list
 
 	// should match at least one of the expected audience
-	for _, expected := range knownAud {
-		if _, ok := tokenAud[expected]; ok {
+	return slices.ContainsFunc(knownAud, func(expected string) bool {
+		if slices.Contains(tokenAud, expected) {
 			return true // valid audience
 		}
 
 		// additional check for broker clients
 		if strings.Contains(expected, "!b") { // is a broker
-			for a := range tokenAud {
+			for _, a := range tokenAud {
 				if strings.HasSuffix(a, "|"+expected) {
 					return true // valid
 				}
 			}
 		}
-	}
-
-	return false
+		return false
+	})
 }
 
 func extractAudience(claims *XSUAAJWTClaims) []string {
@@ -219,24 +219,7 @@ func adjustForNamespace(s []string, ignoreIfNotNamespaced bool) []string {
 }
 
 func verifyScopes(claims *XSUAAJWTClaims, config *XSUAAConfig) bool {
-	scope := claims.Scope
-	tokenScope := convertToMap(scope)
-	for _, expected := range config.ExpectedScopes {
-		if _, ok := tokenScope[expected]; ok {
-			return true // at least 1 expected scope should match
-		}
-	}
-	return false
-}
-
-// Create a dummy lookup map
-func convertToMap(s []string) map[string]struct{} {
-	if s == nil {
-		return nil
-	}
-	m := map[string]struct{}{}
-	for _, item := range s {
-		m[item] = struct{}{}
-	}
-	return m
+	return slices.ContainsFunc(config.ExpectedScopes, func(expected string) bool {
+		return slices.Contains(claims.Scope, expected)
+	})
 }

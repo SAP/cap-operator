@@ -155,7 +155,6 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 	util.LogInfo("Create Tenant triggered", TenantProvisioning, "CreateTenant", nil)
 	var created = false
 	var saasData *util.SaasRegistryCredentials
-	var uaaData *util.XSUAACredentials
 	var smsData *util.SmsCredentials
 
 	// Check if CAPApplication instance for the given btpApp exists
@@ -165,28 +164,9 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
-	switch reqInfo.subscriptionType {
-	case SMS:
-		// fetch SMS information
-		smsData = s.getSmsDetails(ca, TenantProvisioning)
-		if smsData == nil {
-			return &Result{Tenant: nil, Message: ResourceNotFound}
-		}
-
-		err = s.checkCertIssuerAndSubject(reqInfo.headerDetails.xForwardedClientCert, smsData, TenantProvisioning)
-
-	default:
-		// fetch SaaS Registry and XSUAA information
-		saasData, uaaData = s.getServiceDetails(ca, TenantProvisioning)
-		if saasData == nil || uaaData == nil {
-			return &Result{Tenant: nil, Message: ResourceNotFound}
-		}
-
-		// validate token
-		err = s.checkAuthorization(reqInfo.headerDetails.authorization, saasData, uaaData, TenantProvisioning)
-	}
-
+	saasData, smsData, err = s.authorizationCheck(reqInfo.headerDetails, ca, reqInfo.subscriptionType, TenantProvisioning)
 	if err != nil {
+		util.LogError(err, AuthorizationCheckFailed, TenantProvisioning, ca, nil)
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
@@ -201,6 +181,7 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 			return &Result{Tenant: nil, Message: err.Error()}
 		}
 	}
+	// Add an else check here to update the tenant metadata with new subscription guid and context if needed (subscriptionGUID is different)
 
 	// TODO: consider retrying tenant creation if it is in Error state
 	if tenant != nil {
@@ -393,22 +374,22 @@ func (s *SubscriptionHandler) getTenantByLabels(labelsMap map[string]string, nam
 		return &Result{Tenant: nil, Message: ResourceNotFound}
 	}
 	// Assume only 1 tenant actually matches the selector!
-	util.LogInfo("Tenant found", step, &ctList.Items[0], nil, append([]interface{}{"namespace", &ctList.Items[0].Namespace}, flattenLabels(labelsMap)...)...)
+	util.LogInfo("Tenant found", step, &ctList.Items[0], nil, flattenLabels(labelsMap, "namespace", &ctList.Items[0].Namespace)...)
 	return &Result{Tenant: &ctList.Items[0], Message: ResourceFound}
 }
 
-func flattenLabels(labelsMap map[string]string) []interface{} {
+func flattenLabels(labelsMap map[string]string, args ...interface{}) []interface{} {
 	// Converts the label map to a flat key-value slice for logging
 	var result []interface{}
 	for k, v := range labelsMap {
 		result = append(result, k, v)
 	}
+	result = append(result, args...)
 	return result
 }
 
 func (s *SubscriptionHandler) DeleteTenant(reqInfo *RequestInfo) *Result {
 	var saasData *util.SaasRegistryCredentials
-	var uaaData *util.XSUAACredentials
 	var smsData *util.SmsCredentials
 	var tenant *v1alpha1.CAPTenant
 	var ca *v1alpha1.CAPApplication
@@ -434,32 +415,10 @@ func (s *SubscriptionHandler) DeleteTenant(reqInfo *RequestInfo) *Result {
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
-	switch reqInfo.subscriptionType {
-	case SMS:
-		// fetch SMS information
-		smsData = s.getSmsDetails(ca, TenantDeprovisioning)
-		if smsData == nil {
-			return &Result{Tenant: nil, Message: ResourceNotFound}
-		}
-
-		err = s.checkCertIssuerAndSubject(reqInfo.headerDetails.xForwardedClientCert, smsData, TenantDeprovisioning)
-		if err != nil {
-			return &Result{Tenant: nil, Message: err.Error()}
-		}
-
-	default:
-		// fetch SaaS Registry and XSUAA information
-		saasData, uaaData = s.getServiceDetails(ca, TenantDeprovisioning)
-		if saasData == nil || uaaData == nil {
-			return &Result{Tenant: nil, Message: ResourceNotFound}
-		}
-
-		// validate token
-		err = s.checkAuthorization(reqInfo.headerDetails.authorization, saasData, uaaData, TenantDeprovisioning)
-		if err != nil {
-			util.LogError(err, AuthorizationCheckFailed, TenantDeprovisioning, ca, nil)
-			return &Result{Tenant: nil, Message: err.Error()}
-		}
+	saasData, smsData, err = s.authorizationCheck(reqInfo.headerDetails, ca, reqInfo.subscriptionType, TenantDeprovisioning)
+	if err != nil {
+		util.LogError(err, AuthorizationCheckFailed, TenantDeprovisioning, ca, nil)
+		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
 	util.LogInfo("Tenant found", TenantDeprovisioning, ca, tenant)
@@ -474,6 +433,32 @@ func (s *SubscriptionHandler) DeleteTenant(reqInfo *RequestInfo) *Result {
 	s.initializeCallback(tenant.Name, ca, callbackReqInfo, tenantIn, false)
 
 	return &Result{Tenant: tenant, Message: ResourceDeleted}
+}
+
+func (s *SubscriptionHandler) authorizationCheck(headerDetails *requestHeaderDetails, ca *v1alpha1.CAPApplication, subscription subscriptionType, step string) (saasData *util.SaasRegistryCredentials, smsData *util.SmsCredentials, err error) {
+	uaaData := &util.XSUAACredentials{}
+	switch subscription {
+	case SMS:
+		// fetch SMS information
+		smsData = s.getSmsDetails(ca, step)
+		if smsData == nil {
+			return nil, nil, errors.New(ResourceNotFound)
+		}
+
+		// validate certificate issuer and subject
+		err = s.checkCertIssuerAndSubject(headerDetails.xForwardedClientCert, smsData, step)
+
+	default:
+		// fetch SaaS Registry and XSUAA information
+		saasData, uaaData = s.getServiceDetails(ca, step)
+		if saasData == nil || uaaData == nil {
+			return nil, nil, errors.New(ResourceNotFound)
+		}
+
+		// validate token
+		err = s.checkAuthorization(headerDetails.authorization, saasData, uaaData, step)
+	}
+	return
 }
 
 func (s *SubscriptionHandler) checkCAPApp(globalAccountId string, btpAppName string) (*v1alpha1.CAPApplication, error) {
@@ -936,7 +921,7 @@ func (s *SubscriptionHandler) HandleRequest(w http.ResponseWriter, req *http.Req
 	}
 
 	// Decode the request to get tenant details
-	reqInfo, err := DecodeRequest(req, subscriptionType)
+	reqInfo, err := ProcessRequest(req, subscriptionType)
 	if err != nil || reqInfo == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		subscriptionResult = &Result{Tenant: nil, Message: err.Error()}
@@ -971,7 +956,7 @@ func (s *SubscriptionHandler) HandleSMSRequest(w http.ResponseWriter, req *http.
 	s.HandleRequest(w, req, SMS)
 }
 
-func DecodeRequest(req *http.Request, subscriptionType subscriptionType) (*RequestInfo, error) {
+func ProcessRequest(req *http.Request, subscriptionType subscriptionType) (*RequestInfo, error) {
 	var subscriptionGUID, tenantId, subdomain, globalAccountId, appName string
 	var jsonPayload map[string]any
 
