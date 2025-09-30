@@ -49,6 +49,7 @@ const (
 
 const (
 	ResourceCreated  = "resource created successfully"
+	ResourceUpdated  = "resource updated successfully"
 	ResourceFound    = "resource exists"
 	ResourceDeleted  = "resource deleted successfully"
 	ResourceNotFound = "resource not found"
@@ -153,7 +154,7 @@ type tenantInfo struct {
 
 func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 	util.LogInfo("Create Tenant triggered", TenantProvisioning, "CreateTenant", nil)
-	var created = false
+	var created, updated = false, false
 	var saasData *util.SaasRegistryCredentials
 	var smsData *util.SmsCredentials
 
@@ -180,8 +181,13 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 		if err != nil {
 			return &Result{Tenant: nil, Message: err.Error()}
 		}
+	} else {
+		// Update the tenant metadata and subscription context secret with new subscription guid and context if needed (subscriptionGUID maybe different when a new provisioning request comes in for an existing tenant)
+		updated, err = s.updateTenant(reqInfo, ca, tenant)
+		if err != nil {
+			return &Result{Tenant: nil, Message: err.Error()}
+		}
 	}
-	// Add an else check here to update the tenant metadata with new subscription guid and context if needed (subscriptionGUID is different)
 
 	// TODO: consider retrying tenant creation if it is in Error state
 	if tenant != nil {
@@ -191,15 +197,22 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 	}
 
 	// Tenant created/exists
-	message := func(isCreated bool) string {
+	message := func(isCreated bool, isUpdated bool) string {
 		if isCreated {
 			return ResourceCreated
+		} else if isUpdated {
+			return ResourceUpdated
 		} else {
 			return ResourceFound
 		}
 	}
-	util.LogInfo("Tenant successfully created", TenantProvisioning, ca, tenant, "message", message(created))
-	return &Result{Tenant: tenant, Message: message(created)}
+
+	if created {
+		util.LogInfo("Tenant successfully created", TenantProvisioning, ca, tenant, "message", message(created, updated))
+	} else if updated {
+		util.LogInfo("Tenant successfully updated", TenantProvisioning, ca, tenant, "message", message(created, updated))
+	}
+	return &Result{Tenant: tenant, Message: message(created, updated)}
 }
 
 func (s *SubscriptionHandler) createTenant(reqInfo *RequestInfo, ca *v1alpha1.CAPApplication) (tenant *v1alpha1.CAPTenant, err error) {
@@ -222,7 +235,7 @@ func (s *SubscriptionHandler) createTenant(reqInfo *RequestInfo, ca *v1alpha1.CA
 	}, metav1.CreateOptions{})
 	if err != nil {
 		// Log error and exit if secret creation fails
-		util.LogError(err, "Error creating subscripion context secret", TenantProvisioning, ca, nil)
+		util.LogError(err, "Error creating subscription context secret", TenantProvisioning, ca, nil)
 		return nil, err
 	}
 	util.LogInfo("Creating tenant", TenantProvisioning, ca, nil)
@@ -257,6 +270,51 @@ func (s *SubscriptionHandler) createTenant(reqInfo *RequestInfo, ca *v1alpha1.CA
 
 	// Update secret with tenant info and return
 	return tenant, s.updateSecret(tenant, secret)
+}
+
+func (s *SubscriptionHandler) updateTenant(reqInfo *RequestInfo, ca *v1alpha1.CAPApplication, tenant *v1alpha1.CAPTenant) (bool, error) {
+	updated := false
+	jsonReqByte, _ := json.Marshal(reqInfo.payload.raw)
+
+	// Update the secret to store the new subscription context (payload from the request) if needed
+	secret, err := s.KubeClienset.CoreV1().Secrets(ca.Namespace).Get(context.TODO(), tenant.Annotations[AnnotationSubscriptionContextSecret], metav1.GetOptions{})
+	if err != nil {
+		util.LogError(err, "Error subscription context secret not found", TenantProvisioning, ca, tenant)
+		return false, err
+	}
+
+	if secret.StringData["subscriptionContext"] != string(jsonReqByte) {
+		secret.StringData = map[string]string{
+			"subscriptionContext": string(jsonReqByte),
+		}
+		updated = true
+	}
+
+	if secret.Labels[LabelSubscriptionGUID] != reqInfo.payload.subscriptionGUID {
+		secret.Labels[LabelSubscriptionGUID] = reqInfo.payload.subscriptionGUID
+		updated = true
+	}
+
+	if updated {
+		util.LogInfo("Updating tenant subscription context secret", TenantProvisioning, ca, tenant)
+		_, err = s.KubeClienset.CoreV1().Secrets(ca.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
+		if err != nil {
+			util.LogError(err, "Error updating subscription context secret", TenantProvisioning, ca, tenant)
+			return false, err
+		}
+	}
+
+	// Update the tenant labels if needed
+	if tenant.Labels[LabelSubscriptionGUID] != reqInfo.payload.subscriptionGUID {
+		tenant.Labels[LabelSubscriptionGUID] = reqInfo.payload.subscriptionGUID
+		if _, err := s.Clientset.SmeV1alpha1().CAPTenants(ca.Namespace).Update(context.TODO(), tenant, metav1.UpdateOptions{}); err != nil {
+			util.LogError(err, "Error updating tenant labels", TenantProvisioning, ca, tenant)
+			return updated, err
+		}
+		updated = true
+	}
+
+	return updated, nil
 }
 
 func extractTimeoutInMillis(appUrls string, isSMS bool) string {
