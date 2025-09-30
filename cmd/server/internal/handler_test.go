@@ -40,12 +40,14 @@ type httpTestClientGenerator struct {
 func (facade *httpTestClientGenerator) NewHTTPClient() *http.Client { return facade.client }
 
 const (
-	caName           = "ca-test-controller"
-	appName          = "some-app-name"
-	globalAccountId  = "cap-app-global"
-	subDomain        = "foo"
-	tenantId         = "012012012-1234-1234-123456"
-	subscriptionGUID = "012301234-2345-6789-ABCDEF"
+	caName                        = "ca-test-controller"
+	catName                       = caName + "-provider"
+	appName                       = "some-app-name"
+	globalAccountId               = "cap-app-global"
+	subDomain                     = "foo"
+	tenantId                      = "012012012-1234-1234-123456"
+	subscriptionGUID              = "012301234-2345-6789-ABCDEF"
+	subscriptionContextSecretName = catName + "-context"
 )
 
 func setup(client *http.Client, secrets []runtime.Object, objects ...runtime.Object) *SubscriptionHandler {
@@ -143,6 +145,23 @@ func createSmsSecret() []runtime.Object {
 	return secs
 }
 
+func createTenantSubscriptionContextSecret(subscriptionContext string) runtime.Object {
+	return &corev1.Secret{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      subscriptionContextSecretName,
+			Namespace: v1.NamespaceDefault,
+			Labels: map[string]string{
+				LabelBTPApplicationIdentifierHash: sha1Sum(globalAccountId, appName),
+				LabelTenantId:                     tenantId,
+				LabelSubscriptionGUID:             subscriptionGUID,
+			},
+		},
+		StringData: map[string]string{
+			"subscriptionContext": subscriptionContext,
+		},
+	}
+}
+
 func createCA() *v1alpha1.CAPApplication {
 	return &v1alpha1.CAPApplication{
 		ObjectMeta: v1.ObjectMeta{
@@ -210,11 +229,14 @@ func createCA() *v1alpha1.CAPApplication {
 func createCAT(ready bool, withGlobalTenantId ...bool) *v1alpha1.CAPTenant {
 	cat := &v1alpha1.CAPTenant{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      caName + "-provider",
+			Name:      catName,
 			Namespace: v1.NamespaceDefault,
 			Labels: map[string]string{
 				LabelBTPApplicationIdentifierHash: sha1Sum(globalAccountId, appName),
 				LabelTenantId:                     tenantId,
+			},
+			Annotations: map[string]string{
+				AnnotationSubscriptionContextSecret: subscriptionContextSecretName,
 			},
 		},
 		Spec: v1alpha1.CAPTenantSpec{
@@ -490,11 +512,11 @@ func Test_provisioning(t *testing.T) {
 				runtimeObjs = append(runtimeObjs, ca)
 			}
 			if testData.existingTenant {
-				cat = createCAT(testData.withAdditionalData)
+				cat = createCAT(testData.withAdditionalData, true)
 				runtimeObjs = append(runtimeObjs, cat)
 			}
 			if testData.existingTenantOutput {
-				ctout = &v1alpha1.CAPTenantOutput{ObjectMeta: v1.ObjectMeta{Name: caName + "-provider", Namespace: v1.NamespaceDefault, Labels: map[string]string{LabelTenantId: tenantId}}, Spec: v1alpha1.CAPTenantOutputSpec{SubscriptionCallbackData: "{\"foo3\":\"bar3\"}"}}
+				ctout = &v1alpha1.CAPTenantOutput{ObjectMeta: v1.ObjectMeta{Name: catName, Namespace: v1.NamespaceDefault, Labels: map[string]string{LabelTenantId: tenantId}}, Spec: v1alpha1.CAPTenantOutputSpec{SubscriptionCallbackData: "{\"foo3\":\"bar3\"}"}}
 				runtimeObjs = append(runtimeObjs, ctout)
 			}
 
@@ -503,7 +525,11 @@ func Test_provisioning(t *testing.T) {
 				t.Fatal(err.Error())
 			}
 
-			subHandler := setup(client, createSecrets(), runtimeObjs...)
+			secrets := createSecrets()
+			if testData.existingTenant {
+				secrets = append(secrets, createTenantSubscriptionContextSecret(testData.body))
+			}
+			subHandler := setup(client, secrets, runtimeObjs...)
 
 			res := httptest.NewRecorder()
 			req := httptest.NewRequest(testData.method, RequestPath, strings.NewReader(testData.body))
@@ -677,6 +703,17 @@ func Test_sms_provisioning(t *testing.T) {
 				Message: ResourceFound,
 			},
 		},
+		{
+			name:               "Provisioning Request with existing tenant but different subscriptionGUID (If provisioning fails due to callback issue, the tenant exists and in BTP provisioned failed; retriggering sends a new subscriptionGUID in the payload)",
+			method:             http.MethodPut,
+			body:               `{"rootApplication":{"appName":"` + appName + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + "update" + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			createCROs:         true,
+			existingTenant:     true,
+			expectedStatusCode: http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceUpdated,
+			},
+		},
 	}
 
 	for _, testData := range tests {
@@ -712,11 +749,11 @@ func Test_sms_provisioning(t *testing.T) {
 				runtimeObjs = append(runtimeObjs, ca)
 			}
 			if testData.existingTenant {
-				cat = createCAT(testData.withAdditionalData)
+				cat = createCAT(testData.withAdditionalData, true)
 				runtimeObjs = append(runtimeObjs, cat)
 			}
 			if testData.existingTenantOutput {
-				ctout = &v1alpha1.CAPTenantOutput{ObjectMeta: v1.ObjectMeta{Name: caName + "-provider", Namespace: v1.NamespaceDefault, Labels: map[string]string{LabelTenantId: tenantId}}, Spec: v1alpha1.CAPTenantOutputSpec{SubscriptionCallbackData: "{\"foo3\":\"bar3\"}"}}
+				ctout = &v1alpha1.CAPTenantOutput{ObjectMeta: v1.ObjectMeta{Name: catName, Namespace: v1.NamespaceDefault, Labels: map[string]string{LabelTenantId: tenantId}}, Spec: v1alpha1.CAPTenantOutputSpec{SubscriptionCallbackData: "{\"foo3\":\"bar3\"}"}}
 				runtimeObjs = append(runtimeObjs, ctout)
 			}
 
@@ -725,7 +762,11 @@ func Test_sms_provisioning(t *testing.T) {
 				t.Fatal(err.Error())
 			}
 
-			subHandler := setup(client, createSmsSecret(), runtimeObjs...)
+			secrets := createSmsSecret()
+			if testData.existingTenant {
+				secrets = append(secrets, createTenantSubscriptionContextSecret(testData.body))
+			}
+			subHandler := setup(client, secrets, runtimeObjs...)
 
 			res := httptest.NewRecorder()
 			req := httptest.NewRequest(testData.method, SmsRequestPath, strings.NewReader(testData.body))
@@ -840,7 +881,12 @@ func Test_deprovisioning(t *testing.T) {
 			if err != nil {
 				t.Fatal(err.Error())
 			}
-			subHandler := setup(client, createSecrets(), runtimeObjs...)
+
+			secrets := createSecrets()
+			if testData.existingTenant {
+				secrets = append(secrets, createTenantSubscriptionContextSecret(testData.body))
+			}
+			subHandler := setup(client, secrets, runtimeObjs...)
 
 			res := httptest.NewRecorder()
 			req := httptest.NewRequest(testData.method, RequestPath, strings.NewReader(testData.body))
@@ -933,7 +979,13 @@ func Test_sms_deprovisioning(t *testing.T) {
 			if err != nil {
 				t.Fatal(err.Error())
 			}
-			subHandler := setup(client, createSmsSecret(), runtimeObjs...)
+
+			secrets := createSmsSecret()
+			if testData.existingTenant {
+				secrets = append(secrets, createTenantSubscriptionContextSecret(`{"rootApplication":{"appName":"`+appName+`","commercialAppName":"`+appName+`"},"subscriber":{"subscriptionGUID":"`+subscriptionGUID+"update"+`","app_tid":"`+tenantId+`","globalAccountId":"`+globalAccountId+`","subaccountSubdomain":"`+subDomain+`"}}`))
+			}
+
+			subHandler := setup(client, secrets, runtimeObjs...)
 
 			res := httptest.NewRecorder()
 
