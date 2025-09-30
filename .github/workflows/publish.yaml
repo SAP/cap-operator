@@ -1,4 +1,4 @@
-name: Publish artifacts (CRD yaml) on Release
+name: Publish artifacts on Release
 
 on:
   release:
@@ -36,3 +36,16 @@ jobs:
             -H "Content-Type: $(file -b --mime-type $file)" \
             --data-binary @$file \
             "$upload_url?name=$(basename $file)"
+
+  publish_docker:
+    name: Publish Docker images
+    permissions:
+      contents: write # allows uploading release assets from sbom-action
+      packages: write
+    strategy:
+      matrix:
+        workload: ["controller", "server", "web-hooks"]
+    uses: ./.github/workflows/publish-docker.yaml
+    with:
+      workload: ${{ matrix.workload }}
+    

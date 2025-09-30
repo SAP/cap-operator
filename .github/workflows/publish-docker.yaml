@@ -1,10 +1,15 @@
 name: Publish docker artifacts
 
 on:
-  push:
-    tags: [ 'v[0-9]+.[0-9]+.[0-9]+' ]
-
-concurrency: release-docker-${{ github.event.release.tag_name }}
+  workflow_call:
+    inputs:
+      workload:
+        required: true
+        type: string
+      sbom:
+        required: false
+        type: boolean
+        default: true
 
 env:
   REGISTRY: ghcr.io
@@ -16,12 +21,9 @@ defaults:
 jobs:
   publish-docker:
     name: Publish Docker image
-    strategy:
-      matrix:
-        workload: ["controller", "server", "web-hooks"]
     runs-on: ubuntu-24.04
     permissions:
-      contents: read
+      contents: write # needed for SBOM upload
       packages: write
 
     steps:
@@ -41,7 +43,7 @@ jobs:
     - name: Prepare repository name
       id: prepare-repository-name
       run: |
-        repository=$REGISTRY/${{ github.repository }}/${{ matrix.workload }}
+        repository=$REGISTRY/${{ github.repository }}/${{ inputs.workload }}
         echo "repository=${repository,,}" >> $GITHUB_OUTPUT
 
     - name: Extract metadata (tags, labels) for Docker
@@ -55,17 +57,24 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v6
       with:
-        file: build/${{ matrix.workload }}/Dockerfile
+        file: build/${{ inputs.workload }}/Dockerfile
         platforms: linux/amd64,linux/arm64
         context: .
         cache-from: |
-          type=gha,scope=${{ matrix.workload }}-sha-${{ github.sha }}
-          type=gha,scope=${{ github.ref_name }}-${{ matrix.workload }}
+          type=gha,scope=${{ inputs.workload }}-sha-${{ github.sha }}
+          type=gha,scope=${{ github.ref_name }}-${{ inputs.workload }}
           type=gha,scope=${{ github.base_ref || 'main' }}
           type=gha,scope=main
         cache-to: |
-          type=gha,scope=${{ matrix.workload }}-sha-${{ github.sha }},mode=max
-          type=gha,scope=${{ github.ref_name }}-${{ matrix.workload }},mode=max
+          type=gha,scope=${{ inputs.workload }}-sha-${{ github.sha }},mode=max
+          type=gha,scope=${{ github.ref_name }}-${{ inputs.workload }},mode=max
         push: true
         tags: ${{ steps.extract-metadata.outputs.tags }}
         labels: ${{ steps.extract-metadata.outputs.labels }}
+        
+    - name: SBOM action (syft)
+      if: ${{ inputs.sbom }}
+      uses: anchore/sbom-action@v0
+      with:
+        image: ${{ fromJSON(steps.extract-metadata.outputs.json).tags[0] }}
+        format: cyclonedx-json
