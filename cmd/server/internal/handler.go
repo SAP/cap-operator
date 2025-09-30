@@ -274,42 +274,41 @@ func (s *SubscriptionHandler) createTenant(reqInfo *RequestInfo, ca *v1alpha1.CA
 
 func (s *SubscriptionHandler) updateTenant(reqInfo *RequestInfo, ca *v1alpha1.CAPApplication, tenant *v1alpha1.CAPTenant) (bool, error) {
 	updated := false
-	jsonReqByte, _ := json.Marshal(reqInfo.payload.raw)
-
-	// Update the secret to store the new subscription context (payload from the request) if needed
-	secret, err := s.KubeClienset.CoreV1().Secrets(ca.Namespace).Get(context.TODO(), tenant.Annotations[AnnotationSubscriptionContextSecret], metav1.GetOptions{})
-	if err != nil {
-		util.LogError(err, "Error subscription context secret not found", TenantProvisioning, ca, tenant)
-		return false, err
-	}
-
-	if secret.StringData["subscriptionContext"] != string(jsonReqByte) {
-		secret.StringData = map[string]string{
-			"subscriptionContext": string(jsonReqByte),
-		}
-		updated = true
-	}
-
-	if secret.Labels[LabelSubscriptionGUID] != reqInfo.payload.subscriptionGUID {
-		secret.Labels[LabelSubscriptionGUID] = reqInfo.payload.subscriptionGUID
-		updated = true
-	}
-
-	if updated {
-		util.LogInfo("Updating tenant subscription context secret", TenantProvisioning, ca, tenant)
-		_, err = s.KubeClienset.CoreV1().Secrets(ca.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
-		if err != nil {
-			util.LogError(err, "Error updating subscription context secret", TenantProvisioning, ca, tenant)
-			return false, err
-		}
-	}
 
 	// Update the tenant labels if needed
 	if tenant.Labels[LabelSubscriptionGUID] != reqInfo.payload.subscriptionGUID {
 		tenant.Labels[LabelSubscriptionGUID] = reqInfo.payload.subscriptionGUID
+		util.LogInfo("Updating tenant subscriptionGUID label", TenantProvisioning, tenant, nil)
 		if _, err := s.Clientset.SmeV1alpha1().CAPTenants(ca.Namespace).Update(context.TODO(), tenant, metav1.UpdateOptions{}); err != nil {
-			util.LogError(err, "Error updating tenant labels", TenantProvisioning, ca, tenant)
-			return updated, err
+			util.LogError(err, "Error updating tenant labels", TenantProvisioning, tenant, nil)
+			return false, err
+		}
+		updated = true
+	}
+
+	// Update the secret to store the new subscription context (payload from the request) if needed
+	if tenant.Annotations[AnnotationSubscriptionContextSecret] == "" {
+		return updated, nil
+	}
+
+	secret, err := s.KubeClienset.CoreV1().Secrets(ca.Namespace).Get(context.TODO(), tenant.Annotations[AnnotationSubscriptionContextSecret], metav1.GetOptions{})
+	if err != nil {
+		util.LogError(err, "subscription context secret not found", TenantProvisioning, tenant, nil, "secretName", tenant.Annotations[AnnotationSubscriptionContextSecret])
+		return updated, err
+	}
+
+	if secret.Labels[LabelSubscriptionGUID] != reqInfo.payload.subscriptionGUID {
+		secret.Labels[LabelSubscriptionGUID] = reqInfo.payload.subscriptionGUID
+		jsonReqByte, _ := json.Marshal(reqInfo.payload.raw)
+		secret.StringData = map[string]string{
+			"subscriptionContext": string(jsonReqByte),
+		}
+
+		util.LogInfo("Updating tenant subscription context secret", TenantProvisioning, secret, nil, "tenantName", tenant.Name)
+		_, err = s.KubeClienset.CoreV1().Secrets(ca.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
+		if err != nil {
+			util.LogError(err, "Error updating subscription context secret", TenantProvisioning, secret, secret)
+			return false, err
 		}
 		updated = true
 	}
