@@ -118,3 +118,42 @@ spec:
 The `CAPTenantOperation` creates jobs for each of the steps involved and executes them sequentially until all the jobs are finished or one of them fails. The `CAPTenant` is notified about the result and updates its state accordingly.
 
 A successful completion of the `CAPTenantOperation` will cause the `VirtualService` managed by the `CAPTenant` to be modified to route HTTP traffic to the deployments of the newer `CAPApplicationVersion`. Once all tenants have been upgraded, the outdated `CAPApplicationVersion` can be deleted.
+
+## Session Afinity during Upgrade
+
+Normally once the upgrade is done, the incoming requests get routed to the new instance of the Approuter. If [External Session Management](https://www.npmjs.com/package/@sap/approuter#external-session-management) is not enabled on the Approuter, the exisiting user sessions will be lost and users will be logged out. To avoid this, you can enable Session Affinity by adding the following annotation `sme.sap.com/enable-session-affinity: "true"` to the `CAPApplication` resource.
+
+```yaml
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPApplicationVersion
+metadata:
+  name: cav-cap-app-01-2
+  namespace: cap-app-01
+  annotations:
+    sme.sap.com/enable-session-affinity: "true" # <-- enable session affinity
+spec:
+  capApplicationInstance: cap-cap-app-01
+  version: "2.0.1"
+  registrySecrets:
+    - regcred
+  ....
+```
+
+Once this annotation is set, CAP Operator will set session cookies to ensure that all existing requests are routed to the existing Approuter instance until the session expires. New requests without session cookies will be routed to the new Approuter instance. This ensures that existing user sessions are not interrupted during the upgrade. Once the sessions expire or the logout endpoint is called, the requests will be routed to the new Approuter instance.
+
+CAP Operator defaults the logout endpoint to `logout` or `logoff`. If the Approuter is configured with a different endpoint, it must be specified using the annotation `sme.sap.com/logout-endpoint` in your `CAPApplicationVersion` resource.
+
+```yaml
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPApplicationVersion
+metadata:
+  name: cav-cap-app-01-2
+  namespace: cap-app-01
+  annotations:
+    sme.sap.com/logout-endpoint: "custom-logout" # <-- specify custom logout endpoint (Don't include leading slash)
+spec:
+  capApplicationInstance: cap-cap-app-01
+  version: "2.0.1"
+  registrySecrets:
+    - regcred
+```
