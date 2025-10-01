@@ -15,8 +15,8 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v3 v3.0.11
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.85.1-0.20250929093143-4139f371e518
-	github.com/prometheus-operator/prometheus-operator/pkg/client v0.85.1-0.20250929093143-4139f371e518
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.85.1-0.20250930085258-f4a46fe1a519
+	github.com/prometheus-operator/prometheus-operator/pkg/client v0.85.1-0.20250930085258-f4a46fe1a519
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.66.1
 	go.uber.org/zap v1.27.0
@@ -82,7 +82,7 @@ require (
 	golang.org/x/term v0.35.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
 	golang.org/x/time v0.13.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250922171735-9219d122eba9 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250929231259-57b25ae835d4 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/apiextensions-apiserver v0.34.1 // indirect
