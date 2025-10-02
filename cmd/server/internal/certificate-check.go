@@ -1,9 +1,13 @@
 package handler
 
 import (
+	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/json"
+	"encoding/pem"
+	"errors"
 	"fmt"
+	"net/url"
 	"slices"
 )
 
@@ -44,12 +48,50 @@ func sortSlice(orgSlice []string) []string {
 	return clone
 }
 
-func compareDN(x509Name pkix.Name, cred JsonDN) bool {
-	// JsonDN slices are already sorted during Unmarshalling
-	// We only need to sort the certificate DN slices here
-	return check(cred.C, sortSlice(x509Name.Country)) &&
-		check(cred.O, sortSlice(x509Name.Organization)) &&
-		check(cred.OU, sortSlice(x509Name.OrganizationalUnit)) &&
-		check(cred.L, sortSlice(x509Name.Locality)) &&
-		cred.CN == x509Name.CommonName
+func compareDN(x509Name pkix.Name, credStringDN string) (ok bool, err error) {
+	// convert credential subject or issuer string to JsonDN
+	var credDN JsonDN
+	err = json.Unmarshal([]byte(credStringDN), &credDN)
+	if err == nil {
+		// JsonDN slices are already sorted during Unmarshalling
+		// We only need to sort the certificate pkix.Name attribute slices here
+		ok = check(credDN.C, sortSlice(x509Name.Country)) &&
+			check(credDN.O, sortSlice(x509Name.Organization)) &&
+			check(credDN.OU, sortSlice(x509Name.OrganizationalUnit)) &&
+			check(credDN.L, sortSlice(x509Name.Locality)) &&
+			credDN.CN == x509Name.CommonName
+	}
+	return ok, err
+}
+
+func checkCertificate(xForwardedClientCert, certificateIssuer, certificateSubject string) error {
+	if xForwardedClientCert == "" {
+		return errors.New("x-forwarded-client-cert header is empty")
+	}
+
+	// Decode PEM block
+	decodedValue, err := url.QueryUnescape(xForwardedClientCert)
+	if err != nil {
+		return err
+	}
+
+	block, _ := pem.Decode([]byte(decodedValue))
+	if block == nil {
+		return errors.New("failed to decode PEM block")
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return err
+	}
+
+	if ok, err := compareDN(cert.Issuer, certificateIssuer); err != nil || !ok {
+		return fmt.Errorf("certificate issuer mismatch, original error: %w", err)
+	}
+
+	if ok, err := compareDN(cert.Subject, certificateSubject); err != nil || !ok {
+		return fmt.Errorf("certificate subject mismatch, original error: %w", err)
+	}
+
+	return nil
 }
