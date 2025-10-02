@@ -82,11 +82,6 @@ func VerifyXSUAAJWTToken(ctx context.Context, tokenString string, config *XSUAAC
 			return nil, err
 		}
 
-		// verify token algorithm
-		if tokenAlg, ok := t.Header["alg"].(string); !ok || tokenAlg == "" {
-			return nil, fmt.Errorf("expected token alg to be string")
-		}
-
 		// verify JKU header as per XSUAA requirements
 		jkuHost, ok := verifyJKUHeader(t, config.UAADomain)
 		if !ok {

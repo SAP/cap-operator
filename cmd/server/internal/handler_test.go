@@ -716,6 +716,11 @@ func Test_sms_provisioning(t *testing.T) {
 		},
 	}
 
+	// Create and encode the client certificate once before all tests are executed
+	certBytes, _ := os.ReadFile("testdata/rootCA.pem")
+	certStr := strings.TrimSpace(string(certBytes))
+	encodedCert := url.QueryEscape(certStr)
+
 	for _, testData := range tests {
 		t.Run(testData.name, func(t *testing.T) {
 			var ca *v1alpha1.CAPApplication
@@ -770,10 +775,6 @@ func Test_sms_provisioning(t *testing.T) {
 
 			res := httptest.NewRecorder()
 			req := httptest.NewRequest(testData.method, SmsRequestPath, strings.NewReader(testData.body))
-
-			certBytes, err := os.ReadFile("testdata/rootCA.pem")
-			certStr := strings.TrimSpace(string(certBytes))
-			encodedCert := url.QueryEscape(certStr)
 
 			req.Header.Set("X-Forwarded-Client-Cert", encodedCert)
 
