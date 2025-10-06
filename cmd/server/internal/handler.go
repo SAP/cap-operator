@@ -613,7 +613,7 @@ func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1
 		s.handleAsyncCallback(ctx, callbackReqInfo, status, asyncCallbackPath, appUrl, additionalOutput, isProvisioning)
 	}()
 
-	util.LogInfo("Waiting for async saas callback after checks...", step, ca, nil, "tenantName", tenantName)
+	util.LogInfo("Waiting for async callback after checks...", step, ca, nil, "tenantName", tenantName)
 }
 
 func (s *SubscriptionHandler) getPrimaryDomain(ca *v1alpha1.CAPApplication) string {
@@ -657,7 +657,7 @@ func (s *SubscriptionHandler) enrichAdditionalOutput(namespace string, tenantId 
 	}
 
 	for _, tenantData := range tenantDataList.Items {
-		// Update relevant data from each CAPTenantOutput to saas callback additional output
+		// Update relevant data from each CAPTenantOutput to async callback additional output
 		tenantDataOutput := &map[string]any{}
 		err = json.Unmarshal([]byte(tenantData.Spec.SubscriptionCallbackData), tenantDataOutput)
 		if err != nil {
@@ -776,7 +776,7 @@ func (s *SubscriptionHandler) getSmsDetails(capApp *v1alpha1.CAPApplication, ste
 		result, err = util.ReadServiceCredentialsFromSecret[util.SmsCredentials](info, capApp.Namespace, s.KubeClienset)
 	}
 	if err != nil {
-		util.LogError(err, "SaaS Registry credentials could not be read. Exiting..", step, capApp, nil)
+		util.LogError(err, "SMS credentials could not be read. Exiting..", step, capApp, nil)
 	}
 	return result
 }
