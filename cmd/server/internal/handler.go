@@ -13,7 +13,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"net/http"
@@ -559,60 +558,11 @@ func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *ut
 
 func (s *SubscriptionHandler) checkCertIssuerAndSubject(xForwardedClientCert string, smsData *util.SmsCredentials, step string) error {
 	const checkCertIssuerAndSubjectFailed = "certificate issuer and subject check failed"
-	if xForwardedClientCert == "" {
-		err := errors.New("x-forwarded-client-cert header is empty")
+
+	if err := checkCertificate(xForwardedClientCert, smsData.CallbackCertificateIssuer, smsData.CallbackCertificateSubject); err != nil {
 		util.LogError(err, checkCertIssuerAndSubjectFailed, step, "checkCertIssuerAndSubject", nil)
 		return err
 	}
-
-	// Decode PEM block
-	decodedValue, err := url.QueryUnescape(xForwardedClientCert)
-	if err != nil {
-		util.LogError(err, checkCertIssuerAndSubjectFailed, step, "checkCertIssuerAndSubject", nil)
-		return err
-	}
-
-	block, _ := pem.Decode([]byte(decodedValue))
-	if block == nil {
-		err := errors.New("failed to decode PEM block")
-		util.LogError(err, checkCertIssuerAndSubjectFailed, step, "checkCertIssuerAndSubject", nil)
-		return err
-	}
-
-	cert, err := x509.ParseCertificate(block.Bytes)
-	if err != nil {
-		util.LogError(err, checkCertIssuerAndSubjectFailed, step, "checkCertIssuerAndSubject", nil)
-		return err
-	}
-
-	if err := s.checkCertificate(cert, smsData); err != nil {
-		util.LogError(err, checkCertIssuerAndSubjectFailed, step, "checkCertIssuerAndSubject", nil)
-		return err
-	}
-	return nil
-}
-
-func (s *SubscriptionHandler) checkCertificate(cert *x509.Certificate, smsData *util.SmsCredentials) error {
-	// check issuer
-	var smsIssuerDNJson JsonDN
-	err := json.Unmarshal([]byte(smsData.CallbackCertificateIssuer), &smsIssuerDNJson)
-	if err != nil {
-		return err
-	}
-	if !compareDN(cert.Issuer, smsIssuerDNJson) {
-		return fmt.Errorf("certificate issuer mismatch")
-	}
-
-	// check subject
-	var smsSubjectDNJson JsonDN
-	err = json.Unmarshal([]byte(smsData.CallbackCertificateSubject), &smsSubjectDNJson)
-	if err != nil {
-		return err
-	}
-	if !compareDN(cert.Subject, smsSubjectDNJson) {
-		return fmt.Errorf("certificate subject mismatch")
-	}
-
 	return nil
 }
 
@@ -663,7 +613,7 @@ func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1
 		s.handleAsyncCallback(ctx, callbackReqInfo, status, asyncCallbackPath, appUrl, additionalOutput, isProvisioning)
 	}()
 
-	util.LogInfo("Waiting for async saas callback after checks...", step, ca, nil, "tenantName", tenantName)
+	util.LogInfo("Waiting for async callback after checks...", step, ca, nil, "tenantName", tenantName)
 }
 
 func (s *SubscriptionHandler) getPrimaryDomain(ca *v1alpha1.CAPApplication) string {
@@ -707,7 +657,7 @@ func (s *SubscriptionHandler) enrichAdditionalOutput(namespace string, tenantId 
 	}
 
 	for _, tenantData := range tenantDataList.Items {
-		// Update relevant data from each CAPTenantOutput to saas callback additional output
+		// Update relevant data from each CAPTenantOutput to async callback additional output
 		tenantDataOutput := &map[string]any{}
 		err = json.Unmarshal([]byte(tenantData.Spec.SubscriptionCallbackData), tenantDataOutput)
 		if err != nil {
@@ -826,7 +776,7 @@ func (s *SubscriptionHandler) getSmsDetails(capApp *v1alpha1.CAPApplication, ste
 		result, err = util.ReadServiceCredentialsFromSecret[util.SmsCredentials](info, capApp.Namespace, s.KubeClienset)
 	}
 	if err != nil {
-		util.LogError(err, "SaaS Registry credentials could not be read. Exiting..", step, capApp, nil)
+		util.LogError(err, "SMS credentials could not be read. Exiting..", step, capApp, nil)
 	}
 	return result
 }
