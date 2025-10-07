@@ -1,11 +1,11 @@
 module github.com/sap/cap-operator
 
-go 1.25.1
+go 1.25.2
 
 require (
 	github.com/MicahParks/jwkset v0.11.0
 	github.com/MicahParks/keyfunc/v3 v3.6.2
-	github.com/cert-manager/cert-manager v1.18.2
+	github.com/cert-manager/cert-manager v1.19.0
 	github.com/gardener/cert-management v0.18.0
 	github.com/gardener/external-dns-management v0.28.0
 	github.com/go-logr/logr v1.4.3
@@ -15,10 +15,10 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v3 v3.0.11
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.85.1-0.20251006113203-27af9412afff
-	github.com/prometheus-operator/prometheus-operator/pkg/client v0.85.1-0.20251006113203-27af9412afff
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.86.0
+	github.com/prometheus-operator/prometheus-operator/pkg/client v0.86.0
 	github.com/prometheus/client_golang v1.23.2
-	github.com/prometheus/common v0.66.1
+	github.com/prometheus/common v0.67.1
 	go.uber.org/zap v1.27.0
 	golang.org/x/mod v0.28.0
 	golang.org/x/sync v0.17.0
@@ -76,7 +76,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
-	golang.org/x/net v0.44.0 // indirect
+	golang.org/x/net v0.45.0 // indirect
 	golang.org/x/oauth2 v0.31.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/term v0.35.0 // indirect
