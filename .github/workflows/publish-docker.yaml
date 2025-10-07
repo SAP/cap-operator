@@ -78,3 +78,4 @@ jobs:
       with:
         image: ${{ fromJSON(steps.extract-metadata.outputs.json).tags[0] }}
         format: cyclonedx-json
+        artifact-name: ${{ inputs.workload }}-sbom.cyclonedx.json
