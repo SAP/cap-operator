@@ -369,7 +369,16 @@ func (c *Controller) getCAPResourcesFromCAPTenantOperation(ctx context.Context, 
 	}
 	// verify status of CAPApplicationVersion
 	if !isCROConditionReady(cav.Status.GenericStatus) {
-		return nil, fmt.Errorf("%s %s is not %s to be used in %s %s.%s", v1alpha1.CAPApplicationVersionKind, cav.Name, v1alpha1.CAPApplicationVersionStateReady, v1alpha1.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
+		err := fmt.Errorf("%s %s is not %s to be used in %s %s.%s", v1alpha1.CAPApplicationVersionKind, cav.Name, v1alpha1.CAPApplicationVersionStateReady, v1alpha1.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
+		if ctop.Spec.Operation != v1alpha1.CAPTenantOperationTypeDeprovisioning {
+			return nil, err
+		} else {
+			// In some cases a CAV might get into a non-ready state, but this may not block deprovisioning (e.g. some workloads fail due to issues unrelated to tenant deletion workloads).
+			// Hence, we just log this as an error and attempt to proceed with the deprovisioning.
+			// This is however just a best-case scenario - if the CAV is not ready due to issues also affecting the tenant workloads (e.g. container image not available), the deprovisioning might still fail!
+			util.LogError(err, "Attempting to delete, despite version not being ready", string(Deprovisioning), ctop, cav, "tenantId", cat.Spec.TenantId, "version", cav.Spec.Version)
+
+		}
 	}
 
 	return &cros{
