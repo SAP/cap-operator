@@ -558,3 +558,21 @@ func TestCAPTenantVSHeadersErrorRes(t *testing.T) {
 		t.Error("error message is different from expected, actual:", err.Error())
 	}
 }
+
+func TestCAPTenantDeprovisioningVersionNotReady(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
+		TestData{
+			description: "captenant deprovisioning from ready, but version not ready",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/capapplicationversion-v1.yaml",
+				"testdata/common/capapplicationversion-workload-error.yaml",
+				"testdata/captenant/cat-deleting.initial.yaml",
+			},
+			expectedResources: "testdata/captenant/cat-deleting.expected.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPTenant: {{Namespace: "default", Name: "test-cap-01-provider"}}},
+		},
+	)
+}
