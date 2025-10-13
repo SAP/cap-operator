@@ -74,3 +74,7 @@ HELM_DOCS ?= $(LOCALBIN)/helm-docs
 helm-docs: $(HELM_DOCS) ## Download helm-docs locally if necessary.
 $(HELM_DOCS): $(LOCALBIN)
 	test -s $(LOCALBIN)/helm-docs || GOBIN=$(LOCALBIN) go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
+
+.PHONY: clean
+clean:
+	rm -rf ./bin ./tmp

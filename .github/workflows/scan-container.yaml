@@ -29,7 +29,7 @@ jobs:
         with:
           image-ref: ghcr.io/sap/cap-operator/${{ matrix.workload }}:${{ inputs.version || 'latest' }}
           scanners: 'vuln'
-          version: 'v0.66.0'
+          version: 'v0.67.2'
           format: 'sarif'
           output: 'vuln-${{ matrix.workload }}.sarif'
 
