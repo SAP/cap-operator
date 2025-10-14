@@ -731,3 +731,45 @@ func TestProvisioningWithInitContainersCustom(t *testing.T) {
 		},
 	)
 }
+
+func TestTenantOperationDeprovisioningVersionError(t *testing.T) {
+	_ = reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+		TestData{
+			description: "prepared captenantoperation type deprovisioning - initiate step processing",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/capapplicationversion-workload-error.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+				"testdata/captenantoperation/ctop-deprovisioning.initial.yaml",
+			},
+			expectedResources: "testdata/captenantoperation/ctop-deprovisioning.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+			},
+		},
+	)
+}
+
+func TestTenantOperationProvisioningVersionError(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+		TestData{
+			description: "prepared captenantoperation type provisioning - initiate step processing",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/capapplicationversion-workload-error.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+				"testdata/captenantoperation/ctop-provisioning.initial.yaml",
+			},
+			expectError: true,
+		},
+	)
+	if err.Error() != "CAPApplicationVersion test-cap-01-cav-v2 is not Ready to be used in CAPTenantOperation default.test-cap-01-provider-abcd" {
+		t.Errorf("unexpected error: %s", err.Error())
+	}
+}

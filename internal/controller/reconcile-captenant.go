@@ -235,13 +235,6 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, _ i
 		return requeue, nil
 	}
 
-	// if cat.DeletionTimestamp == nil {
-	// 	// Create relevant DNSEntries for this tenant. DNS entries are checked before setting the tenant as ready
-	// 	if err = c.reconcileTenantDNSEntries(ctx, cat); err != nil {
-	// 		return
-	// 	}
-	// }
-
 	// create and track CAPTenantOperations based on state, deletion timestamp, version change etc.
 	requeue, err = c.handleTenantOperationsForCAPTenant(ctx, cat)
 	if err != nil || requeue != nil {
@@ -591,7 +584,11 @@ func (c *Controller) getCAPApplicationVersionForTenantOperationType(ctx context.
 		}
 		// verify status of CAPApplicationVersion
 		if !isCROConditionReady(cav.Status.GenericStatus) {
-			return nil, fmt.Errorf("%s %s.%s is not %s to be used for %s", v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name, v1alpha1.CAPApplicationVersionStateReady, opType)
+			// In some cases a CAV might get into a non-ready state, but this may not block deprovisioning (e.g. some workloads fail due to issues unrelated to tenant deletion workloads).
+			// Hence, we just log this as an error and attempt to proceed with the deprovisioning.
+			// This is however just a best-case scenario - if the CAV is not ready due to issues also affecting the tenant workloads (e.g. container image not available), the deprovisioning might still fail!
+			err := fmt.Errorf("%s %s.%s is not %s to be used for %s", v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name, v1alpha1.CAPApplicationVersionStateReady, opType)
+			util.LogError(err, "Attempting to delete, despite version not being ready", string(Deprovisioning), cat, cav, "tenantId", cat.Spec.TenantId, "version", cav.Spec.Version)
 		}
 		// verify owner reference
 		if cav.Spec.CAPApplicationInstance != ca.Name {
