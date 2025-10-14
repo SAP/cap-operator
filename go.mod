@@ -15,8 +15,8 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v3 v3.0.11
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.86.0
-	github.com/prometheus-operator/prometheus-operator/pkg/client v0.86.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.86.1
+	github.com/prometheus-operator/prometheus-operator/pkg/client v0.86.1
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/common v0.67.1
 	go.uber.org/zap v1.27.0
@@ -24,8 +24,8 @@ require (
 	golang.org/x/sync v0.17.0
 	gomodules.xyz/jsonpatch/v2 v2.5.0
 	google.golang.org/protobuf v1.36.10
-	istio.io/api v1.27.1
-	istio.io/client-go v1.27.1
+	istio.io/api v1.27.2
+	istio.io/client-go v1.27.2
 	k8s.io/api v0.34.1
 	k8s.io/apimachinery v0.34.1
 	k8s.io/client-go v0.34.1
