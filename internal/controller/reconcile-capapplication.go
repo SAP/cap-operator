@@ -151,7 +151,7 @@ func (c *Controller) verifyApplicationConsistent(ctx context.Context, ca *v1alph
 		}
 	}
 
-	// Check for newer CAPApplicationVersion
+	// Check for newer CAPApplicationVersion and trigger tenant networking updates
 	return nil, c.checkNewCavAndTenantNetworking(ctx, ca)
 }
 
