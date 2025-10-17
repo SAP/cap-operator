@@ -31,10 +31,8 @@ const (
 )
 
 const (
-	serviceDNSSuffix                = ".svc.cluster.local"
-	setCookie                       = "Set-Cookie"
-	AnnotationLogoutEndpoint        = "sme.sap.com/logout-endpoint"
-	AnnotationEnableSessionAffinity = "sme.sap.com/enable-session-affinity"
+	serviceDNSSuffix = ".svc.cluster.local"
+	setCookie        = "Set-Cookie"
 )
 
 func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (err error) {
@@ -128,7 +126,7 @@ func (c *Controller) reconcileTenantDestinationRuleForPrevCav(ctx context.Contex
 		return false, nil
 	}
 
-	if ca.Annotations[AnnotationEnableSessionAffinity] == "true" {
+	if ca.Annotations[AnnotationEnableVersionAffinity] == "true" {
 		return c.handleSessionAffinityEnabled(ctx, cat)
 	}
 
@@ -305,7 +303,7 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(cat *v1alpha1.CAPTenan
 
 	spec := &networkingv1.VirtualService{}
 	// check if session affinity is enabled
-	if ca.Annotations[AnnotationEnableSessionAffinity] == "true" {
+	if ca.Annotations[AnnotationEnableVersionAffinity] == "true" {
 		spec.Http, err = c.getVirtualServiceHttpRoutes(cat, cavName, headers)
 		if err != nil {
 			return modified, err

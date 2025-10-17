@@ -2,7 +2,7 @@ apiVersion: sme.sap.com/v1alpha1
 kind: CAPApplication
 metadata:
   annotations:
-    sme.sap.com/enable-session-affinity: "true"
+    sme.sap.com/enable-version-affinity: "true"
     sme.sap.com/vs-route-request-header-set: |
       {
         "x-downstream-peer-subject": "%DOWNSTREAM_PEER_SUBJECT%",

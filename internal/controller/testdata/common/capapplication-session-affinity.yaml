@@ -2,7 +2,7 @@ apiVersion: sme.sap.com/v1alpha1
 kind: CAPApplication
 metadata:
   annotations:
-    sme.sap.com/enable-session-affinity: "true"
+    sme.sap.com/enable-version-affinity: "true"
   finalizers:
     - sme.sap.com/capapplication
   generation: 2
