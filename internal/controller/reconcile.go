@@ -54,6 +54,8 @@ const (
 	AnnotationEnableCleanupMonitoring   = "sme.sap.com/enable-cleanup-monitoring"
 	AnnotationVSRouteRequestHeaderSet   = "sme.sap.com/vs-route-request-header-set"  // used to set the header for the vs route request
 	AnnotationVSRouteResponseHeaderSet  = "sme.sap.com/vs-route-response-header-set" // used to set the header for the vs route response
+	AnnotationLogoutEndpoint            = "sme.sap.com/logout-endpoint"
+	AnnotationEnableVersionAffinity     = "sme.sap.com/enable-version-affinity"
 	FinalizerCAPApplication             = "sme.sap.com/capapplication"
 	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
 	FinalizerCAPTenant                  = "sme.sap.com/captenant"
