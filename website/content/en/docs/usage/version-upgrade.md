@@ -119,9 +119,9 @@ The `CAPTenantOperation` creates jobs for each of the steps involved and execute
 
 A successful completion of the `CAPTenantOperation` will cause the `VirtualService` managed by the `CAPTenant` to be modified to route HTTP traffic to the deployments of the newer `CAPApplicationVersion`. Once all tenants have been upgraded, the outdated `CAPApplicationVersion` can be deleted.
 
-## Version Affinity during Upgrade
+## Version Affinity during Upgrade (Experimental)
 
-You can optionally enable Version Affinity for multi-tenant applications by adding the following annotation `sme.sap.com/enable-version-affinity: "true"` to the `CAPApplication` resource. With this feature, you can ensure that during an upgrade the users remain on the previous `CAPApplicationVersion` until the session expires or the user logs out.
+You can optionally enable Version Affinity for multi-tenant applications by adding the following annotation `sme.sap.com/enable-version-affinity: "true"` to the `CAPApplication` resource. With this experimental feature, you can ensure that during an upgrade, the users remain on the previous `CAPApplicationVersion` until the session expires or the user logs out.
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
