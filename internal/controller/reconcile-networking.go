@@ -31,8 +31,9 @@ const (
 )
 
 const (
-	serviceDNSSuffix = ".svc.cluster.local"
-	setCookie        = "Set-Cookie"
+	serviceDNSSuffix          = ".svc.cluster.local"
+	setCookie                 = "Set-Cookie"
+	VersionAffinityCookieName = "CAPOP_CAV"
 )
 
 func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (err error) {
@@ -408,7 +409,7 @@ func (c *Controller) getVirtualServiceHttpRouteDestination(cavName string, names
 	}
 
 	return &networkingv1.Destination{
-		Host: CAVRouterPortInfo.WorkloadName + ServiceSuffix + "." + namespace + ".svc.cluster.local",
+		Host: CAVRouterPortInfo.WorkloadName + ServiceSuffix + "." + namespace + serviceDNSSuffix,
 		Port: &networkingv1.PortSelector{Number: uint32(CAVRouterPortInfo.Ports[0].Port)},
 	}, nil
 }
@@ -462,43 +463,39 @@ func buildVirtualServiceCookieHttpRoute(cavName string, dest *networkingv1.Desti
 }
 
 func enhanceHeadersWithCookie(headers *networkingv1.Headers, cookie string, op string) *networkingv1.Headers {
+	var h *networkingv1.Headers
 	if headers != nil && headers.Response != nil {
-		h := headers.DeepCopy()
+		h = headers.DeepCopy()
+	} else {
+		h = &networkingv1.Headers{Response: &networkingv1.Headers_HeaderOperations{}}
+	}
+
+	switch op {
+	case "add":
 		if h.Response.Add == nil {
 			h.Response.Add = map[string]string{}
 		}
+		h.Response.Add[setCookie] = cookie
+	case "set":
 		if h.Response.Set == nil {
 			h.Response.Set = map[string]string{}
 		}
-		switch op {
-		case "add":
-			h.Response.Add[setCookie] = cookie
-		case "set":
-			h.Response.Set[setCookie] = cookie
-		}
-		return h
+		h.Response.Set[setCookie] = cookie
 	}
 
-	if op == "add" {
-		return &networkingv1.Headers{Response: &networkingv1.Headers_HeaderOperations{
-			Add: map[string]string{setCookie: cookie},
-		}}
-	}
-	return &networkingv1.Headers{Response: &networkingv1.Headers_HeaderOperations{
-		Set: map[string]string{setCookie: cookie},
-	}}
+	return h
 }
 
 func cookieRegex(cavName string) string {
-	return "(^|.*; )COP_CAV=" + cavName + "($|; .*)"
+	return "(^|.*; )" + VersionAffinityCookieName + "=" + cavName + "($|; .*)"
 }
 
 func sessionCookie(cavName string) string {
-	return "COP_CAV=" + cavName + ";Path=/;HttpOnly;Secure"
+	return VersionAffinityCookieName + "=" + cavName + ";Path=/;HttpOnly;Secure"
 }
 
 func expiredCookie(cavName string) string {
-	return "COP_CAV=" + cavName + ";Path=/;HttpOnly;Secure;Max-Age=0"
+	return sessionCookie(cavName) + ";Max-Age=0"
 }
 
 func (c *Controller) updateVirtualServiceSpecFromDomainReferences(spec *networkingv1.VirtualService, subdomain string, ca *v1alpha1.CAPApplication) error {

@@ -45,7 +45,7 @@ apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   annotations:
-    sme.sap.com/resource-hash: 0ff80461a6fee2f65b5e7ccd5243bec76c8db2b2bf330524fe7ab0911a7339ce
+    sme.sap.com/resource-hash: 60c99f43fdea43ea4897e5e571a9231f419b6e6bee22b9a0fe874e9e1dacd18a
     sme.sap.com/owner-identifier: default.test-cap-01-provider
   labels:
     sme.sap.com/owner-generation: "2"
@@ -70,11 +70,11 @@ spec:
   - headers:
       response:
         set:
-          Set-Cookie: COP_CAV=test-cap-01-cav-v1;Path=/;HttpOnly;Secure;Max-Age=0
+          Set-Cookie: CAPOP_CAV=test-cap-01-cav-v1;Path=/;HttpOnly;Secure;Max-Age=0
     match:
     - headers:
         Cookie:
-          regex: (^|.*; )COP_CAV=test-cap-01-cav-v1($|; .*)
+          regex: (^|.*; )CAPOP_CAV=test-cap-01-cav-v1($|; .*)
       uri:
         regex: ^|.*(logout|logoff).*
     route:
@@ -86,11 +86,11 @@ spec:
   - headers:
       response:
         set:
-          Set-Cookie: COP_CAV=test-cap-01-cav-v2;Path=/;HttpOnly;Secure;Max-Age=0
+          Set-Cookie: CAPOP_CAV=test-cap-01-cav-v2;Path=/;HttpOnly;Secure;Max-Age=0
     match:
     - headers:
         Cookie:
-          regex: (^|.*; )COP_CAV=test-cap-01-cav-v2($|; .*)
+          regex: (^|.*; )CAPOP_CAV=test-cap-01-cav-v2($|; .*)
       uri:
         regex: ^|.*(logout|logoff).*
     route:
@@ -102,7 +102,7 @@ spec:
   - match:
     - headers:
         Cookie:
-          regex: (^|.*; )COP_CAV=test-cap-01-cav-v1($|; .*)
+          regex: (^|.*; )CAPOP_CAV=test-cap-01-cav-v1($|; .*)
     route:
     - destination:
         host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
@@ -112,7 +112,7 @@ spec:
   - match:
     - headers:
         Cookie:
-          regex: (^|.*; )COP_CAV=test-cap-01-cav-v2($|; .*)
+          regex: (^|.*; )CAPOP_CAV=test-cap-01-cav-v2($|; .*)
     route:
     - destination:
         host: test-cap-01-cav-v2-app-router-svc.default.svc.cluster.local
@@ -122,7 +122,7 @@ spec:
   - headers:
       response:
         add:
-          Set-Cookie: COP_CAV=test-cap-01-cav-v2;Path=/;HttpOnly;Secure
+          Set-Cookie: CAPOP_CAV=test-cap-01-cav-v2;Path=/;HttpOnly;Secure
     route:
     - destination:
         host: test-cap-01-cav-v2-app-router-svc.default.svc.cluster.local

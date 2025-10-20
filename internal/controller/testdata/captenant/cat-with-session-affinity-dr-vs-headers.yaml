@@ -40,7 +40,7 @@ apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   annotations:
-    sme.sap.com/resource-hash: 833b6e4bf8841e273d08cba96c21e269c540d97ed202be29230fe594dc60f0c9
+    sme.sap.com/resource-hash: 96085be3c39f1f2de3042fbf71bac43f256e139aada33ee4f2d435b8c1e6e7cd
     sme.sap.com/owner-identifier: default.test-cap-01-provider
   labels:
     sme.sap.com/owner-generation: "0"
@@ -69,12 +69,12 @@ spec:
           x-tenant-id: invalid-tenant-id
       response:
         set:
-          Set-Cookie: COP_CAV=test-cap-01-cav-v1;Path=/;HttpOnly;Secure;Max-Age=0
+          Set-Cookie: CAPOP_CAV=test-cap-01-cav-v1;Path=/;HttpOnly;Secure;Max-Age=0
           foo: bar
     match:
     - headers:
         Cookie:
-          regex: (^|.*; )COP_CAV=test-cap-01-cav-v1($|; .*)
+          regex: (^|.*; )CAPOP_CAV=test-cap-01-cav-v1($|; .*)
       uri:
         regex: ^|.*(logout|logoff).*
     route:
@@ -86,7 +86,7 @@ spec:
   - match:
     - headers:
         Cookie:
-          regex: (^|.*; )COP_CAV=test-cap-01-cav-v1($|; .*)
+          regex: (^|.*; )CAPOP_CAV=test-cap-01-cav-v1($|; .*)
     route:
     - destination:
         host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
@@ -102,7 +102,7 @@ spec:
         set:
           foo: bar
         add:
-          Set-Cookie: COP_CAV=test-cap-01-cav-v1;Path=/;HttpOnly;Secure
+          Set-Cookie: CAPOP_CAV=test-cap-01-cav-v1;Path=/;HttpOnly;Secure
     route:
     - destination:
         host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
