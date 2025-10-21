@@ -118,3 +118,42 @@ spec:
 The `CAPTenantOperation` creates jobs for each of the steps involved and executes them sequentially until all the jobs are finished or one of them fails. The `CAPTenant` is notified about the result and updates its state accordingly.
 
 A successful completion of the `CAPTenantOperation` will cause the `VirtualService` managed by the `CAPTenant` to be modified to route HTTP traffic to the deployments of the newer `CAPApplicationVersion`. Once all tenants have been upgraded, the outdated `CAPApplicationVersion` can be deleted.
+
+## Version Affinity during Upgrade (Experimental)
+
+You can optionally enable Version Affinity for multi-tenant applications by adding the following annotation `sme.sap.com/enable-version-affinity: "true"` to the `CAPApplication` resource. With this experimental feature, you can ensure that during an upgrade, the users remain on the previous `CAPApplicationVersion` until the session expires or the user logs out.
+
+```yaml
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPApplication
+metadata:
+  name: test-ca-01
+  namespace: default
+  annotations:
+    sme.sap.com/enable-version-affinity: "true" # <-- enable version affinity
+spec:
+  btp:
+    services:
+      - class: xsuaa
+        name: cap-uaa
+        secret: cap-cap-01-uaa-bind-cf
+    ....
+  ....
+```
+
+By default, the CAP Operator recognizes `logout` and `logoff` as logout endpoints. If your application uses a different endpoint, you can specify it using the `sme.sap.com/logout-endpoint` annotation in your `CAPApplicationVersion` resource (do not include a leading slash).
+
+```yaml
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPApplicationVersion
+metadata:
+  name: cav-cap-app-01-2
+  namespace: cap-app-01
+  annotations:
+    sme.sap.com/logout-endpoint: "custom-logout" # <-- specify custom logout endpoint
+spec:
+  capApplicationInstance: cap-cap-app-01
+  version: "2.0.1"
+  registrySecrets:
+    - regcred
+```
