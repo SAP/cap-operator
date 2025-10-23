@@ -34,6 +34,6 @@ jobs:
           output: 'vuln-${{ matrix.workload }}.sarif'
 
       - name: Upload results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'vuln-${{ matrix.workload }}.sarif'
