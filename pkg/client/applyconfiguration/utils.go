@@ -87,6 +87,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.MonitoringConfigApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("NameValue"):
 		return &smesapcomv1alpha1.NameValueApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("PodDisruptionBudget"):
+		return &smesapcomv1alpha1.PodDisruptionBudgetApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Ports"):
 		return &smesapcomv1alpha1.PortsApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Route"):

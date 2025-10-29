@@ -278,6 +278,8 @@ type DeploymentDetails struct {
 	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty"`
 	// Workload monitoring specification
 	Monitoring *WorkloadMonitoring `json:"monitoring,omitempty"`
+	// Pod Disruption Budget may be used to specify the minimum number of available pods for this workload
+	PodDisruptionBudget *PodDisruptionBudget `json:"podDisruptionBudget,omitempty"`
 }
 
 // ServiceExposure specifies the details of the VirtualService to be exposed for `Service` type workload(s)
@@ -363,6 +365,12 @@ const (
 	// Prometheus Metric type Counter
 	MetricTypeCounter MetricType = "Counter"
 )
+
+// PodDisruptionBudget specifies the PodDisruptionBudget configuration for the workload
+type PodDisruptionBudget struct {
+	// Minimum number of available pods
+	MinAvailable *int32 `json:"minAvailable,omitempty"`
+}
 
 // Type of deployment
 type DeploymentType string

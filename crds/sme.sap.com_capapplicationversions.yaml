@@ -1520,6 +1520,12 @@ spec:
                           additionalProperties:
                             type: string
                           type: object
+                        podDisruptionBudget:
+                          properties:
+                            minAvailable:
+                              format: int32
+                              type: integer
+                          type: object
                         podSecurityContext:
                           properties:
                             appArmorProfile:
