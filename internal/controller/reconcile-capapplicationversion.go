@@ -21,6 +21,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -708,7 +709,53 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 		}
 	}
 
+	// Create PDB for the deployment if configured
+	if err == nil && workload.DeploymentDefinition.PodDisruptionBudget != nil {
+		err = c.createOrUpdatePodDisruptionBudget(workload, cav, workloadDeployment, ca)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return workloadDeployment, doChecks(err, workloadDeployment, cav, workload.Name)
+}
+
+func (c *Controller) createOrUpdatePodDisruptionBudget(workload *v1alpha1.WorkloadDetails, cav *v1alpha1.CAPApplicationVersion, workloadDeployment *appsv1.Deployment, ca *v1alpha1.CAPApplication) error {
+	// Get the PDB which should exist for this deployment
+	pdb, err := c.kubeClient.PolicyV1().PodDisruptionBudgets(cav.Namespace).Get(context.TODO(), workloadDeployment.Name, metav1.GetOptions{})
+	// If the resource doesn't exist, we'll create it
+	if k8sErrors.IsNotFound(err) {
+		pdb, err = c.kubeClient.PolicyV1().PodDisruptionBudgets(cav.Namespace).Create(context.TODO(), newPodDisruptionBudget(ca, cav, workload, workloadDeployment), metav1.CreateOptions{})
+		if err == nil {
+			util.LogInfo("Pod Disruption Budget created successfully", string(Processing), cav, pdb, "version", cav.Spec.Version)
+		}
+	}
+	return doChecks(err, pdb, cav, workload.Name)
+}
+
+func newPodDisruptionBudget(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails, workloadDeployment *appsv1.Deployment) *policyv1.PodDisruptionBudget {
+	labels := copyMaps(workload.Labels, getLabels(ca, cav, CategoryWorkload, string(workload.DeploymentDefinition.Type), getWorkloadName(cav.Name, workload.Name), true))
+
+	return &policyv1.PodDisruptionBudget{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      workloadDeployment.Name,
+			Namespace: cav.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind)),
+			},
+			Labels:      labels,
+			Annotations: copyMaps(workload.Annotations, getAnnotations(ca, cav, true)),
+		},
+		Spec: newPodDisruptionBudgetSpec(workload, labels),
+	}
+}
+
+func newPodDisruptionBudgetSpec(workload *v1alpha1.WorkloadDetails, labels map[string]string) policyv1.PodDisruptionBudgetSpec {
+	pdbSpec := workload.DeploymentDefinition.PodDisruptionBudget.DeepCopy()
+	pdbSpec.Selector = &metav1.LabelSelector{
+		MatchLabels: labels,
+	}
+	return *pdbSpec
 }
 
 // newDeployment creates a new generic Deployment for a CAV resource based on the type. It also sets the appropriate OwnerReferences.

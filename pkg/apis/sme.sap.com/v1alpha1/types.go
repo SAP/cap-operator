@@ -7,6 +7,7 @@ package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -278,6 +279,8 @@ type DeploymentDetails struct {
 	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty"`
 	// Workload monitoring specification
 	Monitoring *WorkloadMonitoring `json:"monitoring,omitempty"`
+	// Pod Disruption Budget may be used to specify the minimum number of available pods for this workload
+	PodDisruptionBudget *policyv1.PodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 }
 
 // ServiceExposure specifies the details of the VirtualService to be exposed for `Service` type workload(s)
