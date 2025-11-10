@@ -830,6 +830,7 @@ func TestCavInvalidity(t *testing.T) {
 		onlyServiceWorkloads                bool
 		serviceExposureWrongWorkloadName    bool
 		duplicateSubDomainInServiceExposure bool
+		portMissingInServiceExposure        bool
 		backlogItems                        []string
 	}{
 		{
@@ -951,6 +952,11 @@ func TestCavInvalidity(t *testing.T) {
 			operation:                           admissionv1.Create,
 			duplicateSubDomainInServiceExposure: true,
 			backlogItems:                        []string{},
+		},
+		{
+			operation:                    admissionv1.Create,
+			portMissingInServiceExposure: true,
+			backlogItems:                 []string{},
 		},
 	}
 	for _, test := range tests {
@@ -1288,6 +1294,44 @@ func TestCavInvalidity(t *testing.T) {
 						CommonDetails: v1alpha1.CommonDetails{
 							Image: "foo",
 						},
+						Ports: []v1alpha1.Ports{
+							{
+								Name: "port-1",
+								Port: 4004,
+							},
+						},
+					},
+				})
+
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+					SubDomain: "svc-subdomain",
+					Routes: []v1alpha1.Route{
+						{
+							WorkloadName: "service-1",
+							Port:         4004,
+							Path:         "api",
+						},
+					},
+				})
+
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+					SubDomain: "svc-subdomain",
+					Routes: []v1alpha1.Route{
+						{
+							WorkloadName: "service-1",
+							Port:         4004,
+						},
+					},
+				})
+			} else if test.portMissingInServiceExposure == true {
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "service-1",
+					ConsumedBTPServices: []string{},
+					DeploymentDefinition: &v1alpha1.DeploymentDetails{
+						Type: v1alpha1.DeploymentService,
+						CommonDetails: v1alpha1.CommonDetails{
+							Image: "foo",
+						},
 					},
 				})
 
@@ -1398,6 +1442,8 @@ func TestCavInvalidity(t *testing.T) {
 				errorMessage = fmt.Sprintf(ServiceExposureWorkloadNameErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].Routes[0].WorkloadName, crd.Spec.ServiceExposures[0].SubDomain)
 			} else if test.duplicateSubDomainInServiceExposure == true {
 				errorMessage = fmt.Sprintf(DuplicateServiceExposureSubDomainErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].SubDomain)
+			} else if test.portMissingInServiceExposure == true {
+				errorMessage = fmt.Sprintf(ServiceExposurePortErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].Routes[0].Port, crd.Spec.ServiceExposures[0].Routes[0].WorkloadName, crd.Spec.ServiceExposures[0].SubDomain)
 			}
 
 			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
