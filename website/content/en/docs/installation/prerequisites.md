@@ -14,7 +14,7 @@ The Kubernetes cluster must be set up with the following prerequisites before yo
 
 Istio service mesh is used for HTTP traffic management. CAP Operator creates Istio resources to manage incoming HTTP requests to the application as well as to route requests on specific (tenant) subdomains.
 
-> It's required that you determine the public ingress Gateway subdomain and the overall shoot domain for the system and specify them in the [chart values](../../installation/helm-install/#values)
+> It's required that you determine the public ingress Gateway subdomain and the overall shoot domain for the system and specify them in the [chart values](../helm/helm-values/). See [here](../helm/#installation) for an example.
 
 > Note: Istio promoted many of its [APIs to v1 in 1.22 release](https://istio.io/latest/blog/2024/v1-apis/). Hence as of CAP Operator release v0.11.0 istio version >= 1.22 is a prerequisite.
 
