@@ -331,12 +331,8 @@ func checkWorkloadContentJob(cavObjNew *ResponseCav) validateResource {
 	return validAdmissionReviewObj()
 }
 
-func checkServiceExposure(cavObjNew *ResponseCav) validateResource {
-	// check that all the workload names and ports mentioned in service exposures are valid
-	// check that there are no duplicate subdomains in service exposures
-
+func getDeploymentPorts(cavObjNew *ResponseCav) map[string][]int32 {
 	deploymentPorts := make(map[string][]int32)
-	seenSubdomains := make(map[string]struct{})
 
 	for _, workload := range cavObjNew.Spec.Workloads {
 		if workload.DeploymentDefinition == nil {
@@ -359,6 +355,16 @@ func checkServiceExposure(cavObjNew *ResponseCav) validateResource {
 
 		deploymentPorts[workload.Name] = ports
 	}
+
+	return deploymentPorts
+}
+
+func checkServiceExposure(cavObjNew *ResponseCav) validateResource {
+	// check that all the workload names and ports mentioned in service exposures are valid
+	// check that there are no duplicate subdomains in service exposures
+
+	seenSubdomains := make(map[string]struct{})
+	deploymentPorts := getDeploymentPorts(cavObjNew)
 
 	for _, serviceExposure := range cavObjNew.Spec.ServiceExposures {
 		if _, ok := seenSubdomains[serviceExposure.SubDomain]; ok {
