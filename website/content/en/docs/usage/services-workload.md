@@ -18,6 +18,8 @@ Because these applications are tenant-independent, no tenant related resources a
 
 The service workloads may be exposed externally via `serviceExposures` configuration on the [version](#version-configuration-capapplicationversion).
 
+> NOTE: These exposed workloads are not secure by default. All the necessary authentication and authorization mechanisms must be implemented within the service workloads by the application.
+
 ### Application Configuration (`CAPApplication`)
 
 Create a `CAPApplication` resource without a `provider` section, as shown below:
@@ -111,7 +113,7 @@ spec:
 
 * The `CAPApplication` reaches a `Consistent` state, only after
   - the latest `CAPApplicationVersion` is Ready.
-  - the creation of Istio `VirtualService`, which allows HTTP requests on the `serviceExposure` subdomain to reach the application.
+  - the creation of Istio `VirtualService`, which allows HTTP requests on the `serviceExposures` subdomain to reach the application.
 * The `CAPApplication` status for services only applications will have a `servicesOnly` field set to `true`.
 * There is no `CAPTenant` or other tenant related resources created for such services only scenario. Any tenant-related logic within the service itself is the responsibility of the consuming application.
 * You cannot switch a `CAPApplicationVersion` between services only and tenant-dependent modes after initial creation of overall application. Choose the appropriate mode from the start.
