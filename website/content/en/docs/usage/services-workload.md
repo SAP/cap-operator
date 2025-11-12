@@ -18,7 +18,7 @@ Because these applications are tenant-independent, no tenant related resources a
 
 The service workloads may be exposed externally via `serviceExposures` configuration on the [version](#version-configuration-capapplicationversion).
 
-> NOTE: These exposed workloads are not secure by default. All the necessary authentication and authorization mechanisms must be implemented within the service workloads by the application.
+> NOTE: We strongly recommend the applications to take care of implementing any necessary authentication and authorization mechanisms required for the exposed workloads.
 
 ### Application Configuration (`CAPApplication`)
 

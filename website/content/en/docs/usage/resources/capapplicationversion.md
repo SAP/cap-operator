@@ -213,6 +213,8 @@ spec:
             port: 4005
           - name: api
             port: 8000
+          - name: api-v2
+            port: 8001
             appProtocol: http
     - name: "app-router"
       consumedBTPServices:
@@ -242,6 +244,9 @@ spec:
     - subDomain: api
       routes:
         - workloadName: cap-backend-service
+          port: 8001
+          path: /api/v2
+        - workloadName: cap-backend-service
           port: 8000
           path: /api
     - subDomain: router
@@ -250,16 +255,17 @@ spec:
           port: 5000
 ```
 
-The `serviceExposures` section can be used to expose deployment workloads externally. While the primary use case is to expose tenant-independent workloads of type `Service`, it is also possible to expose other types of deployments such as `Router`, `CAP`, or `Additional` workloads if needed. Each entry in the `serviceExposures` array represents a subdomain under which the workloads are accessible. Each subdomain can have multiple routes, each specifying a workload and the port exposed. Optionally, a path can be defined for more granular routing.
+The `serviceExposures` section can be used to expose deployment workloads externally. Each entry in the `serviceExposures` array represents a subdomain under which the workloads are accessible. Each subdomain can have multiple routes, specifying a workload and the exposed port. Optionally, a path can be defined for more granular routing. **If there are multiple routes defined for a subdomain, the application needs to maintain the routes in the right order to avoid incorrect routing. For example, see the above configuration for the `api` subdomain where the more specific path `/api/v2` is defined before the more general path `/api`.**
 
 For example, if your cluster domain is `my.cluster.shoot.url.k8s.example.com`, the configuration above would generate `VirtualService` resources with these accessible URLs:
 - `service.my.cluster.shoot.url.k8s.example.com` pointing to `cap-backend-service` workload on port `4004`
+- `api.my.cluster.shoot.url.k8s.example.com/api/v2` pointing to `cap-backend-service` workload on port `8001`
 - `api.my.cluster.shoot.url.k8s.example.com/api` pointing to `cap-backend-service` workload on port `8000`
 - `router.my.cluster.shoot.url.k8s.example.com` pointing to `app-router` workload on port `5000`
 
 As these routes are tenant-independent, once a new `CAPApplicationVersion` is `Ready`, the `VirtualService` corresponding to these routes will be updated to point to the new version of the workloads. These routes are not impacted by tenant-specific upgrades and they always point to the latest version of the exposed workloads, regardless of the upgrade status of any individual tenant.
 
-> NOTE: These exposed workloads are not secure by default. All the necessary authentication and authorization mechanisms must be implemented within the workloads by the application.
+> NOTE: We strongly recommend the applications to take care of implementing any necessary authentication and authorization mechanisms required for the exposed workloads.
 
 _Other attributes can be configured as documented._
 
