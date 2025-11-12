@@ -9,10 +9,10 @@ description: >
 ---
 
 ## Overview
-Configuring DNS settings can be a daunting task, but with Custom DNS mode, you can leverage Go templates to streamline the process. This guide will walk you through the essentials of setting up Custom DNS for your Domain or ClusterDomain resources.
+Configuring DNS settings can be a daunting task. However, with Custom DNS mode, you can leverage Go templates to streamline the process. This guide walks you through the essentials of setting up Custom DNS for your `Domain` or `ClusterDomain` resources.
 
 ### What is Custom DNS Mode?
-Custom DNS mode allows users to utilize [Go templates](https://pkg.go.dev/text/template) to generate DNS entries dynamically. This is particularly useful for managing complex DNS configurations with ease. The `dnsTemplates` field is where you specify your desired setup.
+Custom DNS mode lets you use [Go templates](https://pkg.go.dev/text/template) to generate DNS entries dynamically. This feature is especially helpful for managing complex DNS configurations with ease. Specify your desired setup in the `dnsTemplates` field. 
 You can enhance your templates with functions from the Slim Sprig library, detailed [here](https://go-task.github.io/slim-sprig/).
 
 #### Allowed Variables in DNSTemplate
@@ -29,7 +29,7 @@ You can enhance your templates with functions from the Slim Sprig library, detai
 
 
 ### Example Configuration
-Below is an example of how to configure Custom DNSMode for a `Domain` resource:
+Below is an example of how to configure Custom DNS mode for a `Domain` resource:
 
 
 ```yaml
