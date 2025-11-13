@@ -24,7 +24,7 @@ jobs:
         workload: ["controller", "server", "web-hooks"]
     runs-on: ubuntu-24.04
     steps:
-      - name: Run vulnerability scanner
+      - name: Run trivy scanner
         uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: ghcr.io/sap/cap-operator/${{ matrix.workload }}:${{ inputs.version || 'latest' }}
@@ -33,7 +33,18 @@ jobs:
           format: 'sarif'
           output: 'vuln-${{ matrix.workload }}.sarif'
 
-      - name: Upload results to GitHub Security tab
+      - name: Upload trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: 'vuln-${{ matrix.workload }}.sarif'
+
+      - name: Run grype scanner
+        uses: anchore/scan-action@v7
+        with:
+          image: ghcr.io/sap/cap-operator/${{ matrix.workload }}:${{ inputs.version || 'latest' }}
+          output-file: 'vuln-grype-${{ matrix.workload }}.sarif'
+
+      - name: Upload grype scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: 'vuln-grype-${{ matrix.workload }}.sarif'
