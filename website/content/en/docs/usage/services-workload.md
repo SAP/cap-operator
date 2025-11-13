@@ -12,7 +12,7 @@ This guide explains how to deploy a CAP application containing only service work
 
 ## Deploying Services Only Applications
 
-Services only applications don't require tenant-specific configurations. Therefore, the `provider` section is omitted from the `CAPApplication` resource, and the `CAPApplicationVersion` should only define deployments of type `Service`, alongside optional `Content` jobs.
+Services only applications don't require tenant-specific configurations. Therefore, the `provider` section is omitted from the `CAPApplication` resource, and the `CAPApplicationVersion` may only contain `Content` jobs and no tenant related jobs.
 
 Because these applications are tenant-independent, no tenant related resources are created.
 
