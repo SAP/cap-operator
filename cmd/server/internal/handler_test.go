@@ -174,7 +174,7 @@ func createCA() *v1alpha1.CAPApplication {
 		Spec: v1alpha1.CAPApplicationSpec{
 			GlobalAccountId: globalAccountId,
 			BTPAppName:      appName,
-			Provider: v1alpha1.BTPTenantIdentification{
+			Provider: &v1alpha1.BTPTenantIdentification{
 				SubDomain: subDomain,
 				TenantId:  tenantId,
 			},

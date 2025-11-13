@@ -631,5 +631,24 @@ func TestCA_ServicesOnly_Error(t *testing.T) {
 	if err.Error() != "mocked api error (virtualservices.networking.istio.io/v1)" {
 		t.Error("error message is different from expected: ", err.Error())
 	}
+}
 
+func TestCA_WithBothCAPAndServiceWorkloads(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01"}},
+		TestData{
+			description: "When CAPApplicationVersion - ready, CAPTenant - provisioning, domain - ready, clusterdomain - ready",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/capapplication/ca-04.initial.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+				"testdata/common/capapplicationversion-cap-service-workloads.yaml",
+				"testdata/common/credential-secrets.yaml",
+			},
+			expectedResources: "testdata/capapplication/ca-with-cap-service-workloads.expected.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}, ResourceClusterDomain: {{Namespace: "", Name: "test-cap-01-secondary"}}},
+		},
+	)
 }

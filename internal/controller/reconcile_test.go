@@ -89,7 +89,7 @@ func createCaCRO(name string, withFinalizer bool) *v1alpha1.CAPApplication {
 			},
 			GlobalAccountId: globalAccountId,
 			BTPAppName:      btpApplicationName,
-			Provider: v1alpha1.BTPTenantIdentification{
+			Provider: &v1alpha1.BTPTenantIdentification{
 				SubDomain: providerSubDomain,
 				TenantId:  providerTenantId,
 			},

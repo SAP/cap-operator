@@ -48,7 +48,14 @@ const (
 	useDomains
 )
 
-func createCaCRO() *v1alpha1.CAPApplication {
+func createCaCRO(serviceOnlyScenario ...bool) *v1alpha1.CAPApplication {
+	provider := &v1alpha1.BTPTenantIdentification{}
+	if serviceOnlyScenario == nil || !serviceOnlyScenario[0] {
+		provider = &v1alpha1.BTPTenantIdentification{
+			SubDomain: subDomain,
+			TenantId:  tenantId,
+		}
+	}
 	return &v1alpha1.CAPApplication{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      caName,
@@ -67,10 +74,7 @@ func createCaCRO() *v1alpha1.CAPApplication {
 			},
 			GlobalAccountId: "globalAccountId",
 			BTPAppName:      "btpApplicationName",
-			Provider: v1alpha1.BTPTenantIdentification{
-				SubDomain: subDomain,
-				TenantId:  tenantId,
-			},
+			Provider:        provider,
 			BTP: v1alpha1.BTP{
 				Services: []v1alpha1.ServiceInfo{
 					{
@@ -157,7 +161,7 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 					Namespace: metav1.NamespaceDefault,
 				},
 				Spec: &v1alpha1.CAPApplicationSpec{
-					Provider: v1alpha1.BTPTenantIdentification{
+					Provider: &v1alpha1.BTPTenantIdentification{
 						SubDomain: subDomain,
 						TenantId:  tenantId,
 					},
@@ -805,32 +809,29 @@ func TestCavInvalidity(t *testing.T) {
 		CrdClient: fakeCrdClient.NewSimpleClientset(Ca),
 	}
 	tests := []struct {
-		operation                           admissionv1.Operation
-		duplicateWorkloadName               bool
-		invalidDeploymentType               bool
-		invalidJobType                      bool
-		onlyOneCAPTypeAllowed               bool
-		onlyOneRouterTypeAllowed            bool
-		duplicatePortName                   bool
-		duplicatePortNumber                 bool
-		routerDestNameCAPChk                bool
-		routerDestNameRouterChk             bool
-		customTenantOpWithoutSequence       bool
-		tenantOperationSequenceInvalid      bool
-		invalidWorkloadInTenantOpSeq        bool
-		missingTenantOpInSeqProvisioning    bool
-		missingTenantOpInSeqUpgrade         bool
-		missingTenantOpInSeqDeprovisioning  bool
-		multipleContentJobsWithNoOrder      bool
-		missingContentJobinContentJobs      bool
-		invalidJobinContentJobs             bool
-		invalidWorkloadName                 bool
-		longDeploymentWorkloadName          bool
-		longContentWorkloadName             bool
-		onlyServiceWorkloads                bool
-		serviceExposureWrongWorkloadName    bool
-		duplicateSubDomainInServiceExposure bool
-		backlogItems                        []string
+		operation                          admissionv1.Operation
+		duplicateWorkloadName              bool
+		invalidDeploymentType              bool
+		invalidJobType                     bool
+		onlyOneCAPTypeAllowed              bool
+		onlyOneRouterTypeAllowed           bool
+		duplicatePortName                  bool
+		duplicatePortNumber                bool
+		routerDestNameCAPChk               bool
+		routerDestNameRouterChk            bool
+		customTenantOpWithoutSequence      bool
+		tenantOperationSequenceInvalid     bool
+		invalidWorkloadInTenantOpSeq       bool
+		missingTenantOpInSeqProvisioning   bool
+		missingTenantOpInSeqUpgrade        bool
+		missingTenantOpInSeqDeprovisioning bool
+		multipleContentJobsWithNoOrder     bool
+		missingContentJobinContentJobs     bool
+		invalidJobinContentJobs            bool
+		invalidWorkloadName                bool
+		longDeploymentWorkloadName         bool
+		longContentWorkloadName            bool
+		backlogItems                       []string
 	}{
 		{
 			operation:             admissionv1.Create,
@@ -936,21 +937,6 @@ func TestCavInvalidity(t *testing.T) {
 			operation:               admissionv1.Create,
 			longContentWorkloadName: true,
 			backlogItems:            []string{},
-		},
-		{
-			operation:            admissionv1.Create,
-			onlyServiceWorkloads: true,
-			backlogItems:         []string{},
-		},
-		{
-			operation:                        admissionv1.Create,
-			serviceExposureWrongWorkloadName: true,
-			backlogItems:                     []string{},
-		},
-		{
-			operation:                           admissionv1.Create,
-			duplicateSubDomainInServiceExposure: true,
-			backlogItems:                        []string{},
 		},
 	}
 	for _, test := range tests {
@@ -1229,88 +1215,6 @@ func TestCavInvalidity(t *testing.T) {
 				crd.Spec.Workloads[0].Name = "extralongworkloadnamecontainingmorethan64characters"
 			} else if test.longContentWorkloadName == true {
 				crd.Spec.Workloads[2].Name = "extralongcontentworkloadnamecontainingmorethan64characters"
-			} else if test.onlyServiceWorkloads == true {
-				for _, workload := range crd.Spec.Workloads {
-					if workload.DeploymentDefinition != nil {
-						workload.DeploymentDefinition.Type = v1alpha1.DeploymentService
-					}
-				}
-
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
-					Name:                "tenant-operation",
-					ConsumedBTPServices: []string{},
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobTenantOperation,
-						CommonDetails: v1alpha1.CommonDetails{
-							Image: "foo",
-						},
-					},
-				})
-
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
-					Name:                "custom-tenant-operation",
-					ConsumedBTPServices: []string{},
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobCustomTenantOperation,
-						CommonDetails: v1alpha1.CommonDetails{
-							Image: "foo",
-						},
-					},
-				})
-			} else if test.serviceExposureWrongWorkloadName == true {
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
-					Name:                "service-1",
-					ConsumedBTPServices: []string{},
-					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						Type: v1alpha1.DeploymentService,
-						CommonDetails: v1alpha1.CommonDetails{
-							Image: "foo",
-						},
-					},
-				})
-
-				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
-					SubDomain: "svc-subdomain",
-					Routes: []v1alpha1.Route{
-						{
-							WorkloadName: "wrong-name",
-							Port:         4004,
-							Path:         "abc",
-						},
-					},
-				})
-			} else if test.duplicateSubDomainInServiceExposure == true {
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
-					Name:                "service-1",
-					ConsumedBTPServices: []string{},
-					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						Type: v1alpha1.DeploymentService,
-						CommonDetails: v1alpha1.CommonDetails{
-							Image: "foo",
-						},
-					},
-				})
-
-				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
-					SubDomain: "svc-subdomain",
-					Routes: []v1alpha1.Route{
-						{
-							WorkloadName: "service-1",
-							Port:         4004,
-							Path:         "api",
-						},
-					},
-				})
-
-				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
-					SubDomain: "svc-subdomain",
-					Routes: []v1alpha1.Route{
-						{
-							WorkloadName: "service-1",
-							Port:         4004,
-						},
-					},
-				})
 			}
 
 			rawBytes, _ := json.Marshal(crd)
@@ -1392,12 +1296,250 @@ func TestCavInvalidity(t *testing.T) {
 					crd.Name,
 					"extralongcontentworkloadnamecontainingmorethan64characters",
 				)
-			} else if test.onlyServiceWorkloads == true {
-				errorMessage = fmt.Sprintf(TenantOpJobWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.JobTenantOperation, v1alpha1.JobCustomTenantOperation, v1alpha1.DeploymentService)
+			}
+
+			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
+				t.Fatal("validation response error")
+			}
+		})
+	}
+}
+
+func TestCavInvalidityServiceScenario(t *testing.T) {
+	Ca := createCaCRO(true)
+	wh := &WebhookHandler{
+		CrdClient: fakeCrdClient.NewSimpleClientset(Ca),
+	}
+	tests := []struct {
+		operation                           admissionv1.Operation
+		onlyServiceWorkloads                bool
+		serviceExposureWrongWorkloadName    bool
+		duplicateSubDomainInServiceExposure bool
+		portMissingInServiceExposure        bool
+		backlogItems                        []string
+	}{
+		{
+			operation:            admissionv1.Create,
+			onlyServiceWorkloads: true,
+			backlogItems:         []string{},
+		},
+		{
+			operation:                        admissionv1.Create,
+			serviceExposureWrongWorkloadName: true,
+			backlogItems:                     []string{},
+		},
+		{
+			operation:                           admissionv1.Create,
+			duplicateSubDomainInServiceExposure: true,
+			backlogItems:                        []string{},
+		},
+		{
+			operation:                    admissionv1.Create,
+			portMissingInServiceExposure: true,
+			backlogItems:                 []string{},
+		},
+	}
+	for _, test := range tests {
+		nameParts := []string{"Testing CAPApplicationversion invalidity for operation " + string(test.operation) + "; "}
+		testName := strings.Join(append(nameParts, test.backlogItems...), " ")
+		t.Run(testName, func(t *testing.T) {
+			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.CAPApplicationVersionKind, caName, noUpdate)
+			if err != nil {
+				t.Fatal("admission review error")
+			}
+
+			crd := &ResponseCav{
+				Metadata: Metadata{
+					Name:      cavName,
+					Namespace: metav1.NamespaceDefault,
+				},
+				Spec: &v1alpha1.CAPApplicationVersionSpec{
+					CAPApplicationInstance: caName,
+					Workloads: []v1alpha1.WorkloadDetails{
+						{
+							Name:                "cap-backend",
+							ConsumedBTPServices: []string{},
+							DeploymentDefinition: &v1alpha1.DeploymentDetails{
+								Type: v1alpha1.DeploymentCAP,
+								CommonDetails: v1alpha1.CommonDetails{
+									Image: "foo",
+								},
+							},
+						},
+						{
+							Name:                "cap-router",
+							ConsumedBTPServices: []string{},
+							DeploymentDefinition: &v1alpha1.DeploymentDetails{
+								Type: v1alpha1.DeploymentRouter,
+								CommonDetails: v1alpha1.CommonDetails{
+									Image: "foo",
+								},
+							},
+						},
+						{
+							Name:                "content",
+							ConsumedBTPServices: []string{},
+							JobDefinition: &v1alpha1.JobDetails{
+								Type: v1alpha1.JobContent,
+								CommonDetails: v1alpha1.CommonDetails{
+									Image: "foo",
+								},
+							},
+						},
+					},
+				},
+				Kind: v1alpha1.CAPApplicationVersionKind,
+			}
+
+			if test.onlyServiceWorkloads == true {
+				for _, workload := range crd.Spec.Workloads {
+					if workload.DeploymentDefinition != nil {
+						workload.DeploymentDefinition.Type = v1alpha1.DeploymentService
+					}
+				}
+
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "tenant-operation",
+					ConsumedBTPServices: []string{},
+					JobDefinition: &v1alpha1.JobDetails{
+						Type: v1alpha1.JobTenantOperation,
+						CommonDetails: v1alpha1.CommonDetails{
+							Image: "foo",
+						},
+					},
+				})
+
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "custom-tenant-operation",
+					ConsumedBTPServices: []string{},
+					JobDefinition: &v1alpha1.JobDetails{
+						Type: v1alpha1.JobCustomTenantOperation,
+						CommonDetails: v1alpha1.CommonDetails{
+							Image: "foo",
+						},
+					},
+				})
+			} else if test.serviceExposureWrongWorkloadName == true {
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "service-1",
+					ConsumedBTPServices: []string{},
+					DeploymentDefinition: &v1alpha1.DeploymentDetails{
+						Type: v1alpha1.DeploymentService,
+						CommonDetails: v1alpha1.CommonDetails{
+							Image: "foo",
+						},
+					},
+				})
+
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+					SubDomain: "svc-subdomain",
+					Routes: []v1alpha1.Route{
+						{
+							WorkloadName: "wrong-name",
+							Port:         4004,
+							Path:         "abc",
+						},
+					},
+				})
+			} else if test.duplicateSubDomainInServiceExposure == true {
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "service-1",
+					ConsumedBTPServices: []string{},
+					DeploymentDefinition: &v1alpha1.DeploymentDetails{
+						Type: v1alpha1.DeploymentService,
+						CommonDetails: v1alpha1.CommonDetails{
+							Image: "foo",
+						},
+						Ports: []v1alpha1.Ports{
+							{
+								Name: "port-1",
+								Port: 4004,
+							},
+						},
+					},
+				})
+
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+					SubDomain: "svc-subdomain",
+					Routes: []v1alpha1.Route{
+						{
+							WorkloadName: "service-1",
+							Port:         4004,
+							Path:         "api",
+						},
+					},
+				})
+
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+					SubDomain: "svc-subdomain",
+					Routes: []v1alpha1.Route{
+						{
+							WorkloadName: "service-1",
+							Port:         4004,
+						},
+					},
+				})
+			} else if test.portMissingInServiceExposure == true {
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+					Name:                "service-1",
+					ConsumedBTPServices: []string{},
+					DeploymentDefinition: &v1alpha1.DeploymentDetails{
+						Type: v1alpha1.DeploymentService,
+						CommonDetails: v1alpha1.CommonDetails{
+							Image: "foo",
+						},
+					},
+				})
+
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+					SubDomain: "svc-subdomain",
+					Routes: []v1alpha1.Route{
+						{
+							WorkloadName: "service-1",
+							Port:         4004,
+							Path:         "api",
+						},
+					},
+				})
+
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+					SubDomain: "svc-subdomain",
+					Routes: []v1alpha1.Route{
+						{
+							WorkloadName: "service-1",
+							Port:         4004,
+						},
+					},
+				})
+			}
+
+			rawBytes, _ := json.Marshal(crd)
+			admissionReview.Request.Object.Raw = rawBytes
+			bytesRequest, err := json.Marshal(admissionReview)
+			if err != nil {
+				t.Fatal("marshal error")
+			}
+			request := httptest.NewRequest(http.MethodGet, "/validate", bytes.NewBuffer(bytesRequest))
+			recorder := httptest.NewRecorder()
+
+			wh.Validate(recorder, request)
+
+			admissionReviewRes := admissionv1.AdmissionReview{}
+			bytes, err := io.ReadAll(recorder.Body)
+			if err != nil {
+				t.Fatal("io read error")
+			}
+			universalDeserializer.Decode(bytes, nil, &admissionReviewRes)
+
+			var errorMessage string
+			if test.onlyServiceWorkloads == true {
+				errorMessage = fmt.Sprintf(TenantOpJobWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.JobTenantOperation, v1alpha1.JobCustomTenantOperation)
 			} else if test.serviceExposureWrongWorkloadName == true {
 				errorMessage = fmt.Sprintf(ServiceExposureWorkloadNameErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].Routes[0].WorkloadName, crd.Spec.ServiceExposures[0].SubDomain)
 			} else if test.duplicateSubDomainInServiceExposure == true {
 				errorMessage = fmt.Sprintf(DuplicateServiceExposureSubDomainErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].SubDomain)
+			} else if test.portMissingInServiceExposure == true {
+				errorMessage = fmt.Sprintf(ServiceExposurePortErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].Routes[0].Port, crd.Spec.ServiceExposures[0].Routes[0].WorkloadName, crd.Spec.ServiceExposures[0].SubDomain)
 			}
 
 			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {

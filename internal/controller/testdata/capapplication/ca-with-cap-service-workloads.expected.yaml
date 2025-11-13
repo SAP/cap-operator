@@ -1,0 +1,91 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPApplication
+metadata:
+  finalizers:
+    - sme.sap.com/capapplication
+  generation: 2
+  name: test-cap-01
+  namespace: default
+  resourceVersion: "11373799"
+  uid: 3c7ba7cb-dc04-4fd1-be86-3eb3a5c64a98
+  annotations:
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+  labels:
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+spec:
+  btp:
+    services:
+      - class: xsuaa
+        name: cap-uaa
+        secret: cap-cap-01-uaa-bind-cf
+      - class: saas-registry
+        name: cap-saas-registry
+        secret: cap-cap-01-saas-bind-cf
+      - class: service-manager
+        name: cap-service-manager
+        secret: cap-cap-01-svc-man-bind-cf
+  btpAppName: test-cap-01
+  domainRefs:
+  - kind: Domain
+    name: test-cap-01-primary
+  - kind: ClusterDomain
+    name: test-cap-01-secondary
+  globalAccountId: btp-glo-acc-id
+  provider:
+    subDomain: my-provider
+    tenantId: tenant-id-for-provider
+status:
+  conditions:
+    - reason: VersionExists
+      observedGeneration: 2
+      status: "True"
+      type: Ready
+    - reason: LatestVersionReady
+      observedGeneration: 2
+      status: "True"
+      type: LatestVersionReady
+    - reason: AllTenantsReady
+      observedGeneration: 2
+      status: "True"
+      type: AllTenantsReady
+  observedGeneration: 2
+  servicesOnly: false
+  domainSpecHash: '{"ClusterDomain.test-cap-01-secondary":"foo.bar.local","Domain.default.test-cap-01-primary":"app-domain.test.local"}'
+  observedSubdomains:
+    - my-provider
+    - service-workload
+  state: Consistent
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  annotations:
+    sme.sap.com/resource-hash: "1af5142f47dee669efe36373d534796d4b1b7146732ee93d777da0d09d6a8c91"
+  labels:
+    sme.sap.com/owner-identifier-hash: 69aaed9a83bf17f9e4bc11956ef9565162fe2c79
+  name: test-cap-01gen
+  generateName: test-cap-01
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplication
+      name: test-cap-01
+      uid: 3c7ba7cb-dc04-4fd1-be86-3eb3a5c64a98
+spec:
+  gateways:
+    - test-cap-01-primary-gen
+    - default/test-cap-01-secondary-gen
+  hosts:
+    - service-workload.app-domain.test.local
+    - service-workload.foo.bar.local
+  http:
+    - match:
+        - uri:
+            prefix: /
+      route:
+        - destination:
+            host: test-cap-01-cav-v1-service-workload-svc.default.svc.cluster.local
+            port:
+              number: 8080

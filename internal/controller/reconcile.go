@@ -340,13 +340,11 @@ func (c *Controller) cleanupPreservedSecrets(serviceInfos []v1alpha1.ServiceInfo
 	return err
 }
 
+// Services Only will be set to true if there are jobs of type content (if any jobs exist) in CAV and the provider section is empty in CA
 func (c *Controller) checkServicesOnly(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) error {
 	servicesOnly := !slices.ContainsFunc(cav.Spec.Workloads, func(wd v1alpha1.WorkloadDetails) bool {
-		if wd.JobDefinition != nil {
-			return wd.JobDefinition.Type != v1alpha1.JobContent
-		}
-		return wd.DeploymentDefinition != nil && wd.DeploymentDefinition.Type != v1alpha1.DeploymentService
-	})
+		return wd.JobDefinition != nil && wd.JobDefinition.Type != v1alpha1.JobContent
+	}) && ca.IsProviderEmpty()
 
 	// Check if the CAP Application is already marked with ServicesOnly from a previous version only once the Status is set!
 	if ca.Status.ServicesOnly != nil {
