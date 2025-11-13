@@ -39,7 +39,7 @@ const (
 	RequestPath                          = "/request"
 	DeploymentWorkloadCountErr           = "%s %s there should always be one workload deployment definition of type %s. Currently, there are %d workloads of type %s"
 	TenantOpJobWorkloadCountErr          = "%s %s there should not be any job workload of type %s or %s defined if all the deployment workloads are of type %s."
-	ServiceExposureWorkloadNameErr       = "%s %s workload name %s mentioned as part of routes in service exposure with subDomain %s is not a valid workload of type Service."
+	ServiceExposureWorkloadNameErr       = "%s %s workload name %s mentioned as part of routes in service exposure with subDomain %s is not a valid workload."
 	ServiceExposurePortErr               = "%s %s port %d mentioned as part of routes for workload %s in service exposure with subDomain %s is not a valid port in the workload."
 	DuplicateServiceExposureSubDomainErr = "%s %s duplicate subDomain %s in service exposure"
 	DomainsDeprecated                    = "%s %s domains are deprecated. Use domainRefs instead in: %s.%s"

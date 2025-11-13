@@ -74,7 +74,7 @@ The `type` of the deployment is important to indicate how the operator handles t
 - `CAP` to indicate a CAP application server. Only one workload of this type can be used at present.
 - `Router` to indicate a version of [AppRouter](https://www.npmjs.com/package/@sap/approuter). Only one workload of this type can be used.
 - `Additional` to indicate supporting components that can be deployed along with the CAP application server.
-- `Service` to indicate workloads that are tenant-independent. Such workloads can be exposed externally via [serviceExposures](#serviceexposures-configuration) configuration on the version.
+- `Service` to indicate workloads that are tenant-independent.
 
 You can define optional attributes such as `replicas`, `env`, `resources`, `probes`, `securityContext`, `initContainers` and `ports` to configure the deployment.
 
