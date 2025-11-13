@@ -48,7 +48,14 @@ const (
 	useDomains
 )
 
-func createCaCRO() *v1alpha1.CAPApplication {
+func createCaCRO(serviceOnlyScenario ...bool) *v1alpha1.CAPApplication {
+	provider := &v1alpha1.BTPTenantIdentification{}
+	if serviceOnlyScenario == nil || !serviceOnlyScenario[0] {
+		provider = &v1alpha1.BTPTenantIdentification{
+			SubDomain: subDomain,
+			TenantId:  tenantId,
+		}
+	}
 	return &v1alpha1.CAPApplication{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      caName,
@@ -67,10 +74,7 @@ func createCaCRO() *v1alpha1.CAPApplication {
 			},
 			GlobalAccountId: "globalAccountId",
 			BTPAppName:      "btpApplicationName",
-			Provider: &v1alpha1.BTPTenantIdentification{
-				SubDomain: subDomain,
-				TenantId:  tenantId,
-			},
+			Provider:        provider,
 			BTP: v1alpha1.BTP{
 				Services: []v1alpha1.ServiceInfo{
 					{
@@ -805,33 +809,29 @@ func TestCavInvalidity(t *testing.T) {
 		CrdClient: fakeCrdClient.NewSimpleClientset(Ca),
 	}
 	tests := []struct {
-		operation                           admissionv1.Operation
-		duplicateWorkloadName               bool
-		invalidDeploymentType               bool
-		invalidJobType                      bool
-		onlyOneCAPTypeAllowed               bool
-		onlyOneRouterTypeAllowed            bool
-		duplicatePortName                   bool
-		duplicatePortNumber                 bool
-		routerDestNameCAPChk                bool
-		routerDestNameRouterChk             bool
-		customTenantOpWithoutSequence       bool
-		tenantOperationSequenceInvalid      bool
-		invalidWorkloadInTenantOpSeq        bool
-		missingTenantOpInSeqProvisioning    bool
-		missingTenantOpInSeqUpgrade         bool
-		missingTenantOpInSeqDeprovisioning  bool
-		multipleContentJobsWithNoOrder      bool
-		missingContentJobinContentJobs      bool
-		invalidJobinContentJobs             bool
-		invalidWorkloadName                 bool
-		longDeploymentWorkloadName          bool
-		longContentWorkloadName             bool
-		onlyServiceWorkloads                bool
-		serviceExposureWrongWorkloadName    bool
-		duplicateSubDomainInServiceExposure bool
-		portMissingInServiceExposure        bool
-		backlogItems                        []string
+		operation                          admissionv1.Operation
+		duplicateWorkloadName              bool
+		invalidDeploymentType              bool
+		invalidJobType                     bool
+		onlyOneCAPTypeAllowed              bool
+		onlyOneRouterTypeAllowed           bool
+		duplicatePortName                  bool
+		duplicatePortNumber                bool
+		routerDestNameCAPChk               bool
+		routerDestNameRouterChk            bool
+		customTenantOpWithoutSequence      bool
+		tenantOperationSequenceInvalid     bool
+		invalidWorkloadInTenantOpSeq       bool
+		missingTenantOpInSeqProvisioning   bool
+		missingTenantOpInSeqUpgrade        bool
+		missingTenantOpInSeqDeprovisioning bool
+		multipleContentJobsWithNoOrder     bool
+		missingContentJobinContentJobs     bool
+		invalidJobinContentJobs            bool
+		invalidWorkloadName                bool
+		longDeploymentWorkloadName         bool
+		longContentWorkloadName            bool
+		backlogItems                       []string
 	}{
 		{
 			operation:             admissionv1.Create,
@@ -937,26 +937,6 @@ func TestCavInvalidity(t *testing.T) {
 			operation:               admissionv1.Create,
 			longContentWorkloadName: true,
 			backlogItems:            []string{},
-		},
-		{
-			operation:            admissionv1.Create,
-			onlyServiceWorkloads: true,
-			backlogItems:         []string{},
-		},
-		{
-			operation:                        admissionv1.Create,
-			serviceExposureWrongWorkloadName: true,
-			backlogItems:                     []string{},
-		},
-		{
-			operation:                           admissionv1.Create,
-			duplicateSubDomainInServiceExposure: true,
-			backlogItems:                        []string{},
-		},
-		{
-			operation:                    admissionv1.Create,
-			portMissingInServiceExposure: true,
-			backlogItems:                 []string{},
 		},
 	}
 	for _, test := range tests {
@@ -1235,7 +1215,183 @@ func TestCavInvalidity(t *testing.T) {
 				crd.Spec.Workloads[0].Name = "extralongworkloadnamecontainingmorethan64characters"
 			} else if test.longContentWorkloadName == true {
 				crd.Spec.Workloads[2].Name = "extralongcontentworkloadnamecontainingmorethan64characters"
-			} else if test.onlyServiceWorkloads == true {
+			}
+
+			rawBytes, _ := json.Marshal(crd)
+			admissionReview.Request.Object.Raw = rawBytes
+			bytesRequest, err := json.Marshal(admissionReview)
+			if err != nil {
+				t.Fatal("marshal error")
+			}
+			request := httptest.NewRequest(http.MethodGet, "/validate", bytes.NewBuffer(bytesRequest))
+			recorder := httptest.NewRecorder()
+
+			wh.Validate(recorder, request)
+
+			admissionReviewRes := admissionv1.AdmissionReview{}
+			bytes, err := io.ReadAll(recorder.Body)
+			if err != nil {
+				t.Fatal("io read error")
+			}
+			universalDeserializer.Decode(bytes, nil, &admissionReviewRes)
+
+			var errorMessage string
+			if test.duplicateWorkloadName == true {
+				errorMessage = fmt.Sprintf("%s %s duplicate workload name: cap-backend", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.invalidDeploymentType == true {
+				errorMessage = fmt.Sprintf("%s %s invalid deployment definition type. Only supported - CAP, Router, Additional and Service", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.invalidJobType == true {
+				errorMessage = fmt.Sprintf("%s %s invalid job definition type. Only supported - Content, TenantOperation and CustomTenantOperation", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.onlyOneCAPTypeAllowed == true {
+				errorMessage = fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.DeploymentCAP, 2, v1alpha1.DeploymentCAP)
+			} else if test.onlyOneRouterTypeAllowed == true {
+				errorMessage = fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.DeploymentRouter, 2, v1alpha1.DeploymentRouter)
+			} else if test.duplicatePortName == true {
+				errorMessage = fmt.Sprintf("%s %s duplicate port name: port-1 in workload - cap-backend", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.duplicatePortNumber == true {
+				errorMessage = fmt.Sprintf("%s %s duplicate port number: 4000 in workload - cap-backend", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.routerDestNameCAPChk == true {
+				errorMessage = fmt.Sprintf("%s %s routerDestinationName not defined in port configuration of workload - cap-backend", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.routerDestNameRouterChk == true {
+				errorMessage = fmt.Sprintf("%s %s routerDestinationName should not be defined for workload of type Router - cap-router", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.customTenantOpWithoutSequence == true {
+				errorMessage = fmt.Sprintf("%s %s - If a jobDefinition of type CustomTenantOperation is part of the workloads, then spec.tenantOperations must be specified", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.tenantOperationSequenceInvalid == true {
+				errorMessage = fmt.Sprintf("%s %s workload tenant operation tenant-operation is not specified in spec.tenantOperations", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.invalidWorkloadInTenantOpSeq == true {
+				errorMessage = fmt.Sprintf("%s %s custom-tenant-operation specified in spec.tenantOperations is not a valid workload of type TenantOperation or CustomTenantOperation", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.missingTenantOpInSeqProvisioning == true {
+				errorMessage = fmt.Sprintf("%s %s - No tenant operation specified in spec.tenantOperation.provisioning", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.missingTenantOpInSeqUpgrade == true {
+				errorMessage = fmt.Sprintf("%s %s - No tenant operation specified in spec.tenantOperation.upgrade", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.missingTenantOpInSeqDeprovisioning == true {
+				errorMessage = fmt.Sprintf("%s %s - No tenant operation specified in spec.tenantOperation.deprovisioning", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.multipleContentJobsWithNoOrder == true {
+				errorMessage = fmt.Sprintf("%s %s if there are more than one content job, contentJobs should be defined", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.missingContentJobinContentJobs == true {
+				errorMessage = fmt.Sprintf("%s %s content job content-2 is not specified as part of ContentJobs", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.invalidJobinContentJobs == true {
+				errorMessage = fmt.Sprintf("%s %s job dummy specified as part of ContentJobs is not a valid content job", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+			} else if test.invalidWorkloadName == true {
+				errorMessage = fmt.Sprintf("%s %s Invalid workload name: %s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, "WrongWorkloadName")
+			} else if test.longDeploymentWorkloadName == true {
+				errorMessage = fmt.Sprintf(
+					"%s %s Derived service name '%s' (length %d) exceeds max limit of %d characters. Please shorten CAPApplicationVersion name '%s' or workload name '%s'.",
+					InvalidationMessage,
+					v1alpha1.CAPApplicationVersionKind,
+					crd.Name+"-"+"extralongworkloadnamecontainingmorethan64characters"+"-svc",
+					len(crd.Name+"-"+"extralongworkloadnamecontainingmorethan64characters"+"-svc"),
+					63,
+					crd.Name,
+					"extralongworkloadnamecontainingmorethan64characters",
+				)
+			} else if test.longContentWorkloadName == true {
+				errorMessage = fmt.Sprintf(
+					"%s %s Derived content job pod name '%s' (length %d) exceeds max limit of %d characters. Please shorten CAPApplicationVersion name '%s' or workload name '%s'.",
+					InvalidationMessage,
+					v1alpha1.CAPApplicationVersionKind,
+					crd.Name+"-"+"extralongcontentworkloadnamecontainingmorethan64characters"+"-q4m9c",
+					len(crd.Name+"-"+"extralongcontentworkloadnamecontainingmorethan64characters"+"-q4m9c"),
+					63,
+					crd.Name,
+					"extralongcontentworkloadnamecontainingmorethan64characters",
+				)
+			}
+
+			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
+				t.Fatal("validation response error")
+			}
+		})
+	}
+}
+
+func TestCavInvalidityServiceScenario(t *testing.T) {
+	Ca := createCaCRO(true)
+	wh := &WebhookHandler{
+		CrdClient: fakeCrdClient.NewSimpleClientset(Ca),
+	}
+	tests := []struct {
+		operation                           admissionv1.Operation
+		onlyServiceWorkloads                bool
+		serviceExposureWrongWorkloadName    bool
+		duplicateSubDomainInServiceExposure bool
+		portMissingInServiceExposure        bool
+		backlogItems                        []string
+	}{
+		{
+			operation:            admissionv1.Create,
+			onlyServiceWorkloads: true,
+			backlogItems:         []string{},
+		},
+		{
+			operation:                        admissionv1.Create,
+			serviceExposureWrongWorkloadName: true,
+			backlogItems:                     []string{},
+		},
+		{
+			operation:                           admissionv1.Create,
+			duplicateSubDomainInServiceExposure: true,
+			backlogItems:                        []string{},
+		},
+		{
+			operation:                    admissionv1.Create,
+			portMissingInServiceExposure: true,
+			backlogItems:                 []string{},
+		},
+	}
+	for _, test := range tests {
+		nameParts := []string{"Testing CAPApplicationversion invalidity for operation " + string(test.operation) + "; "}
+		testName := strings.Join(append(nameParts, test.backlogItems...), " ")
+		t.Run(testName, func(t *testing.T) {
+			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.CAPApplicationVersionKind, caName, noUpdate)
+			if err != nil {
+				t.Fatal("admission review error")
+			}
+
+			crd := &ResponseCav{
+				Metadata: Metadata{
+					Name:      cavName,
+					Namespace: metav1.NamespaceDefault,
+				},
+				Spec: &v1alpha1.CAPApplicationVersionSpec{
+					CAPApplicationInstance: caName,
+					Workloads: []v1alpha1.WorkloadDetails{
+						{
+							Name:                "cap-backend",
+							ConsumedBTPServices: []string{},
+							DeploymentDefinition: &v1alpha1.DeploymentDetails{
+								Type: v1alpha1.DeploymentCAP,
+								CommonDetails: v1alpha1.CommonDetails{
+									Image: "foo",
+								},
+							},
+						},
+						{
+							Name:                "cap-router",
+							ConsumedBTPServices: []string{},
+							DeploymentDefinition: &v1alpha1.DeploymentDetails{
+								Type: v1alpha1.DeploymentRouter,
+								CommonDetails: v1alpha1.CommonDetails{
+									Image: "foo",
+								},
+							},
+						},
+						{
+							Name:                "content",
+							ConsumedBTPServices: []string{},
+							JobDefinition: &v1alpha1.JobDetails{
+								Type: v1alpha1.JobContent,
+								CommonDetails: v1alpha1.CommonDetails{
+									Image: "foo",
+								},
+							},
+						},
+					},
+				},
+				Kind: v1alpha1.CAPApplicationVersionKind,
+			}
+
+			if test.onlyServiceWorkloads == true {
 				for _, workload := range crd.Spec.Workloads {
 					if workload.DeploymentDefinition != nil {
 						workload.DeploymentDefinition.Type = v1alpha1.DeploymentService
@@ -1376,68 +1532,8 @@ func TestCavInvalidity(t *testing.T) {
 			universalDeserializer.Decode(bytes, nil, &admissionReviewRes)
 
 			var errorMessage string
-			if test.duplicateWorkloadName == true {
-				errorMessage = fmt.Sprintf("%s %s duplicate workload name: cap-backend", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.invalidDeploymentType == true {
-				errorMessage = fmt.Sprintf("%s %s invalid deployment definition type. Only supported - CAP, Router, Additional and Service", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.invalidJobType == true {
-				errorMessage = fmt.Sprintf("%s %s invalid job definition type. Only supported - Content, TenantOperation and CustomTenantOperation", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.onlyOneCAPTypeAllowed == true {
-				errorMessage = fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.DeploymentCAP, 2, v1alpha1.DeploymentCAP)
-			} else if test.onlyOneRouterTypeAllowed == true {
-				errorMessage = fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.DeploymentRouter, 2, v1alpha1.DeploymentRouter)
-			} else if test.duplicatePortName == true {
-				errorMessage = fmt.Sprintf("%s %s duplicate port name: port-1 in workload - cap-backend", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.duplicatePortNumber == true {
-				errorMessage = fmt.Sprintf("%s %s duplicate port number: 4000 in workload - cap-backend", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.routerDestNameCAPChk == true {
-				errorMessage = fmt.Sprintf("%s %s routerDestinationName not defined in port configuration of workload - cap-backend", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.routerDestNameRouterChk == true {
-				errorMessage = fmt.Sprintf("%s %s routerDestinationName should not be defined for workload of type Router - cap-router", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.customTenantOpWithoutSequence == true {
-				errorMessage = fmt.Sprintf("%s %s - If a jobDefinition of type CustomTenantOperation is part of the workloads, then spec.tenantOperations must be specified", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.tenantOperationSequenceInvalid == true {
-				errorMessage = fmt.Sprintf("%s %s workload tenant operation tenant-operation is not specified in spec.tenantOperations", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.invalidWorkloadInTenantOpSeq == true {
-				errorMessage = fmt.Sprintf("%s %s custom-tenant-operation specified in spec.tenantOperations is not a valid workload of type TenantOperation or CustomTenantOperation", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.missingTenantOpInSeqProvisioning == true {
-				errorMessage = fmt.Sprintf("%s %s - No tenant operation specified in spec.tenantOperation.provisioning", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.missingTenantOpInSeqUpgrade == true {
-				errorMessage = fmt.Sprintf("%s %s - No tenant operation specified in spec.tenantOperation.upgrade", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.missingTenantOpInSeqDeprovisioning == true {
-				errorMessage = fmt.Sprintf("%s %s - No tenant operation specified in spec.tenantOperation.deprovisioning", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.multipleContentJobsWithNoOrder == true {
-				errorMessage = fmt.Sprintf("%s %s if there are more than one content job, contentJobs should be defined", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.missingContentJobinContentJobs == true {
-				errorMessage = fmt.Sprintf("%s %s content job content-2 is not specified as part of ContentJobs", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.invalidJobinContentJobs == true {
-				errorMessage = fmt.Sprintf("%s %s job dummy specified as part of ContentJobs is not a valid content job", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
-			} else if test.invalidWorkloadName == true {
-				errorMessage = fmt.Sprintf("%s %s Invalid workload name: %s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, "WrongWorkloadName")
-			} else if test.longDeploymentWorkloadName == true {
-				errorMessage = fmt.Sprintf(
-					"%s %s Derived service name '%s' (length %d) exceeds max limit of %d characters. Please shorten CAPApplicationVersion name '%s' or workload name '%s'.",
-					InvalidationMessage,
-					v1alpha1.CAPApplicationVersionKind,
-					crd.Name+"-"+"extralongworkloadnamecontainingmorethan64characters"+"-svc",
-					len(crd.Name+"-"+"extralongworkloadnamecontainingmorethan64characters"+"-svc"),
-					63,
-					crd.Name,
-					"extralongworkloadnamecontainingmorethan64characters",
-				)
-			} else if test.longContentWorkloadName == true {
-				errorMessage = fmt.Sprintf(
-					"%s %s Derived content job pod name '%s' (length %d) exceeds max limit of %d characters. Please shorten CAPApplicationVersion name '%s' or workload name '%s'.",
-					InvalidationMessage,
-					v1alpha1.CAPApplicationVersionKind,
-					crd.Name+"-"+"extralongcontentworkloadnamecontainingmorethan64characters"+"-q4m9c",
-					len(crd.Name+"-"+"extralongcontentworkloadnamecontainingmorethan64characters"+"-q4m9c"),
-					63,
-					crd.Name,
-					"extralongcontentworkloadnamecontainingmorethan64characters",
-				)
-			} else if test.onlyServiceWorkloads == true {
-				errorMessage = fmt.Sprintf(TenantOpJobWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.JobTenantOperation, v1alpha1.JobCustomTenantOperation, v1alpha1.DeploymentService)
+			if test.onlyServiceWorkloads == true {
+				errorMessage = fmt.Sprintf(TenantOpJobWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.JobTenantOperation, v1alpha1.JobCustomTenantOperation)
 			} else if test.serviceExposureWrongWorkloadName == true {
 				errorMessage = fmt.Sprintf(ServiceExposureWorkloadNameErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].Routes[0].WorkloadName, crd.Spec.ServiceExposures[0].SubDomain)
 			} else if test.duplicateSubDomainInServiceExposure == true {
