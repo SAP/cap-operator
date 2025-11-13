@@ -149,7 +149,11 @@ func (in *CAPApplicationSpec) DeepCopyInto(out *CAPApplicationSpec) {
 		copy(*out, *in)
 	}
 	in.Domains.DeepCopyInto(&out.Domains)
-	out.Provider = in.Provider
+	if in.Provider != nil {
+		in, out := &in.Provider, &out.Provider
+		*out = new(BTPTenantIdentification)
+		**out = **in
+	}
 	in.BTP.DeepCopyInto(&out.BTP)
 	return
 }

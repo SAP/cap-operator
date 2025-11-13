@@ -252,6 +252,9 @@ func getWorkloadTypeCount(workloads []v1alpha1.WorkloadDetails) (map[string]int,
 
 func checkWorkloadTypeCount(cavObjNew *ResponseCav) validateResource {
 
+	// ToDo: Prevent switch from multi-tenant app to service only app
+	// check if CA.Spec.Provider is present --> in that case prevent service only app creation (no CAP and Router workloads)
+
 	workloadTypeCount, deploymentWorkloadCnt := getWorkloadTypeCount(cavObjNew.Spec.Workloads)
 
 	if workloadTypeCount[string(v1alpha1.DeploymentService)] == deploymentWorkloadCnt && (workloadTypeCount[string(v1alpha1.JobTenantOperation)] != 0 || workloadTypeCount[string(v1alpha1.JobCustomTenantOperation)] != 0) {

@@ -42,6 +42,10 @@ func (ca *CAPApplication) IsServicesOnly() bool {
 	return ca.Status.ServicesOnly != nil && *ca.Status.ServicesOnly
 }
 
+func (ca *CAPApplication) IsProviderEmpty() bool {
+	return ca.Spec.Provider == nil || (ca.Spec.Provider.SubDomain == "" && ca.Spec.Provider.TenantId == "")
+}
+
 // SetStatusCondition updates/sets the conditions in the Status of the resource.
 func (ca *CAPApplication) SetStatusCondition(conditionType string, readyStatus metav1.ConditionStatus, reason string, message string) {
 	ca.Status.SetStatusCondition(metav1.Condition{Type: conditionType, Status: readyStatus, Reason: reason, Message: message, ObservedGeneration: ca.Generation})

@@ -95,7 +95,7 @@ type CAPApplicationSpec struct {
 	// Short name for the application (similar to BTP XSAPPNAME)
 	BTPAppName string `json:"btpAppName"`
 	// Provider subaccount where application services are created
-	Provider BTPTenantIdentification `json:"provider,omitempty"`
+	Provider *BTPTenantIdentification `json:"provider,omitempty"`
 	// SAP BTP Services consumed by the application
 	BTP BTP `json:"btp"`
 }

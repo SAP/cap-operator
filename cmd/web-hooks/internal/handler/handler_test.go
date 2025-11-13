@@ -67,7 +67,7 @@ func createCaCRO() *v1alpha1.CAPApplication {
 			},
 			GlobalAccountId: "globalAccountId",
 			BTPAppName:      "btpApplicationName",
-			Provider: v1alpha1.BTPTenantIdentification{
+			Provider: &v1alpha1.BTPTenantIdentification{
 				SubDomain: subDomain,
 				TenantId:  tenantId,
 			},
@@ -157,7 +157,7 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 					Namespace: metav1.NamespaceDefault,
 				},
 				Spec: &v1alpha1.CAPApplicationSpec{
-					Provider: v1alpha1.BTPTenantIdentification{
+					Provider: &v1alpha1.BTPTenantIdentification{
 						SubDomain: subDomain,
 						TenantId:  tenantId,
 					},
