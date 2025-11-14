@@ -43,7 +43,6 @@ const (
 	consumedBTPServicesUpdate
 	versionUpdate
 	imageUpdate
-	emptyUpdate
 	domainsUpdate
 	useDomains
 )
@@ -153,32 +152,32 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 	switch crdType {
 
 	case v1alpha1.CAPApplicationKind:
-		crd := &ResponseCa{}
-		if change != emptyUpdate {
-			crd = &ResponseCa{
-				Metadata: Metadata{
-					Name:      caName,
-					Namespace: metav1.NamespaceDefault,
-				},
-				Spec: &v1alpha1.CAPApplicationSpec{
-					Provider: &v1alpha1.BTPTenantIdentification{
-						SubDomain: subDomain,
-						TenantId:  tenantId,
-					},
-					BTP: v1alpha1.BTP{},
-					DomainRefs: []v1alpha1.DomainRef{
-						{
-							Kind: "Domain",
-							Name: "primaryDomain",
-						},
-						{
-							Kind: "ClusterDomain",
-							Name: "secondaryDomain",
-						},
-					},
-				},
+		crd := &v1alpha1.CAPApplication{}
+		crd = &v1alpha1.CAPApplication{
+			TypeMeta: metav1.TypeMeta{
 				Kind: crdType,
-			}
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      caName,
+				Namespace: metav1.NamespaceDefault,
+			},
+			Spec: v1alpha1.CAPApplicationSpec{
+				Provider: &v1alpha1.BTPTenantIdentification{
+					SubDomain: subDomain,
+					TenantId:  tenantId,
+				},
+				BTP: v1alpha1.BTP{},
+				DomainRefs: []v1alpha1.DomainRef{
+					{
+						Kind: "Domain",
+						Name: "primaryDomain",
+					},
+					{
+						Kind: "ClusterDomain",
+						Name: "secondaryDomain",
+					},
+				},
+			},
 		}
 
 		rawBytes, err = json.Marshal(crd)
@@ -202,51 +201,53 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 			rawBytes, err = json.Marshal(crd)
 		}
 	case v1alpha1.CAPApplicationVersionKind:
-		crd := &ResponseCav{}
-		if change != emptyUpdate {
-			crd = &ResponseCav{
-				Metadata: Metadata{
-					Name:      crdName,
-					Namespace: metav1.NamespaceDefault,
-				},
-				Spec: &v1alpha1.CAPApplicationVersionSpec{
-					CAPApplicationInstance: caName,
-					Workloads: []v1alpha1.WorkloadDetails{
-						{
-							Name:                "cap-backend",
-							ConsumedBTPServices: []string{},
-							DeploymentDefinition: &v1alpha1.DeploymentDetails{
-								Type: v1alpha1.DeploymentCAP,
-								CommonDetails: v1alpha1.CommonDetails{
-									Image: "foo",
-								},
+		crd := &v1alpha1.CAPApplicationVersion{}
+
+		crd = &v1alpha1.CAPApplicationVersion{
+			TypeMeta: metav1.TypeMeta{
+				Kind: crdType,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      crdName,
+				Namespace: metav1.NamespaceDefault,
+			},
+			Spec: v1alpha1.CAPApplicationVersionSpec{
+				CAPApplicationInstance: caName,
+				Workloads: []v1alpha1.WorkloadDetails{
+					{
+						Name:                "cap-backend",
+						ConsumedBTPServices: []string{},
+						DeploymentDefinition: &v1alpha1.DeploymentDetails{
+							Type: v1alpha1.DeploymentCAP,
+							CommonDetails: v1alpha1.CommonDetails{
+								Image: "foo",
 							},
 						},
-						{
-							Name:                "cap-router",
-							ConsumedBTPServices: []string{},
-							DeploymentDefinition: &v1alpha1.DeploymentDetails{
-								Type: v1alpha1.DeploymentRouter,
-								CommonDetails: v1alpha1.CommonDetails{
-									Image: "foo",
-								},
+					},
+					{
+						Name:                "cap-router",
+						ConsumedBTPServices: []string{},
+						DeploymentDefinition: &v1alpha1.DeploymentDetails{
+							Type: v1alpha1.DeploymentRouter,
+							CommonDetails: v1alpha1.CommonDetails{
+								Image: "foo",
 							},
 						},
-						{
-							Name:                "content",
-							ConsumedBTPServices: []string{},
-							JobDefinition: &v1alpha1.JobDetails{
-								Type: v1alpha1.JobContent,
-								CommonDetails: v1alpha1.CommonDetails{
-									Image: "foo",
-								},
+					},
+					{
+						Name:                "content",
+						ConsumedBTPServices: []string{},
+						JobDefinition: &v1alpha1.JobDetails{
+							Type: v1alpha1.JobContent,
+							CommonDetails: v1alpha1.CommonDetails{
+								Image: "foo",
 							},
 						},
 					},
 				},
-				Kind: crdType,
-			}
+			},
 		}
+
 		rawBytes, err = json.Marshal(crd)
 		rawBytesOld = rawBytes
 		if operation == admissionv1.Update && err == nil && change != noUpdate {
@@ -267,25 +268,26 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 			rawBytesOld, err = json.Marshal(crdOld)
 		}
 	case v1alpha1.CAPTenantKind:
-		crd := &ResponseCat{}
-		if change != emptyUpdate {
-			crd = &ResponseCat{
-				Metadata: Metadata{
-					Name:      crdName,
-					Namespace: metav1.NamespaceDefault,
-					Labels: map[string]string{
-						LabelTenantType: ProviderTenantType,
-					},
-				},
-				Spec: &v1alpha1.CAPTenantSpec{
-					CAPApplicationInstance: caName,
-				},
-				Status: &v1alpha1.CAPTenantStatus{
-					State: v1alpha1.CAPTenantStateReady,
-				},
+		crd := &v1alpha1.CAPTenant{}
+		crd = &v1alpha1.CAPTenant{
+			TypeMeta: metav1.TypeMeta{
 				Kind: crdType,
-			}
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      crdName,
+				Namespace: metav1.NamespaceDefault,
+				Labels: map[string]string{
+					LabelTenantType: ProviderTenantType,
+				},
+			},
+			Spec: v1alpha1.CAPTenantSpec{
+				CAPApplicationInstance: caName,
+			},
+			Status: v1alpha1.CAPTenantStatus{
+				State: v1alpha1.CAPTenantStateReady,
+			},
 		}
+
 		rawBytes, err = json.Marshal(crd)
 		rawBytesOld = rawBytes
 		if (operation == admissionv1.Update || operation == admissionv1.Delete) && err == nil {
@@ -382,77 +384,6 @@ func TestSideCar(t *testing.T) {
 			}
 
 			os.Unsetenv(SideCarEnv)
-		})
-	}
-}
-
-func TestEmptyResources(t *testing.T) {
-	wh := &WebhookHandler{
-		CrdClient: fakeCrdClient.NewSimpleClientset(),
-	}
-	tests := []struct {
-		operation admissionv1.Operation
-		crdType   string
-	}{
-		{
-			operation: admissionv1.Update,
-			crdType:   v1alpha1.CAPApplicationVersionKind,
-		},
-		{
-			operation: admissionv1.Create,
-			crdType:   v1alpha1.CAPApplicationVersionKind,
-		},
-		{
-			operation: admissionv1.Delete,
-			crdType:   v1alpha1.CAPApplicationVersionKind,
-		},
-		{
-			operation: admissionv1.Update,
-			crdType:   v1alpha1.CAPTenantKind,
-		},
-		{
-			operation: admissionv1.Create,
-			crdType:   v1alpha1.CAPTenantKind,
-		},
-		{
-			operation: admissionv1.Delete,
-			crdType:   v1alpha1.CAPTenantKind,
-		},
-		{
-			operation: admissionv1.Update,
-			crdType:   v1alpha1.CAPApplicationKind,
-		},
-		{
-			operation: admissionv1.Create,
-			crdType:   v1alpha1.CAPApplicationKind,
-		},
-		{
-			operation: admissionv1.Delete,
-			crdType:   v1alpha1.CAPApplicationKind,
-		},
-	}
-	for _, test := range tests {
-		t.Run("Testing admission review for empty (invalid) "+test.crdType+" resource with operation "+string(test.operation), func(t *testing.T) {
-			crdName := cavName
-			if test.crdType == v1alpha1.CAPTenantKind {
-				crdName = catName
-			} else {
-				crdName = caName
-			}
-
-			request, recorder := getHttpRequest(test.operation, test.crdType, crdName, emptyUpdate, t)
-
-			wh.Validate(recorder, request)
-
-			admissionReview := admissionv1.AdmissionReview{}
-			bytes, _ := io.ReadAll(recorder.Body)
-			universalDeserializer.Decode(bytes, nil, &admissionReview)
-			if admissionReview.Request != nil || admissionReview.Response != nil {
-				t.Fatal("Invalid admission review with http error")
-			}
-			if recorder.Code != http.StatusInternalServerError {
-				t.Fatal("Error was not recorded correctly")
-			}
 		})
 	}
 }
@@ -940,7 +871,7 @@ func TestCavInvalidity(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		nameParts := []string{"Testing CAPApplicationversion invalidity for operation " + string(test.operation) + "; "}
+		nameParts := []string{"Testing CAPApplicationVersion invalidity for operation " + string(test.operation) + "; "}
 		testName := strings.Join(append(nameParts, test.backlogItems...), " ")
 		t.Run(testName, func(t *testing.T) {
 			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.CAPApplicationVersionKind, caName, noUpdate)
@@ -948,12 +879,15 @@ func TestCavInvalidity(t *testing.T) {
 				t.Fatal("admission review error")
 			}
 
-			crd := &ResponseCav{
-				Metadata: Metadata{
+			crd := &v1alpha1.CAPApplicationVersion{
+				TypeMeta: metav1.TypeMeta{
+					Kind: v1alpha1.CAPApplicationVersionKind,
+				},
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      cavName,
 					Namespace: metav1.NamespaceDefault,
 				},
-				Spec: &v1alpha1.CAPApplicationVersionSpec{
+				Spec: v1alpha1.CAPApplicationVersionSpec{
 					CAPApplicationInstance: caName,
 					Workloads: []v1alpha1.WorkloadDetails{
 						{
@@ -988,7 +922,6 @@ func TestCavInvalidity(t *testing.T) {
 						},
 					},
 				},
-				Kind: v1alpha1.CAPApplicationVersionKind,
 			}
 
 			if test.duplicateWorkloadName == true {
@@ -1340,7 +1273,7 @@ func TestCavInvalidityServiceScenario(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		nameParts := []string{"Testing CAPApplicationversion invalidity for operation " + string(test.operation) + "; "}
+		nameParts := []string{"Testing CAPApplicationVersion invalidity for operation " + string(test.operation) + "; "}
 		testName := strings.Join(append(nameParts, test.backlogItems...), " ")
 		t.Run(testName, func(t *testing.T) {
 			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.CAPApplicationVersionKind, caName, noUpdate)
@@ -1348,12 +1281,15 @@ func TestCavInvalidityServiceScenario(t *testing.T) {
 				t.Fatal("admission review error")
 			}
 
-			crd := &ResponseCav{
-				Metadata: Metadata{
+			crd := &v1alpha1.CAPApplicationVersion{
+				TypeMeta: metav1.TypeMeta{
+					Kind: v1alpha1.CAPApplicationVersionKind,
+				},
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      cavName,
 					Namespace: metav1.NamespaceDefault,
 				},
-				Spec: &v1alpha1.CAPApplicationVersionSpec{
+				Spec: v1alpha1.CAPApplicationVersionSpec{
 					CAPApplicationInstance: caName,
 					Workloads: []v1alpha1.WorkloadDetails{
 						{
@@ -1388,7 +1324,6 @@ func TestCavInvalidityServiceScenario(t *testing.T) {
 						},
 					},
 				},
-				Kind: v1alpha1.CAPApplicationVersionKind,
 			}
 
 			if test.onlyServiceWorkloads == true {
@@ -1579,16 +1514,18 @@ func TestCtoutInvalidity(t *testing.T) {
 				CrdClient: fakeCrdClient.NewSimpleClientset(crdObjects...),
 			}
 
-			ctout := &ResponseCtout{
-				Metadata: Metadata{
+			ctout := &v1alpha1.CAPTenantOutput{
+				TypeMeta: metav1.TypeMeta{
+					Kind: v1alpha1.CAPTenantOutputKind,
+				},
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-ctout",
 					Namespace: metav1.NamespaceDefault,
 					Labels:    map[string]string{},
 				},
-				Spec: &v1alpha1.CAPTenantOutputSpec{
+				Spec: v1alpha1.CAPTenantOutputSpec{
 					SubscriptionCallbackData: `{"supportUsers":[{"name":"user_t1", "email":"usert1@foo.com"},{"name":"user_t2", "email":"usert2@foo.com"}]}`,
 				},
-				Kind: v1alpha1.CAPApplicationVersionKind,
 			}
 
 			if test.labelPresent {
