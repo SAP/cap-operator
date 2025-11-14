@@ -64,52 +64,6 @@ type WebhookHandler struct {
 	CrdClient versioned.Interface
 }
 
-// Metadata struct for parsing
-type Metadata struct {
-	Name      string            `json:"name"`
-	Namespace string            `json:"namespace"`
-	Labels    map[string]string `json:"labels"`
-}
-
-type ResponseCat struct {
-	Metadata `json:"metadata"`
-	Spec     *v1alpha1.CAPTenantSpec   `json:"spec"`
-	Status   *v1alpha1.CAPTenantStatus `json:"status"`
-	Kind     string                    `json:"kind"`
-}
-
-type ResponseCtout struct {
-	Metadata `json:"metadata"`
-	Spec     *v1alpha1.CAPTenantOutputSpec `json:"spec"`
-	Kind     string                        `json:"kind"`
-}
-
-type ResponseCav struct {
-	Metadata `json:"metadata"`
-	Spec     *v1alpha1.CAPApplicationVersionSpec `json:"spec"`
-	Kind     string                              `json:"kind"`
-}
-
-type ResponseCa struct {
-	Metadata `json:"metadata"`
-	Spec     *v1alpha1.CAPApplicationSpec `json:"spec"`
-	Kind     string                       `json:"kind"`
-}
-
-type ResponseDom struct {
-	Metadata `json:"metadata"`
-	Spec     *v1alpha1.DomainSpec `json:"spec"`
-	Kind     string               `json:"kind"`
-}
-
-type responseInterface interface {
-	isEmpty() bool
-}
-
-func (m Metadata) isEmpty() bool {
-	return m.Name == ""
-}
-
 func checkWorkloadPort(workload *v1alpha1.WorkloadDetails) validateResource {
 	if workload.DeploymentDefinition == nil {
 		return validAdmissionReviewObj()
@@ -186,7 +140,7 @@ func checkWorkloadType(workload *v1alpha1.WorkloadDetails) validateResource {
 	return validAdmissionReviewObj()
 }
 
-func checkWorkloadNameLength(cavObjNew *ResponseCav, workload *v1alpha1.WorkloadDetails) validateResource {
+func checkWorkloadNameLength(cavObjNew *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails) validateResource {
 	const maxNameLength = 63
 
 	// Allowed length for service name is 63 characters
@@ -248,7 +202,7 @@ func getWorkloadTypeCount(workloads []v1alpha1.WorkloadDetails) map[string]int {
 	return workloadTypeCount
 }
 
-func checkWorkloadTypeCount(ca *v1alpha1.CAPApplication, cavObjNew *ResponseCav) validateResource {
+func checkWorkloadTypeCount(ca *v1alpha1.CAPApplication, cavObjNew *v1alpha1.CAPApplicationVersion) validateResource {
 
 	workloadTypeCount := getWorkloadTypeCount(cavObjNew.Spec.Workloads)
 
@@ -280,7 +234,7 @@ func checkWorkloadTypeCount(ca *v1alpha1.CAPApplication, cavObjNew *ResponseCav)
 	return validAdmissionReviewObj()
 }
 
-func getContentWorkloadNames(cavObjNew *ResponseCav) []string {
+func getContentWorkloadNames(cavObjNew *v1alpha1.CAPApplicationVersion) []string {
 	contentJobWorkloads := []string{}
 	for _, workload := range cavObjNew.Spec.Workloads {
 		if workload.JobDefinition != nil && workload.JobDefinition.Type == v1alpha1.JobContent {
@@ -290,7 +244,7 @@ func getContentWorkloadNames(cavObjNew *ResponseCav) []string {
 	return contentJobWorkloads
 }
 
-func checkWorkloadContentJob(cavObjNew *ResponseCav) validateResource {
+func checkWorkloadContentJob(cavObjNew *v1alpha1.CAPApplicationVersion) validateResource {
 
 	contentJobWorkloads := getContentWorkloadNames(cavObjNew)
 
@@ -328,7 +282,7 @@ func checkWorkloadContentJob(cavObjNew *ResponseCav) validateResource {
 	return validAdmissionReviewObj()
 }
 
-func getDeploymentPorts(cavObjNew *ResponseCav) map[string][]int32 {
+func getDeploymentPorts(cavObjNew *v1alpha1.CAPApplicationVersion) map[string][]int32 {
 	deploymentPorts := make(map[string][]int32)
 
 	for _, workload := range cavObjNew.Spec.Workloads {
@@ -356,7 +310,7 @@ func getDeploymentPorts(cavObjNew *ResponseCav) map[string][]int32 {
 	return deploymentPorts
 }
 
-func checkServiceExposure(cavObjNew *ResponseCav) validateResource {
+func checkServiceExposure(cavObjNew *v1alpha1.CAPApplicationVersion) validateResource {
 	// check that all the workload names and ports mentioned in service exposures are valid
 	// check that there are no duplicate subdomains in service exposures
 
@@ -393,7 +347,7 @@ func checkServiceExposure(cavObjNew *ResponseCav) validateResource {
 	return validAdmissionReviewObj()
 }
 
-func validateWorkloads(ca *v1alpha1.CAPApplication, cavObjNew *ResponseCav) validateResource {
+func validateWorkloads(ca *v1alpha1.CAPApplication, cavObjNew *v1alpha1.CAPApplicationVersion) validateResource {
 	//  regex pattern for workload name - based on RFC 1123 label
 	regex, _ := regexp.Compile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
 
@@ -444,7 +398,7 @@ func validateWorkloads(ca *v1alpha1.CAPApplication, cavObjNew *ResponseCav) vali
 	return validAdmissionReviewObj()
 }
 
-func getTenantOperationsFromSpec(cavObjNew *ResponseCav) map[string]int {
+func getTenantOperationsFromSpec(cavObjNew *v1alpha1.CAPApplicationVersion) map[string]int {
 	specTenantOperationsCntMap := make(map[string]int)
 	var tenantOperationsList []v1alpha1.TenantOperationWorkloadReference
 	if cavObjNew.Spec.TenantOperations.Provisioning != nil {
@@ -471,7 +425,7 @@ func checkForTenantOpJob(tenantOperations []v1alpha1.TenantOperationWorkloadRefe
 	})
 }
 
-func validateWorkloadsinTenantOperations(allTenantOperationsWorkloadCntMap map[string]int, tenantOperationWorkloadCntMap map[string]int, cavObjNew *ResponseCav) validateResource {
+func validateWorkloadsinTenantOperations(allTenantOperationsWorkloadCntMap map[string]int, tenantOperationWorkloadCntMap map[string]int, cavObjNew *v1alpha1.CAPApplicationVersion) validateResource {
 
 	specTenantOperationsCntMap := getTenantOperationsFromSpec(cavObjNew)
 
@@ -520,7 +474,7 @@ func validateWorkloadsinTenantOperations(allTenantOperationsWorkloadCntMap map[s
 	return validAdmissionReviewObj()
 }
 
-func validateTenantOperations(cavObjNew *ResponseCav) validateResource {
+func validateTenantOperations(cavObjNew *v1alpha1.CAPApplicationVersion) validateResource {
 	// Check: If a jobDefinition of type CustomTenantOperation is part of the workloads, spec.tenantOperations must be specified. It is possible to omit spec.tenantOperations when there are no jobs of type CustomTenantOperation and only one job of type TenantOperation
 	//		  If spec.tenantOperations is specified, the entries (for provisioning, upgrade and deprovisioning) must include all spec.workloads.jobDefinitions of type TenantOperation
 	// 		  All the entries specified in spec.tenantOperations should be a valid workload of type TenantOperation or CustomTenantOperation
@@ -563,12 +517,12 @@ func validateTenantOperations(cavObjNew *ResponseCav) validateResource {
 	return validAdmissionReviewObj()
 }
 
-func (wh *WebhookHandler) checkCAPAppExists(cavObjNew *ResponseCav) (ca *v1alpha1.CAPApplication, validateRes validateResource) {
-	app, err := wh.CrdClient.SmeV1alpha1().CAPApplications(cavObjNew.Metadata.Namespace).Get(context.TODO(), cavObjNew.Spec.CAPApplicationInstance, metav1.GetOptions{})
+func (wh *WebhookHandler) checkCAPAppExists(cavObjNew *v1alpha1.CAPApplicationVersion) (ca *v1alpha1.CAPApplication, validateRes validateResource) {
+	app, err := wh.CrdClient.SmeV1alpha1().CAPApplications(cavObjNew.GetNamespace()).Get(context.TODO(), cavObjNew.Spec.CAPApplicationInstance, metav1.GetOptions{})
 	if app == nil || err != nil {
 		return nil, validateResource{
 			allowed: false,
-			message: fmt.Sprintf("%s %s no valid %s found for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.CAPApplicationKind, cavObjNew.Metadata.Namespace, cavObjNew.Metadata.Name),
+			message: fmt.Sprintf("%s %s no valid %s found for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.CAPApplicationKind, cavObjNew.GetNamespace(), cavObjNew.GetName()),
 		}
 	}
 
@@ -576,8 +530,8 @@ func (wh *WebhookHandler) checkCAPAppExists(cavObjNew *ResponseCav) (ca *v1alpha
 }
 
 func (wh *WebhookHandler) validateCAPApplicationVersion(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview) validateResource {
-	cavObjOld := ResponseCav{}
-	cavObjNew := ResponseCav{}
+	cavObjOld := v1alpha1.CAPApplicationVersion{}
+	cavObjNew := v1alpha1.CAPApplicationVersion{}
 
 	// Note: Object is nil for "DELETE" operation
 	if admissionReview.Request.Operation == admissionv1.Create || admissionReview.Request.Operation == admissionv1.Update {
@@ -603,13 +557,13 @@ func (wh *WebhookHandler) validateCAPApplicationVersion(w http.ResponseWriter, a
 	if admissionReview.Request.Operation == admissionv1.Update && !cmp.Equal(cavObjOld.Spec, cavObjNew.Spec) {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf("%s %s spec cannot be modified for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, cavObjNew.Metadata.Namespace, cavObjNew.Metadata.Name),
+			message: fmt.Sprintf("%s %s spec cannot be modified for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, cavObjNew.GetNamespace(), cavObjNew.GetName()),
 		}
 	}
 	return validAdmissionReviewObj()
 }
 
-func (wh *WebhookHandler) checkCAVCreate(cav *ResponseCav) validateResource {
+func (wh *WebhookHandler) checkCAVCreate(cav *v1alpha1.CAPApplicationVersion) validateResource {
 	// Check: CAPApplication exists
 	ca, capAppExistsValidate := wh.checkCAPAppExists(cav)
 	if !capAppExistsValidate.allowed {
@@ -627,11 +581,11 @@ func (wh *WebhookHandler) checkCAVCreate(cav *ResponseCav) validateResource {
 	return validateTenantOperations(cav)
 }
 
-func (wh *WebhookHandler) checkCaIsConsistent(catObjOld ResponseCat) validateResource {
+func (wh *WebhookHandler) checkCaIsConsistent(catObjOld v1alpha1.CAPTenant) validateResource {
 
-	ca, err := wh.CrdClient.SmeV1alpha1().CAPApplications(catObjOld.Metadata.Namespace).Get(context.TODO(), catObjOld.Spec.CAPApplicationInstance, metav1.GetOptions{})
+	ca, err := wh.CrdClient.SmeV1alpha1().CAPApplications(catObjOld.GetNamespace()).Get(context.TODO(), catObjOld.Spec.CAPApplicationInstance, metav1.GetOptions{})
 
-	if ca != nil && err == nil && ca.Status.State == v1alpha1.CAPApplicationStateConsistent && catObjOld.Metadata.Labels[LabelTenantType] == ProviderTenantType && catObjOld.Status.State == v1alpha1.CAPTenantStateReady {
+	if ca != nil && err == nil && ca.Status.State == v1alpha1.CAPApplicationStateConsistent && catObjOld.GetLabels()[LabelTenantType] == ProviderTenantType && catObjOld.Status.State == v1alpha1.CAPTenantStateReady {
 		return validateResource{
 			allowed: false,
 			message: fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s instead to delete all tenants", InvalidationMessage, v1alpha1.CAPTenantKind, catObjOld.Name, v1alpha1.CAPApplicationKind, ca.Name, v1alpha1.CAPApplicationKind),
@@ -665,7 +619,7 @@ func (wh *WebhookHandler) checkForDuplicateDomains(domain string, name string) v
 }
 
 func (wh *WebhookHandler) validateClusterDomain(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview) validateResource {
-	clusterDomObjNew := ResponseDom{}
+	clusterDomObjNew := v1alpha1.ClusterDomain{}
 	if admissionReview.Request.Operation == admissionv1.Create || admissionReview.Request.Operation == admissionv1.Update {
 		if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &clusterDomObjNew, v1alpha1.ClusterDomainKind); !validatedResource.allowed {
 			return validatedResource
@@ -679,7 +633,7 @@ func (wh *WebhookHandler) validateClusterDomain(w http.ResponseWriter, admission
 }
 
 func (wh *WebhookHandler) validateDomain(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview) validateResource {
-	domObjNew := ResponseDom{}
+	domObjNew := v1alpha1.Domain{}
 	if admissionReview.Request.Operation == admissionv1.Create || admissionReview.Request.Operation == admissionv1.Update {
 		if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &domObjNew, v1alpha1.DomainKind); !validatedResource.allowed {
 			return validatedResource
@@ -693,8 +647,8 @@ func (wh *WebhookHandler) validateDomain(w http.ResponseWriter, admissionReview 
 }
 
 func (wh *WebhookHandler) validateCAPTenant(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview) validateResource {
-	catObjOld := ResponseCat{}
-	catObjNew := ResponseCat{}
+	catObjOld := v1alpha1.CAPTenant{}
+	catObjNew := v1alpha1.CAPTenant{}
 
 	// Note: Object is nil for "DELETE" operation
 	if admissionReview.Request.Operation == admissionv1.Create || admissionReview.Request.Operation == admissionv1.Update {
@@ -711,10 +665,10 @@ func (wh *WebhookHandler) validateCAPTenant(w http.ResponseWriter, admissionRevi
 
 	// check: CAPApplication exists on create
 	if admissionReview.Request.Operation == admissionv1.Create {
-		if app, err := wh.CrdClient.SmeV1alpha1().CAPApplications(catObjNew.Metadata.Namespace).Get(context.TODO(), catObjNew.Spec.CAPApplicationInstance, metav1.GetOptions{}); app == nil || err != nil {
+		if app, err := wh.CrdClient.SmeV1alpha1().CAPApplications(catObjNew.GetNamespace()).Get(context.TODO(), catObjNew.Spec.CAPApplicationInstance, metav1.GetOptions{}); app == nil || err != nil {
 			return validateResource{
 				allowed: false,
-				message: fmt.Sprintf("%s %s no valid %s found for: %s.%s", InvalidationMessage, v1alpha1.CAPTenantKind, v1alpha1.CAPApplicationKind, catObjNew.Metadata.Namespace, catObjNew.Metadata.Name),
+				message: fmt.Sprintf("%s %s no valid %s found for: %s.%s", InvalidationMessage, v1alpha1.CAPTenantKind, v1alpha1.CAPApplicationKind, catObjNew.GetNamespace(), catObjNew.GetName()),
 			}
 		}
 	}
@@ -722,7 +676,7 @@ func (wh *WebhookHandler) validateCAPTenant(w http.ResponseWriter, admissionRevi
 	if admissionReview.Request.Operation == admissionv1.Update && catObjOld.Spec.CAPApplicationInstance != catObjNew.Spec.CAPApplicationInstance {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf("%s %s capApplicationInstance value cannot be modified for: %s.%s", InvalidationMessage, v1alpha1.CAPTenantKind, catObjNew.Metadata.Namespace, catObjNew.Metadata.Name),
+			message: fmt.Sprintf("%s %s capApplicationInstance value cannot be modified for: %s.%s", InvalidationMessage, v1alpha1.CAPTenantKind, catObjNew.GetNamespace(), catObjNew.GetName()),
 		}
 	}
 
@@ -735,7 +689,7 @@ func (wh *WebhookHandler) validateCAPTenant(w http.ResponseWriter, admissionRevi
 }
 
 func (wh *WebhookHandler) validateCAPTenantOutput(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview) validateResource {
-	ctoutObjNew := ResponseCtout{}
+	ctoutObjNew := v1alpha1.CAPTenantOutput{}
 
 	if admissionReview.Request.Operation == admissionv1.Delete {
 		return validAdmissionReviewObj()
@@ -767,8 +721,8 @@ func (wh *WebhookHandler) validateCAPTenantOutput(w http.ResponseWriter, admissi
 }
 
 func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview) validateResource {
-	caObjOld := ResponseCa{}
-	caObjNew := ResponseCa{}
+	caObjOld := v1alpha1.CAPApplication{}
+	caObjNew := v1alpha1.CAPApplication{}
 
 	// Note: OldObject is nil for "CONNECT" and "CREATE" operations
 	if admissionReview.Request.Operation == admissionv1.Delete || admissionReview.Request.Operation == admissionv1.Update {
@@ -787,7 +741,7 @@ func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissio
 	if admissionReview.Request.Operation == admissionv1.Update && !cmp.Equal(caObjNew.Spec.Provider, caObjOld.Spec.Provider) {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
+			message: fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.GetNamespace(), caObjNew.GetName()),
 		}
 	}
 
@@ -795,7 +749,7 @@ func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissio
 	if admissionReview.Request.Operation == admissionv1.Create && !cmp.Equal(caObjNew.Spec.Domains, v1alpha1.ApplicationDomains{}) {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf(DomainsDeprecated, InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
+			message: fmt.Sprintf(DomainsDeprecated, InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.GetNamespace(), caObjNew.GetName()),
 		}
 	}
 
@@ -803,15 +757,15 @@ func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissio
 	if admissionReview.Request.Operation == admissionv1.Update && (len(caObjOld.Spec.DomainRefs) > 0 && !cmp.Equal(caObjNew.Spec.Domains, v1alpha1.ApplicationDomains{})) {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf(DomainsDeprecated, InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.Metadata.Namespace, caObjNew.Metadata.Name),
+			message: fmt.Sprintf(DomainsDeprecated, InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.GetNamespace(), caObjNew.GetName()),
 		}
 	}
 
 	return validAdmissionReviewObj()
 }
 
-func unmarshalRawObj(w http.ResponseWriter, rawBytes []byte, response responseInterface, resourceKind string) validateResource {
-	if err := json.Unmarshal(rawBytes, response); err != nil || response.isEmpty() {
+func unmarshalRawObj(w http.ResponseWriter, rawBytes []byte, response any, resourceKind string) validateResource {
+	if err := json.Unmarshal(rawBytes, response); err != nil {
 		return invalidAdmissionReviewObj(w, resourceKind, err)
 	}
 	return validAdmissionReviewObj()
