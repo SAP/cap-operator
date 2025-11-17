@@ -297,6 +297,10 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 				rawBytesOld, err = json.Marshal(crdOld)
 			}
 		}
+	case "Dummy":
+		admissionReview.Kind = v1alpha1.CAPApplicationVersionKind
+		admissionReview.Request.Kind.Kind = v1alpha1.CAPApplicationVersionKind
+		rawBytes, err = json.Marshal(`{}`)
 	}
 
 	if err != nil {
@@ -314,7 +318,7 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 	return admissionReview, nil
 }
 
-func TestInvalidRequest(t *testing.T) {
+func TestInvalidRequests(t *testing.T) {
 	wh := &WebhookHandler{
 		CrdClient: fakeCrdClient.NewSimpleClientset(),
 	}
@@ -409,18 +413,32 @@ func TestUnhandledType(t *testing.T) {
 		{
 			operation: admissionv1.Connect,
 		},
+		{
+			crdType:   "Dummy",
+			operation: admissionv1.Create,
+		},
 	}
 	for _, test := range tests {
 		t.Run("Testing unhandled resource type validity for operation "+string(test.operation), func(t *testing.T) {
 
-			request, recorder := getHttpRequest(test.operation, "Unhandled", "unhandled", noUpdate, t)
+			crdType := "Unhandled"
+			if test.crdType != "" {
+				crdType = test.crdType
+			}
+
+			request, recorder := getHttpRequest(test.operation, crdType, "unhandled", noUpdate, t)
 
 			wh.Validate(recorder, request)
 
 			admissionReview := admissionv1.AdmissionReview{}
 			bytes, _ := io.ReadAll(recorder.Body)
 			universalDeserializer.Decode(bytes, nil, &admissionReview)
-			if !admissionReview.Response.Allowed || admissionReview.Response.UID != uid {
+			if test.crdType == "Dummy" {
+				if recorder.Code != http.StatusInternalServerError && admissionReview.Response != nil {
+					t.Fatal("validation response error")
+				}
+				t.Log("Dummy type processed correctly")
+			} else if !admissionReview.Response.Allowed || admissionReview.Response.UID != uid {
 				t.Fatal("validation response error")
 			}
 		})
