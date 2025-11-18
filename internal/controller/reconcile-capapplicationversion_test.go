@@ -840,12 +840,82 @@ func TestCAV_InvalidMonitoringConfig(t *testing.T) {
 	}
 }
 
+func TestCAV_ServicesOnlyError(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01-cav-v1"}},
+		TestData{
+			description: "capapplication version - services only error scenario",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/common/cav-services.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems: []string{},
+			expectError:  true,
+			mockErrorForResources: []ResourceAction{
+				{Verb: "create", Group: "apps", Version: "v1", Resource: "deployments", Namespace: "default", Name: "*"},
+				{Verb: "update", Group: "sme.sap.com", Version: "v1alpha1", Resource: "capapplicationversions", Namespace: "default", Name: "*"},
+			},
+		},
+	)
+}
+
+func TestCAV_ServicesOnlyDomainMissing(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01-cav-v1"}},
+		TestData{
+			description: "capapplication version - services only missing domain",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/common/cav-services.yaml",
+				"testdata/capapplicationversion/services-ready.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems: []string{},
+			expectError:  true,
+		},
+	)
+	if err == nil || err.Error() != "failed to get cluster domain test-cap-01-secondary: clusterdomain.sme.sap.com \"test-cap-01-secondary\" not found" {
+		t.FailNow()
+	}
+}
+
+func TestCAV_ServicesOnlyDomainNotReady(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01-cav-v1"}},
+		TestData{
+			description: "capapplication version - services only not ready domain",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-not-ready.yaml",
+				"testdata/common/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/common/cav-services.yaml",
+				"testdata/capapplicationversion/services-ready.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems:      []string{},
+			expectError:       false,
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-ca-01-cav-v1"}}},
+			expectedResources: "testdata/capapplicationversion/expected/cav-services-not-ready.yaml",
+		},
+	)
+}
+
 func TestCAV_ServicesOnlySuccess(t *testing.T) {
 	reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01-cav-v1"}},
 		TestData{
-			description: "capapplication version - services only workload",
+			description: "capapplication version - services only success",
 			initialResources: []string{
 				"testdata/common/domain-ready.yaml",
 				"testdata/common/cluster-domain-ready.yaml",

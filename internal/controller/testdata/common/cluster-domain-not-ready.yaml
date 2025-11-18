@@ -1,0 +1,12 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: ClusterDomain
+metadata:
+  name: test-cap-01-secondary
+spec:
+  dnsMode: Subdomain
+  domain: foo.bar.local
+  ingressSelector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  tlsMode: Simple
+

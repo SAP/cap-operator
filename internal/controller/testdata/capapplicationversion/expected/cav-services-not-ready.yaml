@@ -75,4 +75,12 @@ spec:
           port: 8000
           path: /api
 status:
+  conditions:
+    - reason: WaitingForServiceDNSEntries
+      observedGeneration: 1
+      status: "False"
+      type: Ready
+  observedGeneration: 1
+  finishedJobs:
+    - test-ca-01-cav-v1-content
   state: Processing
