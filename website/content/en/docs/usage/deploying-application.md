@@ -169,4 +169,4 @@ Once these resources are available, the `CAPApplicationVersion` status changes t
 
 > The `CAPApplicationVersion` resource is meant to be immutable - it's spec should not be modified once it is deployed. This is also prevented by our web-hooks which we recommend to always keep active (default).
 
-> NOTE: We strongly recommend the applications to take care of implementing any necessary authentication and authorization mechanisms required for the exposed workloads.
+> NOTE: Follow the recommended [security measures](./security) to safeguard exposed workloads.

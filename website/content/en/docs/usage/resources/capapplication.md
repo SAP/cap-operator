@@ -61,4 +61,4 @@ The `provider` section specifies details of the provider subaccount linked to th
 The `domainRefs` section specifies references one or more `Domain` or `ClusterDomain` resources.
 > NOTE: While the same secondary domain can technically be used across applications using `ClusterDomain`; the consumers need to ensure that the tenant sub-domains are unique across such applications that share the same domain!
 
-> NOTE: The `provider` section is omitted for [Services Only Applications](../services-workload.md)
+> NOTE: The `provider` section is omitted for [Services Only Applications](../service-exposure/#deploying-services-only-applications)
