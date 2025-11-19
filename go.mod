@@ -7,7 +7,7 @@ require (
 	github.com/MicahParks/keyfunc/v3 v3.7.0
 	github.com/cert-manager/cert-manager v1.19.1
 	github.com/gardener/cert-management v0.19.0
-	github.com/gardener/external-dns-management v0.32.0
+	github.com/gardener/external-dns-management v0.33.0
 	github.com/go-logr/logr v1.4.3
 	github.com/go-logr/zapr v1.3.0
 	github.com/go-task/slim-sprig/v3 v3.0.0

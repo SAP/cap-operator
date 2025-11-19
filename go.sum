@@ -25,8 +25,8 @@ github.com/fxamacker/cbor/v2 v2.9.0 h1:NpKPmjDBgUfBms6tr6JZkTHtfFGcMKsw3eGcmD/sa
 github.com/fxamacker/cbor/v2 v2.9.0/go.mod h1:vM4b+DJCtHn+zz7h3FFp/hDAI9WNWCsZj23V5ytsSxQ=
 github.com/gardener/cert-management v0.19.0 h1:BNumdw748Pg9798NzxHmmpKuXFRLHSPuvcPKQHOiFcw=
 github.com/gardener/cert-management v0.19.0/go.mod h1:u5OKwiDyUdCuW9vhDV92ozCVkynXUBrYCMHr4rVNiCY=
-github.com/gardener/external-dns-management v0.32.0 h1:uRXigr6zoBRwqPOrliyN3cYkVmrWxJ2/pRpWGgrT1a8=
-github.com/gardener/external-dns-management v0.32.0/go.mod h1:xYTl6N3N1M5hnc1xuHTNIPwr1i31BTFuY8xSvZP96Eo=
+github.com/gardener/external-dns-management v0.33.0 h1:FNABG/tdsmir96Sc4chOqa+unsj+ZKcDDQyzs+q26cA=
+github.com/gardener/external-dns-management v0.33.0/go.mod h1:Trz+dKZqgR4DdDJiBq67ZKQe9FrxNDwXenwHSFZ6aYQ=
 github.com/go-logr/logr v1.4.3 h1:CjnDlHq8ikf6E492q6eKboGOC0T8CDaOvkHCIg8idEI=
 github.com/go-logr/logr v1.4.3/go.mod h1:9T104GzyrTigFIr8wt5mBrctHMim0Nb2HLGrmQ40KvY=
 github.com/go-logr/zapr v1.3.0 h1:XGdV8XW8zdwFiwOA2Dryh1gj2KRQyOOoNmBy4EplIcQ=
