@@ -74,7 +74,7 @@ The `type` of the deployment is important to indicate how the operator handles t
 - `CAP` to indicate a CAP application server. Only one workload of this type can be used at present.
 - `Router` to indicate a version of [AppRouter](https://www.npmjs.com/package/@sap/approuter). Only one workload of this type can be used.
 - `Additional` to indicate supporting components that can be deployed along with the CAP application server.
-- `Service` to indicate workloads that are tenant-independent.
+- `Service` to indicate workloads that are tenant agnostic.
 
 You can define optional attributes such as `replicas`, `env`, `resources`, `probes`, `securityContext`, `initContainers` and `ports` to configure the deployment.
 
@@ -192,80 +192,7 @@ spec:
 
 ### ServiceExposures Configuration
 
-```yaml
-spec:
-  workloads:
-    - name: cap-backend-service
-      consumedBTPServices: # <-- an array of service instance names referencing the SAP BTP services defined in the CAPApplication resource
-        - cap-uaa
-        - cap-saas-reg
-      deploymentDefinition:
-        type: Service # <-- possible values are CAP / Router / Additional / Service
-        image: some.repo.example.com/cap-app/server:3.22.11 # <-- container image
-        env: # <-- (optional) same as in core v1 pod.spec.containers.env
-          - name: SAY
-            value: "I'm GROOT"
-        replicas: 3 # <-- (optional) replicas for scaling
-        ports: # Some configs like routerDestinationName are not relevant for ServicesOnly scenario
-          - name: app-port
-            port: 4004
-          - name: tech-port
-            port: 4005
-          - name: api
-            port: 8000
-          - name: api-v2
-            port: 8001
-            appProtocol: http
-    - name: "app-router"
-      consumedBTPServices:
-        - cap-uaa
-        - cap-saas-reg
-        - cap-html5-repo-rt
-      deploymentDefinition:
-        type: Router
-        image: some.repo.example.com/cap-app/router:4.0.1
-        ports:
-          - name: router-port
-            port: 5000
-    - name: service-content
-      consumedBTPServices:
-        - app-uaa
-        - app-html5-repo-host
-        - app-portal
-      jobDefinition:
-        type: Content
-        image: app.some.repo.example.com/approuter/content:0.0.1
-        backoffLimit: 1
-  serviceExposures:
-    - subDomain: service
-      routes:
-        - workloadName: cap-backend-service
-          port: 4004
-    - subDomain: api
-      routes:
-        - workloadName: cap-backend-service
-          port: 8001
-          path: /api/v2
-        - workloadName: cap-backend-service
-          port: 8000
-          path: /api
-    - subDomain: router
-      routes:
-        - workloadName: app-router
-          port: 5000
-```
-
-The `serviceExposures` section can be used to expose deployment workloads externally. Each entry in the `serviceExposures` array represents a subdomain under which the workloads are accessible. Each subdomain can have multiple routes, specifying a workload and the exposed port. Optionally, a path can be defined for more granular routing. **If there are multiple routes defined for a subdomain, the application needs to maintain the routes in the right order to avoid incorrect routing. For example, see the above configuration for the `api` subdomain where the more specific path `/api/v2` is defined before the more general path `/api`.**
-
-For example, if your cluster domain is `my.cluster.shoot.url.k8s.example.com`, the configuration above would generate `VirtualService` resources with these accessible URLs:
-- `service.my.cluster.shoot.url.k8s.example.com` pointing to `cap-backend-service` workload on port `4004`
-- `api.my.cluster.shoot.url.k8s.example.com/api/v2` pointing to `cap-backend-service` workload on port `8001`
-- `api.my.cluster.shoot.url.k8s.example.com/api` pointing to `cap-backend-service` workload on port `8000`
-- `router.my.cluster.shoot.url.k8s.example.com` pointing to `app-router` workload on port `5000`
-
-As these routes are tenant-independent, once a new `CAPApplicationVersion` is `Ready`, the `VirtualService` corresponding to these routes will be updated to point to the new version of the workloads. These routes are not impacted by tenant-specific upgrades and they always point to the latest version of the exposed workloads, regardless of the upgrade status of any individual tenant.
-
-> NOTE: We strongly recommend the applications to take care of implementing any necessary authentication and authorization mechanisms required for the exposed workloads.
+See [Service Exposure](../service-exposure/#configuration) page for details.
 
 _Other attributes can be configured as documented._
 

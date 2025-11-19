@@ -18,7 +18,7 @@ You can enhance your templates with functions from the Slim Sprig library, detai
 #### Allowed Variables in DNSTemplate
 - **{{.domain}}**: Represents the value of `spec.domain`.
 - **{{.dnsTarget}}**: The effective ingress target, specified by `spec.dnsTarget` or derived from `spec.istioIngressSelector`.
-- **{{.subDomain}}**: Refers to the subdomain of a CAPTenant or a tenant-independent workload.
+- **{{.subDomain}}**: Refers to the subdomain of a CAPTenant or a tenant agnostic workload.
 
 
 ### DNS Record Behavior
