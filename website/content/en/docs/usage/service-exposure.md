@@ -9,7 +9,7 @@ description: >
 ---
 # Exposing Service Workloads
 
-This guide explains how to deploy applications with tenant agnostic service workloads. These workloads can be part of multi-tenant applications or standalone applications that are completely tenant agnostic.
+This guide explains how to deploy applications with tenant-agnostic service workloads. These workloads can be part of multi-tenant applications or standalone applications that are completely tenant agnostic.
 
 ## Configuration
 
@@ -17,7 +17,7 @@ This guide explains how to deploy applications with tenant agnostic service work
 
 The `serviceExposures` section in the `CAPApplicationVersion` configuration is crucial for exposing workloads. Each entry in the `serviceExposures` array specifies a subdomain under which workloads are accessible, allowing multiple routes per subdomain.
 
-For some more details on configuring routes, see the [Route API reference](../reference/#sme.sap.com/v1alpha1.Route)
+For some more details on configuring routes, see the [Route API reference](../reference/#sme.sap.com/v1alpha1.Route).
 
 ### Example Configuration
 
@@ -94,20 +94,20 @@ spec:
 ```
 
 #### Result:
-For a cluster domain like `my.cluster.shoot.url.k8s.example.com`, the configuration will generate URLs like:
+For a cluster domain like `my.cluster.shoot.url.k8s.example.com`, the configuration generates URLs like:
 - `service.my.cluster.shoot.url.k8s.example.com` for `cap-backend-service` on port `4004`.
 - `api.my.cluster.shoot.url.k8s.example.com/api/v2` for `cap-backend-service` on port `8001`.
 - `api.my.cluster.shoot.url.k8s.example.com/api` for `cap-backend-service` on port `8000`
 - `app.my.cluster.shoot.url.k8s.example.com` for `app` on port `5000`.
 
-In the above example, the `router` workload is not exposed via `servicesExposure`. However, for multi-tenant scenarios it may be exposed per tenant sub-domain as usual.
+In the above example, the `router` workload is not exposed through `servicesExposure`. However, for multi-tenant scenarios, it may be exposed per tenant subdomain as usual.
 
 #### Additional Consideration:
-Ensure routes are ordered correctly to prevent routing errors. If there are multiple routes defined for a subdomain, the application needs to maintain the routes in the right order to avoid incorrect routing. For example, in the example configuration above, the `api` subdomain where the more specific path `/api/v2` must be defined before the more general path `/api`.
+Ensure routes are ordered correctly to prevent routing errors. If you define multiple routes for a subdomain, the application needs to maintain the routes in the right order to avoid incorrect routing. For instance, in the example configuration above, the `api` subdomain requires the more specific path `/api/v2` to be defined before the more general path `/api`.
 
-## Deploying Services Only Applications
+## Deploying Services-Only Applications
 
-Services only applications don't require tenant-specific configurations. Therefore, the `provider` section is omitted from the `CAPApplication` resource, and the `CAPApplicationVersion` may only contain `Content` jobs and no tenant related jobs. The rest of the configuration for your services-only application remains unchanged.
+Services-only applications don't require tenant-specific configurations. Therefore, the `provider` section is omitted from the `CAPApplication` resource. The `CAPApplicationVersion` may include only `Content` jobs and no tenant-related jobs. The rest of the configuration for your services-only application stays the same.
 
 ### Application Configuration
 
@@ -221,6 +221,6 @@ spec:
 ## Important Considerations
 
 - No tenant-related resources are created for services-only applications.
-- A successful upgrade of the `CAPApplicationVersion` will cause any service related `VirtualService` resources to be modified to route HTTP traffic to the deployments that `CAPApplicationVersion`.
-- Choose the appropriate application mode (services-only or multi-tenant) from the start, as switching modes later is not possible.
-- Follow the recommended [security measures](./security) to safeguard exposed workloads.
+- A successful upgrade of the `CAPApplicationVersion` causes any service-related `VirtualService` resources to route HTTP traffic to the workloads associated with that `CAPApplicationVersion`.
+- From the start, choose the appropriate application mode: services-only or multi-tenant. Switching modes later is not possible.
+- Follow the recommended [security measures](./security) to safeguard any exposed workloads.
