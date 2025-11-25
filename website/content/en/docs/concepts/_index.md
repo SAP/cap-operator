@@ -5,6 +5,7 @@ weight: 10
 type: "docs"
 description: >
   Motivation and overview of components
+sidebar_root_for: children
 ---
 
 Provisioning and operating an SAP Cloud Application Programming Model application on a Kubernetes cluster requires the deployment of various components in addition to the CAP application server (see [a list of typical components](./cap-application-components.md)). Some of these components can be created at the time of system provisioning, while others need to be created (or updated) at different points during the lifecycle of the application (DAY 2 operational tasks).

@@ -6,6 +6,7 @@ type: "docs"
 tags: ["domains"]
 description: >
   Enhancing Domain Management with CAP Operator
+sidebar_root_for: self
 ---
 
 The CAP Operator has introduced a pivotal update in domain management, transitioning from the deprecated `domains` section in `CAPApplication` resources to the more versatile `domainRefs`. This shift allows users to reference [`Domain`](../resources/domain) or [`ClusterDomain`](../resources/clusterdomain) resources, offering enhanced control over CAP applications' networking behaviour, including TLS handling, ingress routing, and DNS setup.

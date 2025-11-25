@@ -5,4 +5,5 @@ weight: 90
 type: "docs"
 description: >
   Detailed configuration of resources managed by CAP Operator
+sidebar_root_for: self
 ---
