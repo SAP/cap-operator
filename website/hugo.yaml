@@ -6,13 +6,6 @@ enableRobotsTXT: true
 # Will give values to .Lastmod etc.
 enableGitInfo: true
 
-# Language settings
-contentDir: "content/en"
-defaultContentLanguage: "en"
-defaultContentLanguageInSubdir: false
-# Useful when translating.
-enableMissingTranslationPlaceholders: true
-
 # horizontal (top level) menu items
 menu:
   main:
@@ -31,16 +24,6 @@ taxonomies:
   tag: "tags"
   category: "categories"
 
-# If used, must have same lang as taxonomyCloud
-taxonomyCloudTitle: ["Tag Cloud", "Categories"] 
-
-# set taxonomyPageHeader = [] to hide taxonomies on the page headers
-taxonomyPageHeader: ["tags", "categories"] 
-
-# Configure how URLs look like per section.
-permalinks:
-  blog: "/:section/:year/:month/:day/:slug/"
-
 # Image processing configuration.
 imaging:
   resampleFilter: "CatmullRom"
@@ -56,7 +39,7 @@ languages:
     weight: 1
     params:
       title: "CAP Operator"
-      description: "A Kubernetes operator for managing the lifecycle of multi-tenant CAP applications"
+      description: "A Kubernetes operator for managing the lifecycle of CAP applications"
 
 markup:
   goldmark:
@@ -75,18 +58,10 @@ outputs:
   section: ["HTML", "print", "RSS"]
 
 params:
-  taxonomy:
-    # set taxonomyCloud = [] to hide taxonomy clouds
-    taxonomyCloud: ["tags", "categories"]
-
   copyright:
     authors: SAP SE or an SAP affiliate company
     from_year: 2023
   # privacy_policy = "https://policies.google.com/privacy"
-
-  # Menu title if your navbar has a versions selector to access old versions of your site.
-  # This menu appears only if you have at least one [params.versions] set.
-  version_menu: "Releases"
 
   # Flag used in the "version-banner" partial to decide whether to display a 
   # banner on every page indicating that this is an archived version of the docs.
@@ -158,20 +133,20 @@ params:
     user:
       - name: "Ask for help"
         url: "mailto:cap-operator@sap.com"
-        icon: "fa fa-envelope"
+        icon: "fa-solid fa-envelope"
         desc: "Help from development team"
     # Developer relevant links. These will show up on right side of footer and in the community page if you have one.
     developer:
       - name: "GitHub"
-        urlL: "https://github.com/sap/cap-operator/"
-        icon: "fab fa-github"
+        url: "https://github.com/sap/cap-operator/"
+        icon: "fa-brands fa-github"
         desc: "Development takes place here!"
 
 # Add docsy as hugo module
 module:
   hugoVersion:
     extended: true
-    min: 0.152.0
+    min: 0.152.2
   imports:
     - path: github.com/google/docsy
       disable: false
