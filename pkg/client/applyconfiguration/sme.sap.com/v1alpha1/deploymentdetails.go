@@ -10,6 +10,7 @@ package v1alpha1
 import (
 	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	v1 "k8s.io/api/core/v1"
+	policyv1 "k8s.io/api/policy/v1"
 )
 
 // DeploymentDetailsApplyConfiguration represents a declarative configuration of the DeploymentDetails type for use
@@ -22,6 +23,7 @@ type DeploymentDetailsApplyConfiguration struct {
 	LivenessProbe                   *v1.Probe                             `json:"livenessProbe,omitempty"`
 	ReadinessProbe                  *v1.Probe                             `json:"readinessProbe,omitempty"`
 	Monitoring                      *WorkloadMonitoringApplyConfiguration `json:"monitoring,omitempty"`
+	PodDisruptionBudget             *policyv1.PodDisruptionBudgetSpec     `json:"podDisruptionBudget,omitempty"`
 }
 
 // DeploymentDetailsApplyConfiguration constructs a declarative configuration of the DeploymentDetails type for use with
@@ -254,5 +256,13 @@ func (b *DeploymentDetailsApplyConfiguration) WithReadinessProbe(value v1.Probe)
 // If called multiple times, the Monitoring field is set to the value of the last call.
 func (b *DeploymentDetailsApplyConfiguration) WithMonitoring(value *WorkloadMonitoringApplyConfiguration) *DeploymentDetailsApplyConfiguration {
 	b.Monitoring = value
+	return b
+}
+
+// WithPodDisruptionBudget sets the PodDisruptionBudget field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the PodDisruptionBudget field is set to the value of the last call.
+func (b *DeploymentDetailsApplyConfiguration) WithPodDisruptionBudget(value policyv1.PodDisruptionBudgetSpec) *DeploymentDetailsApplyConfiguration {
+	b.PodDisruptionBudget = &value
 	return b
 }
