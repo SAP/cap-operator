@@ -189,9 +189,7 @@
   }
 
   #yaml-tree-wrapper .crdOpenButtonDisabled {
-    border-color: #eee;
-    background: #f8f8f8;
-    cursor: default;
+    visibility: hidden;
   }
 
   #yaml-tree-wrapper .crdOpenButtonDisabled:after,
@@ -386,8 +384,7 @@
   }
 
   :root[data-bs-theme="dark"] #yaml-tree-wrapper .crdOpenButtonDisabled {
-    border-color: #444;
-    background: #333;
+    visibility: hidden;
   }
 
   :root[data-bs-theme="dark"] #yaml-tree-wrapper .crdOpenButton:hover:not(.crdOpenButtonDisabled) {
@@ -628,7 +625,11 @@
         toggle.addEventListener('click', () => {
           const isHidden = inner.hidden;
           inner.hidden = !isHidden;
-          toggle.classList.toggle('crdOpenButtonActive', !isHidden);
+          if (!isHidden) {
+            toggle.classList.remove('crdOpenButtonActive');
+          } else {
+            toggle.classList.add('crdOpenButtonActive');
+          }
           toggle.setAttribute('aria-expanded', String(!isHidden));
         });
         headerBtn.addEventListener('click', () => toggle.click());
