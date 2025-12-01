@@ -151,6 +151,7 @@ subscriptionServer:
   # -- Certificate manager which can be either `Gardener` or `CertManager`
   certificateManager: Gardener
   # -- Certificate configuration
+  # @default -- the `additionalCACertificate` part will contain the "SAP Cloud Root CA" certificate by default
   certificateConfig:
     # -- Optionally specify the corresponding certificate configuration
     gardener:
@@ -167,6 +168,7 @@ subscriptionServer:
       # -- Issuer name
       issuerName: ""
     # -- Optionally specify additional CA Certificate
+    # @default -- this will contain the "SAP Cloud Root CA" certificate by default
     additionalCACertificate: |
       -----BEGIN CERTIFICATE-----
       MIIFZjCCA06gAwIBAgIQGHcPvmUGa79M6pM42bGFYjANBgkqhkiG9w0BAQsFADBN
