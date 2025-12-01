@@ -474,7 +474,7 @@
     color: #2e5f64
   }
 
-  #yaml-tree-wrapper .type-number {
+  #yaml-tree-wrapper .type-float {
     background-color: #99f6ff;
     border-color: #2e5f64;
     color: #2e5f64
@@ -540,7 +540,7 @@
       if (t === 'object') return 'object';
       if (t === 'string') return 'string';
       if (t === 'number') {
-        return Number.isInteger(value) ? 'integer' : 'number';
+        return String(value).includes('.') ? 'float' : 'integer';
       }
       if (t === 'boolean') return 'boolean';
       return 'unknown';
