@@ -1,0 +1,819 @@
+<div id="yaml-tree-wrapper" class="crd">
+  <div class="crd" style="max-width:100%">
+    <div class="crdTree">
+
+      <div class="controls" style="margin-top:15px; justify-content: flex-start;">
+
+        <button id="btnExpandAll" type="button">Expand All</button>
+        <button id="btnCollapseAll" type="button">Collapse All</button>
+
+        <div>
+          <input id="searchInput" placeholder="Search keys..." />
+        </div>
+      </div>
+
+      <div id="treeRoot" class="tree-root"></div>
+
+      <div style="margin-top:20px">
+
+        {{/* HUGO TEMPLATE LOGIC: Read values.yaml from the 'includes' folder */}}
+        {{ $yamlFile := "includes/values.yaml" }}
+        {{ with readFile $yamlFile }}
+        <textarea id="yaml-data-source" style="display:none;">
+            {{- . -}}
+          </textarea>
+        {{ else }}
+        <textarea id="yaml-data-source" style="display:none;">
+            # ERROR: Could not find or read {{ $yamlFile }} at build time.
+            # Check that 'includes/values.yaml' exists and is spelled correctly.
+          </textarea>
+        {{ end }}
+
+        <textarea id="yamlInput" class="yaml-in" style="display:none;"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Global Setup for Responsiveness */
+  #yaml-tree-wrapper * {
+    box-sizing: border-box;
+  }
+
+  #yaml-tree-wrapper {
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    padding: 1rem;
+    background: #ffffff;
+    color: #333;
+    overflow-x: hidden;
+  }
+
+  /* Containers & Cards - **Adjusted max-width** */
+  #yaml-tree-wrapper .crd {
+    width: 100%;
+    margin: 0 auto;
+    border-radius: 12px;
+    padding: 1.5rem; /* Use rem for scalable padding */
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    background: #ffffff;
+    border: 1px solid #e0e6ed;
+  }
+
+  /* Header/Selection Tabs */
+  #yaml-tree-wrapper .crdSelection {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid #e0e6ed;
+  }
+
+  #yaml-tree-wrapper .crdSelection button {
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px 6px 0 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    transition: color 0.2s;
+    font-size: 1rem;
+  }
+
+  #yaml-tree-wrapper .crdTreeHeaderActive {
+    border-bottom: 3px solid #15a5eb;
+    color: #111;
+    font-weight: 700;
+  }
+
+  #yaml-tree-wrapper .crdTreeHeader {
+    color: #777;
+    font-weight: 600;
+    font-size: 1.1em;
+  }
+
+  #yaml-tree-wrapper .crdObject {
+    margin-bottom: 1.25rem;
+    margin-top: 1rem;
+    position: relative;
+    padding-right: 120px;
+  }
+
+  #yaml-tree-wrapper .crdObject.depth-0 {
+    border-bottom: 1px solid #f0f2f5;
+    margin-bottom: 1.5rem;
+    margin-top: 1.25rem;
+    padding-bottom: 1.5rem;
+  }
+
+  #yaml-tree-wrapper .crdObjectHeader {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  #yaml-tree-wrapper .crdHeaderButton {
+    background: transparent;
+    border: 0;
+    padding: 4px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    cursor: pointer;
+  }
+
+  /* Highlighted Default Value */
+  #yaml-tree-wrapper .crdObjectValue {
+    margin: 0.5rem 0 0.5rem 9px;
+    padding: 5px 10px;
+    font-weight: 500;
+    font-style: normal;
+    color: #555;
+    font-size: 0.8rem;
+    background: #f0f4f8;
+    border: 1px solid #d8e2ed;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    display: inline-block;
+    max-width: 100%;
+    overflow-x: auto;
+    font-family: 'Roboto Mono', monospace;
+  }
+
+  /* Toggle Button */
+  #yaml-tree-wrapper .crdOpenButton {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 50%;
+    cursor: pointer;
+    display: block;
+    height: 22px;
+    width: 22px;
+    position: relative;
+    margin-left: 0;
+    transition: border-color 0.2s, background 0.2s;
+    flex-shrink: 0;
+  }
+
+  #yaml-tree-wrapper .crdOpenButton:after,
+  #yaml-tree-wrapper .crdOpenButton:before {
+    background: #555;
+    border-radius: .2rem;
+    bottom: 0;
+    content: '';
+    display: block;
+    height: 10px;
+    left: 0;
+    margin: auto;
+    position: absolute;
+    right: 0;
+    top: 0;
+    transition: transform .3s ease-in-out, opacity .3s ease-in-out, background 0.2s;
+    width: 2px;
+  }
+
+  #yaml-tree-wrapper .crdOpenButton:after {
+    height: 2px;
+    width: 10px;
+  }
+
+  #yaml-tree-wrapper .crdOpenButtonActive {
+    border-color: #15a5eb;
+  }
+
+  #yaml-tree-wrapper .crdOpenButtonActive:before {
+    transform: rotate(90deg)
+  }
+
+  #yaml-tree-wrapper .crdOpenButtonActive:after {
+    opacity: 0;
+    transform: rotate(180deg)
+  }
+
+  #yaml-tree-wrapper .crdOpenButtonDisabled {
+    visibility: hidden;
+  }
+
+  #yaml-tree-wrapper .crdOpenButtonDisabled:after,
+  #yaml-tree-wrapper .crdOpenButtonDisabled:before {
+    background: #ccc;
+  }
+
+  #yaml-tree-wrapper .crdOpenButton:hover:not(.crdOpenButtonDisabled) {
+    border-color: #15a5eb;
+    background: #e6f7ff;
+  }
+
+  #yaml-tree-wrapper .crdOpenButton:hover:not(.crdOpenButtonDisabled):after,
+  #yaml-tree-wrapper .crdOpenButton:hover:not(.crdOpenButtonDisabled):before {
+    background: #15a5eb;
+  }
+
+
+  /* Tree Structure / Indentation */
+  #yaml-tree-wrapper .crdObjectContainer {
+    border-left: 1px solid #ebf1f7;
+    margin-left: 11px;
+    margin-top: 0.5rem;
+    padding-left: 1.25rem;
+  }
+
+  /* YAML Input and Controls - **Adjusted for mobile** */
+  #yaml-tree-wrapper .yaml-in {
+    width: 100%;
+    height: 240px;
+    font-family: 'Fira Code', 'Roboto Mono', monospace;
+    font-size: 0.8rem;
+    margin-top: 0.75rem;
+    box-sizing: border-box;
+    padding: 0.75rem;
+    border: 1px solid #dcdfe6;
+    border-radius: 8px;
+    background-color: #fcfcfc;
+    resize: vertical;
+  }
+
+  #yaml-tree-wrapper #yamlInput {
+    display: none !important;
+  }
+
+  #yaml-tree-wrapper .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    align-items: center
+  }
+
+  #yaml-tree-wrapper .controls button,
+  #yaml-tree-wrapper .controls label[for="filePicker"] {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px solid #dcdfe6;
+    background: white;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s, border-color 0.2s;
+  }
+
+  #yaml-tree-wrapper #btnParse {
+    background: #15a5eb;
+    color: white;
+    border-color: #15a5eb;
+    font-weight: 600;
+  }
+
+  #yaml-tree-wrapper #btnParse:hover {
+    background: #0d8cc8;
+    border-color: #0d8cc8;
+  }
+
+  #yaml-tree-wrapper .controls button:hover:not(#btnParse) {
+    background: #f0f4f8;
+    border-color: #c9d5e3;
+  }
+
+  #yaml-tree-wrapper input[type=file] {
+    display: none
+  }
+
+  #yaml-tree-wrapper .small {
+    font-size: 0.75rem;
+    color: #888;
+    margin-left: 0.5rem
+  }
+
+  #yaml-tree-wrapper #searchInput {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #dcdfe6;
+    border-radius: 6px;
+    width: 100%;
+    max-width: 250px;
+  }
+
+  /* Description without box/highlight */
+  #yaml-tree-wrapper .crdObjectDescription {
+    margin: 6px 0 6px 34px;
+    padding: 0;
+    color: #5a6a7c;
+    font-size: 0.8rem;
+    background: transparent;
+    border-left: none;
+    border-radius: 0;
+    box-shadow: none;
+    white-space: pre-wrap;
+    font-style: italic;
+    line-height: 1.4;
+  }
+
+  /* Type Badge styles (right side) - **Adjusted margin-right** */
+  #yaml-tree-wrapper .type-badge {
+    position: absolute;
+    right: 0;
+    top: 15px;
+    margin-right: 0;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #fff;
+    text-transform: lowercase;
+    border: 1px solid #e4e4e4;
+    border-radius: 5px;
+    color: #505a72;
+    padding: 2px 8px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  /* ===  DARK MODE OVERRIDES (Matching Theme's Data Attribute) === */
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper {
+    background: #1e1e1e !important;
+    color: #cccccc !important;
+  }
+
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .crd {
+    background: #252526;
+    border: 1px solid #3c3c3c;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  }
+
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .crdHeaderButton {
+    color: #e0e0e0;
+  }
+
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .crdObjectDescription {
+    color: #999999;
+  }
+
+  /* Controls and Inputs */
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .controls button,
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .controls label[for="filePicker"],
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper #searchInput {
+    background: #333333;
+    border-color: #555555;
+    color: #e0e0e0;
+  }
+
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .controls button:hover:not(#btnParse) {
+    background: #444444;
+    border-color: #666666;
+  }
+
+  /* YAML Value Highlight */
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .crdObjectValue {
+    background: #3a3a3a;
+    border: 1px solid #5a5a5a;
+    color: #cccccc;
+  }
+
+  /* Tree Structure and Toggles */
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .crdObject.depth-0 {
+    border-bottom: 1px solid #3c3c3c;
+  }
+
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .crdObjectContainer {
+    border-left: 1px solid #3c3c3c;
+  }
+
+  /* Toggle Button */
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .crdOpenButton {
+    background: #444444;
+    border: 1px solid #666666;
+  }
+
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .crdOpenButton:after,
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .crdOpenButton:before {
+    background: #cccccc;
+  }
+
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .crdOpenButtonDisabled {
+    visibility: hidden;
+  }
+
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .crdOpenButton:hover:not(.crdOpenButtonDisabled) {
+    background: #555555;
+    border-color: #777777;
+  }
+
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .crdOpenButton:hover:not(.crdOpenButtonDisabled):after,
+  :root[data-bs-theme="dark"] #yaml-tree-wrapper .crdOpenButton:hover:not(.crdOpenButtonDisabled):before {
+    background: #ffffff;
+  }
+
+  /* Media Queries for better mobile experience */
+  @media (max-width: 600px) {
+    #yaml-tree-wrapper .crd {
+      padding: 1rem;
+    }
+
+    #yaml-tree-wrapper .controls {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+    }
+
+    #yaml-tree-wrapper .controls > * {
+      width: 100%;
+      margin-left: 0 !important;
+    }
+
+    #yaml-tree-wrapper .crdObject {
+      padding-right: 0;
+      margin-bottom: 1.5rem;
+    }
+
+    #yaml-tree-wrapper .type-badge {
+      position: static;
+      margin-top: 5px;
+      display: block;
+      width: fit-content;
+      margin-left: 34px;
+    }
+
+    #yaml-tree-wrapper .crdObjectContainer {
+      padding-left: 1rem;
+    }
+
+    #yaml-tree-wrapper #searchInput {
+      max-width: 100%;
+      width: 100%;
+      margin-top: 0 !important;
+      margin-bottom: 5px;
+    }
+
+    #yaml-tree-wrapper .crdObjectHeader {
+      flex-wrap: nowrap;
+    }
+
+    #yaml-tree-wrapper .crdHeaderButton {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: calc(100% - 30px);
+    }
+  }
+
+  #yaml-tree-wrapper .type-object {
+    background-color: #d1efff;
+    border-color: #0057d2;
+    color: #0057d2;
+  }
+
+  #yaml-tree-wrapper .type-array {
+    background-color: #ffef9f;
+    border-color: #d27700;
+    color: #d27700;
+  }
+
+  #yaml-tree-wrapper .type-string {
+    background-color: #e5f2bd;
+    border-color: #256f3a;
+    color: #256f3a;
+  }
+
+  #yaml-tree-wrapper .type-integer {
+    background-color: #99f6ff;
+    border-color: #2e5f64;
+    color: #2e5f64
+  }
+
+  #yaml-tree-wrapper .type-float {
+    background-color: #99f6ff;
+    border-color: #2e5f64;
+    color: #2e5f64
+  }
+
+  #yaml-tree-wrapper .type-boolean {
+    background-color: #e2d8ff;
+    border-color: #470ced;
+    color: #470ced;
+  }
+
+  #yaml-tree-wrapper .type-null {
+    background: #95a5a6;
+  }
+
+  #yaml-tree-wrapper .type-unknown {
+    background: #bdc3c7;
+  }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/dist/js-yaml.min.js"></script>
+
+<script>
+  (function () {
+    // Only keep necessary element variables
+    const yamlInput = document.getElementById('yamlInput');
+    const treeRoot = document.getElementById('treeRoot');
+    const btnExpandAll = document.getElementById('btnExpandAll');
+    const btnCollapseAll = document.getElementById('btnCollapseAll');
+    const searchInput = document.getElementById('searchInput');
+
+    let commentsMap = {};
+
+    function el(tag, cls, text) {
+      const d = document.createElement(tag);
+      if (cls) d.className = cls;
+      if (text !== undefined) d.textContent = text;
+      return d;
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // Remove leading '--' from comment lines and trim
+    function cleanCommentBlock(raw) {
+      if (!raw) return raw;
+      const lines = raw.split(/\r?\n/).map(l => l.replace(/^\s*--\s?/, '').replace(/^\s*-\s?/, '').replace(/^\s+/, ''));
+      while (lines.length && lines[0] === '') lines.shift();
+      while (lines.length && lines[lines.length - 1] === '') lines.pop();
+      return lines.join('\n').trim();
+    }
+
+    // Infer a friendly type string from a JS value
+    function inferType(value) {
+      if (value === null) return 'null';
+      if (Array.isArray(value)) return 'array';
+      const t = typeof value;
+      if (t === 'object') return 'object';
+      if (t === 'string') return 'string';
+      if (t === 'number') {
+        return String(value).includes('.') ? 'float' : 'integer';
+      }
+      if (t === 'boolean') return 'boolean';
+      return 'unknown';
+    }
+
+    // Build tree node showing comment BELOW the header and type badge on right
+    function buildTree(obj, keyName, depth = 0, path) {
+      const container = el('div', 'crdObject depth-' + Math.min(depth, 5));
+      const header = el('div', 'crdObjectHeader depth-' + Math.min(depth, 5));
+
+      const isPrimitive = obj === null || typeof obj !== 'object' || (Array.isArray(obj) && obj.length === 0) || (Object.keys(obj || {}).length === 0 && !Array.isArray(obj));
+
+      const toggle = el('button', 'crdOpenButton');
+      toggle.type = 'button';
+      toggle.setAttribute('aria-expanded', String(!isPrimitive));
+      if (isPrimitive) {
+        toggle.classList.add('crdOpenButtonDisabled');
+      }
+      header.appendChild(toggle);
+
+      const headerBtn = el('button', 'crdHeaderButton', keyName || (Array.isArray(obj) ? 'items' : typeof obj));
+      headerBtn.type = 'button';
+      header.appendChild(headerBtn);
+
+      container.appendChild(header);
+
+      // --- ALWAYS SHOW DESCRIPTION BELOW FIELD ---
+      if (path && commentsMap[path]) {
+        const commentDiv = el('div', 'crdObjectDescription');
+        commentDiv.innerHTML = escapeHtml(commentsMap[path]);
+        container.appendChild(commentDiv);
+      }
+
+      const typeName = inferType(obj);
+      const badge = el('div', 'type-badge type-' + (typeName || 'unknown'), typeName);
+      container.appendChild(badge);
+
+      const inner = el('div', 'crdObjectContainer');
+
+      if (!isPrimitive) {
+        inner.hidden = true; // Start collapsed
+      } else {
+        inner.hidden = false; // Stay visible for primitives
+      }
+
+      if (isPrimitive && typeof obj !== 'object') {
+
+        // This check handles null, boolean, string, and number (primitives)
+        const val = (obj === null) ? 'null' : (typeof obj === 'string' && obj === '') ? '' : String(obj);
+
+        if (val !== '') {
+          const display = el('div', 'crdObjectValue');
+
+          let displayVal = escapeHtml(val);
+
+          if (typeName === 'string') {
+            display.innerHTML = `"${displayVal}"`;
+          } else {
+            display.innerHTML = `${displayVal}`;
+          }
+
+          inner.appendChild(display);
+        }
+      } else if (!isPrimitive) {
+        if (Array.isArray(obj)) {
+          obj.forEach((it, idx) => {
+            const childPath = path ? (path + '.items') : 'items';
+            inner.appendChild(buildTree(it, 'items[' + idx + ']', depth + 1, childPath));
+          });
+        } else {
+          for (const k in obj) {
+            const childPath = path ? (path + '.' + k) : k;
+            inner.appendChild(buildTree(obj[k], k, depth + 1, childPath));
+          }
+        }
+      }
+
+      container.appendChild(inner);
+
+      // Toggle click handler
+      if (!toggle.classList.contains('crdOpenButtonDisabled')) {
+        toggle.addEventListener('click', () => {
+          const isHidden = inner.hidden;
+          inner.hidden = !isHidden;
+          if (!isHidden) {
+            toggle.classList.remove('crdOpenButtonActive');
+          } else {
+            toggle.classList.add('crdOpenButtonActive');
+          }
+          toggle.setAttribute('aria-expanded', String(!isHidden));
+        });
+        headerBtn.addEventListener('click', () => toggle.click());
+      } else {
+        headerBtn.style.cursor = 'default';
+      }
+
+      return container;
+    }
+
+    // Parse comments
+    function parseComments(text) {
+      const lines = text.split(/\r?\n/);
+      const stack = [];
+      const map = {};
+      let commentBuffer = [];
+      let lastNonEmptyWasComment = false;
+
+      function currentPathWith(key) {
+        const keys = stack.map(s => s.key);
+        if (key) keys.push(key);
+        return keys.join('.');
+      }
+
+      for (let i = 0; i < lines.length; i++) {
+        const raw = lines[i];
+        const line = raw.replace(/\t/g, '    ');
+        const trimmed = line.trim();
+
+        if (trimmed.startsWith('#')) {
+          const c = trimmed.replace(/^#\s?/, '');
+          commentBuffer.push(c);
+          lastNonEmptyWasComment = true;
+          continue;
+        }
+
+        if (trimmed === '') {
+          if (lastNonEmptyWasComment) {
+            commentBuffer.push('');
+          } else {
+            commentBuffer = [];
+          }
+          lastNonEmptyWasComment = false;
+          continue;
+        }
+
+        const indent = line.match(/^ */)[0].length;
+        while (stack.length && indent <= stack[stack.length - 1].indent) {
+          stack.pop();
+        }
+
+        if (/^\s*-\s+/.test(line)) {
+          const arrKey = 'items';
+          const currentIndent = stack.length ? stack[stack.length - 1].indent + 2 : 0;
+          stack.push({ indent: currentIndent, key: arrKey });
+
+          const rest = line.replace(/^\s*-\s+/, '');
+          const idxKeyMatch = rest.match(/^([^:]+):\s*(.*)$/);
+          if (idxKeyMatch) {
+            const innerKey = idxKeyMatch[1].trim();
+            stack.push({ indent: currentIndent + 2, key: innerKey });
+            const path = currentPathWith();
+            if (commentBuffer.length) {
+              while (commentBuffer.length && commentBuffer[commentBuffer.length - 1] === '') commentBuffer.pop();
+              map[path] = commentBuffer.join('\n').trim();
+              commentBuffer = [];
+            }
+            stack.pop();
+          } else {
+            const path = currentPathWith();
+            if (commentBuffer.length) {
+              while (commentBuffer.length && commentBuffer[commentBuffer.length - 1] === '') commentBuffer.pop();
+              map[path] = commentBuffer.join('\n').trim();
+              commentBuffer = [];
+            }
+          }
+          lastNonEmptyWasComment = false;
+          continue;
+        }
+
+        const keyMatch = line.match(/^\s*([^:]+):\s*(.*)$/);
+        if (keyMatch) {
+          const key = keyMatch[1].trim();
+          stack.push({ indent: indent, key: key });
+          const path = currentPathWith();
+          if (commentBuffer.length) {
+            while (commentBuffer.length && commentBuffer[commentBuffer.length - 1] === '') commentBuffer.pop();
+            map[path] = commentBuffer.join('\n').trim();
+            commentBuffer = [];
+          }
+          lastNonEmptyWasComment = false;
+          continue;
+        }
+
+        commentBuffer = [];
+        lastNonEmptyWasComment = false;
+      }
+
+      return map;
+    }
+
+    function renderFromYaml(yamlText) {
+      const rawMap = parseComments(yamlText);
+      commentsMap = {};
+      for (const p in rawMap) {
+        commentsMap[p] = cleanCommentBlock(rawMap[p]);
+      }
+
+      let data;
+      try {
+        data = jsyaml.load(yamlText);
+      } catch (e) {
+        alert('YAML parse error:\n' + e.message);
+        return;
+      }
+
+      treeRoot.innerHTML = '';
+      if (typeof data !== 'object' || data == null) {
+        treeRoot.appendChild(el('div', '', 'No top-level mapping found'));
+        return;
+      }
+      if (Array.isArray(data)) {
+        treeRoot.appendChild(buildTree(data, 'root', 0, 'root'));
+      } else {
+        for (const k in data) {
+          const path = k;
+          treeRoot.appendChild(buildTree(data[k], k, 0, path));
+        }
+      }
+    }
+
+    // expand/collapse
+    btnExpandAll.addEventListener('click', () => {
+      document.querySelectorAll('.crdObjectContainer').forEach(c => c.hidden = false);
+      document.querySelectorAll('.crdOpenButton:not(.crdOpenButtonDisabled)').forEach(b => {
+        b.classList.add('crdOpenButtonActive');
+        b.setAttribute('aria-expanded', 'true');
+      });
+    });
+    btnCollapseAll.addEventListener('click', () => {
+      document.querySelectorAll('.crdObjectContainer').forEach(c => c.hidden = true);
+      document.querySelectorAll('.crdOpenButton:not(.crdOpenButtonDisabled)').forEach(b => {
+        b.classList.remove('crdOpenButtonActive');
+        b.setAttribute('aria-expanded', 'false');
+      });
+    });
+
+    // search
+    searchInput.addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      if (!q) {
+        document.querySelectorAll('.crdObject').forEach(n => n.style.display = 'block');
+        return;
+      }
+
+      document.querySelectorAll('.crdObject').forEach(n => {
+        const txt = n.innerText.toLowerCase();
+        n.style.display = txt.includes(q) ? 'block' : 'none';
+      });
+    });
+
+    function initializeFromInjectedData() {
+      const sourceTextarea = document.getElementById('yaml-data-source');
+      const injectedYaml = sourceTextarea ? sourceTextarea.value.trim() : '';
+
+      if (injectedYaml && !injectedYaml.startsWith('# ERROR:')) {
+        yamlInput.value = injectedYaml; // Populate the internal field
+        renderFromYaml(injectedYaml);
+      } else {
+        // In case of error or empty file, populate the hidden field with the error message
+        yamlInput.value = injectedYaml || "# ERROR: Could not find or read includes/values.yaml.";
+        treeRoot.appendChild(el('div', '', 'Error loading data. Check the hidden input field for details.'));
+      }
+    }
+
+    initializeFromInjectedData();
+
+    // keyboard support for toggling
+    document.addEventListener('keydown', (ev) => {
+      if ((ev.key === 'Enter' || ev.key === ' ') && document.activeElement && document.activeElement.classList.contains('crdHeaderButton')) {
+        ev.preventDefault();
+        document.activeElement.click();
+      }
+    });
+
+  })();
+</script>

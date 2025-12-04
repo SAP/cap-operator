@@ -5,7 +5,7 @@ weight: 10
 type: "docs"
 tags: ["setup"]
 description: >
-  Discover all values supported by the latest CAP Operator helm chart 
+  Discover all values supported by the latest CAP Operator helm chart
 ---
 
-{{% include "includes/chart-values.md" %}}
+{{< yaml-viewer >}}

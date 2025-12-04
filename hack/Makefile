@@ -34,6 +34,7 @@ gen-helm-docs: helm-docs ## Generate helm doc.
 	trap 'rm -rf $(SRC)/$(TEMPDIR)' EXIT
 	mkdir -p $(SRC)/$(TEMPDIR)
 	cp -pr $(SRC)/../cap-operator-lifecycle/chart $(SRC)/$(TEMPDIR)
+	cp -pr $(SRC)/../cap-operator-lifecycle/chart/values.yaml $(SRC)/website/includes/values.yaml
 
 	$(HELM_DOCS) -c $(SRC)/$(TEMPDIR)/chart -s file
 	cp $(SRC)/$(TEMPDIR)/chart/README.md $(SRC)/../cap-operator-lifecycle/chart
