@@ -2230,7 +2230,8 @@ Kubernetes core/v1.Affinity
 </em>
 </td>
 <td>
-<p>The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints">https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints</a></p>
+<p>The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints">https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints</a>
+Note: As of now, this field only makes sense for Deployment workloads. If/once we support parallel Job workloads, this field may be relevant for Jobs as well.</p>
 </td>
 </tr>
 <tr>
@@ -2475,6 +2476,19 @@ WorkloadMonitoring
 </td>
 <td>
 <p>Workload monitoring specification</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podDisruptionBudget</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/policy/v1#PodDisruptionBudgetSpec">
+Kubernetes policy/v1.PodDisruptionBudgetSpec
+</a>
+</em>
+</td>
+<td>
+<p>Pod Disruption Budget may be used to specify the minimum number of available pods for this workload</p>
 </td>
 </tr>
 </tbody>
@@ -3646,5 +3660,5 @@ If not specified, CAP Operator will not attempt to create a ServiceMonitor for t
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>ffa6a15</code>.
+on git commit <code>a79e9ba</code>.
 </em></p>

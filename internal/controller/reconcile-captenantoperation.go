@@ -475,7 +475,7 @@ type jobCreateParams struct {
 }
 
 func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {
-	derivedWorkload := deriveWorkloadForTenantOperation(workload)
+	derivedWorkload := deriveWorkloadForTenantOperation(workload, params.labels)
 
 	// create job for tenant operation (provisioning / upgrade / deprovisioning)
 	job := &batchv1.Job{
@@ -544,7 +544,7 @@ func getContainers(ctop *v1alpha1.CAPTenantOperation, derivedWorkload tentantOpe
 	return append([]corev1.Container{}, *container)
 }
 
-func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentantOperationWorkload {
+func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails, labels map[string]string) tentantOperationWorkload {
 	result := tentantOperationWorkload{}
 	if workload.JobDefinition == nil {
 		// this must be a reference to CAP workload
@@ -564,7 +564,7 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 		result.nodeSelector = workload.DeploymentDefinition.NodeSelector
 		result.nodeName = workload.DeploymentDefinition.NodeName
 		result.priorityClassName = workload.DeploymentDefinition.PriorityClassName
-		result.topologySpreadConstraints = workload.DeploymentDefinition.TopologySpreadConstraints
+		result.topologySpreadConstraints = getTopologySpreadConstraints(workload.DeploymentDefinition.TopologySpreadConstraints, labels, false)
 		result.tolerations = workload.DeploymentDefinition.Tolerations
 	} else {
 		// use job definition
@@ -592,7 +592,7 @@ func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails) tentan
 		result.nodeSelector = workload.JobDefinition.NodeSelector
 		result.nodeName = workload.JobDefinition.NodeName
 		result.priorityClassName = workload.JobDefinition.PriorityClassName
-		result.topologySpreadConstraints = workload.JobDefinition.TopologySpreadConstraints
+		result.topologySpreadConstraints = getTopologySpreadConstraints(workload.JobDefinition.TopologySpreadConstraints, labels, false)
 		result.tolerations = workload.JobDefinition.Tolerations
 	}
 	return result
@@ -626,7 +626,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 					NodeName:                  workload.JobDefinition.NodeName,
 					PriorityClassName:         workload.JobDefinition.PriorityClassName,
 					Affinity:                  workload.JobDefinition.Affinity,
-					TopologySpreadConstraints: workload.JobDefinition.TopologySpreadConstraints,
+					TopologySpreadConstraints: getTopologySpreadConstraints(workload.JobDefinition.TopologySpreadConstraints, params.labels, false),
 					Tolerations:               workload.JobDefinition.Tolerations,
 					ImagePullSecrets:          params.imagePullSecrets,
 					Containers: []corev1.Container{

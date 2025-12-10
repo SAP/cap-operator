@@ -441,6 +441,7 @@ type CommonDetails struct {
 	// Tolerations used to schedule the Pod. See: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
 	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
 	// The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
+	// Note: As of now, this field only makes sense for Deployment workloads. If/once we support parallel Job workloads, this field may be relevant for Jobs as well.
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
 	// List of containers executed before the main container is started
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
