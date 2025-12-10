@@ -147,6 +147,8 @@ type RouterDestination struct {
 	ProxyType            string `json:"proxyType,omitempty"`
 }
 
+const PodTemplateHashKey = "pod-template-hash"
+
 type Steps string
 
 const (
@@ -647,4 +649,22 @@ func getRestartPolicy(restartPolicy corev1.RestartPolicy, isJob bool) corev1.Res
 		return corev1.RestartPolicyNever
 	}
 	return restartPolicy
+}
+
+func getTopologySpreadConstraints(constraints []corev1.TopologySpreadConstraint, labels map[string]string, isDeployment bool) []corev1.TopologySpreadConstraint {
+	updatedConstraints := []corev1.TopologySpreadConstraint{}
+	for _, constraint := range constraints {
+		updatedConstraint := constraint.DeepCopy()
+		// add deployment/pod related labels to label selector
+		if updatedConstraint.LabelSelector == nil {
+			updatedConstraint.LabelSelector = &metav1.LabelSelector{
+				MatchLabels: labels,
+			}
+			if isDeployment {
+				updatedConstraint.MatchLabelKeys = []string{PodTemplateHashKey}
+			}
+		}
+		updatedConstraints = append(updatedConstraints, *updatedConstraint)
+	}
+	return updatedConstraints
 }
