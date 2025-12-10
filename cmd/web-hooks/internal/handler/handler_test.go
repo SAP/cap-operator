@@ -19,8 +19,10 @@ import (
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	fakeCrdClient "github.com/sap/cap-operator/pkg/client/clientset/versioned/fake"
 	admissionv1 "k8s.io/api/admission/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -1497,6 +1499,130 @@ func TestCavInvalidityServiceScenario(t *testing.T) {
 
 			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
 				t.Fatal("validation response error")
+			}
+		})
+	}
+}
+
+func TestCavPDBScenario(t *testing.T) {
+	Ca := createCaCRO(true)
+	wh := &WebhookHandler{
+		CrdClient: fakeCrdClient.NewSimpleClientset(Ca),
+	}
+	tests := []struct {
+		name             string
+		operation        admissionv1.Operation
+		pdbWithSelectors bool
+	}{
+		{
+			name:             "PDB without selectors",
+			operation:        admissionv1.Create,
+			pdbWithSelectors: false,
+		},
+		{
+			name:             "PDB with selectors",
+			operation:        admissionv1.Create,
+			pdbWithSelectors: true,
+		},
+	}
+	for _, test := range tests {
+		testName := "Testing CAPApplicationVersion for " + test.name
+		t.Run(testName, func(t *testing.T) {
+			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.CAPApplicationVersionKind, caName, noUpdate)
+			if err != nil {
+				t.Fatal("admission review error")
+			}
+
+			minAvailable := intstr.FromInt(1)
+
+			crd := &v1alpha1.CAPApplicationVersion{
+				TypeMeta: metav1.TypeMeta{
+					Kind: v1alpha1.CAPApplicationVersionKind,
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      cavName,
+					Namespace: metav1.NamespaceDefault,
+				},
+				Spec: v1alpha1.CAPApplicationVersionSpec{
+					CAPApplicationInstance: caName,
+					Workloads: []v1alpha1.WorkloadDetails{
+						{
+							Name:                "cap-backend",
+							ConsumedBTPServices: []string{},
+							DeploymentDefinition: &v1alpha1.DeploymentDetails{
+								Type: v1alpha1.DeploymentCAP,
+								CommonDetails: v1alpha1.CommonDetails{
+									Image: "foo",
+								},
+								PodDisruptionBudget: &policyv1.PodDisruptionBudgetSpec{
+									MinAvailable: &minAvailable,
+								},
+							},
+						},
+						{
+							Name:                "cap-router",
+							ConsumedBTPServices: []string{},
+							DeploymentDefinition: &v1alpha1.DeploymentDetails{
+								Type: v1alpha1.DeploymentRouter,
+								CommonDetails: v1alpha1.CommonDetails{
+									Image: "foo",
+								},
+								PodDisruptionBudget: &policyv1.PodDisruptionBudgetSpec{
+									MaxUnavailable: &minAvailable,
+								},
+							},
+						},
+						{
+							Name:                "content",
+							ConsumedBTPServices: []string{},
+							JobDefinition: &v1alpha1.JobDetails{
+								Type: v1alpha1.JobContent,
+								CommonDetails: v1alpha1.CommonDetails{
+									Image: "foo",
+								},
+							},
+						},
+					},
+				},
+			}
+
+			if test.pdbWithSelectors == true {
+				crd.Spec.Workloads[0].DeploymentDefinition.PodDisruptionBudget.Selector = &metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"app": "my-app",
+					},
+				}
+			}
+
+			rawBytes, _ := json.Marshal(crd)
+			admissionReview.Request.Object.Raw = rawBytes
+			bytesRequest, err := json.Marshal(admissionReview)
+			if err != nil {
+				t.Fatal("marshal error")
+			}
+			request := httptest.NewRequest(http.MethodGet, "/validate", bytes.NewBuffer(bytesRequest))
+			recorder := httptest.NewRecorder()
+
+			wh.Validate(recorder, request)
+
+			admissionReviewRes := admissionv1.AdmissionReview{}
+			bytes, err := io.ReadAll(recorder.Body)
+			if err != nil {
+				t.Fatal("io read error")
+			}
+			universalDeserializer.Decode(bytes, nil, &admissionReviewRes)
+
+			var errorMessage string
+			if test.pdbWithSelectors == true {
+				errorMessage = fmt.Sprintf("%s %s selector must not be specified for podDisrptionBudget config in workload - %s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.Workloads[0].Name)
+
+				if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
+					t.Fatal("validation response error")
+				}
+			} else {
+				if !admissionReviewRes.Response.Allowed {
+					t.Fatal("validation response error")
+				}
 			}
 		})
 	}

@@ -931,3 +931,25 @@ func TestCAV_ServicesOnlySuccess(t *testing.T) {
 		},
 	)
 }
+
+func TestCAV_PodDisruptionBudget(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01-cav-v1"}},
+		TestData{
+			description: "capapplication version - pod disruption budget",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/common/cav-pdb.yaml",
+				"testdata/capapplicationversion/services-ready.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems:      []string{},
+			expectError:       false,
+			expectedResources: "testdata/capapplicationversion/expected/cav-pdb-ready.yaml",
+		},
+	)
+}

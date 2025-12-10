@@ -1,0 +1,78 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: test-cap-01
+    sme.sap.com/category: Workload
+    sme.sap.com/workload-name: test-ca-01-cav-v1-cap-backend-service
+    sme.sap.com/workload-type: Service
+    sme.sap.com/exposed-workload: "true"
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/cav-version: "0.0.1"
+    sme.sap.com/owner-generation: "1"
+    sme.sap.com/owner-identifier-hash: 00a7bd3cb89af3010bf21dcdc056f176adf3a862
+  annotations:
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-ca-01
+    sme.sap.com/owner-identifier: default.test-ca-01-cav-v1
+  name: test-ca-01-cav-v1-cap-backend-service
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplicationVersion
+      name: test-ca-01-cav-v1
+      uid: 5e64489b-7346-4984-8617-e8c37338b3d8
+spec:
+status:
+  replicas: 3
+  updatedReplicas: 3
+  readyReplicas: 3
+  availableReplicas: 3
+  conditions:
+    - lastTransitionTime: "2022-07-18T12:16:41Z"
+      lastUpdateTime: "2022-07-18T12:16:41Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: test-cap-01
+    sme.sap.com/category: Workload
+    sme.sap.com/workload-name: test-ca-01-cav-v1-app-router
+    sme.sap.com/workload-type: Service
+    sme.sap.com/exposed-workload: "true"
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/cav-version: "0.0.1"
+    sme.sap.com/owner-generation: "1"
+    sme.sap.com/owner-identifier-hash: 00a7bd3cb89af3010bf21dcdc056f176adf3a862
+  annotations:
+    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-ca-01
+    sme.sap.com/owner-identifier: default.test-ca-01-cav-v1
+  name: test-ca-01-cav-v1-app-router
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplicationVersion
+      name: test-ca-01-cav-v1
+      uid: 5e64489b-7346-4984-8617-e8c37338b3d8
+spec:
+status:
+  replicas: 3
+  updatedReplicas: 3
+  readyReplicas: 3
+  availableReplicas: 3
+  conditions:
+    - lastTransitionTime: "2022-07-18T12:16:41Z"
+      lastUpdateTime: "2022-07-18T12:16:41Z"
+      message: Deployment has minimum availability.
+      reason: MinimumReplicasAvailable
+      status: "True"
+      type: Available

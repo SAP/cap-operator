@@ -687,7 +687,7 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 	}
 
 	var vcapSecretName string
-	deploymentName := cav.Name + "-" + strings.ToLower(string(workload.Name))
+	deploymentName := getWorkloadName(cav.Name, workload.Name)
 	// Get the workloadDeployment with the name specified in CustomDeployment.spec
 	workloadDeployment, err := c.kubeClient.AppsV1().Deployments(cav.Namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
 	// If the resource doesn't exist, we'll create it
@@ -711,7 +711,7 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 
 	// Create PDB for the deployment if configured
 	if err == nil && workload.DeploymentDefinition.PodDisruptionBudget != nil {
-		err = c.createOrUpdatePodDisruptionBudget(workload, cav, workloadDeployment, ca)
+		err = c.createOrUpdatePodDisruptionBudget(workload, cav, ca)
 		if err != nil {
 			return nil, err
 		}
@@ -720,12 +720,13 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 	return workloadDeployment, doChecks(err, workloadDeployment, cav, workload.Name)
 }
 
-func (c *Controller) createOrUpdatePodDisruptionBudget(workload *v1alpha1.WorkloadDetails, cav *v1alpha1.CAPApplicationVersion, workloadDeployment *appsv1.Deployment, ca *v1alpha1.CAPApplication) error {
+func (c *Controller) createOrUpdatePodDisruptionBudget(workload *v1alpha1.WorkloadDetails, cav *v1alpha1.CAPApplicationVersion, ca *v1alpha1.CAPApplication) error {
+	pdbName := getWorkloadName(cav.Name, workload.Name)
 	// Get the PDB which should exist for this deployment
-	pdb, err := c.kubeClient.PolicyV1().PodDisruptionBudgets(cav.Namespace).Get(context.TODO(), workloadDeployment.Name, metav1.GetOptions{})
+	pdb, err := c.kubeClient.PolicyV1().PodDisruptionBudgets(cav.Namespace).Get(context.TODO(), pdbName, metav1.GetOptions{})
 	// If the resource doesn't exist, we'll create it
 	if k8sErrors.IsNotFound(err) {
-		pdb, err = c.kubeClient.PolicyV1().PodDisruptionBudgets(cav.Namespace).Create(context.TODO(), newPodDisruptionBudget(ca, cav, workload, workloadDeployment), metav1.CreateOptions{})
+		pdb, err = c.kubeClient.PolicyV1().PodDisruptionBudgets(cav.Namespace).Create(context.TODO(), newPodDisruptionBudget(ca, cav, workload), metav1.CreateOptions{})
 		if err == nil {
 			util.LogInfo("Pod Disruption Budget created successfully", string(Processing), cav, pdb, "version", cav.Spec.Version)
 		}
@@ -733,12 +734,12 @@ func (c *Controller) createOrUpdatePodDisruptionBudget(workload *v1alpha1.Worklo
 	return doChecks(err, pdb, cav, workload.Name)
 }
 
-func newPodDisruptionBudget(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails, workloadDeployment *appsv1.Deployment) *policyv1.PodDisruptionBudget {
+func newPodDisruptionBudget(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails) *policyv1.PodDisruptionBudget {
 	labels := copyMaps(workload.Labels, getLabels(ca, cav, CategoryWorkload, string(workload.DeploymentDefinition.Type), getWorkloadName(cav.Name, workload.Name), true))
-
+	pdbName := getWorkloadName(cav.Name, workload.Name)
 	return &policyv1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      workloadDeployment.Name,
+			Name:      pdbName,
 			Namespace: cav.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind)),
