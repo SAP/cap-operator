@@ -376,6 +376,10 @@ func validateWorkloads(ca *v1alpha1.CAPApplication, cavObjNew *v1alpha1.CAPAppli
 			return workloadPortValidate
 		}
 
+		if workloadPortValidate := checkWorkloadPodDistruptionBudget(&workload); !workloadPortValidate.allowed {
+			return workloadPortValidate
+		}
+
 		// get count of workload names
 		if _, ok := uniqueWorkloadNameCountMap[workload.Name]; ok {
 			return validateResource{
@@ -393,6 +397,18 @@ func validateWorkloads(ca *v1alpha1.CAPApplication, cavObjNew *v1alpha1.CAPAppli
 
 	if workloadContentJobValidate := checkWorkloadContentJob(cavObjNew); !workloadContentJobValidate.allowed {
 		return workloadContentJobValidate
+	}
+
+	return validAdmissionReviewObj()
+}
+
+func checkWorkloadPodDistruptionBudget(workloadDetails *v1alpha1.WorkloadDetails) validateResource {
+	// Invalidate configurations that specify a selector for PDB --> This is done exclusively by Operator as the configuration is workload specific.
+	if workloadDetails.DeploymentDefinition != nil && workloadDetails.DeploymentDefinition.PodDisruptionBudget != nil && workloadDetails.DeploymentDefinition.PodDisruptionBudget.Selector != nil {
+		return validateResource{
+			allowed: false,
+			message: fmt.Sprintf("%s %s selector must not be specified for podDisrptionBudget config in workload - %s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, workloadDetails.Name),
+		}
 	}
 
 	return validAdmissionReviewObj()

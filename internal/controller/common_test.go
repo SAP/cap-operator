@@ -47,6 +47,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -686,6 +687,8 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 		actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("servicemonitors"), mo.GetNamespace(), mo.GetName())
 	case *discoveryv1.EndpointSlice:
 		actual, err = c.kubeClient.(*k8sfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("endpointslices"), mo.GetNamespace(), mo.GetName())
+	case *policyv1.PodDisruptionBudget:
+		actual, err = c.kubeClient.(*k8sfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("poddisruptionbudgets"), mo.GetNamespace(), mo.GetName())
 	default:
 		return fmt.Errorf("unknown expected object type")
 	}
