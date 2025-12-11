@@ -29,7 +29,7 @@ type dummyInformerFactoryType struct {
 	tweakListOptions func(*metav1.ListOptions)
 }
 
-func (f *dummyInformerFactoryType) WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool {
+func (f *dummyInformerFactoryType) WaitForCacheSync(_ <-chan struct{}) map[reflect.Type]bool {
 	//Simulate error
 	return map[reflect.Type]bool{reflect.TypeOf(metav1.TypeMeta{}): false}
 }

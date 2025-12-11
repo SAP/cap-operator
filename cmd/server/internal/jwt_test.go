@@ -154,7 +154,7 @@ func createJWTTestTLSServer(ctx context.Context, jwks *JWKeys) (*http.Client, er
 	if err != nil {
 		return nil, err
 	}
-	if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
+	if !rootCAs.AppendCertsFromPEM(certs) {
 		return nil, errors.New("could not append CA cert")
 	}
 

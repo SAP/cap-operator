@@ -15,13 +15,13 @@ type stringslice []string
 
 func (s *stringslice) UnmarshalJSON(data []byte) error {
 	var single string
-	if err := json.Unmarshal(data, &single); err == nil {
+	if json.Unmarshal(data, &single) == nil {
 		*s = []string{single}
 		return nil
 	}
 
 	var multiple []string
-	if err := json.Unmarshal(data, &multiple); err == nil {
+	if json.Unmarshal(data, &multiple) == nil {
 		slices.Sort(multiple)
 		*s = multiple
 		return nil
@@ -38,7 +38,7 @@ type JsonDN struct {
 	CN string      `json:"CN"`
 }
 
-func check(source []string, target []string) bool {
+func check(source, target []string) bool {
 	return slices.Contains(source, "*") || slices.Equal(source, target)
 }
 

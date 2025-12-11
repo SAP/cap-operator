@@ -239,7 +239,7 @@ func (c *Controller) processVersionCleanupQueue(ctx context.Context, orc *cleanu
 		case <-ctx.Done():
 			return
 		default:
-			if stop := c.processVersionCleanupQueueItem(ctx, orc); stop {
+			if c.processVersionCleanupQueueItem(ctx, orc) {
 				return
 			}
 		}
@@ -253,7 +253,7 @@ func (c *Controller) processVersionCleanupQueueItem(ctx context.Context, orc *cl
 	}
 	defer orc.queue.Done(item)
 
-	if err := c.evaluateVersionForCleanup(ctx, item, orc.api); err != nil {
+	if c.evaluateVersionForCleanup(ctx, item, orc.api) != nil {
 		orc.queue.AddRateLimited(item)
 	} else {
 		orc.queue.Forget(item)
@@ -277,7 +277,7 @@ func (c *Controller) evaluateVersionForCleanup(ctx context.Context, item Namespa
 	cleanup := true
 	for i := range cav.Spec.Workloads {
 		wl := cav.Spec.Workloads[i]
-		if workloadEvaluation := evaluateWorkloadForCleanup(ctx, item, &wl, promapi); !workloadEvaluation {
+		if !evaluateWorkloadForCleanup(ctx, item, &wl, promapi) {
 			cleanup = false
 			break
 		}

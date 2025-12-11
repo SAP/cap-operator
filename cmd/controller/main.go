@@ -122,7 +122,7 @@ func main() {
 				go func() {
 					migrationDone <- migrateToDomainRefs(crdClient, istioClient, certClient, certManagerClient, dnsClient)
 				}()
-				if ok := <-migrationDone; !ok {
+				if !<-migrationDone {
 					klog.Errorf("Migration failed; not starting controller")
 					os.Exit(1)
 				}

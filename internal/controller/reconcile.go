@@ -171,12 +171,12 @@ func (c *Controller) Event(main runtime.Object, related runtime.Object, eventTyp
 	c.eventRecorder.Eventf(main, related, eventType, reason, action, message)
 }
 
-func (c *Controller) getCachedCAPApplication(namespace string, name string) (*v1alpha1.CAPApplication, error) {
+func (c *Controller) getCachedCAPApplication(namespace, name string) (*v1alpha1.CAPApplication, error) {
 	lister := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister()
 	return lister.CAPApplications(namespace).Get(name)
 }
 
-func (c *Controller) getCachedCAPTenant(namespace string, value string, valueIsTenantId bool) (*v1alpha1.CAPTenant, error) {
+func (c *Controller) getCachedCAPTenant(namespace, value string, valueIsTenantId bool) (*v1alpha1.CAPTenant, error) {
 	lister := c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister()
 	if !valueIsTenantId {
 		// fetch with name
@@ -452,7 +452,7 @@ func validateEnv(envConfig []corev1.EnvVar, restrictedNames map[string]struct{})
 	return ""
 }
 
-func errorEnv(workloadType string, entry string) error {
+func errorEnv(workloadType, entry string) error {
 	return fmt.Errorf("invalid env configuration for workload: %s, remove entry: %s from configuration", workloadType, entry)
 }
 
@@ -560,7 +560,7 @@ func getWorkloadPortInfo(workload v1alpha1.WorkloadDetails, cavName string) *ser
 	return workloadPortInfo
 }
 
-func updateWorkloadPortInfo(cavName string, workloadName string, deploymentType v1alpha1.DeploymentType, servicePorts []corev1.ServicePort, destinationDetails []destinationInfo, clusterPorts []int32) *servicePortInfo {
+func updateWorkloadPortInfo(cavName, workloadName string, deploymentType v1alpha1.DeploymentType, servicePorts []corev1.ServicePort, destinationDetails []destinationInfo, clusterPorts []int32) *servicePortInfo {
 	var workloadPortInfo *servicePortInfo
 	if len(servicePorts) == 0 {
 		// Use fallback defaults
@@ -594,7 +594,7 @@ func updateWorkloadPortInfo(cavName string, workloadName string, deploymentType 
 	return workloadPortInfo
 }
 
-func getServicePortInfoByWorkloadName(items []servicePortInfo, cavName string, workloadName string) *servicePortInfo {
+func getServicePortInfoByWorkloadName(items []servicePortInfo, cavName, workloadName string) *servicePortInfo {
 	for i := range items {
 		current := items[i]
 		if current.WorkloadName == getWorkloadName(cavName, workloadName) {
@@ -604,7 +604,7 @@ func getServicePortInfoByWorkloadName(items []servicePortInfo, cavName string, w
 	return nil
 }
 
-func (c *Controller) getRouterServicePortInfo(cavName string, namespace string) (*servicePortInfo, error) {
+func (c *Controller) getRouterServicePortInfo(cavName, namespace string) (*servicePortInfo, error) {
 	cav, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(namespace).Get(cavName)
 	if err != nil {
 		return nil, err
@@ -615,7 +615,7 @@ func (c *Controller) getRouterServicePortInfo(cavName string, namespace string) 
 	return getWorkloadPortInfo(*routerWorkload, cavName), nil
 }
 
-func copyMaps(originalMap map[string]string, additionalMap map[string]string) map[string]string {
+func copyMaps(originalMap, additionalMap map[string]string) map[string]string {
 	newMap := map[string]string{}
 	for key, value := range originalMap {
 		newMap[key] = value

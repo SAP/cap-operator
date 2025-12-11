@@ -644,10 +644,10 @@ func (c *Controller) reconcileApplicationDomainReferences(ca *v1alpha1.CAPApplic
 		return true
 	}
 
-	if done := setStatus(areDomainResourcesReady(doms)); done {
+	if setStatus(areDomainResourcesReady(doms)) {
 		return
 	}
-	if done := setStatus(areDomainResourcesReady(cdoms)); done {
+	if setStatus(areDomainResourcesReady(cdoms)) {
 		return
 	}
 
