@@ -196,7 +196,7 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 	}
 
 	// Tenant created/exists
-	message := func(isCreated bool, isUpdated bool) string {
+	message := func(isCreated, isUpdated bool) string {
 		if isCreated {
 			return ResourceCreated
 		} else if isUpdated {
@@ -517,7 +517,7 @@ func (s *SubscriptionHandler) authorizationCheck(headerDetails *requestHeaderDet
 	return
 }
 
-func (s *SubscriptionHandler) checkCAPApp(globalAccountId string, btpAppName string) (*v1alpha1.CAPApplication, error) {
+func (s *SubscriptionHandler) checkCAPApp(globalAccountId, btpAppName string) (*v1alpha1.CAPApplication, error) {
 	labelSelector, err := labels.ValidatedSelectorFromSet(map[string]string{
 		LabelBTPApplicationIdentifierHash: sha1Sum(globalAccountId, btpAppName),
 	})

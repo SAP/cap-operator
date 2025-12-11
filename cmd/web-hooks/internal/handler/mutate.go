@@ -220,7 +220,7 @@ func (wh *WebhookHandler) handleDomain(domain string, ca *v1alpha1.CAPApplicatio
 	return nil
 }
 
-func (wh *WebhookHandler) getDomain(domain string, namespace string) (*matchingDomainDetails, error) {
+func (wh *WebhookHandler) getDomain(domain, namespace string) (*matchingDomainDetails, error) {
 	// Check if the domain exists in current namespace
 	doms, err := wh.CrdClient.SmeV1alpha1().Domains(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {

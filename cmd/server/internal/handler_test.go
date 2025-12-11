@@ -1181,7 +1181,7 @@ func TestAsyncCallback(t *testing.T) {
 		client.Transport = &http.Transport{
 			DialContext: func(c context.Context, network, addr string) (net.Conn, error) {
 				if strings.Contains(addr, "auth.service.local:") {
-					if v := c.Value(cKey); v != nil {
+					if c.Value(cKey) != nil {
 						calledHost = addr
 					} else {
 						calledHost = ""

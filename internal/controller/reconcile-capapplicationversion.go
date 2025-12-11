@@ -535,7 +535,7 @@ func (c *Controller) reconcileWorkloadServiceMonitor(ctx context.Context, wl *v1
 		return fmt.Errorf("could not identify workload port information for workload %s in version %s", wl.Name, cav.Name)
 	}
 
-	if portVerified := isWorkloadPort(wlPortInfos.Ports, wl.DeploymentDefinition.Monitoring.ScrapeConfig.WorkloadPort); !portVerified {
+	if !isWorkloadPort(wlPortInfos.Ports, wl.DeploymentDefinition.Monitoring.ScrapeConfig.WorkloadPort) {
 		return fmt.Errorf("invalid port reference in workload %s monitoring config of version %s", wl.Name, cav.Name)
 	}
 

@@ -236,7 +236,7 @@ func getMetaObject(obj interface{}) (metav1.Object, bool) {
 	return metaObj, ok
 }
 
-func hasReconciliationRelevantChanges(newObj metav1.Object, oldObj metav1.Object) bool {
+func hasReconciliationRelevantChanges(newObj, oldObj metav1.Object) bool {
 	if oldObj.GetGeneration() != newObj.GetGeneration() {
 		// generation change denotes a change in the object spec
 		return true

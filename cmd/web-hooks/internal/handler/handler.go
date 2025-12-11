@@ -610,7 +610,7 @@ func (wh *WebhookHandler) checkCaIsConsistent(catObjOld v1alpha1.CAPTenant) vali
 	return validAdmissionReviewObj()
 }
 
-func (wh *WebhookHandler) checkForDuplicateDomains(domain string, name string) validateResource {
+func (wh *WebhookHandler) checkForDuplicateDomains(domain, name string) validateResource {
 	clusterDoms, _ := wh.CrdClient.SmeV1alpha1().ClusterDomains(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
 	for _, clusterDom := range clusterDoms.Items {
 		if clusterDom.Spec.Domain == domain && clusterDom.Name != name {

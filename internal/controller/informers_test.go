@@ -21,11 +21,11 @@ type dummyType struct {
 	workqueue.TypedRateLimitingInterface[QueueItem]
 }
 
-func (q *dummyType) Add(item QueueItem) {
+func (q *dummyType) Add(_ QueueItem) {
 	expectedResult = true
 }
 
-func (q *dummyType) AddAfter(item QueueItem, duration time.Duration) {
+func (q *dummyType) AddAfter(_ QueueItem, _ time.Duration) {
 	expectedResult = true
 }
 

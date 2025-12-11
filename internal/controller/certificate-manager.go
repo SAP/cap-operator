@@ -73,7 +73,7 @@ func (h *CertificateManager) handleCertificate(ctx context.Context, info *Manage
 	return
 }
 
-func (h *CertificateManager) GetCredentialName(namespace string, name string) string {
+func (h *CertificateManager) GetCredentialName(namespace, name string) string {
 	credentialSuffix := gardenerCredentialSuffix
 	if h.managerType == certManagerCertManagerIO {
 		credentialSuffix = certManagerCredentialSuffix

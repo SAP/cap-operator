@@ -39,7 +39,7 @@ func marshalJSON(obj interface{}) []byte {
 
 type testReader struct{}
 
-func (tr *testReader) Read(p []byte) (n int, err error) {
+func (tr *testReader) Read(_ []byte) (n int, err error) {
 	return 0, errors.New("test error")
 }
 

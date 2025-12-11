@@ -402,7 +402,7 @@ func (c *Controller) getVirtualServiceHttpRoutes(cat *v1alpha1.CAPTenant, curren
 	return httpRoutes, nil
 }
 
-func (c *Controller) getVirtualServiceHttpRouteDestination(cavName string, namespace string) (*networkingv1.Destination, error) {
+func (c *Controller) getVirtualServiceHttpRouteDestination(cavName, namespace string) (*networkingv1.Destination, error) {
 	CAVRouterPortInfo, err := c.getRouterServicePortInfo(cavName, namespace)
 	if err != nil {
 		return nil, err
