@@ -9,9 +9,13 @@ package v1alpha1
 
 // ServiceExposureApplyConfiguration represents a declarative configuration of the ServiceExposure type for use
 // with apply.
+//
+// ServiceExposure specifies the details of the VirtualService to be exposed for `Service` type workload(s)
 type ServiceExposureApplyConfiguration struct {
-	SubDomain *string                   `json:"subDomain,omitempty"`
-	Routes    []RouteApplyConfiguration `json:"routes,omitempty"`
+	// Subdomain under which the service is exposed (used as the Key for identifying the VirtualService)
+	SubDomain *string `json:"subDomain,omitempty"`
+	// Routes specifies the routing configuration (http match) for the exposed service
+	Routes []RouteApplyConfiguration `json:"routes,omitempty"`
 }
 
 // ServiceExposureApplyConfiguration constructs a declarative configuration of the ServiceExposure type for use with

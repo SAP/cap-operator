@@ -15,10 +15,13 @@ import (
 
 // CAPTenantOutputApplyConfiguration represents a declarative configuration of the CAPTenantOutput type for use
 // with apply.
+//
+// CAPTenantOutput is the schema for captenantoutputs API
 type CAPTenantOutputApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *CAPTenantOutputSpecApplyConfiguration `json:"spec,omitempty"`
+	// CAPTenantOutputData spec
+	Spec *CAPTenantOutputSpecApplyConfiguration `json:"spec,omitempty"`
 }
 
 // CAPTenantOutput constructs a declarative configuration of the CAPTenantOutput type for use with
@@ -31,6 +34,7 @@ func CAPTenantOutput(name, namespace string) *CAPTenantOutputApplyConfiguration 
 	b.WithAPIVersion("sme.sap.com/v1alpha1")
 	return b
 }
+
 func (b CAPTenantOutputApplyConfiguration) IsApplyConfiguration() {}
 
 // WithKind sets the Kind field in the declarative configuration to the given value

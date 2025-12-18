@@ -17,11 +17,16 @@ import (
 // with apply.
 type CAPApplicationStatusApplyConfiguration struct {
 	GenericStatusApplyConfiguration `json:",inline"`
-	State                           *smesapcomv1alpha1.CAPApplicationState `json:"state,omitempty"`
-	ServicesOnly                    *bool                                  `json:"servicesOnly,omitempty"`
-	DomainSpecHash                  *string                                `json:"domainSpecHash,omitempty"`
-	LastFullReconciliationTime      *v1.Time                               `json:"lastFullReconciliationTime,omitempty"`
-	ObservedSubdomains              []string                               `json:"observedSubdomains,omitempty"`
+	// State of CAPApplication
+	State *smesapcomv1alpha1.CAPApplicationState `json:"state,omitempty"`
+	// Represents whether this is a services only scenario
+	ServicesOnly *bool `json:"servicesOnly,omitempty"`
+	// Hash representing last known application domains
+	DomainSpecHash *string `json:"domainSpecHash,omitempty"`
+	// The last time a full reconciliation was completed
+	LastFullReconciliationTime *v1.Time `json:"lastFullReconciliationTime,omitempty"`
+	// Last known application subdomains
+	ObservedSubdomains []string `json:"observedSubdomains,omitempty"`
 }
 
 // CAPApplicationStatusApplyConfiguration constructs a declarative configuration of the CAPApplicationStatus type for use with

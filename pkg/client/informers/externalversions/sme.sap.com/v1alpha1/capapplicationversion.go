@@ -46,7 +46,7 @@ func NewCAPApplicationVersionInformer(client versioned.Interface, namespace stri
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredCAPApplicationVersionInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
@@ -71,7 +71,7 @@ func NewFilteredCAPApplicationVersionInformer(client versioned.Interface, namesp
 				}
 				return client.SmeV1alpha1().CAPApplicationVersions(namespace).Watch(ctx, options)
 			},
-		},
+		}, client),
 		&apissmesapcomv1alpha1.CAPApplicationVersion{},
 		resyncPeriod,
 		indexers,
