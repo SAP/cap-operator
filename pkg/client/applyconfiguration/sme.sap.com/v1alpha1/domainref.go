@@ -9,6 +9,8 @@ package v1alpha1
 
 // DomainRefApplyConfiguration represents a declarative configuration of the DomainRef type for use
 // with apply.
+//
+// Domain references
 type DomainRefApplyConfiguration struct {
 	Kind *string `json:"kind,omitempty"`
 	Name *string `json:"name,omitempty"`

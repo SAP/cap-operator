@@ -9,8 +9,12 @@ package v1alpha1
 
 // DNSTemplateApplyConfiguration represents a declarative configuration of the DNSTemplate type for use
 // with apply.
+//
+// DNSTemplate supports the creation of DNS entries using go templates See: https://pkg.go.dev/text/template
 type DNSTemplateApplyConfiguration struct {
-	Name   *string `json:"name,omitempty"`
+	// Domain name for which a DNS record will be created
+	Name *string `json:"name,omitempty"`
+	// Target of the DNS reord
 	Target *string `json:"target,omitempty"`
 }
 

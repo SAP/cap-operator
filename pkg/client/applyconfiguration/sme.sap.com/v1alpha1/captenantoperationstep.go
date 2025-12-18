@@ -14,9 +14,12 @@ import (
 // CAPTenantOperationStepApplyConfiguration represents a declarative configuration of the CAPTenantOperationStep type for use
 // with apply.
 type CAPTenantOperationStepApplyConfiguration struct {
-	Name              *string                    `json:"name,omitempty"`
-	Type              *smesapcomv1alpha1.JobType `json:"type,omitempty"`
-	ContinueOnFailure *bool                      `json:"continueOnFailure,omitempty"`
+	// Name of the workload from the referenced CAPApplicationVersion
+	Name *string `json:"name,omitempty"`
+	// Type of job. One of 'TenantOperation' or 'CustomTenantOperation'
+	Type *smesapcomv1alpha1.JobType `json:"type,omitempty"`
+	// Indicates whether the operation can continue in case of step failure. Relevant only for type 'CustomTenantOperation'
+	ContinueOnFailure *bool `json:"continueOnFailure,omitempty"`
 }
 
 // CAPTenantOperationStepApplyConfiguration constructs a declarative configuration of the CAPTenantOperationStep type for use with

@@ -9,14 +9,23 @@ package v1alpha1
 
 // CAPApplicationVersionSpecApplyConfiguration represents a declarative configuration of the CAPApplicationVersionSpec type for use
 // with apply.
+//
+// CAPApplicationVersionSpec specifies the desired state of CAPApplicationVersion
 type CAPApplicationVersionSpecApplyConfiguration struct {
-	CAPApplicationInstance *string                             `json:"capApplicationInstance,omitempty"`
-	Version                *string                             `json:"version,omitempty"`
-	RegistrySecrets        []string                            `json:"registrySecrets,omitempty"`
-	Workloads              []WorkloadDetailsApplyConfiguration `json:"workloads,omitempty"`
-	TenantOperations       *TenantOperationsApplyConfiguration `json:"tenantOperations,omitempty"`
-	ContentJobs            []string                            `json:"contentJobs,omitempty"`
-	ServiceExposures       []ServiceExposureApplyConfiguration `json:"serviceExposures,omitempty"`
+	// Denotes to which CAPApplication the current version belongs
+	CAPApplicationInstance *string `json:"capApplicationInstance,omitempty"`
+	// Semantic version
+	Version *string `json:"version,omitempty"`
+	// Registry secrets used to pull images of the application components
+	RegistrySecrets []string `json:"registrySecrets,omitempty"`
+	// Information about the Workloads
+	Workloads []WorkloadDetailsApplyConfiguration `json:"workloads,omitempty"`
+	// Tenant Operations may be used to specify how jobs are sequenced for the different tenant operations
+	TenantOperations *TenantOperationsApplyConfiguration `json:"tenantOperations,omitempty"`
+	// Content Jobs may be used to specify the sequence of content jobs when several jobs exist
+	ContentJobs []string `json:"contentJobs,omitempty"`
+	// Configuration for the service(s) to be exposed (relevant only for 'Service' type deployment workloads)
+	ServiceExposures []ServiceExposureApplyConfiguration `json:"serviceExposures,omitempty"`
 }
 
 // CAPApplicationVersionSpecApplyConfiguration constructs a declarative configuration of the CAPApplicationVersionSpec type for use with

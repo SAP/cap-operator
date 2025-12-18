@@ -13,9 +13,13 @@ import (
 
 // GenericStatusApplyConfiguration represents a declarative configuration of the GenericStatus type for use
 // with apply.
+//
+// Custom resource status
 type GenericStatusApplyConfiguration struct {
-	ObservedGeneration *int64                           `json:"observedGeneration,omitempty"`
-	Conditions         []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
+	// Observed generation of the resource where this status was identified
+	ObservedGeneration *int64 `json:"observedGeneration,omitempty"`
+	// State expressed as conditions
+	Conditions []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
 }
 
 // GenericStatusApplyConfiguration constructs a declarative configuration of the GenericStatus type for use with

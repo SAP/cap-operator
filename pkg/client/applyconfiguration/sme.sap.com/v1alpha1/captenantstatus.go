@@ -16,11 +16,15 @@ import (
 // CAPTenantStatusApplyConfiguration represents a declarative configuration of the CAPTenantStatus type for use
 // with apply.
 type CAPTenantStatusApplyConfiguration struct {
-	GenericStatusApplyConfiguration      `json:",inline"`
-	State                                *smesapcomv1alpha1.CAPTenantState `json:"state,omitempty"`
-	CurrentCAPApplicationVersionInstance *string                           `json:"currentCAPApplicationVersionInstance,omitempty"`
-	PreviousCAPApplicationVersions       []string                          `json:"previousCAPApplicationVersions,omitempty"`
-	LastFullReconciliationTime           *v1.Time                          `json:"lastFullReconciliationTime,omitempty"`
+	GenericStatusApplyConfiguration `json:",inline"`
+	// State of CAPTenant
+	State *smesapcomv1alpha1.CAPTenantState `json:"state,omitempty"`
+	// Specifies the current version of the tenant after provisioning or upgrade
+	CurrentCAPApplicationVersionInstance *string `json:"currentCAPApplicationVersionInstance,omitempty"`
+	// Previous versions of the tenant (first to last)
+	PreviousCAPApplicationVersions []string `json:"previousCAPApplicationVersions,omitempty"`
+	// The last time a full reconciliation was completed
+	LastFullReconciliationTime *v1.Time `json:"lastFullReconciliationTime,omitempty"`
 }
 
 // CAPTenantStatusApplyConfiguration constructs a declarative configuration of the CAPTenantStatus type for use with
