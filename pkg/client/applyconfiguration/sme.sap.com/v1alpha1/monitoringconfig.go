@@ -14,10 +14,14 @@ import (
 // MonitoringConfigApplyConfiguration represents a declarative configuration of the MonitoringConfig type for use
 // with apply.
 type MonitoringConfigApplyConfiguration struct {
+	// Interval at which Prometheus scrapes the metrics from the target.
 	ScrapeInterval *smesapcomv1alpha1.Duration `json:"interval,omitempty"`
-	WorkloadPort   *string                     `json:"port,omitempty"`
-	Path           *string                     `json:"path,omitempty"`
-	Timeout        *smesapcomv1alpha1.Duration `json:"scrapeTimeout,omitempty"`
+	// Name of the port (specified on the workload) which will be used by Prometheus server to scrape metrics
+	WorkloadPort *string `json:"port,omitempty"`
+	// HTTP path from which to scrape for metrics.
+	Path *string `json:"path,omitempty"`
+	// Timeout after which Prometheus considers the scrape to be failed.
+	Timeout *smesapcomv1alpha1.Duration `json:"scrapeTimeout,omitempty"`
 }
 
 // MonitoringConfigApplyConfiguration constructs a declarative configuration of the MonitoringConfig type for use with
