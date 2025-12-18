@@ -46,7 +46,7 @@ func NewCAPTenantOperationInformer(client versioned.Interface, namespace string,
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredCAPTenantOperationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
@@ -71,7 +71,7 @@ func NewFilteredCAPTenantOperationInformer(client versioned.Interface, namespace
 				}
 				return client.SmeV1alpha1().CAPTenantOperations(namespace).Watch(ctx, options)
 			},
-		},
+		}, client),
 		&apissmesapcomv1alpha1.CAPTenantOperation{},
 		resyncPeriod,
 		indexers,

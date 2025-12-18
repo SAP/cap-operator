@@ -9,9 +9,13 @@ package v1alpha1
 
 // BTPTenantIdentificationApplyConfiguration represents a declarative configuration of the BTPTenantIdentification type for use
 // with apply.
+//
+// Identifies an SAP BTP subaccount (tenant)
 type BTPTenantIdentificationApplyConfiguration struct {
+	// BTP subaccount subdomain
 	SubDomain *string `json:"subDomain,omitempty"`
-	TenantId  *string `json:"tenantId,omitempty"`
+	// BTP subaccount Tenant ID
+	TenantId *string `json:"tenantId,omitempty"`
 }
 
 // BTPTenantIdentificationApplyConfiguration constructs a declarative configuration of the BTPTenantIdentification type for use with

@@ -13,26 +13,48 @@ import (
 
 // CommonDetailsApplyConfiguration represents a declarative configuration of the CommonDetails type for use
 // with apply.
+//
+// CommonDetails specifies the common details of the Container/Pod that may be relevant for both Deployments and Jobs
 type CommonDetailsApplyConfiguration struct {
-	Image                     *string                       `json:"image,omitempty"`
-	ImagePullPolicy           *v1.PullPolicy                `json:"imagePullPolicy,omitempty"`
-	Command                   []string                      `json:"command,omitempty"`
-	Args                      []string                      `json:"args,omitempty"`
-	Env                       []v1.EnvVar                   `json:"env,omitempty"`
-	Volumes                   []v1.Volume                   `json:"volumes,omitempty"`
-	VolumeMounts              []v1.VolumeMount              `json:"volumeMounts,omitempty"`
-	ServiceAccountName        *string                       `json:"serviceAccountName,omitempty"`
-	Resources                 *v1.ResourceRequirements      `json:"resources,omitempty"`
-	SecurityContext           *v1.SecurityContext           `json:"securityContext,omitempty"`
-	PodSecurityContext        *v1.PodSecurityContext        `json:"podSecurityContext,omitempty"`
-	NodeName                  *string                       `json:"nodeName,omitempty"`
-	NodeSelector              map[string]string             `json:"nodeSelector,omitempty"`
-	PriorityClassName         *string                       `json:"priorityClassName,omitempty"`
-	Affinity                  *v1.Affinity                  `json:"affinity,omitempty"`
-	Tolerations               []v1.Toleration               `json:"tolerations,omitempty"`
+	// Image info for the container
+	Image *string `json:"image,omitempty"`
+	// Pull policy for the container image
+	ImagePullPolicy *v1.PullPolicy `json:"imagePullPolicy,omitempty"`
+	// Entrypoint array for the container
+	Command []string `json:"command,omitempty"`
+	// Arguments to the entrypoint
+	Args []string `json:"args,omitempty"`
+	// Environment Config for the Container
+	Env []v1.EnvVar `json:"env,omitempty"`
+	// Volume Configuration for the Pod
+	Volumes []v1.Volume `json:"volumes,omitempty"`
+	// Volume Mount Configuration for the Container
+	VolumeMounts []v1.VolumeMount `json:"volumeMounts,omitempty"`
+	// Name of the ServiceAccount to use to run the Pod
+	ServiceAccountName *string `json:"serviceAccountName,omitempty"`
+	// Resources
+	Resources *v1.ResourceRequirements `json:"resources,omitempty"`
+	// SecurityContext for the Container
+	SecurityContext *v1.SecurityContext `json:"securityContext,omitempty"`
+	// SecurityContext for the Pod
+	PodSecurityContext *v1.PodSecurityContext `json:"podSecurityContext,omitempty"`
+	// The name of the node to which the Pod should be assigned to. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodename
+	NodeName *string `json:"nodeName,omitempty"`
+	// The label selectors using which node for the Pod would be determined. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+	// Priority class name mapping used to prioritize and schedule the Pod. See: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass
+	PriorityClassName *string `json:"priorityClassName,omitempty"`
+	// Affinity/anti-affinity used to provide more constraints for node selection. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
+	Affinity *v1.Affinity `json:"affinity,omitempty"`
+	// Tolerations used to schedule the Pod. See: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+	Tolerations []v1.Toleration `json:"tolerations,omitempty"`
+	// The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
+	// Note: As of now, this field only makes sense for Deployment workloads. If/once we support parallel Job workloads, this field may be relevant for Jobs as well.
 	TopologySpreadConstraints []v1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
-	InitContainers            []v1.Container                `json:"initContainers,omitempty"`
-	RestartPolicy             *v1.RestartPolicy             `json:"restartPolicy,omitempty"`
+	// List of containers executed before the main container is started
+	InitContainers []v1.Container `json:"initContainers,omitempty"`
+	// Restart policy for the Pod. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
+	RestartPolicy *v1.RestartPolicy `json:"restartPolicy,omitempty"`
 }
 
 // CommonDetailsApplyConfiguration constructs a declarative configuration of the CommonDetails type for use with
