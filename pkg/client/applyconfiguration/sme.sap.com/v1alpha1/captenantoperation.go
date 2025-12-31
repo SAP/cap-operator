@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2026 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -15,11 +15,15 @@ import (
 
 // CAPTenantOperationApplyConfiguration represents a declarative configuration of the CAPTenantOperation type for use
 // with apply.
+//
+// CAPTenantOperation defines the schema for captenantoperations API
 type CAPTenantOperationApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *CAPTenantOperationSpecApplyConfiguration   `json:"spec,omitempty"`
-	Status                           *CAPTenantOperationStatusApplyConfiguration `json:"status,omitempty"`
+	// CAPTenantOperation spec
+	Spec *CAPTenantOperationSpecApplyConfiguration `json:"spec,omitempty"`
+	// CAPTenantOperation status
+	Status *CAPTenantOperationStatusApplyConfiguration `json:"status,omitempty"`
 }
 
 // CAPTenantOperation constructs a declarative configuration of the CAPTenantOperation type for use with
@@ -32,6 +36,7 @@ func CAPTenantOperation(name, namespace string) *CAPTenantOperationApplyConfigur
 	b.WithAPIVersion("sme.sap.com/v1alpha1")
 	return b
 }
+
 func (b CAPTenantOperationApplyConfiguration) IsApplyConfiguration() {}
 
 // WithKind sets the Kind field in the declarative configuration to the given value

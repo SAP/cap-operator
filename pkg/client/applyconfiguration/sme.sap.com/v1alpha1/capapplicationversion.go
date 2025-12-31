@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2026 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -15,11 +15,15 @@ import (
 
 // CAPApplicationVersionApplyConfiguration represents a declarative configuration of the CAPApplicationVersion type for use
 // with apply.
+//
+// CAPApplicationVersion defines the schema for capapplicationversions API
 type CAPApplicationVersionApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *CAPApplicationVersionSpecApplyConfiguration   `json:"spec,omitempty"`
-	Status                           *CAPApplicationVersionStatusApplyConfiguration `json:"status,omitempty"`
+	// CAPApplicationVersion spec
+	Spec *CAPApplicationVersionSpecApplyConfiguration `json:"spec,omitempty"`
+	// CAPApplicationVersion status
+	Status *CAPApplicationVersionStatusApplyConfiguration `json:"status,omitempty"`
 }
 
 // CAPApplicationVersion constructs a declarative configuration of the CAPApplicationVersion type for use with
@@ -32,6 +36,7 @@ func CAPApplicationVersion(name, namespace string) *CAPApplicationVersionApplyCo
 	b.WithAPIVersion("sme.sap.com/v1alpha1")
 	return b
 }
+
 func (b CAPApplicationVersionApplyConfiguration) IsApplyConfiguration() {}
 
 // WithKind sets the Kind field in the declarative configuration to the given value

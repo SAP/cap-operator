@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2026 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -10,8 +10,10 @@ package v1alpha1
 // TenantOperationWorkloadReferenceApplyConfiguration represents a declarative configuration of the TenantOperationWorkloadReference type for use
 // with apply.
 type TenantOperationWorkloadReferenceApplyConfiguration struct {
-	WorkloadName      *string `json:"workloadName,omitempty"`
-	ContinueOnFailure *bool   `json:"continueOnFailure,omitempty"`
+	// Reference to a specified workload of type 'TenantOperation' or 'CustomTenantOperation'
+	WorkloadName *string `json:"workloadName,omitempty"`
+	// Indicates whether to proceed with remaining operation steps in case of failure. Relevant only for 'CustomTenantOperation'
+	ContinueOnFailure *bool `json:"continueOnFailure,omitempty"`
 }
 
 // TenantOperationWorkloadReferenceApplyConfiguration constructs a declarative configuration of the TenantOperationWorkloadReference type for use with

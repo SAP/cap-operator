@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2026 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -9,10 +9,15 @@ package v1alpha1
 
 // RouteApplyConfiguration represents a declarative configuration of the Route type for use
 // with apply.
+//
+// Routing configuration (http match) for the exposed service
 type RouteApplyConfiguration struct {
+	// Name of the workload (eventually a service to route requests to); must be a valid workload name (Deployment)
 	WorkloadName *string `json:"workloadName,omitempty"`
-	Port         *int32  `json:"port,omitempty"`
-	Path         *string `json:"path,omitempty"`
+	// Port number used for the service (must be present in the workload/service)
+	Port *int32 `json:"port,omitempty"`
+	// A unique routing path used (as a match/prefix) to route requests to the workload (when omitted, "/" would be used)
+	Path *string `json:"path,omitempty"`
 }
 
 // RouteApplyConfiguration constructs a declarative configuration of the Route type for use with

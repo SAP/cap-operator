@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2026 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -9,6 +9,8 @@ package v1alpha1
 
 // DomainRefApplyConfiguration represents a declarative configuration of the DomainRef type for use
 // with apply.
+//
+// Domain references
 type DomainRefApplyConfiguration struct {
 	Kind *string `json:"kind,omitempty"`
 	Name *string `json:"name,omitempty"`

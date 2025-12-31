@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2026 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -10,6 +10,7 @@ package v1alpha1
 // CertConfigApplyConfiguration represents a declarative configuration of the CertConfig type for use
 // with apply.
 type CertConfigApplyConfiguration struct {
+	// Used to specify additional CA certificate that may be used for verifying client certificates in Mutual TLS mode
 	AdditionalCACertificate *string `json:"additionalCACertificate,omitempty"`
 }
 

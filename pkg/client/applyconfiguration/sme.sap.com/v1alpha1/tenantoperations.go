@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2026 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -9,9 +9,14 @@ package v1alpha1
 
 // TenantOperationsApplyConfiguration represents a declarative configuration of the TenantOperations type for use
 // with apply.
+//
+// Configuration used to sequence tenant related jobs for a given tenant operation
 type TenantOperationsApplyConfiguration struct {
-	Provisioning   []TenantOperationWorkloadReferenceApplyConfiguration `json:"provisioning,omitempty"`
-	Upgrade        []TenantOperationWorkloadReferenceApplyConfiguration `json:"upgrade,omitempty"`
+	// Tenant provisioning steps
+	Provisioning []TenantOperationWorkloadReferenceApplyConfiguration `json:"provisioning,omitempty"`
+	// Tenant upgrade steps
+	Upgrade []TenantOperationWorkloadReferenceApplyConfiguration `json:"upgrade,omitempty"`
+	// Tenant deprovisioning steps
 	Deprovisioning []TenantOperationWorkloadReferenceApplyConfiguration `json:"deprovisioning,omitempty"`
 }
 

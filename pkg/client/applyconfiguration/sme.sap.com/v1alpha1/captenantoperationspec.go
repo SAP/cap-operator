@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2026 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -14,10 +14,14 @@ import (
 // CAPTenantOperationSpecApplyConfiguration represents a declarative configuration of the CAPTenantOperationSpec type for use
 // with apply.
 type CAPTenantOperationSpecApplyConfiguration struct {
-	Operation                                 *smesapcomv1alpha1.CAPTenantOperationType `json:"operation,omitempty"`
+	// Scope of the tenant lifecycle operation. One of 'provisioning', 'deprovisioning' or 'upgrade'
+	Operation *smesapcomv1alpha1.CAPTenantOperationType `json:"operation,omitempty"`
+	// BTP sub-account (tenant) for which request is created
 	BTPTenantIdentificationApplyConfiguration `json:",inline"`
-	CAPApplicationVersionInstance             *string                                    `json:"capApplicationVersionInstance,omitempty"`
-	Steps                                     []CAPTenantOperationStepApplyConfiguration `json:"steps,omitempty"`
+	// Reference to CAPApplicationVersion for executing the operation
+	CAPApplicationVersionInstance *string `json:"capApplicationVersionInstance,omitempty"`
+	// Steps (jobs) to be executed for the operation to complete
+	Steps []CAPTenantOperationStepApplyConfiguration `json:"steps,omitempty"`
 }
 
 // CAPTenantOperationSpecApplyConfiguration constructs a declarative configuration of the CAPTenantOperationSpec type for use with

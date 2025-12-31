@@ -1,5 +1,5 @@
 /*
-SPDX-FileCopyrightText: 2025 SAP SE or an SAP affiliate company and cap-operator contributors
+SPDX-FileCopyrightText: 2026 SAP SE or an SAP affiliate company and cap-operator contributors
 SPDX-License-Identifier: Apache-2.0
 */
 
@@ -10,6 +10,7 @@ package v1alpha1
 // BTPApplyConfiguration represents a declarative configuration of the BTP type for use
 // with apply.
 type BTPApplyConfiguration struct {
+	// Details of BTP Services
 	Services []ServiceInfoApplyConfiguration `json:"services,omitempty"`
 }
 
