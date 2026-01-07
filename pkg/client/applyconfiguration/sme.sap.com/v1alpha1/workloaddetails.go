@@ -9,13 +9,21 @@ package v1alpha1
 
 // WorkloadDetailsApplyConfiguration represents a declarative configuration of the WorkloadDetails type for use
 // with apply.
+//
+// WorkloadDetails specifies the details of the Workload
 type WorkloadDetailsApplyConfiguration struct {
-	Name                 *string                              `json:"name,omitempty"`
-	ConsumedBTPServices  []string                             `json:"consumedBTPServices,omitempty"`
-	Labels               map[string]string                    `json:"labels,omitempty"`
-	Annotations          map[string]string                    `json:"annotations,omitempty"`
+	// Name of the workload
+	Name *string `json:"name,omitempty"`
+	// List of BTP services consumed by the current application component workload. These services must be defined in the corresponding CAPApplication.
+	ConsumedBTPServices []string `json:"consumedBTPServices,omitempty"`
+	// Custom labels for the current workload
+	Labels map[string]string `json:"labels,omitempty"`
+	// Annotations for the current workload, in case of `Deployments` this also get copied over to any `Service` that may be created
+	Annotations map[string]string `json:"annotations,omitempty"`
+	// Definition of a deployment
 	DeploymentDefinition *DeploymentDetailsApplyConfiguration `json:"deploymentDefinition,omitempty"`
-	JobDefinition        *JobDetailsApplyConfiguration        `json:"jobDefinition,omitempty"`
+	// Definition of a job
+	JobDefinition *JobDetailsApplyConfiguration `json:"jobDefinition,omitempty"`
 }
 
 // WorkloadDetailsApplyConfiguration constructs a declarative configuration of the WorkloadDetails type for use with

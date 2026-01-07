@@ -9,10 +9,19 @@ package v1alpha1
 
 // ApplicationDomainsApplyConfiguration represents a declarative configuration of the ApplicationDomains type for use
 // with apply.
+//
+// # Application domains
+//
+// Deprecated: ApplicationDomains exists for historical compatibility and should not be used.
+// This will be removed in future versions. Use DomainRef instead.
 type ApplicationDomainsApplyConfiguration struct {
-	Primary                   *string                       `json:"primary,omitempty"`
-	Secondary                 []string                      `json:"secondary,omitempty"`
-	DnsTarget                 *string                       `json:"dnsTarget,omitempty"`
+	// Primary application domain will be used to generate a wildcard TLS certificate. In project "Gardener" managed clusters this is (usually) a subdomain of the cluster domain
+	Primary *string `json:"primary,omitempty"`
+	// Customer specific domains to serve application endpoints (optional)
+	Secondary []string `json:"secondary,omitempty"`
+	// Public ingress URL for the cluster Load Balancer
+	DnsTarget *string `json:"dnsTarget,omitempty"`
+	// Labels used to identify the istio ingress-gateway component and its corresponding namespace. Usually {"app":"istio-ingressgateway","istio":"ingressgateway"}
 	IstioIngressGatewayLabels []NameValueApplyConfiguration `json:"istioIngressGatewayLabels,omitempty"`
 }
 

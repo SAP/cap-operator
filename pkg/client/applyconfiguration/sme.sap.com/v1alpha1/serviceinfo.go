@@ -9,10 +9,15 @@ package v1alpha1
 
 // ServiceInfoApplyConfiguration represents a declarative configuration of the ServiceInfo type for use
 // with apply.
+//
+// Service information
 type ServiceInfoApplyConfiguration struct {
-	Name   *string `json:"name,omitempty"`
+	// A unique name of service based on usage in the app (this may be the name of the instance or binding)
+	Name *string `json:"name,omitempty"`
+	// Secret containing service access credentials
 	Secret *string `json:"secret,omitempty"`
-	Class  *string `json:"class,omitempty"`
+	// Type of service
+	Class *string `json:"class,omitempty"`
 }
 
 // ServiceInfoApplyConfiguration constructs a declarative configuration of the ServiceInfo type for use with

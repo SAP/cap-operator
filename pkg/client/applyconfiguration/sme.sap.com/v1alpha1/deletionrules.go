@@ -10,8 +10,10 @@ package v1alpha1
 // DeletionRulesApplyConfiguration represents a declarative configuration of the DeletionRules type for use
 // with apply.
 type DeletionRulesApplyConfiguration struct {
-	Metrics          []MetricRuleApplyConfiguration `json:"metrics,omitempty"`
-	ScalarExpression *string                        `json:"expression,omitempty"`
+	Metrics []MetricRuleApplyConfiguration `json:"metrics,omitempty"`
+	// A promQL expression that evaluates to a scalar boolean (1 or 0).
+	// Example: scalar(sum(avg_over_time(demo_metric{job="cav-demo-app-4-srv-svc",namespace="demo"}[2m]))) <= bool 0.1
+	ScalarExpression *string `json:"expression,omitempty"`
 }
 
 // DeletionRulesApplyConfiguration constructs a declarative configuration of the DeletionRules type for use with

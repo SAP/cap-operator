@@ -9,13 +9,21 @@ package v1alpha1
 
 // CAPApplicationSpecApplyConfiguration represents a declarative configuration of the CAPApplicationSpec type for use
 // with apply.
+//
+// CAPApplicationSpec defines the desired state of CAPApplication
 type CAPApplicationSpecApplyConfiguration struct {
-	DomainRefs      []DomainRefApplyConfiguration              `json:"domainRefs,omitempty"`
-	Domains         *ApplicationDomainsApplyConfiguration      `json:"domains,omitempty"`
-	GlobalAccountId *string                                    `json:"globalAccountId,omitempty"`
-	BTPAppName      *string                                    `json:"btpAppName,omitempty"`
-	Provider        *BTPTenantIdentificationApplyConfiguration `json:"provider,omitempty"`
-	BTP             *BTPApplyConfiguration                     `json:"btp,omitempty"`
+	// Domains used by the application (new)
+	DomainRefs []DomainRefApplyConfiguration `json:"domainRefs,omitempty"`
+	// [DEPRECATED] Domains used by the application // Will be removed in future versions
+	Domains *ApplicationDomainsApplyConfiguration `json:"domains,omitempty"`
+	// SAP BTP Global Account Identifier where services are entitles for the current application
+	GlobalAccountId *string `json:"globalAccountId,omitempty"`
+	// Short name for the application (similar to BTP XSAPPNAME)
+	BTPAppName *string `json:"btpAppName,omitempty"`
+	// Provider subaccount where application services are created
+	Provider *BTPTenantIdentificationApplyConfiguration `json:"provider,omitempty"`
+	// SAP BTP Services consumed by the application
+	BTP *BTPApplyConfiguration `json:"btp,omitempty"`
 }
 
 // CAPApplicationSpecApplyConfiguration constructs a declarative configuration of the CAPApplicationSpec type for use with

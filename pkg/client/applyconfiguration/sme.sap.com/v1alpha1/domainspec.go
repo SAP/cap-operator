@@ -14,13 +14,20 @@ import (
 // DomainSpecApplyConfiguration represents a declarative configuration of the DomainSpec type for use
 // with apply.
 type DomainSpecApplyConfiguration struct {
-	Domain          *string                         `json:"domain,omitempty"`
-	IngressSelector map[string]string               `json:"ingressSelector,omitempty"`
-	TLSMode         *smesapcomv1alpha1.TLSMode      `json:"tlsMode,omitempty"`
-	DNSMode         *smesapcomv1alpha1.DNSMode      `json:"dnsMode,omitempty"`
-	DNSTemplates    []DNSTemplateApplyConfiguration `json:"dnsTemplates,omitempty"`
-	DNSTarget       *string                         `json:"dnsTarget,omitempty"`
-	CertConfig      *CertConfigApplyConfiguration   `json:"certConfig,omitempty"`
+	// Domain used by an application
+	Domain *string `json:"domain,omitempty"`
+	// Selector is the set of labels used to select the ingress pods handling the domain
+	IngressSelector map[string]string `json:"ingressSelector,omitempty"`
+	// TLS mode for the generated (Istio) Gateway resource. Set this to Mutual when using mTLS with an external gateway.
+	TLSMode *smesapcomv1alpha1.TLSMode `json:"tlsMode,omitempty"`
+	// DNS mode controls the creation of DNS entries related to the domain
+	DNSMode *smesapcomv1alpha1.DNSMode `json:"dnsMode,omitempty"`
+	// DNS templates allows usage of go templates for generating DNS entries when [DNSMode] is set to `Custom`
+	DNSTemplates []DNSTemplateApplyConfiguration `json:"dnsTemplates,omitempty"`
+	// DNS Target for traffic to this domain
+	DNSTarget *string `json:"dnsTarget,omitempty"`
+	// Certificate configuration
+	CertConfig *CertConfigApplyConfiguration `json:"certConfig,omitempty"`
 }
 
 // DomainSpecApplyConfiguration constructs a declarative configuration of the DomainSpec type for use with

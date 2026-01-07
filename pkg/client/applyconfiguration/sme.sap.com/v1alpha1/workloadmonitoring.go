@@ -9,9 +9,15 @@ package v1alpha1
 
 // WorkloadMonitoringApplyConfiguration represents a declarative configuration of the WorkloadMonitoring type for use
 // with apply.
+//
+// WorkloadMonitoring specifies the metrics related to the workload
 type WorkloadMonitoringApplyConfiguration struct {
-	DeletionRules *DeletionRulesApplyConfiguration    `json:"deletionRules,omitempty"`
-	ScrapeConfig  *MonitoringConfigApplyConfiguration `json:"scrapeConfig,omitempty"`
+	// DeletionRules specify the metrics conditions that need to be satisfied for the version to be deleted automatically.
+	// Either a set of metrics based rules can be specified, or a PromQL expression which evaluates to a boolean scalar.
+	DeletionRules *DeletionRulesApplyConfiguration `json:"deletionRules,omitempty"`
+	// Configuration to be used to create ServiceMonitor for the workload service.
+	// If not specified, CAP Operator will not attempt to create a ServiceMonitor for the workload
+	ScrapeConfig *MonitoringConfigApplyConfiguration `json:"scrapeConfig,omitempty"`
 }
 
 // WorkloadMonitoringApplyConfiguration constructs a declarative configuration of the WorkloadMonitoring type for use with
