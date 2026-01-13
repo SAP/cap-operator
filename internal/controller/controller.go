@@ -191,11 +191,9 @@ func (c *Controller) Start(ctx context.Context) {
 	}
 
 	// start version cleanup routines
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		c.startVersionCleanup(qCxt)
-	}()
+	})
 
 	// wait for workers
 	wg.Wait()

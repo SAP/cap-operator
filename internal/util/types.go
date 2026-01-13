@@ -6,15 +6,15 @@ SPDX-License-Identifier: Apache-2.0
 package util
 
 type VCAPServiceInstance struct {
-	Name         string      `json:"name"` // this attribute holds the binding name if it exists, otherwise, instance name
-	BindingGUID  string      `json:"binding_guid,omitempty"`
-	BindingName  string      `json:"binding_name,omitempty"`
-	InstanceGUID string      `json:"instance_guid,omitempty"`
-	InstanceName string      `json:"instance_name,omitempty"`
-	Label        string      `json:"label"`
-	Plan         string      `json:"plan,omitempty"`
-	Credentials  interface{} `json:"credentials"`
-	Tags         []string    `json:"tags,omitempty"`
+	Name         string   `json:"name"` // this attribute holds the binding name if it exists, otherwise, instance name
+	BindingGUID  string   `json:"binding_guid,omitempty"`
+	BindingName  string   `json:"binding_name,omitempty"`
+	InstanceGUID string   `json:"instance_guid,omitempty"`
+	InstanceName string   `json:"instance_name,omitempty"`
+	Label        string   `json:"label"`
+	Plan         string   `json:"plan,omitempty"`
+	Credentials  any      `json:"credentials"`
+	Tags         []string `json:"tags,omitempty"`
 }
 
 type CredentialData struct {

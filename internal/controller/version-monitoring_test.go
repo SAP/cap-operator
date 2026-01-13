@@ -130,11 +130,9 @@ func TestGracefulShutdownMonitoringRoutines(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func() {
+	wg.Go(func() {
 		c.startVersionCleanup(testCtx)
-		wg.Done()
-	}()
+	})
 
 	wg.Wait() // check whether routines are closing - or test timeout
 }

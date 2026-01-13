@@ -384,7 +384,7 @@ func evaluateMetric(ctx context.Context, rule *v1alpha1.MetricRule, job, ns stri
 	if len(vec) > 0 {
 		sample := vec[0] // use the first one - expecting only one sample based on the expressions
 		var threshold prommodel.SampleValue
-		err = threshold.UnmarshalJSON([]byte(fmt.Sprintf("\"%s\"", rule.ThresholdValue)))
+		err = threshold.UnmarshalJSON(fmt.Appendf(nil, "\"%s\"", rule.ThresholdValue))
 		if err != nil {
 			klog.ErrorS(err, "error parsing threshold value", "value", rule.ThresholdValue, "metric", rule.Name)
 			return false, err

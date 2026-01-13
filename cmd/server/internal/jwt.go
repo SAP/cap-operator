@@ -75,7 +75,7 @@ func getOpenIDConfig(uaaURL string, client *http.Client) (*OpenIDConfig, error) 
 
 // token validation for XSUAA token implemented by following the guidelines provided -> CPSecurity/Knowledge-Base/03_ApplicationSecurity/TokenValidation/
 func VerifyXSUAAJWTToken(ctx context.Context, tokenString string, config *XSUAAConfig, client *http.Client) error {
-	_, err := jwt.ParseWithClaims(tokenString, &XSUAAJWTClaims{}, func(t *jwt.Token) (interface{}, error) {
+	_, err := jwt.ParseWithClaims(tokenString, &XSUAAJWTClaims{}, func(t *jwt.Token) (any, error) {
 		// verify claims excluding expiration (as this is now done internally in jwt v5)
 		err := verifyClaims(t, config)
 		if err != nil {
@@ -204,8 +204,8 @@ func appendWithTrim(s []string, v string) []string {
 func adjustForNamespace(s []string, ignoreIfNotNamespaced bool) []string {
 	r := []string{}
 	for _, v := range s {
-		if i := strings.Index(v, "."); i > -1 {
-			r = appendWithTrim(r, v[:i])
+		if before, _, ok := strings.Cut(v, "."); ok {
+			r = appendWithTrim(r, before)
 		} else if !ignoreIfNotNamespaced { // when processing scope, add to list only when namespaced
 			r = appendWithTrim(r, v)
 		}

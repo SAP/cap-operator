@@ -32,7 +32,7 @@ func GetLogger() logr.Logger {
 	return zapr.NewLogger(logger)
 }
 
-func extractEntityMeta(entity interface{}, isRoot bool, skipLabel bool) map[string]string {
+func extractEntityMeta(entity any, isRoot bool, skipLabel bool) map[string]string {
 	obj, _ := runtime.DefaultUnstructuredConverter.ToUnstructured(entity)
 	objectMeta := &unstructured.Unstructured{Object: obj}
 	// Try to get the kind from the object meta
@@ -70,16 +70,16 @@ func extractEntityMeta(entity interface{}, isRoot bool, skipLabel bool) map[stri
 	return args
 }
 
-func extractArgs(entityMeta map[string]string) []interface{} {
-	args := []interface{}{}
+func extractArgs(entityMeta map[string]string) []any {
+	args := []any{}
 	for key, val := range entityMeta {
 		args = append(args, key, val)
 	}
 	return args
 }
 
-func logArgs(step string, entity interface{}, child interface{}, inArgs ...interface{}) []interface{} {
-	args := []interface{}{}
+func logArgs(step string, entity any, child any, inArgs ...any) []any {
+	args := []any{}
 	skipLabel := false
 	args = append(args, Step, step)
 
@@ -103,16 +103,16 @@ func logArgs(step string, entity interface{}, child interface{}, inArgs ...inter
 	return args
 }
 
-func LogInfo(msg string, step string, entity interface{}, child interface{}, args ...interface{}) {
+func LogInfo(msg string, step string, entity any, child any, args ...any) {
 	overallArgs := logArgs(step, entity, child, args...)
 	klog.InfoS(msg, overallArgs...)
 }
 
-func LogError(error error, msg string, step string, entity interface{}, child interface{}, args ...interface{}) {
+func LogError(error error, msg string, step string, entity any, child any, args ...any) {
 	overallArgs := logArgs(step, entity, child, args...)
 	klog.ErrorS(error, msg, overallArgs...)
 }
 
-func LogWarning(args ...interface{}) {
+func LogWarning(args ...any) {
 	klog.Warning(args...)
 }

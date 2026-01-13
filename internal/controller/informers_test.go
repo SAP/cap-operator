@@ -113,7 +113,7 @@ func TestController_initializeInformers(t *testing.T) {
 			}
 
 			testC.initializeInformers()
-			var res interface{}
+			var res any
 			switch tt.res {
 			case ResourceCAPApplication:
 				res = createCaCRO(tt.itemName, false)

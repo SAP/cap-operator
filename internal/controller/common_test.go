@@ -491,8 +491,8 @@ func readYAMLResourcesFromFile(file string) ([][]byte, error) {
 
 	resources := [][]byte{}
 	fileContents := string(i)
-	splits := strings.Split(fileContents, "---")
-	for _, part := range splits {
+	splits := strings.SplitSeq(fileContents, "---")
+	for part := range splits {
 		if part == "\n" || part == "" {
 			continue
 		}

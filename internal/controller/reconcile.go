@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -617,12 +618,8 @@ func (c *Controller) getRouterServicePortInfo(cavName, namespace string) (*servi
 
 func copyMaps(originalMap, additionalMap map[string]string) map[string]string {
 	newMap := map[string]string{}
-	for key, value := range originalMap {
-		newMap[key] = value
-	}
-	for key, value := range additionalMap {
-		newMap[key] = value
-	}
+	maps.Copy(newMap, originalMap)
+	maps.Copy(newMap, additionalMap)
 	return newMap
 }
 
