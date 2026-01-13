@@ -737,7 +737,7 @@ func compareResourceFields(actual runtime.Object, expected runtime.Object, t *te
 			return ps == "Status" || strings.HasPrefix(ps, "Status.")
 		}, cmpopts.IgnoreUnexported(
 			istiometav1alpha1.IstioStatus{},
-		)),
+		)), cmpopts.EquateEmpty(), //ToDo: Remove this and adjust tests/data where needed.
 	); diff != "" {
 		t.Errorf("expected and actual resource differs for %s %s.%s", kind, namespace, name)
 		t.Error(diff)

@@ -15,11 +15,15 @@ import (
 
 // CAPTenantApplyConfiguration represents a declarative configuration of the CAPTenant type for use
 // with apply.
+//
+// CAPTenant defines the schema for captenants API
 type CAPTenantApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *CAPTenantSpecApplyConfiguration   `json:"spec,omitempty"`
-	Status                           *CAPTenantStatusApplyConfiguration `json:"status,omitempty"`
+	// CAPTenant spec
+	Spec *CAPTenantSpecApplyConfiguration `json:"spec,omitempty"`
+	// CAPTenant status
+	Status *CAPTenantStatusApplyConfiguration `json:"status,omitempty"`
 }
 
 // CAPTenant constructs a declarative configuration of the CAPTenant type for use with
@@ -32,6 +36,7 @@ func CAPTenant(name, namespace string) *CAPTenantApplyConfiguration {
 	b.WithAPIVersion("sme.sap.com/v1alpha1")
 	return b
 }
+
 func (b CAPTenantApplyConfiguration) IsApplyConfiguration() {}
 
 // WithKind sets the Kind field in the declarative configuration to the given value

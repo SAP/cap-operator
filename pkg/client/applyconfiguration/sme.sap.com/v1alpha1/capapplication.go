@@ -15,11 +15,15 @@ import (
 
 // CAPApplicationApplyConfiguration represents a declarative configuration of the CAPApplication type for use
 // with apply.
+//
+// CAPApplication is the schema for capapplications API
 type CAPApplicationApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *CAPApplicationSpecApplyConfiguration   `json:"spec,omitempty"`
-	Status                           *CAPApplicationStatusApplyConfiguration `json:"status,omitempty"`
+	// CAPApplication spec
+	Spec *CAPApplicationSpecApplyConfiguration `json:"spec,omitempty"`
+	// CAPApplication status
+	Status *CAPApplicationStatusApplyConfiguration `json:"status,omitempty"`
 }
 
 // CAPApplication constructs a declarative configuration of the CAPApplication type for use with
@@ -32,6 +36,7 @@ func CAPApplication(name, namespace string) *CAPApplicationApplyConfiguration {
 	b.WithAPIVersion("sme.sap.com/v1alpha1")
 	return b
 }
+
 func (b CAPApplicationApplyConfiguration) IsApplyConfiguration() {}
 
 // WithKind sets the Kind field in the declarative configuration to the given value

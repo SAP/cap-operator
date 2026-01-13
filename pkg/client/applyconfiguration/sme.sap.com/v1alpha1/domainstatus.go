@@ -16,10 +16,14 @@ import (
 // with apply.
 type DomainStatusApplyConfiguration struct {
 	GenericStatusApplyConfiguration `json:",inline"`
-	State                           *smesapcomv1alpha1.DomainState `json:"state,omitempty"`
-	DnsTarget                       *string                        `json:"dnsTarget,omitempty"`
-	GatewayName                     *string                        `json:"gatewayName,omitempty"`
-	ObservedDomain                  *string                        `json:"observedDomain,omitempty"`
+	// State of the Domain
+	State *smesapcomv1alpha1.DomainState `json:"state,omitempty"`
+	// Effective DNS Target identified for this domain
+	DnsTarget *string `json:"dnsTarget,omitempty"`
+	// Gateway name used for the domain
+	GatewayName *string `json:"gatewayName,omitempty"`
+	// domain observed during last reconciliation
+	ObservedDomain *string `json:"observedDomain,omitempty"`
 }
 
 // DomainStatusApplyConfiguration constructs a declarative configuration of the DomainStatus type for use with

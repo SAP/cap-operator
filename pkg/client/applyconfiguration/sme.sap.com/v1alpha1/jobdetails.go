@@ -14,12 +14,18 @@ import (
 
 // JobDetailsApplyConfiguration represents a declarative configuration of the JobDetails type for use
 // with apply.
+//
+// JobDetails specifies the details of the Job
 type JobDetailsApplyConfiguration struct {
 	CommonDetailsApplyConfiguration `json:",inline"`
-	Type                            *smesapcomv1alpha1.JobType `json:"type,omitempty"`
-	BackoffLimit                    *int32                     `json:"backoffLimit,omitempty"`
-	TTLSecondsAfterFinished         *int32                     `json:"ttlSecondsAfterFinished,omitempty"`
-	ActiveDeadlineSeconds           *int64                     `json:"activeDeadlineSeconds,omitempty"`
+	// Type of Job
+	Type *smesapcomv1alpha1.JobType `json:"type,omitempty"`
+	// Specifies the number of retries before marking this job failed.
+	BackoffLimit *int32 `json:"backoffLimit,omitempty"`
+	// Specifies the time after which the job may be cleaned up.
+	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished,omitempty"`
+	// Specifies the duration in sections for which the job may be continuously active.
+	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty"`
 }
 
 // JobDetailsApplyConfiguration constructs a declarative configuration of the JobDetails type for use with

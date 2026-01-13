@@ -15,11 +15,15 @@ import (
 
 // ClusterDomainApplyConfiguration represents a declarative configuration of the ClusterDomain type for use
 // with apply.
+//
+// ClusterDomain is the schema for clusterdomains API
 type ClusterDomainApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *DomainSpecApplyConfiguration   `json:"spec,omitempty"`
-	Status                           *DomainStatusApplyConfiguration `json:"status,omitempty"`
+	// ClusterDomains spec
+	Spec *DomainSpecApplyConfiguration `json:"spec,omitempty"`
+	// ClusterDomain status
+	Status *DomainStatusApplyConfiguration `json:"status,omitempty"`
 }
 
 // ClusterDomain constructs a declarative configuration of the ClusterDomain type for use with
@@ -32,6 +36,7 @@ func ClusterDomain(name, namespace string) *ClusterDomainApplyConfiguration {
 	b.WithAPIVersion("sme.sap.com/v1alpha1")
 	return b
 }
+
 func (b ClusterDomainApplyConfiguration) IsApplyConfiguration() {}
 
 // WithKind sets the Kind field in the declarative configuration to the given value

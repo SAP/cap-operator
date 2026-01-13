@@ -9,6 +9,10 @@ package v1alpha1
 
 // NameValueApplyConfiguration represents a declarative configuration of the NameValue type for use
 // with apply.
+//
+// Workaround for pattern for string items +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
+// type PatternString string
+// Generic Name/Value configuration
 type NameValueApplyConfiguration struct {
 	Name  *string `json:"name,omitempty"`
 	Value *string `json:"value,omitempty"`

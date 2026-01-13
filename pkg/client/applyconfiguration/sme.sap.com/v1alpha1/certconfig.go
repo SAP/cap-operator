@@ -10,6 +10,7 @@ package v1alpha1
 // CertConfigApplyConfiguration represents a declarative configuration of the CertConfig type for use
 // with apply.
 type CertConfigApplyConfiguration struct {
+	// Used to specify additional CA certificate that may be used for verifying client certificates in Mutual TLS mode
 	AdditionalCACertificate *string `json:"additionalCACertificate,omitempty"`
 }
 

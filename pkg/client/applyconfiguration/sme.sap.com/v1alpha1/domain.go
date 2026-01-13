@@ -15,11 +15,15 @@ import (
 
 // DomainApplyConfiguration represents a declarative configuration of the Domain type for use
 // with apply.
+//
+// Domain is the schema for domains API
 type DomainApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	Spec                             *DomainSpecApplyConfiguration   `json:"spec,omitempty"`
-	Status                           *DomainStatusApplyConfiguration `json:"status,omitempty"`
+	// Domains spec
+	Spec *DomainSpecApplyConfiguration `json:"spec,omitempty"`
+	// Domain status
+	Status *DomainStatusApplyConfiguration `json:"status,omitempty"`
 }
 
 // Domain constructs a declarative configuration of the Domain type for use with
@@ -32,6 +36,7 @@ func Domain(name, namespace string) *DomainApplyConfiguration {
 	b.WithAPIVersion("sme.sap.com/v1alpha1")
 	return b
 }
+
 func (b DomainApplyConfiguration) IsApplyConfiguration() {}
 
 // WithKind sets the Kind field in the declarative configuration to the given value

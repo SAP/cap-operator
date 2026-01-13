@@ -13,12 +13,19 @@ import (
 
 // PortsApplyConfiguration represents a declarative configuration of the Ports type for use
 // with apply.
+//
+// Configuration of Service Ports for the deployment
 type PortsApplyConfiguration struct {
-	AppProtocol           *string                                  `json:"appProtocol,omitempty"`
-	Name                  *string                                  `json:"name,omitempty"`
-	NetworkPolicy         *smesapcomv1alpha1.PortNetworkPolicyType `json:"networkPolicy,omitempty"`
-	Port                  *int32                                   `json:"port,omitempty"`
-	RouterDestinationName *string                                  `json:"routerDestinationName,omitempty"`
+	// App protocol used by the service port
+	AppProtocol *string `json:"appProtocol,omitempty"`
+	// Name of the service port
+	Name *string `json:"name,omitempty"`
+	// Network Policy of the service port
+	NetworkPolicy *smesapcomv1alpha1.PortNetworkPolicyType `json:"networkPolicy,omitempty"`
+	// The port number used for container and the corresponding service (if any)
+	Port *int32 `json:"port,omitempty"`
+	// Destination name which may be used by the Router deployment to reach this backend service
+	RouterDestinationName *string `json:"routerDestinationName,omitempty"`
 }
 
 // PortsApplyConfiguration constructs a declarative configuration of the Ports type for use with

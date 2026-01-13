@@ -15,15 +15,24 @@ import (
 
 // DeploymentDetailsApplyConfiguration represents a declarative configuration of the DeploymentDetails type for use
 // with apply.
+//
+// DeploymentDetails specifies the details of the Deployment
 type DeploymentDetailsApplyConfiguration struct {
 	CommonDetailsApplyConfiguration `json:",inline"`
-	Type                            *smesapcomv1alpha1.DeploymentType     `json:"type,omitempty"`
-	Replicas                        *int32                                `json:"replicas,omitempty"`
-	Ports                           []PortsApplyConfiguration             `json:"ports,omitempty"`
-	LivenessProbe                   *v1.Probe                             `json:"livenessProbe,omitempty"`
-	ReadinessProbe                  *v1.Probe                             `json:"readinessProbe,omitempty"`
-	Monitoring                      *WorkloadMonitoringApplyConfiguration `json:"monitoring,omitempty"`
-	PodDisruptionBudget             *policyv1.PodDisruptionBudgetSpec     `json:"podDisruptionBudget,omitempty"`
+	// Type of the Deployment
+	Type *smesapcomv1alpha1.DeploymentType `json:"type,omitempty"`
+	// Number of replicas
+	Replicas *int32 `json:"replicas,omitempty"`
+	// Port configuration
+	Ports []PortsApplyConfiguration `json:"ports,omitempty"`
+	// Liveness probe
+	LivenessProbe *v1.Probe `json:"livenessProbe,omitempty"`
+	// Readiness probe
+	ReadinessProbe *v1.Probe `json:"readinessProbe,omitempty"`
+	// Workload monitoring specification
+	Monitoring *WorkloadMonitoringApplyConfiguration `json:"monitoring,omitempty"`
+	// Pod Disruption Budget may be used to specify the minimum number of available pods for this workload
+	PodDisruptionBudget *policyv1.PodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 }
 
 // DeploymentDetailsApplyConfiguration constructs a declarative configuration of the DeploymentDetails type for use with
