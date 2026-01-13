@@ -29,7 +29,7 @@ func newTestHandler(objects ...runtime.Object) *WebhookHandler {
 	}
 }
 
-func marshalJSON(obj interface{}) []byte {
+func marshalJSON(obj any) []byte {
 	b, err := json.Marshal(obj)
 	if err != nil {
 		panic(err)

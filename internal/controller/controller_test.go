@@ -31,7 +31,7 @@ type dummyInformerFactoryType struct {
 
 func (f *dummyInformerFactoryType) WaitForCacheSync(_ <-chan struct{}) map[reflect.Type]bool {
 	//Simulate error
-	return map[reflect.Type]bool{reflect.TypeOf(metav1.TypeMeta{}): false}
+	return map[reflect.Type]bool{reflect.TypeFor[metav1.TypeMeta](): false}
 }
 
 func (f *dummyInformerFactoryType) Batch() batch.Interface {

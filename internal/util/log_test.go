@@ -30,9 +30,9 @@ func TestLogging(t *testing.T) {
 		err    error
 		msg    string
 		step   string
-		entity interface{}
-		child  interface{}
-		args   []interface{}
+		entity any
+		child  any
+		args   []any
 	}
 	tests := []struct {
 		name  string
@@ -40,10 +40,10 @@ func TestLogging(t *testing.T) {
 		warn  bool
 		args  args
 	}{
-		{name: "Test LogInfo", error: false, args: args{msg: "LogInfo basic test", step: "LogInfoStep0", entity: "LogInfo", child: "ChildLogInfo", args: []interface{}{"LogInfo", "No missing value"}}},
-		{name: "Test LogInfo", error: false, args: args{msg: "LogInfo pointer test", step: "LogInfoStep0", entity: "LogInfo", child: jobType, args: []interface{}{"LogInfo", "No missing value"}}},
-		{name: "Test LogError", error: true, args: args{err: errors.New("Test Error"), msg: "LogError basic test", step: "LogErrorStep0", entity: "LogError", child: "ChildLogError", args: []interface{}{"LogError", "No Missing value"}}},
-		{name: "Test LogError", error: true, args: args{err: errors.New("Test Error"), msg: "LogError LabelBTPApplicationIdentifierHash skip test", step: "LogErrorStep0", entity: "LogError", child: jobType, args: []interface{}{LabelBTPApplicationIdentifierHash, "some-test-hash", "Missing value"}}},
+		{name: "Test LogInfo", error: false, args: args{msg: "LogInfo basic test", step: "LogInfoStep0", entity: "LogInfo", child: "ChildLogInfo", args: []any{"LogInfo", "No missing value"}}},
+		{name: "Test LogInfo", error: false, args: args{msg: "LogInfo pointer test", step: "LogInfoStep0", entity: "LogInfo", child: jobType, args: []any{"LogInfo", "No missing value"}}},
+		{name: "Test LogError", error: true, args: args{err: errors.New("Test Error"), msg: "LogError basic test", step: "LogErrorStep0", entity: "LogError", child: "ChildLogError", args: []any{"LogError", "No Missing value"}}},
+		{name: "Test LogError", error: true, args: args{err: errors.New("Test Error"), msg: "LogError LabelBTPApplicationIdentifierHash skip test", step: "LogErrorStep0", entity: "LogError", child: jobType, args: []any{LabelBTPApplicationIdentifierHash, "some-test-hash", "Missing value"}}},
 		{name: "Test LogWarn", warn: true, args: args{err: errors.New("Test Warn"), msg: "LogWarn LabelBTPApplicationIdentifierHash skip test"}},
 	}
 	for _, tt := range tests {

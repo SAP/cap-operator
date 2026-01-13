@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
 	"strings"
@@ -434,9 +435,9 @@ func (s *SubscriptionHandler) getTenantByLabels(labelsMap map[string]string, nam
 	return &Result{Tenant: &ctList.Items[0], Message: ResourceFound}
 }
 
-func flattenLabels(labelsMap map[string]string, args ...interface{}) []interface{} {
+func flattenLabels(labelsMap map[string]string, args ...any) []any {
 	// Converts the label map to a flat key-value slice for logging
-	var result []interface{}
+	var result []any
 	for k, v := range labelsMap {
 		result = append(result, k, v)
 	}
@@ -664,9 +665,7 @@ func (s *SubscriptionHandler) enrichAdditionalOutput(namespace string, tenantId 
 			return err
 		}
 		// merge tenant data output into additional output
-		for k, v := range *tenantDataOutput {
-			(*additionalOutput)[k] = v
-		}
+		maps.Copy((*additionalOutput), *tenantDataOutput)
 	}
 	return nil
 }
@@ -716,16 +715,12 @@ func (s *SubscriptionHandler) getServiceDetails(ca *v1alpha1.CAPApplication, ste
 		saasData *util.SaasRegistryCredentials
 		uaaData  *util.XSUAACredentials
 	)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		saasData = s.getSaasDetails(ca, step)
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	})
+	wg.Go(func() {
 		uaaData = s.getXSUAADetails(ca, step)
-	}()
+	})
 
 	wg.Wait()
 	return saasData, uaaData

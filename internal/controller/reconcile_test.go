@@ -197,7 +197,7 @@ func generateName(namePrefix string) string {
 	return namePrefix + rand.String(5)
 }
 
-func generateMetaObjName(obj interface{}) {
+func generateMetaObjName(obj any) {
 	metaObj, _ := meta.Accessor(obj)
 	if metaObj.GetName() == "" && metaObj.GetGenerateName() != "" {
 		metaObj.SetName(generateName(metaObj.GetGenerateName()))

@@ -328,7 +328,7 @@ func testInvalidClaimsType(t *testing.T) {
 
 	_, tokenString, _ := setupTokenAndIssuer(testXSUAAConfig, &jwtTestParameters{})
 
-	token, _ := jwt.ParseWithClaims(tokenString, &foo{}, func(t *jwt.Token) (interface{}, error) {
+	token, _ := jwt.ParseWithClaims(tokenString, &foo{}, func(t *jwt.Token) (any, error) {
 		return []byte("Test"), nil
 	})
 

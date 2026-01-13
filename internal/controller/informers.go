@@ -103,13 +103,13 @@ func (c *Controller) initializeInformers() {
 
 func (c *Controller) getEventHandlerFuncsForResource(res int) cache.ResourceEventHandlerFuncs {
 	return cache.ResourceEventHandlerFuncs{
-		AddFunc: func(new interface{}) {
+		AddFunc: func(new any) {
 			c.enqueueModifiedResource(res, new, nil)
 		},
-		UpdateFunc: func(old, new interface{}) {
+		UpdateFunc: func(old, new any) {
 			c.enqueueModifiedResource(res, new, old)
 		},
-		DeleteFunc: func(old interface{}) {
+		DeleteFunc: func(old any) {
 			c.enqueueModifiedResource(res, old, nil)
 		},
 	}
@@ -185,7 +185,7 @@ func (c *Controller) registerGardenerDNSEntrytListeners() {
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceDNSEntry))
 }
 
-func (c *Controller) enqueueModifiedResource(sourceKey int, new, old interface{}) {
+func (c *Controller) enqueueModifiedResource(sourceKey int, new, old any) {
 	newObj, ok := getMetaObject(new)
 	if !ok {
 		return
@@ -222,7 +222,7 @@ func (c *Controller) enqueueModifiedResource(sourceKey int, new, old interface{}
 	}
 }
 
-func getMetaObject(obj interface{}) (metav1.Object, bool) {
+func getMetaObject(obj any) (metav1.Object, bool) {
 	if obj == nil {
 		return nil, false
 	}
