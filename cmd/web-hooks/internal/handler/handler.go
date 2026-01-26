@@ -17,6 +17,7 @@ import (
 	"strconv"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -569,8 +570,8 @@ func (wh *WebhookHandler) validateCAPApplicationVersion(w http.ResponseWriter, a
 
 	}
 
-	// check: update on .Spec
-	if admissionReview.Request.Operation == admissionv1.Update && !cmp.Equal(cavObjOld.Spec, cavObjNew.Spec) {
+	// check: update on .Spec, using cmpopts.EquateEmpty() to consider nil and empty slices/maps as equal (Eg: spec.ContentJobs)
+	if admissionReview.Request.Operation == admissionv1.Update && !cmp.Equal(cavObjOld.Spec, cavObjNew.Spec, cmpopts.EquateEmpty()) {
 		return validateResource{
 			allowed: false,
 			message: fmt.Sprintf("%s %s spec cannot be modified for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, cavObjNew.GetNamespace(), cavObjNew.GetName()),
