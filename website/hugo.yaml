@@ -1,13 +1,16 @@
 baseURL: "https://sap.github.io/cap-operator"
 title: "CAP Operator"
 
+# Language settings
+contentDir: content/en
+
 enableRobotsTXT: true
 
 # Will give values to .Lastmod etc.
 enableGitInfo: true
 
 # horizontal (top level) menu items
-menu:
+menus:
   main:
     # NOTE: the "Documentation" menu item is sourced from the front matter of the _index.md file
     - name: "GitHub"
@@ -19,27 +22,11 @@ menu:
       url: "https://pkg.go.dev/github.com/sap/cap-operator/"
       pre: "<i class='fab fa-golang'></i>"
 
-# You can add your own taxonomies
-taxonomies:
-  tag: "tags"
-  category: "categories"
-
 # Image processing configuration.
 imaging:
   resampleFilter: "CatmullRom"
   quality: 90
   anchor: Smart
-
-# Language configuration
-languages:
-  en:
-    languageName: "English"
-    contentDir: "content/en"
-    # Weight used for sorting.
-    weight: 1
-    params:
-      title: "CAP Operator"
-      description: "A Kubernetes operator for managing the lifecycle of CAP applications"
 
 markup:
   goldmark:
@@ -51,12 +38,11 @@ markup:
   highlight:
     noClasses: false # Required for dark-mode
 
-# Everything below this are Site Params
-
 # Comment out if you don't want the "print entire section" link enabled.
 outputs:
   section: ["HTML", "print", "RSS"]
 
+# Everything below this are Site Params
 params:
   copyright:
     authors: SAP SE or an SAP affiliate company
@@ -92,6 +78,7 @@ params:
   # Enable Lunr.js offline search
   offlineSearch: true
 
+  # Enable syntax highlighting and copy buttons on code blocks with Prism
   prism_syntax_highlighting: false
 
   # User interface configuration
