@@ -1,4 +1,5 @@
 {
+  "name": "website",
   "devDependencies": {
     "autoprefixer": "^10.4.23",
     "hugo-extended": "^0.154.5",
