@@ -221,6 +221,7 @@ func (s *SubscriptionHandler) getMessage(created, updated bool, ca *v1alpha1.CAP
 }
 
 func (s *SubscriptionHandler) createTenant(reqInfo *RequestInfo, ca *v1alpha1.CAPApplication) (tenant *v1alpha1.CAPTenant, err error) {
+	btpAppIdHash := ca.Labels[LabelBTPApplicationIdentifierHash]
 	subscriptionGUID := reqInfo.payload.subscriptionGUID
 	jsonReqByte, _ := json.Marshal(reqInfo.payload.raw)
 	// Create a secret to store the subscription context (payload from the request)
@@ -229,7 +230,7 @@ func (s *SubscriptionHandler) createTenant(reqInfo *RequestInfo, ca *v1alpha1.CA
 			GenerateName: ca.Name + "-consumer-",
 			Namespace:    ca.Namespace,
 			Labels: map[string]string{
-				LabelBTPApplicationIdentifierHash: sha1Sum(reqInfo.payload.globalAccountId, reqInfo.payload.appName),
+				LabelBTPApplicationIdentifierHash: btpAppIdHash,
 				LabelTenantId:                     reqInfo.payload.tenantId,
 				LabelSubscriptionGUID:             subscriptionGUID,
 			},
@@ -253,7 +254,7 @@ func (s *SubscriptionHandler) createTenant(reqInfo *RequestInfo, ca *v1alpha1.CA
 				AnnotationSubscriptionContextSecret: secret.Name, // Store the secret name in the tenant annotation
 			},
 			Labels: map[string]string{
-				LabelBTPApplicationIdentifierHash: sha1Sum(reqInfo.payload.globalAccountId, reqInfo.payload.appName),
+				LabelBTPApplicationIdentifierHash: btpAppIdHash,
 				LabelTenantId:                     reqInfo.payload.tenantId,
 				LabelSubscriptionGUID:             subscriptionGUID,
 				LabelTenantType:                   "consumer", // Default tenant type for consumer tenants
