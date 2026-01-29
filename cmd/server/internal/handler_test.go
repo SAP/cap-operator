@@ -322,7 +322,7 @@ func Test_IncorrectMethod(t *testing.T) {
 		t.Error("Unexpected error in expected response: ", res.Body)
 	}
 
-	if resType.Tenant != nil && resType.Message != InvalidRequestMethod {
+	if resType.tenant != nil && resType.Message != InvalidRequestMethod {
 		t.Error("Response: ", res.Body, " does not match expected result: ", InvalidRequestMethod)
 	}
 
@@ -547,7 +547,7 @@ func Test_provisioning(t *testing.T) {
 				t.Error("Unexpected error in expected response: ", res.Body)
 			}
 
-			if resType.Tenant != testData.expectedResponse.Tenant && resType.Message != testData.expectedResponse.Message {
+			if resType.tenant != testData.expectedResponse.tenant && resType.Message != testData.expectedResponse.Message {
 				t.Error("Response: ", res.Body, " does not match expected result: ", testData.expectedResponse)
 			}
 		})
@@ -791,7 +791,7 @@ func Test_sms_provisioning(t *testing.T) {
 				t.Error("Unexpected error in expected response: ", res.Body)
 			}
 
-			if resType.Tenant != testData.expectedResponse.Tenant && resType.Message != testData.expectedResponse.Message {
+			if resType.tenant != testData.expectedResponse.tenant && resType.Message != testData.expectedResponse.Message {
 				t.Error("Response: ", res.Body, " does not match expected result: ", testData.expectedResponse)
 			}
 		})
@@ -905,7 +905,7 @@ func Test_deprovisioning(t *testing.T) {
 				t.Error("Unexpected error in expected response: ", res.Body)
 			}
 
-			if resType.Tenant != testData.expectedResponse.Tenant && resType.Message != testData.expectedResponse.Message {
+			if resType.tenant != testData.expectedResponse.tenant && resType.Message != testData.expectedResponse.Message {
 				t.Error("Response: ", res.Body, " does not match expected result: ", testData.expectedResponse)
 			}
 		})
@@ -1015,7 +1015,7 @@ func Test_sms_deprovisioning(t *testing.T) {
 				t.Error("Unexpected error in expected response: ", res.Body)
 			}
 
-			if resType.Tenant != testData.expectedResponse.Tenant && resType.Message != testData.expectedResponse.Message {
+			if resType.tenant != testData.expectedResponse.tenant && resType.Message != testData.expectedResponse.Message {
 				t.Error("Response: ", res.Body, " does not match expected result: ", testData.expectedResponse)
 			}
 		})
@@ -1211,17 +1211,33 @@ func TestAsyncCallback(t *testing.T) {
 	ctx := context.WithValue(context.Background(), cKey, true)
 	for _, p := range tests {
 		saasData.CredentialType = p.useCredentialType
+
+		data, _ := json.Marshal(p.additionalData)
+		ca := &v1alpha1.CAPApplication{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "test-app",
+				Namespace: "default",
+				Annotations: map[string]string{
+					AnnotationSubscriptionDomain:   "cluster.local",
+					AnnotationSaaSAdditionalOutput: string(data),
+				},
+			},
+		}
 		t.Run(p.testName, func(t *testing.T) {
 			client := createCallbackTestServer(context.TODO(), t, &p, SaaS)
 			subHandler := setup(client, createSecrets())
 			callbackReqInfo := subHandler.getCallbackReqInfo(SaaS, "/saas-manager/v1/subscription-callback/1234567/result", saasData, nil)
+			step := TenantDeprovisioning
+			if p.isProvisioning {
+				step = TenantProvisioning
+			}
+
+			payload := subHandler.constructPayload(p.isProvisioning, p.status, callbackReqInfo.SubscriptionType, step, ca, tenantInfo{tenantSubDomain: "app", tenantId: "1234567890"})
 			subHandler.handleAsyncCallback(
 				ctx,
 				callbackReqInfo,
 				p.status,
-				"/async/callback",
-				"https://app.cluster.local",
-				p.additionalData,
+				payload,
 				p.isProvisioning,
 			)
 		})
@@ -1237,17 +1253,33 @@ func TestAsyncCallback(t *testing.T) {
 
 	for _, p := range testsSms {
 		smsData.CredentialType = p.useCredentialType
+
+		data, _ := json.Marshal(p.additionalData)
+		ca := &v1alpha1.CAPApplication{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "test-app",
+				Namespace: "default",
+				Annotations: map[string]string{
+					AnnotationSubscriptionDomain:   "cluster.local",
+					AnnotationSaaSAdditionalOutput: string(data),
+				},
+			},
+		}
+		step := TenantDeprovisioning
+		if p.isProvisioning {
+			step = TenantProvisioning
+		}
 		t.Run(p.testName, func(t *testing.T) {
 			client := createCallbackTestServer(context.TODO(), t, &p, SMS)
 			subHandler := setup(client, createSmsSecret())
 			callbackReqInfo := subHandler.getCallbackReqInfo(SMS, "/subscription-manager/v1/subscription-callback/12345678/result", nil, smsData)
+
+			payload := subHandler.constructPayload(p.isProvisioning, p.status, callbackReqInfo.SubscriptionType, step, ca, tenantInfo{tenantSubDomain: "app", tenantId: "1234567890"})
 			subHandler.handleAsyncCallback(
 				ctx,
 				callbackReqInfo,
 				p.status,
-				"/async/callback",
-				"https://app.cluster.local",
-				p.additionalData,
+				payload,
 				p.isProvisioning,
 			)
 		})
