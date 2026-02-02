@@ -7,9 +7,9 @@ description: >
   Integration with SAP Software-as-a-Service Provisioning service (SaaS)
 ---
 
-The Subscription Server handles HTTP requests from the [SAP Software-as-a-Service Provisioning service](https://help.sap.com/viewer/65de2977205c403bbc107264b8eccf4b/Cloud/en-US/2cd8913a50bc4d3e8172f84bb4bfba20.html) for tenant subscription operations on SAP Cloud Application Programming Model applications that have been installed in the cluster. 
+The Subscription Server handles HTTP requests from the [SAP Software-as-a-Service Provisioning service](https://help.sap.com/viewer/65de2977205c403bbc107264b8eccf4b/Cloud/en-US/5e8a2b74e4f2442b8257c850ed912f48.html) for tenant subscription operations on SAP Cloud Application Programming Model applications that have been installed in the cluster. 
 
-During the creation of a `saas-registry` service instance (in the provider subaccount), [callback URLs are configured](../../../usage/prerequisites/#saas-provisioning-service), which point to the subscription server routes.
+During the creation of a `saas-registry` service instance (in the provider subaccount), [callback URLs are configured](../../../usage/prerequisites/#sap-software-as-a-service-provisioning-service), which point to the subscription server routes.
 
 When a consumer tenant subscribes to an application managed by the operator, a subscription callback is received by the subscription server, which then generates the `CAPTenant` custom resource object. 
 
@@ -21,6 +21,6 @@ Once the tenant provisioning process has completed (or has failed), the tracking
 ![subscription](/cap-operator/img/block-subscription.drawio.svg)
 
 
-([More details about asynchronous tenant subscription](https://controlcenter.ondemand.com/index.html#/knowledge_center/articles/2316430f7d804820934910db736cefbf).)
+([More details about asynchronous tenant subscription](https://help.sap.com/docs/btp/sap-business-technology-platform/register-multitenant-application-to-sap-saas-provisioning-service?version=Cloud&q=async).)
 
 Such an asynchronous processing allows us to avoid timeouts during synchronous calls, as well as schedule dedicated jobs (via `CAPTenantOperation`) for completion of the subscription and perform any further tasks required in the cluster (for example, create a `VirtualService` corresponding to the tenant subdomain).
