@@ -9,7 +9,7 @@ description: >
 
 ## Prepare the SAP BTP global account and provider subaccount
 
-CAP-based applications make use of various SAP BTP services that are created in a provider subaccount. So, before you can deploy the application, create a global account and assign the required services that will be used. To do so, use [SAP BTP Control Center](https://controlcenter.ondemand.com/index.html). Once done, create a provider subaccount, where the required service instances can be created.
+CAP-based applications make use of various SAP BTP services that are created in a provider subaccount. So, before you can deploy the application, create a global account and entitle the required services that will be used. Once done, create a provider subaccount, where the required service instances can be created. To do so, [refer to the documentation here](https://help.sap.com/docs/btp/sap-business-technology-platform/account-administration).
 
 ## Create service instances and bindings
 
@@ -83,7 +83,7 @@ spec:
 
 ### SAP Software-as-a-Service Provisioning service
 
-When creating an instance of the SaaS Provisioning service, use asynchronous tenant subscription callbacks in the configuration. See [Register Your Multi-Tenant Application/Service in SaaS Provisioning](https://controlcenter.ondemand.com/index.html#/knowledge_center/articles/f239e5501a534b64ab5f8dde9bd83c53) for more details.
+When creating an instance of the SaaS Provisioning service, use asynchronous tenant subscription callbacks in the configuration. See [Register Your Multi-Tenant Application/Service in SaaS Provisioning](https://help.sap.com/docs/btp/sap-business-technology-platform/register-multitenant-application-to-sap-saas-provisioning-service?locale=en-US&version=LATEST) for more details.
 
 ```yaml
 parameters:
