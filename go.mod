@@ -5,7 +5,7 @@ go 1.25.6
 require (
 	github.com/MicahParks/jwkset v0.11.0
 	github.com/MicahParks/keyfunc/v3 v3.7.0
-	github.com/cert-manager/cert-manager v1.19.2
+	github.com/cert-manager/cert-manager v1.19.3
 	github.com/gardener/cert-management v0.20.0
 	github.com/gardener/external-dns-management v0.34.1-0.20260128081332-794cf41cb3f1
 	github.com/go-logr/logr v1.4.3
