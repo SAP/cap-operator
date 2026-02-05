@@ -112,6 +112,8 @@ spec:
                 - subDomain
                 - tenantId
                 type: object
+              providerSubaccountId:
+                type: string
             required:
             - btp
             - btpAppName

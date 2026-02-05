@@ -44,9 +44,10 @@ type ownerInfo struct {
 	ownerGeneration int64
 }
 type appMetadataIdentifiers struct {
-	globalAccountId string
-	appName         string
-	ownerInfo       *ownerInfo
+	globalAccountId      string
+	appName              string
+	providerSubaccountId string
+	ownerInfo            *ownerInfo
 }
 
 func getOwnerByKind(owners []metav1.OwnerReference, kind string) (*metav1.OwnerReference, bool) {
@@ -224,6 +225,11 @@ func updateLabelAnnotationMetadata(object *metav1.ObjectMeta, appMetadata *appMe
 
 	// Update BTP Application Identifier
 	if appMetadata.globalAccountId != "" && amendObjectMetadata(object, AnnotationBTPApplicationIdentifier, LabelBTPApplicationIdentifierHash, strings.Join([]string{appMetadata.globalAccountId, appMetadata.appName}, "."), sha1Sum(appMetadata.globalAccountId, appMetadata.appName)) {
+		updated = true
+	}
+
+	// Update App Identifier
+	if appMetadata.providerSubaccountId != "" && amendObjectMetadata(object, AnnotationAppId, LabelAppIdHash, strings.Join([]string{appMetadata.providerSubaccountId, appMetadata.appName}, "."), sha1Sum(appMetadata.providerSubaccountId, appMetadata.appName)) {
 		updated = true
 	}
 

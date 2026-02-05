@@ -44,6 +44,7 @@ const (
 	catName                       = caName + "-provider"
 	appName                       = "some-app-name"
 	globalAccountId               = "cap-app-global"
+	providerSubaccountId          = "012012012-1234-1234-123456012345"
 	subDomain                     = "foo"
 	tenantId                      = "012012012-1234-1234-123456"
 	subscriptionGUID              = "012301234-2345-6789-ABCDEF"
@@ -358,7 +359,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request without CROs",
 			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			expectedStatusCode: http.StatusNotAcceptable,
 			expectedResponse: Result{
 				Message: "the server could not find the requested resource (get capapplications.sme.sap.com)", //TODO
@@ -367,7 +368,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request with CROs with invalid app name",
 			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"test-app","globalAccountGUID":"` + globalAccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:               `{"subscriptionAppName":"test-app","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:         true,
 			expectedStatusCode: http.StatusNotAcceptable,
 			expectedResponse: Result{
@@ -377,7 +378,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request valid (without domains)",
 			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:         true,
 			expectedStatusCode: http.StatusAccepted,
 			expectedResponse: Result{
@@ -387,7 +388,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request valid (invalid domain)",
 			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:         true,
 			invalidDomain:      true,
 			expectedStatusCode: http.StatusAccepted,
@@ -398,7 +399,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:                 "Provisioning Request valid (invalid clusterdomains)",
 			method:               http.MethodPut,
-			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:           true,
 			invalidClusterDomain: true,
 			expectedStatusCode:   http.StatusAccepted,
@@ -409,7 +410,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request valid (with domain)",
 			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:         true,
 			existingDomain:     true,
 			expectedStatusCode: http.StatusAccepted,
@@ -420,7 +421,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:                  "Provisioning Request valid (with Cluster domain)",
 			method:                http.MethodPut,
-			body:                  `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:                  `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:            true,
 			existingClusterDomain: true,
 			expectedStatusCode:    http.StatusAccepted,
@@ -431,7 +432,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request valid with additional data and existing tenant",
 			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:         true,
 			withAdditionalData: true,
 			existingTenant:     true,
@@ -443,7 +444,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:                 "Provisioning Request valid with additional data and existing tenant and existing tenant output",
 			method:               http.MethodPut,
-			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:           true,
 			withAdditionalData:   true,
 			existingTenant:       true,
@@ -456,7 +457,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:                  "Provisioning Request valid with invalid additional data and existing tenant",
 			method:                http.MethodPut,
-			body:                  `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:                  `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:            true,
 			withAdditionalData:    true,
 			invalidAdditionalData: true,
@@ -469,7 +470,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request with existing tenant",
 			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:         true,
 			existingTenant:     true,
 			expectedStatusCode: http.StatusAccepted,
@@ -584,7 +585,7 @@ func Test_sms_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request without CROs",
 			method:             http.MethodPut,
-			body:               `{"rootApplication":{"appName":"` + appName + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
 			expectedStatusCode: http.StatusNotAcceptable,
 			expectedResponse: Result{
 				Message: "the server could not find the requested resource (get capapplications.sme.sap.com)", //TODO
@@ -593,7 +594,7 @@ func Test_sms_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request with CROs with invalid app name",
 			method:             http.MethodPut,
-			body:               `{"rootApplication":{"appName":"test-app","commercialAppName":"test-app"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			body:               `{"rootApplication":{"appName":"test-app","commercialAppName":"test-app","providerSubaccountId":"` + providerSubaccountId + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
 			createCROs:         true,
 			expectedStatusCode: http.StatusNotAcceptable,
 			expectedResponse: Result{
@@ -603,7 +604,7 @@ func Test_sms_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request valid (without domains)",
 			method:             http.MethodPut,
-			body:               `{"rootApplication":{"appName":"` + appName + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
 			createCROs:         true,
 			expectedStatusCode: http.StatusAccepted,
 			expectedResponse: Result{
@@ -613,7 +614,7 @@ func Test_sms_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request valid (invalid domain)",
 			method:             http.MethodPut,
-			body:               `{"rootApplication":{"appName":"` + appName + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
 			createCROs:         true,
 			invalidDomain:      true,
 			expectedStatusCode: http.StatusAccepted,
@@ -624,7 +625,7 @@ func Test_sms_provisioning(t *testing.T) {
 		{
 			name:                 "Provisioning Request valid (invalid clusterdomains)",
 			method:               http.MethodPut,
-			body:                 `{"rootApplication":{"appName":"` + appName + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			body:                 `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
 			createCROs:           true,
 			invalidClusterDomain: true,
 			expectedStatusCode:   http.StatusAccepted,
@@ -635,7 +636,7 @@ func Test_sms_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request valid (with domain)",
 			method:             http.MethodPut,
-			body:               `{"rootApplication":{"appName":"` + appName + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
 			createCROs:         true,
 			existingDomain:     true,
 			expectedStatusCode: http.StatusAccepted,
@@ -646,7 +647,7 @@ func Test_sms_provisioning(t *testing.T) {
 		{
 			name:                  "Provisioning Request valid (with Cluster domain)",
 			method:                http.MethodPut,
-			body:                  `{"rootApplication":{"appName":"` + appName + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			body:                  `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
 			createCROs:            true,
 			existingClusterDomain: true,
 			expectedStatusCode:    http.StatusAccepted,
@@ -657,7 +658,7 @@ func Test_sms_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request valid with additional data and existing tenant",
 			method:             http.MethodPut,
-			body:               `{"rootApplication":{"appName":"` + appName + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
 			createCROs:         true,
 			withAdditionalData: true,
 			existingTenant:     true,
@@ -669,7 +670,7 @@ func Test_sms_provisioning(t *testing.T) {
 		{
 			name:                 "Provisioning Request valid with additional data and existing tenant and existing tenant output",
 			method:               http.MethodPut,
-			body:                 `{"rootApplication":{"appName":"` + appName + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			body:                 `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
 			createCROs:           true,
 			withAdditionalData:   true,
 			existingTenant:       true,
@@ -682,7 +683,7 @@ func Test_sms_provisioning(t *testing.T) {
 		{
 			name:                  "Provisioning Request valid with invalid additional data and existing tenant",
 			method:                http.MethodPut,
-			body:                  `{"rootApplication":{"appName":"` + appName + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			body:                  `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
 			createCROs:            true,
 			withAdditionalData:    true,
 			invalidAdditionalData: true,
@@ -695,7 +696,7 @@ func Test_sms_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request with existing tenant",
 			method:             http.MethodPut,
-			body:               `{"rootApplication":{"appName":"` + appName + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
 			createCROs:         true,
 			existingTenant:     true,
 			expectedStatusCode: http.StatusAccepted,
@@ -706,7 +707,7 @@ func Test_sms_provisioning(t *testing.T) {
 		{
 			name:               "Provisioning Request with existing tenant but different subscriptionGUID (If provisioning fails due to callback issue, the tenant exists and in BTP provisioned failed; retriggering sends a new subscriptionGUID in the payload)",
 			method:             http.MethodPut,
-			body:               `{"rootApplication":{"appName":"` + appName + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + "update" + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + "update" + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
 			createCROs:         true,
 			existingTenant:     true,
 			expectedStatusCode: http.StatusAccepted,
@@ -822,7 +823,7 @@ func Test_deprovisioning(t *testing.T) {
 		{
 			name:               "Deprovisioning Request without CAPApplication and CAPTenant",
 			method:             http.MethodDelete,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			expectedStatusCode: http.StatusNotFound,
 			expectedResponse: Result{
 				Message: "the server could not find the requested resource (get capapplications.sme.sap.com)", //TODO
@@ -832,7 +833,7 @@ func Test_deprovisioning(t *testing.T) {
 			name:               "Deprovisioning Request valid without existing tenant)",
 			method:             http.MethodDelete,
 			createCROs:         true,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			expectedStatusCode: http.StatusNotFound,
 			expectedResponse: Result{
 				Message: ResourceDeleted,
@@ -843,7 +844,7 @@ func Test_deprovisioning(t *testing.T) {
 			method:             http.MethodDelete,
 			createCROs:         true,
 			existingTenant:     true,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			expectedStatusCode: http.StatusAccepted,
 			expectedResponse: Result{
 				Message: ResourceDeleted,
@@ -855,7 +856,7 @@ func Test_deprovisioning(t *testing.T) {
 			createCROs:         true,
 			existingTenant:     true,
 			withGlobalTenantId: true,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			expectedStatusCode: http.StatusAccepted,
 			expectedResponse: Result{
 				Message: ResourceDeleted,
