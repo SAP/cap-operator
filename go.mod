@@ -1,6 +1,6 @@
 module github.com/sap/cap-operator
 
-go 1.25.6
+go 1.25.7
 
 require (
 	github.com/MicahParks/jwkset v0.11.0
