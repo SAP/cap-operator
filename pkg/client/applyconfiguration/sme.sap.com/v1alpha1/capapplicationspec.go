@@ -17,7 +17,10 @@ type CAPApplicationSpecApplyConfiguration struct {
 	// [DEPRECATED] Domains used by the application // Will be removed in future versions
 	Domains *ApplicationDomainsApplyConfiguration `json:"domains,omitempty"`
 	// SAP BTP Global Account Identifier where services are entitles for the current application
+	// Will soon be deprecated, use ProviderSubaccountId instead
 	GlobalAccountId *string `json:"globalAccountId,omitempty"`
+	// The subaccount ID in which the application is provided (will soon replace GlobalAccountId)
+	ProviderSubaccountId *string `json:"providerSubaccountId,omitempty"`
 	// Short name for the application (similar to BTP XSAPPNAME)
 	BTPAppName *string `json:"btpAppName,omitempty"`
 	// Provider subaccount where application services are created
@@ -58,6 +61,14 @@ func (b *CAPApplicationSpecApplyConfiguration) WithDomains(value *ApplicationDom
 // If called multiple times, the GlobalAccountId field is set to the value of the last call.
 func (b *CAPApplicationSpecApplyConfiguration) WithGlobalAccountId(value string) *CAPApplicationSpecApplyConfiguration {
 	b.GlobalAccountId = &value
+	return b
+}
+
+// WithProviderSubaccountId sets the ProviderSubaccountId field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ProviderSubaccountId field is set to the value of the last call.
+func (b *CAPApplicationSpecApplyConfiguration) WithProviderSubaccountId(value string) *CAPApplicationSpecApplyConfiguration {
+	b.ProviderSubaccountId = &value
 	return b
 }
 

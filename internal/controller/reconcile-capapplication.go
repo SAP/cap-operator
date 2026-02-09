@@ -579,8 +579,9 @@ func (c *Controller) prepareCAPApplication(ca *v1alpha1.CAPApplication) (update 
 
 	// add Label/Annotation for BTP App
 	appMetadata := appMetadataIdentifiers{
-		globalAccountId: ca.Spec.GlobalAccountId,
-		appName:         ca.Spec.BTPAppName,
+		globalAccountId:      ca.Spec.GlobalAccountId,
+		appName:              ca.Spec.BTPAppName,
+		providerSubaccountId: ca.Spec.ProviderSubaccountId,
 	}
 	if updateLabelAnnotationMetadata(&ca.ObjectMeta, &appMetadata) {
 		update = true
