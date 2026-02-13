@@ -4,7 +4,7 @@ linkTitle: CAP Operator
 description: A Kubernetes operator for managing the lifecycle of multi-tenant SAP Cloud Application Programming Model applications
 ---
 
-{{% blocks/cover title="Welcome to CAP Operator" image_anchor="top" height="full" color="primary" %}}
+{{% blocks/cover title="Welcome to CAP Operator" height="auto td-below-navbar" color="primary" %}}
 {{% blocks/lead color="gray-dark" %}}
 A Kubernetes operator for managing the lifecycle of multi-tenant CAP applications
 {{% /blocks/lead %}}
