@@ -40,7 +40,7 @@ func extractEntityMeta(entity any, isRoot bool, skipLabel bool) map[string]strin
 	// If kind is empty, try to get it from the original entity using reflection
 	if kind == "" {
 		typ := reflect.TypeOf(entity)
-		if typ.Kind() == reflect.Ptr {
+		if typ.Kind() == reflect.Pointer {
 			// Get the underlying element type
 			kind = typ.Elem().Name()
 		} else {
