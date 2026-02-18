@@ -408,20 +408,18 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 	}
 
 	annotations := copyMaps(workload.Annotations, map[string]string{
-		AnnotationBTPApplicationIdentifier: relatedResources.CAPApplication.Spec.GlobalAccountId + "." + relatedResources.CAPApplication.Spec.BTPAppName,
-		AnnotationOwnerIdentifier:          ctop.Namespace + "." + ctop.Name,
+		AnnotationOwnerIdentifier: ctop.Namespace + "." + ctop.Name,
 	})
 
 	labels := copyMaps(workload.Labels, map[string]string{
-		App:                               relatedResources.CAPApplication.Spec.BTPAppName,
-		LabelBTPApplicationIdentifierHash: sha1Sum(relatedResources.CAPApplication.Spec.GlobalAccountId, relatedResources.CAPApplication.Spec.BTPAppName),
-		LabelOwnerIdentifierHash:          sha1Sum(ctop.Namespace, ctop.Name),
-		LabelOwnerGeneration:              strconv.FormatInt(ctop.Generation, 10),
-		LabelTenantOperationType:          string(ctop.Spec.Operation),
-		LabelTenantOperationStep:          strconv.FormatInt(int64(*ctop.Status.CurrentStep), 10), // NOTE: step is required to read the job
-		LabelWorkloadName:                 step.Name,
-		LabelWorkloadType:                 string(step.Type), // NOTE: use step type and not workload type as TenantOperation could be derived from CAP
-		LabelResourceCategory:             CategoryWorkload,
+		App:                      relatedResources.CAPApplication.Spec.BTPAppName,
+		LabelOwnerIdentifierHash: sha1Sum(ctop.Namespace, ctop.Name),
+		LabelOwnerGeneration:     strconv.FormatInt(ctop.Generation, 10),
+		LabelTenantOperationType: string(ctop.Spec.Operation),
+		LabelTenantOperationStep: strconv.FormatInt(int64(*ctop.Status.CurrentStep), 10), // NOTE: step is required to read the job
+		LabelWorkloadName:        step.Name,
+		LabelWorkloadType:        string(step.Type), // NOTE: use step type and not workload type as TenantOperation could be derived from CAP
+		LabelResourceCategory:    CategoryWorkload,
 	})
 
 	params := &jobCreateParams{
@@ -664,11 +662,17 @@ func addCAPTenantOperationLabels(ctop *v1alpha1.CAPTenantOperation, cat *v1alpha
 	}
 
 	// Check and add missing labels
-	if _, ok := ctop.Labels[LabelBTPApplicationIdentifierHash]; !ok {
+	if _, ok := cat.Labels[LabelAppIdHash]; ok {
+		if _, ok := ctop.Labels[LabelAppIdHash]; !ok {
+			ctop.Labels[LabelAppIdHash] = cat.Labels[LabelAppIdHash]
+			updated = true
+		}
+	} else if _, ok := ctop.Labels[LabelBTPApplicationIdentifierHash]; !ok {
 		// Add missing BTPApplicationIdentifierHash label
 		ctop.Labels[LabelBTPApplicationIdentifierHash] = cat.Labels[LabelBTPApplicationIdentifierHash]
 		updated = true
 	}
+
 	if _, ok := ctop.Labels[LabelTenantOperationType]; !ok {
 		// Add missing Tenant operation type label
 		ctop.Labels[LabelTenantOperationType] = string(ctop.Spec.Operation)
@@ -726,16 +730,23 @@ func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation, step
 
 // Collect tenant operation metrics based on the status of the tenant operation
 func collectTenantOperationMetrics(ctop *v1alpha1.CAPTenantOperation) {
+	relevantAppIdHash := ""
+	if _, ok := ctop.Labels[LabelAppIdHash]; ok {
+		relevantAppIdHash = ctop.Labels[LabelAppIdHash]
+	} else {
+		relevantAppIdHash = ctop.Labels[LabelBTPApplicationIdentifierHash]
+	}
+
 	if isCROConditionReady(ctop.Status.GenericStatus) {
 		// Collect/Increment overall completed tenant operation metrics
-		TenantOperations.WithLabelValues(ctop.Labels[LabelBTPApplicationIdentifierHash], string(ctop.Spec.Operation)).Inc()
+		TenantOperations.WithLabelValues(relevantAppIdHash, string(ctop.Spec.Operation)).Inc()
 
 		if ctop.Status.State == v1alpha1.CAPTenantOperationStateFailed {
 			// Collect/Increment failed tenant operation metrics with CRO details
-			TenantOperationFailures.WithLabelValues(ctop.Labels[LabelBTPApplicationIdentifierHash], string(ctop.Spec.Operation), ctop.Spec.TenantId, ctop.Namespace, ctop.Name).Inc()
+			TenantOperationFailures.WithLabelValues(relevantAppIdHash, string(ctop.Spec.Operation), ctop.Spec.TenantId, ctop.Namespace, ctop.Name).Inc()
 		}
 
 		// Collect tenant operation duration metrics based on creation time of the tenant operation and current time
-		LastTenantOperationDuration.WithLabelValues(ctop.Labels[LabelBTPApplicationIdentifierHash], ctop.Spec.TenantId).Set(time.Since(ctop.CreationTimestamp.Time).Seconds())
+		LastTenantOperationDuration.WithLabelValues(relevantAppIdHash, ctop.Spec.TenantId).Set(time.Since(ctop.CreationTimestamp.Time).Seconds())
 	}
 }

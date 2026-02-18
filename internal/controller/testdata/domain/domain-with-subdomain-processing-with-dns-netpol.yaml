@@ -31,10 +31,9 @@ metadata:
   annotations:
     dns.gardener.cloud/class: garden
     sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
-    sme.sap.com/resource-hash: c44f04c4168d68874699d4c67ae310a8bfb26f89123514ace9aac0de7fed86d5
+    sme.sap.com/resource-hash: 628a3a3718cc233a21b155189563a54ffc2fa21ffa57263b29ac208bd07dcf32
   generateName: test-cap-01-primary-
   labels:
-    sme.sap.com/btp-app-identifier-hash: "f20cc8aeb2003b3abc33f749a16bd53544b6bab2"
     sme.sap.com/owner-generation: "0"
     sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
     sme.sap.com/dns-name-hash: 40c43e43bedecd7666574294ad60228aa7e7e19c

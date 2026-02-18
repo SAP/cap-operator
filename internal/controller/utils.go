@@ -223,13 +223,15 @@ func updateLabelAnnotationMetadata(object *metav1.ObjectMeta, appMetadata *appMe
 		object.Annotations = map[string]string{}
 	}
 
-	// Update BTP Application Identifier
-	if appMetadata.globalAccountId != "" && amendObjectMetadata(object, AnnotationBTPApplicationIdentifier, LabelBTPApplicationIdentifierHash, strings.Join([]string{appMetadata.globalAccountId, appMetadata.appName}, "."), sha1Sum(appMetadata.globalAccountId, appMetadata.appName)) {
-		updated = true
-	}
-
 	// Update App Identifier
-	if appMetadata.providerSubaccountId != "" && amendObjectMetadata(object, AnnotationAppId, LabelAppIdHash, strings.Join([]string{appMetadata.providerSubaccountId, appMetadata.appName}, "."), sha1Sum(appMetadata.providerSubaccountId, appMetadata.appName)) {
+	if appMetadata.providerSubaccountId != "" {
+		if amendObjectMetadata(object, AnnotationAppId, LabelAppIdHash, strings.Join([]string{appMetadata.providerSubaccountId, appMetadata.appName}, "."), sha1Sum(appMetadata.providerSubaccountId, appMetadata.appName)) {
+			// When new appId is set, get rid of former identifier BTPAppId label and hash
+			delete(object.Annotations, AnnotationBTPApplicationIdentifier)
+			delete(object.Labels, LabelBTPApplicationIdentifierHash)
+			updated = true
+		}
+	} else if appMetadata.globalAccountId != "" && amendObjectMetadata(object, AnnotationBTPApplicationIdentifier, LabelBTPApplicationIdentifierHash, strings.Join([]string{appMetadata.globalAccountId, appMetadata.appName}, "."), sha1Sum(appMetadata.globalAccountId, appMetadata.appName)) {
 		updated = true
 	}
 
