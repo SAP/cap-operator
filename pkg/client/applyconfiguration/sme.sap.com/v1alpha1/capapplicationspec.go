@@ -12,16 +12,16 @@ package v1alpha1
 //
 // CAPApplicationSpec defines the desired state of CAPApplication
 type CAPApplicationSpecApplyConfiguration struct {
-	// Domains used by the application (new)
+	// Reference to `Domain` resources used by the application
 	DomainRefs []DomainRefApplyConfiguration `json:"domainRefs,omitempty"`
-	// [DEPRECATED] Domains used by the application // Will be removed in future versions
+	// Deprecated: Domains used by the application. Will be removed in future versions, use `DomainRefs` instead
 	Domains *ApplicationDomainsApplyConfiguration `json:"domains,omitempty"`
-	// SAP BTP Global Account Identifier where services are entitles for the current application
-	// Will soon be deprecated, use ProviderSubaccountId instead
+	// Deprecated: SAP BTP Global Account Identifier where services are entitles for the current application
+	// Will be removed in future versions, use `ProviderSubaccountId` instead
 	GlobalAccountId *string `json:"globalAccountId,omitempty"`
 	// The subaccount ID in which the application is provided (will soon replace GlobalAccountId)
 	ProviderSubaccountId *string `json:"providerSubaccountId,omitempty"`
-	// Short name for the application (similar to BTP XSAPPNAME)
+	// Short name for the application (BTP XSAPPNAME)
 	BTPAppName *string `json:"btpAppName,omitempty"`
 	// Provider subaccount where application services are created
 	Provider *BTPTenantIdentificationApplyConfiguration `json:"provider,omitempty"`

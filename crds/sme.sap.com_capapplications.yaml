@@ -117,7 +117,6 @@ spec:
             required:
             - btp
             - btpAppName
-            - globalAccountId
             type: object
           status:
             properties:
