@@ -49,7 +49,6 @@ const (
 	AnnotationAppId                     = "sme.sap.com/app-identifier"
 	AnnotationResourceHash              = "sme.sap.com/resource-hash"
 	AnnotationControllerClass           = "sme.sap.com/controller-class"
-	AnnotationIstioSidecarInject        = "sidecar.istio.io/inject"
 	AnnotationGardenerDNSTarget         = "dns.gardener.cloud/dnsnames"
 	AnnotationKubernetesDNSTarget       = "external-dns.alpha.kubernetes.io/hostname"
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"

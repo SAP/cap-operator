@@ -24,13 +24,10 @@ spec:
       controller-uid: afb8bcad-72ce-4567-8337-12fc67ef55acb
   template:
     metadata:
-      annotations:
-        sidecar.istio.io/inject: "false"
       creationTimestamp: null
       labels:
         controller-uid: afb8bcad-72ce-4567-8337-12fc67ef55acb
         job-name: test-cap-01-cav-v1-content-job-1
-        x4.sap.com/disable-karydia: "true"
     spec:
       containers:
         - env:
