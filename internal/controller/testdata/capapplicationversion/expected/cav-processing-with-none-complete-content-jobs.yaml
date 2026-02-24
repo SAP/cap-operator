@@ -91,9 +91,6 @@ metadata:
       uid: 5e64489b-7346-4984-8617-e8c37338b3d8
 spec:
   template:
-    metadata:
-      labels:
-        x4.sap.com/disable-karydia: "true"
     spec:
       containers:
         - env:
