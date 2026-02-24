@@ -21,7 +21,7 @@ jobs:
     steps:
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Setup Go
       uses: actions/setup-go@v6
@@ -39,7 +39,7 @@ jobs:
       run:  go test -v -cover -coverprofile=coverage.out ./...
 
     - name: Upload Test results
-      uses: actions/upload-artifact@v5
+      uses: actions/upload-artifact@v6
       with:
         name: test-coverage
         path: coverage.out
@@ -50,7 +50,7 @@ jobs:
     steps:
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
 
     - name: Setup Go
       uses: actions/setup-go@v6
@@ -71,17 +71,17 @@ jobs:
     steps:
     
     - name: Check out code for Sonar Analysis
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         fetch-depth: 0
     
     - name: Download Test results
-      uses: actions/download-artifact@v6
+      uses: actions/download-artifact@v7
       with:
         name: test-coverage
     
     - name: SonarCloud Scan
-      uses: SonarSource/sonarqube-scan-action@v6
+      uses: SonarSource/sonarqube-scan-action@v7
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
