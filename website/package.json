@@ -1,8 +1,8 @@
 {
   "name": "website",
   "devDependencies": {
-    "autoprefixer": "^10.4.24",
-    "hugo-extended": "^0.155.3",
+    "autoprefixer": "^10.4.27",
+    "hugo-extended": "^0.157.0",
     "postcss-cli": "^11.0.1"
   }
 }
