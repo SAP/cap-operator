@@ -45,7 +45,6 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   annotations:
-    sidecar.istio.io/inject: "false"
     sme.sap.com/owner-identifier: default.test-cap-01-provider-abcd
     sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
   labels:
@@ -71,7 +70,6 @@ spec:
   template:
     metadata:
       annotations:
-        sidecar.istio.io/inject: "false"
         sme.sap.com/owner-identifier: default.test-cap-01-provider-abcd
         sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
       labels:

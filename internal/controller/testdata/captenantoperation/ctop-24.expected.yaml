@@ -48,7 +48,6 @@ metadata:
   annotations:
     foo: "bar"
     sme.sap.com/my-custom-operation-identifier: "some value for the annotation: `sme.sap.com/my-custom-operation-identifier`"
-    sidecar.istio.io/inject: "false"
     sme.sap.com/owner-identifier: default.test-cap-01-provider-abcd
     sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
   labels:
@@ -76,7 +75,6 @@ spec:
       annotations:
         foo: "bar"
         sme.sap.com/my-custom-operation-identifier: "some value for the annotation: `sme.sap.com/my-custom-operation-identifier`"
-        sidecar.istio.io/inject: "false"
         sme.sap.com/owner-identifier: default.test-cap-01-provider-abcd
         sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
       labels:

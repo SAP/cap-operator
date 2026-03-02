@@ -409,7 +409,6 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 	}
 
 	annotations := copyMaps(workload.Annotations, map[string]string{
-		AnnotationIstioSidecarInject:       "false",
 		AnnotationBTPApplicationIdentifier: relatedResources.CAPApplication.Spec.GlobalAccountId + "." + relatedResources.CAPApplication.Spec.BTPAppName,
 		AnnotationOwnerIdentifier:          ctop.Namespace + "." + ctop.Name,
 	})

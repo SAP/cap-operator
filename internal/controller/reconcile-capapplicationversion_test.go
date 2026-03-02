@@ -200,6 +200,23 @@ func TestCAV_ContentJobCompletedFromProcessing(t *testing.T) {
 	)
 }
 
+func TestCAV_NoneOfMultipleContentJobsCompleted(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with none of the content jobs completed",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/cav-processing-with-multiple-content-jobs.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-processing-with-none-complete-content-jobs.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
+		},
+	)
+}
+
 func TestCAV_OneOfMultipleContentJobsCompleted(t *testing.T) {
 	reconcileTestItem(
 		context.TODO(), t,

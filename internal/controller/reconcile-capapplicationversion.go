@@ -316,10 +316,6 @@ func newContentDeploymentJob(cav *v1alpha1.CAPApplicationVersion, workload *v1al
 		LabelDisableKarydia: "true",
 	})
 
-	annotations := copyMaps(workload.Annotations, map[string]string{
-		AnnotationIstioSidecarInject: "false",
-	})
-
 	contentJobName := getContentJobName(workload.Name, cav)
 
 	util.LogInfo("Creating content job", string(Processing), cav, nil, "contentJobName", contentJobName, "version", cav.Spec.Version)
@@ -339,7 +335,7 @@ func newContentDeploymentJob(cav *v1alpha1.CAPApplicationVersion, workload *v1al
 			ActiveDeadlineSeconds:   workload.JobDefinition.ActiveDeadlineSeconds,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Annotations: annotations,
+					Annotations: workload.Annotations,
 					Labels:      labels,
 				},
 				Spec: corev1.PodSpec{
