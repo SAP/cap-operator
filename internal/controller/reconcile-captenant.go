@@ -585,7 +585,7 @@ func (c *Controller) getCAPApplicationVersionForTenantOperationType(ctx context.
 			util.LogError(err, "Cannot identify applicaion version", string(Deprovisioning), cat, nil, "tenantId", cat.Spec.TenantId)
 			return nil, err
 		}
-		cav, err := c.crdClient.SmeV1alpha1().CAPApplicationVersions(cat.Namespace).Get(ctx, cat.Status.CurrentCAPApplicationVersionInstance, metav1.GetOptions{})
+		cav, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(cat.Status.CurrentCAPApplicationVersionInstance)
 		if err != nil {
 			return nil, err
 		}

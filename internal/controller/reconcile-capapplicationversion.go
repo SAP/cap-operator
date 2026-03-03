@@ -431,7 +431,7 @@ func (c *Controller) updateServices(ca *v1alpha1.CAPApplication, cav *v1alpha1.C
 	workloadServicePortInfos := getRelevantServicePortInfo(cav)
 	for _, workloadServicePortInfo := range workloadServicePortInfos {
 		// Get the Service with the name specified in CustomDeployment.spec
-		service, err := c.kubeClient.CoreV1().Services(cav.Namespace).Get(context.TODO(), workloadServicePortInfo.WorkloadName+ServiceSuffix, metav1.GetOptions{})
+		service, err := c.kubeInformerFactory.Core().V1().Services().Lister().Services(cav.Namespace).Get(workloadServicePortInfo.WorkloadName + ServiceSuffix)
 		// If the resource doesn't exist, we'll create it
 		if k8sErrors.IsNotFound(err) {
 			service, err = c.kubeClient.CoreV1().Services(cav.Namespace).Create(context.TODO(), newService(ca, cav, workloadServicePortInfo), metav1.CreateOptions{})
@@ -614,7 +614,7 @@ func (c *Controller) updateNetworkPolicies(ca *v1alpha1.CAPApplication, cav *v1a
 
 // check and create a new NetworkPolicy for the given workload/CAV resource. It also sets the appropriate OwnerReferences.
 func (c *Controller) createNetworkPolicy(name string, spec networkingv1.NetworkPolicySpec, cav *v1alpha1.CAPApplicationVersion) error {
-	networkPolicy, err := c.kubeClient.NetworkingV1().NetworkPolicies(cav.Namespace).Get(context.TODO(), name, metav1.GetOptions{})
+	networkPolicy, err := c.kubeInformerFactory.Networking().V1().NetworkPolicies().Lister().NetworkPolicies(cav.Namespace).Get(name)
 	// If the resource doesn't exist, we'll create it
 	if k8sErrors.IsNotFound(err) {
 		util.LogInfo("Creating network policy", string(Processing), cav, nil, "networkPolicyName", name, "version", cav.Spec.Version)
@@ -685,7 +685,7 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 	var vcapSecretName string
 	deploymentName := getWorkloadName(cav.Name, workload.Name)
 	// Get the workloadDeployment with the name specified in CustomDeployment.spec
-	workloadDeployment, err := c.kubeClient.AppsV1().Deployments(cav.Namespace).Get(context.TODO(), deploymentName, metav1.GetOptions{})
+	workloadDeployment, err := c.kubeInformerFactory.Apps().V1().Deployments().Lister().Deployments(cav.Namespace).Get(deploymentName)
 	// If the resource doesn't exist, we'll create it
 	if k8sErrors.IsNotFound(err) {
 		// Get ServiceInfos for consumed BTP services
@@ -719,7 +719,7 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 func (c *Controller) createOrUpdatePodDisruptionBudget(workload *v1alpha1.WorkloadDetails, cav *v1alpha1.CAPApplicationVersion, ca *v1alpha1.CAPApplication) error {
 	pdbName := getWorkloadName(cav.Name, workload.Name)
 	// Get the PDB which should exist for this deployment
-	pdb, err := c.kubeClient.PolicyV1().PodDisruptionBudgets(cav.Namespace).Get(context.TODO(), pdbName, metav1.GetOptions{})
+	pdb, err := c.kubeInformerFactory.Policy().V1().PodDisruptionBudgets().Lister().PodDisruptionBudgets(cav.Namespace).Get(pdbName)
 	// If the resource doesn't exist, we'll create it
 	if k8sErrors.IsNotFound(err) {
 		pdb, err = c.kubeClient.PolicyV1().PodDisruptionBudgets(cav.Namespace).Create(context.TODO(), newPodDisruptionBudget(ca, cav, workload), metav1.CreateOptions{})

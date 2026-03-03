@@ -91,7 +91,7 @@ func (c *Controller) reconcileTenantDestinationRule(ctx context.Context, cat *v1
 		create, update bool
 		dr             *istionwv1.DestinationRule
 	)
-	dr, err = c.istioClient.NetworkingV1().DestinationRules(cat.Namespace).Get(ctx, drName, metav1.GetOptions{})
+	dr, err = c.istioInformerFactory.Networking().V1().DestinationRules().Lister().DestinationRules(cat.Namespace).Get(drName)
 	if errors.IsNotFound(err) {
 		dr = &istionwv1.DestinationRule{
 			ObjectMeta: metav1.ObjectMeta{
@@ -259,7 +259,7 @@ func (c *Controller) reconcileTenantVirtualService(ctx context.Context, cat *v1a
 		vs             *istionwv1.VirtualService
 	)
 
-	vs, err = c.istioClient.NetworkingV1().VirtualServices(cat.Namespace).Get(ctx, cat.Name, metav1.GetOptions{})
+	vs, err = c.istioInformerFactory.Networking().V1().VirtualServices().Lister().VirtualServices(cat.Namespace).Get(cat.Name)
 	if errors.IsNotFound(err) {
 		vs = &istionwv1.VirtualService{
 			ObjectMeta: metav1.ObjectMeta{

@@ -362,7 +362,7 @@ func (c *Controller) getCAPResourcesFromCAPTenantOperation(ctx context.Context, 
 	}
 
 	// get specified CAPApplicationVersion
-	cav, err := c.crdClient.SmeV1alpha1().CAPApplicationVersions(ca.Namespace).Get(ctx, ctop.Spec.CAPApplicationVersionInstance, metav1.GetOptions{})
+	cav, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(ctop.Spec.CAPApplicationVersionInstance)
 	if err != nil {
 		return nil, err
 	}
