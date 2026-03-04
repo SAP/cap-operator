@@ -11,7 +11,7 @@ In a continuous delivery environment where newer applications versions may be de
 
 ## Integration with Prometheus
 
-[Prometheus](https://prometheus.io/) is the industry standard for monitoring application metrics and provides a wide variety of tools for managing and reporting metrics data. The CAP Operator (controller) can be connected to a [Prometheus](https://prometheus.io/) server by setting the `PROMETHEUS_ADDRESS` environment variable on the controller (see [Configuration](../configuration/_index.md)). The controller is then able to query application related metrics based on the workload specification of `CAPApplicationVersions`. If no Prometheus address is supplied, the version monitoring function of the controller is not started.
+[Prometheus](https://prometheus.io/) is the industry standard for monitoring application metrics and provides a wide variety of tools for managing and reporting metrics data. The CAP Operator (controller) can be connected to a [Prometheus](https://prometheus.io/) server by setting the `PROMETHEUS_ADDRESS` environment variable on the controller (see [Configuration](../../configuration)). The controller is then able to query application related metrics based on the workload specification of `CAPApplicationVersions`. If no Prometheus address is supplied, the version monitoring function of the controller is not started.
 
 ## Configure `CAPApplication`
 

@@ -97,7 +97,7 @@ For each _workload of type deployment_ in a `CAPApplicationVersion`, it is possi
 1. Deletion rules: A criteria based on metrics which when satisfied signifies that the workload can be removed
 2. Scrape configuration: Configuration which defines how metrics are scraped from the workload service.
 
-Details of how to configure workload monitoring can be found [here](../version-monitoring.md#configure-capapplicationversion).
+Details of how to configure workload monitoring can be found [here](../../version-monitoring#configure-capapplicationversion).
 
 ### Workloads with `jobDefinition`
 
@@ -192,7 +192,7 @@ spec:
 
 ### ServiceExposures Configuration
 
-See [Service Exposure](../service-exposure/#configuration) page for details.
+See [Service Exposure](../../service-exposure/#configuration) page for details.
 
 _Other attributes can be configured as documented._
 
@@ -373,7 +373,7 @@ spec:
 ```
 > NOTE:
 > The CAP Operator [workloads](../../../reference/#sme.sap.com/v1alpha1.WorkloadDetails) supports several configurations (present in the [kubernetes API](https://kubernetes.io/docs/reference/using-api/)), which can be configured by looking into our API reference:
-> - [Container API reference](../../../reference/#sme.sap.com/v1alpha1.ContainerDetails) for generic container-specific configuration
+> - [Common API reference](../../../reference/#sme.sap.com/v1alpha1.CommonDetails) for generic container-specific configuration
 > - [Deployment API reference](../../../reference/#sme.sap.com/v1alpha1.DeploymentDetails) for deployment-specific configuration
 > - [Job API reference](../../../reference/#sme.sap.com/v1alpha1.JobDetails) for job-specific configuration
 >

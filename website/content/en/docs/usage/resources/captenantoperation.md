@@ -7,9 +7,9 @@ description: >
   How to configure the `CAPTenantOperation` resource
 ---
 
-{{< alert color="warning" title="Warning" >}}
+{{% alert color="warning" title="Warning" %}}
 The `CAPTenantOperation` resource is managed by CAP Operator and must not be created or modified manually. The creation of `CAPTenantOperation` is initiated by the `CAPTenant` for executing provisioning, deprovisioning, or upgrade.
-{{< /alert >}}
+{{% /alert %}}
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
