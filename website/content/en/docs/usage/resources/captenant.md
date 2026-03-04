@@ -7,9 +7,9 @@ description: >
   How to configure the `CAPTenant` resource
 ---
 
-{{< alert color="warning" title="Warning" >}}
+{{% alert color="warning" title="Warning" %}}
 The `CAPTenant` resource is completely managed by CAP Operator and must not be created or modified manually. For details of how `CAPTenant` is created, see [tenant subscription](../../tenant-provisioning).
-{{< /alert >}}
+{{% /alert %}}
 
 The `CAPTenant` resource indicates the existence of a tenant in the related application (or one that is current being provisioned). The resource starts with a `Provisioning` state and moves to `Ready` when successfully provisioned. Managing tenants as Kubernetes resources allows you not only to control the lifecycle of the entity, but also allows you to control other requirements that must be fulfilled for the application to serve tenant-specific requests (for example, creating of networking resources).
 

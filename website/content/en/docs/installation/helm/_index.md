@@ -36,7 +36,7 @@ Create a namespace and install the Helm chart in that namespace by specifying th
 
 - ### Enable Service Monitors for metrics emitted by controller and subscription server
 
-  To enable Monitoring via [metrics](docs/usage/operator-metrics) emitted by CAP Operator components, the following value can be specified:
+  To enable Monitoring via [metrics](../../usage/operator-metrics) emitted by CAP Operator components, the following value can be specified:
   ```yaml
   monitoring:
     enabled: true # <-- This enables creation of service monitors, for metrics emitted by the cap operator components
@@ -48,7 +48,7 @@ Create a namespace and install the Helm chart in that namespace by specifying th
   ```
 - ### Setup Prometheus Integration for _Version Monitoring_
 
-  To use the [Version Monitoring](docs/usage/version-monitoring/) feature of the CAP Operator, a [Prometheus](https://prometheus.io/) server URL can be provided to the CAP Operator. When installing the CAP Operator using the Helm chart, the following values can be specified in the values:
+  To use the [Version Monitoring](../../usage/version-monitoring/) feature of the CAP Operator, a [Prometheus](https://prometheus.io/) server URL can be provided to the CAP Operator. When installing the CAP Operator using the Helm chart, the following values can be specified in the values:
   ```yaml
   controller:
     versionMonitoring:
@@ -56,7 +56,7 @@ Create a namespace and install the Helm chart in that namespace by specifying th
       promClientAcquireRetryDelay: "2h"
       metricsEvaluationInterval: "30m" # <-- duration after which version metrics are evaluated
   ```
-  When the controller is started, the operator will try to connect to the Prometheus server and fetch [runtime information](https://prometheus.io/docs/prometheus/latest/querying/api/#runtime-information) to verify the connection. If the connection is not successful, it will be retried after the duration specified as `controller.versionMonitoring.promClientAcquireRetryDelay`. Check default values for these attributes [here](helm-values.md).
+  When the controller is started, the operator will try to connect to the Prometheus server and fetch [runtime information](https://prometheus.io/docs/prometheus/latest/querying/api/#runtime-information) to verify the connection. If the connection is not successful, it will be retried after the duration specified as `controller.versionMonitoring.promClientAcquireRetryDelay`. Check default values for these attributes [here](./helm-values).
 
   {{% alert title="Note" color="info" %}}
   - When connecting the controller to a Prometheus server running inside the cluster, please ensure that `NetworkPolicies` required for connecting to the service in the namespace where Prometheus is running are also created.

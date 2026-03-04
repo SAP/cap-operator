@@ -96,12 +96,12 @@ Upgrading to CAP Operator version [v0.15.0](https://github.com/SAP/cap-operator/
 
 A mutation webhook is also in place to ensure consistency by transforming `CAPApplication` resources created or updated with the deprecated `domains` section into `Domain` or `ClusterDomain` resources, populating `domainRefs`.
 
-{{< alert color="warning" title="Warning" >}}
+{{% alert color="warning" title="Warning" %}}
 The webhook ensures consistency by rejecting updates to deprecated `domains` sections, promoting the transition to `domainRefs`.
 
 **Specifically:**
 If you reintroduce and modify the `domains` section in your K8s deployment manifest, the webhook rejects the change. It provides an error message that instructs you to use the new `domainRefs` field instead. This approach maintains consistency and encourages the adoption of updated domain management practices.
-{{< /alert >}}
+{{% /alert %}}
 
 
 ## Post-Migration Steps

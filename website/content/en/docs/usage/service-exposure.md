@@ -17,7 +17,7 @@ This guide explains how to deploy applications with tenant-agnostic service work
 
 The `serviceExposures` section in the `CAPApplicationVersion` configuration is crucial for exposing workloads. Each entry in the `serviceExposures` array specifies a subdomain under which workloads are accessible, allowing multiple routes per subdomain.
 
-For some more details on configuring routes, see the [Route API reference](../reference/#sme.sap.com/v1alpha1.Route).
+For some more details on configuring routes, see the [Route API reference](../../reference/#sme.sap.com/v1alpha1.Route).
 
 ### Example Configuration
 
@@ -223,4 +223,4 @@ spec:
 - No tenant-related resources are created for services-only applications.
 - A successful upgrade of the `CAPApplicationVersion` causes any service-related `VirtualService` resources to route HTTP traffic to the workloads associated with that `CAPApplicationVersion`.
 - From the start, choose the appropriate application mode: services-only or multi-tenant. Switching modes later is not possible.
-- Follow the recommended [security measures](./security) to safeguard any exposed workloads.
+- Follow the recommended [security measures](../security) to safeguard any exposed workloads.
