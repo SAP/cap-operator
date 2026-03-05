@@ -83,6 +83,19 @@ controller:
   dnsTarget: ""
   # -- Optionally enable detailed opertational metrics for the controller by setting this to true
   detailedOperationalMetrics: false
+  maxConcurrentReconciles:
+    # -- The maximum number of concurrent reconciles (e.g. "1") for the cap application
+    capApplication: ""
+    # -- The maximum number of concurrent reconciles (e.g. "3") for the cap application version
+    capApplicationVersion: ""
+    # -- The maximum number of concurrent reconciles (e.g. "10") for the cap tenant
+    capTenant: ""
+    # -- The maximum number of concurrent reconciles (e.g. "10") for the cap tenant operation
+    capTenantOperation: ""
+    # -- The maximum number of concurrent reconciles (e.g. "1") for the domain
+    domain: ""
+    # -- The maximum number of concurrent reconciles (e.g. "1") for the cluster domain
+    clusterDomain: ""
   versionMonitoring:
     # -- The URL of the Prometheus server from which metrics related to managed application versions can be queried
     prometheusAddress: ""
