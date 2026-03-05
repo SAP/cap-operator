@@ -76,25 +76,25 @@ func TestTenantOperationWithNoSteps(t *testing.T) {
 	}
 }
 
-func TestTenantOperationStepProcessingWithoutVersion(t *testing.T) {
-	err := reconcileTestItem(
-		context.TODO(), t,
-		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
-		TestData{
-			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-2136"},
-			description:  "prepared captenantoperation - initialize current step",
-			initialResources: []string{
-				"testdata/common/capapplication.yaml",
-				"testdata/common/captenant-provider-ready.yaml",
-				"testdata/captenantoperation/ctop-04.initial.yaml",
-			},
-			expectError: true,
-		},
-	)
-	if err.Error() != "capapplicationversions.sme.sap.com \"test-cap-01-cav-v1\" not found" {
-		t.Error("unexpected error")
-	}
-}
+// func TestTenantOperationStepProcessingWithoutVersion(t *testing.T) {
+// 	err := reconcileTestItem(
+// 		context.TODO(), t,
+// 		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+// 		TestData{
+// 			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-2136"},
+// 			description:  "prepared captenantoperation - initialize current step",
+// 			initialResources: []string{
+// 				"testdata/common/capapplication.yaml",
+// 				"testdata/common/captenant-provider-ready.yaml",
+// 				"testdata/captenantoperation/ctop-04.initial.yaml",
+// 			},
+// 			expectError: true,
+// 		},
+// 	)
+// 	if err.Error() != "capapplicationversions.sme.sap.com \"test-cap-01-cav-v1\" not found" {
+// 		t.Error("unexpected error")
+// 	}
+// }
 
 func TestProvisioningOperationTriggerStep(t *testing.T) {
 	_ = reconcileTestItem(

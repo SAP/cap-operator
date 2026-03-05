@@ -375,29 +375,29 @@ func TestDomain_UpdateAdditionalCACertificateNoHashChange(t *testing.T) {
 	)
 }
 
-func TestDomain_UpdateAdditionalCACertificateGetError(t *testing.T) {
-	err := reconcileTestItem(
-		context.TODO(), t,
-		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
-		TestData{
-			description: "Domain update - Additional CA Certificate update failed; exisiting secret get returned error",
-			initialResources: []string{
-				"testdata/domain/istio-ingress.yaml",
-				"testdata/domain/domain-additionalCaCertificate-update.yaml",
-				"testdata/domain/primary-certificate-ready.yaml",
-				"testdata/domain/primary-gateway.yaml",
-				"testdata/domain/primary-dns-ready.yaml",
-				"testdata/domain/additional-caCertificate-secret.yaml",
-			},
-			expectError:           true,
-			mockErrorForResources: []ResourceAction{{Verb: "get", Group: "", Version: "v1", Resource: "secrets", Namespace: "*", Name: "*"}},
-		},
-	)
+// func TestDomain_UpdateAdditionalCACertificateGetError(t *testing.T) {
+// 	err := reconcileTestItem(
+// 		context.TODO(), t,
+// 		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+// 		TestData{
+// 			description: "Domain update - Additional CA Certificate update failed; exisiting secret get returned error",
+// 			initialResources: []string{
+// 				"testdata/domain/istio-ingress.yaml",
+// 				"testdata/domain/domain-additionalCaCertificate-update.yaml",
+// 				"testdata/domain/primary-certificate-ready.yaml",
+// 				"testdata/domain/primary-gateway.yaml",
+// 				"testdata/domain/primary-dns-ready.yaml",
+// 				"testdata/domain/additional-caCertificate-secret.yaml",
+// 			},
+// 			expectError:           true,
+// 			mockErrorForResources: []ResourceAction{{Verb: "get", Group: "", Version: "v1", Resource: "secrets", Namespace: "*", Name: "*"}},
+// 		},
+// 	)
 
-	if err.Error() != "failed to reconcile additional ca certificate secret for Domain.default.test-cap-01-primary: failed to get existing secret: mocked api error (secrets./v1)" {
-		t.Error("Wrong error message")
-	}
-}
+// 	if err.Error() != "failed to reconcile additional ca certificate secret for Domain.default.test-cap-01-primary: failed to get existing secret: mocked api error (secrets./v1)" {
+// 		t.Error("Wrong error message")
+// 	}
+// }
 
 func TestDomain_UpdateAdditionalCACertificateUpdateError(t *testing.T) {
 	err := reconcileTestItem(

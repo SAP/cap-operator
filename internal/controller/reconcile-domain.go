@@ -467,7 +467,7 @@ func handleAdditionalCACertificate[T v1alpha1.DomainEntity](ctx context.Context,
 	secretName := fmt.Sprintf("%s-cacert", credentialName)
 
 	// Try to get the existing secret
-	existingSecret, err := c.kubeClient.CoreV1().Secrets(credentialNamespace).Get(ctx, secretName, metav1.GetOptions{})
+	existingSecret, err := c.kubeInformerFactory.Core().V1().Secrets().Lister().Secrets(credentialNamespace).Get(secretName)
 	secretExists := err == nil
 	if err != nil && !errors.IsNotFound(err) {
 		return fmt.Errorf("failed to get existing secret: %w", err)

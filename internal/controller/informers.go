@@ -24,6 +24,10 @@ const (
 	ResourceClusterDomain
 	ResourceSecret
 	ResourceJob
+	ResourceDeployment
+	ResourcePodDisruptionBudget
+	ResourceService
+	ResourceNetworkPolicy
 	ResourceGateway
 	ResourceCertificate
 	ResourceDNSEntry
@@ -58,6 +62,10 @@ var QueueMapping map[int]map[int]string = map[int]map[int]string{
 	ResourceClusterDomain:         {ResourceClusterDomain: v1alpha1.ClusterDomainKind},
 	ResourceSecret:                {ResourceCAPApplication: v1alpha1.CAPApplicationKind, ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
 	ResourceJob:                   {ResourceCAPTenantOperation: v1alpha1.CAPTenantOperationKind, ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
+	ResourceDeployment:            {ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
+	ResourcePodDisruptionBudget:   {ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
+	ResourceService:               {ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
+	ResourceNetworkPolicy:         {ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
 	ResourceGateway:               {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
 	ResourceCertificate:           {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
 	ResourceDNSEntry:              {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind, ResourceCAPTenant: v1alpha1.CAPTenantKind},
@@ -79,6 +87,10 @@ func (c *Controller) initializeInformers() {
 	c.registerClusterDomainListeners()
 	c.registerSecretListeners()
 	c.registerJobListeners()
+	c.registerDeploymentListeners()
+	c.registerPodDisruptionBudgetListeners()
+	c.registerServiceListeners()
+	c.registerNetworkPolicyListeners()
 	c.registerGatewayListeners()
 	c.registerVirtualServiceListeners()
 	c.registerDestinationRuleListeners()
@@ -139,6 +151,26 @@ func (c *Controller) registerClusterDomainListeners() {
 func (c *Controller) registerDomainListeners() {
 	c.crdInformerFactory.Sme().V1alpha1().Domains().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceDomain))
+}
+
+func (c *Controller) registerDeploymentListeners() {
+	c.kubeInformerFactory.Apps().V1().Deployments().Informer().
+		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceDeployment))
+}
+
+func (c *Controller) registerPodDisruptionBudgetListeners() {
+	c.kubeInformerFactory.Policy().V1().PodDisruptionBudgets().Informer().
+		AddEventHandler(c.getEventHandlerFuncsForResource(ResourcePodDisruptionBudget))
+}
+
+func (c *Controller) registerServiceListeners() {
+	c.kubeInformerFactory.Core().V1().Services().Informer().
+		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceService))
+}
+
+func (c *Controller) registerNetworkPolicyListeners() {
+	c.kubeInformerFactory.Networking().V1().NetworkPolicies().Informer().
+		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceNetworkPolicy))
 }
 
 func (c *Controller) registerJobListeners() {
