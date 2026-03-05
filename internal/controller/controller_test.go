@@ -108,9 +108,9 @@ func TestController_processQueue(t *testing.T) {
 			// Manual API checks
 			var expectedRes error
 			if tt.earlyShutDown {
-				expectedRes = testC.processQueue(ctx, tt.resource)
+				expectedRes = testC.processQueue(ctx, tt.resource, 0)
 			} else {
-				expectedRes = testC.processQueue(context.TODO(), tt.resource)
+				expectedRes = testC.processQueue(context.TODO(), tt.resource, 0)
 			}
 
 			if !tt.expectError && expectedRes != nil {
@@ -263,12 +263,12 @@ func TestController_processQueueItem(t *testing.T) {
 			if tt.earlyShutDown {
 				q.ShutDown()
 				cancel()
-				expectedRes = testC.processQueueItem(ctx, tt.resource)
+				expectedRes = testC.processQueueItem(ctx, tt.resource, 0)
 			} else {
 				if tt.resource < 4 || tt.resource == 9 || tt.resource == 99 {
 					q.Add(item)
 				}
-				expectedRes = testC.processQueueItem(context.TODO(), tt.resource)
+				expectedRes = testC.processQueueItem(context.TODO(), tt.resource, 0)
 			}
 
 			if !tt.expectError && expectedRes != nil {
