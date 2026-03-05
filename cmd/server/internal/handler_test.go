@@ -399,7 +399,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:                 "Provisioning Request valid (invalid clusterdomains)",
 			method:               http.MethodPut,
-			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `","subscriptionParams":""}`,
 			createCROs:           true,
 			invalidClusterDomain: true,
 			expectedStatusCode:   http.StatusAccepted,
@@ -476,6 +476,40 @@ func Test_provisioning(t *testing.T) {
 			expectedStatusCode: http.StatusAccepted,
 			expectedResponse: Result{
 				Message: ResourceFound,
+			},
+		},
+		{
+			name:               "Provisioning with subscriptionDomain in payload matching Domain",
+			method:             http.MethodPut,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `","subscriptionParams":{"subscriptionDomain":"auth.service.local"}}`,
+			createCROs:         true,
+			existingDomain:     true,
+			expectedStatusCode: http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceCreated,
+			},
+		},
+		{
+			name:               "Provisioning with subscriptionDomain in payload not matching any domain",
+			method:             http.MethodPut,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `","subscriptionParams":{"subscriptionDomain":"unknown.domain.com"}}`,
+			createCROs:         true,
+			existingDomain:     true,
+			expectedStatusCode: http.StatusNotAcceptable,
+			expectedResponse: Result{
+				Message: "Error constructing subscription URL: domain unknown.domain.com not found in Domains or ClusterDomains",
+			},
+		},
+		{
+			name:           "Provisioning with empty subscriptionParams (no subscriptionDomain)",
+			method:         http.MethodPut,
+			body:           `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `","subscriptionParams":{}}`,
+			createCROs:     true,
+			existingDomain: true,
+
+			expectedStatusCode: http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceCreated,
 			},
 		},
 	}
@@ -714,6 +748,24 @@ func Test_sms_provisioning(t *testing.T) {
 			expectedResponse: Result{
 				Message: ResourceUpdated,
 			},
+		},
+		{
+			name:               "SMS provisioning with subscriptionDomain in payload matching Domain",
+			method:             http.MethodPut,
+			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `","subscriptionParams":{"subscriptionDomain":"auth.service.local"}},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			createCROs:         true,
+			existingDomain:     true,
+			expectedStatusCode: http.StatusAccepted,
+			expectedResponse:   Result{Message: ResourceCreated},
+		},
+		{
+			name:               "SMS provisioning with subscriptionDomain in payload not matching any domain",
+			method:             http.MethodPut,
+			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `","subscriptionParams":{"subscriptionDomain":"unknown.domain.com"}},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			createCROs:         true,
+			existingDomain:     true,
+			expectedStatusCode: http.StatusNotAcceptable,
+			expectedResponse:   Result{Message: "Error constructing subscription URL: domain unknown.domain.com not found in Domains or ClusterDomains"},
 		},
 	}
 
