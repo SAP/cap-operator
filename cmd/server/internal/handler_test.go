@@ -399,7 +399,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:                 "Provisioning Request valid (invalid clusterdomains)",
 			method:               http.MethodPut,
-			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `","subscriptionParams":""}`,
 			createCROs:           true,
 			invalidClusterDomain: true,
 			expectedStatusCode:   http.StatusAccepted,
@@ -476,6 +476,40 @@ func Test_provisioning(t *testing.T) {
 			expectedStatusCode: http.StatusAccepted,
 			expectedResponse: Result{
 				Message: ResourceFound,
+			},
+		},
+		{
+			name:               "Provisioning with subscriptionDomain in payload matching Domain",
+			method:             http.MethodPut,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `","subscriptionParams":{"subscriptionDomain":"auth.service.local"}}`,
+			createCROs:         true,
+			existingDomain:     true,
+			expectedStatusCode: http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceCreated,
+			},
+		},
+		{
+			name:               "Provisioning with subscriptionDomain in payload not matching any domain",
+			method:             http.MethodPut,
+			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `","subscriptionParams":{"subscriptionDomain":"unknown.domain.com"}}`,
+			createCROs:         true,
+			existingDomain:     true,
+			expectedStatusCode: http.StatusNotAcceptable,
+			expectedResponse: Result{
+				Message: "Error constructing subscription URL: domain unknown.domain.com not found in Domains or ClusterDomains",
+			},
+		},
+		{
+			name:           "Provisioning with empty subscriptionParams (no subscriptionDomain)",
+			method:         http.MethodPut,
+			body:           `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `","subscriptionParams":{}}`,
+			createCROs:     true,
+			existingDomain: true,
+
+			expectedStatusCode: http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceCreated,
 			},
 		},
 	}
@@ -714,6 +748,24 @@ func Test_sms_provisioning(t *testing.T) {
 			expectedResponse: Result{
 				Message: ResourceUpdated,
 			},
+		},
+		{
+			name:               "SMS provisioning with subscriptionDomain in payload matching Domain",
+			method:             http.MethodPut,
+			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `","subscriptionParams":{"subscriptionDomain":"auth.service.local"}},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			createCROs:         true,
+			existingDomain:     true,
+			expectedStatusCode: http.StatusAccepted,
+			expectedResponse:   Result{Message: ResourceCreated},
+		},
+		{
+			name:               "SMS provisioning with subscriptionDomain in payload not matching any domain",
+			method:             http.MethodPut,
+			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `","subscriptionParams":{"subscriptionDomain":"unknown.domain.com"}},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			createCROs:         true,
+			existingDomain:     true,
+			expectedStatusCode: http.StatusNotAcceptable,
+			expectedResponse:   Result{Message: "Error constructing subscription URL: domain unknown.domain.com not found in Domains or ClusterDomains"},
 		},
 	}
 
@@ -1326,6 +1378,169 @@ func TestMultiXSUAA(t *testing.T) {
 			t.Error("incorrect uaa via annotations returned")
 		}
 	})
+}
+
+func TestAppURL(t *testing.T) {
+	tests := []struct {
+		name                      string
+		payloadSubscriptionDomain string
+		tenantSubdomain           string
+		caAnnotations             map[string]string
+		domainRefs                []v1alpha1.DomainRef
+		createDomain              bool
+		createClusterDomain       bool
+		expectedURL               string
+		expectError               bool
+	}{
+		{
+			name:                      "subscription domain from payload with matching Domain",
+			payloadSubscriptionDomain: "auth.service.local",
+			tenantSubdomain:           subDomain,
+			createDomain:              true,
+			expectedURL:               "https://" + subDomain + ".auth.service.local",
+		},
+		{
+			name:                      "subscription domain from payload with matching ClusterDomain",
+			payloadSubscriptionDomain: "external.service.sap",
+			tenantSubdomain:           subDomain,
+			createClusterDomain:       true,
+			expectedURL:               "https://" + subDomain + ".external.service.sap",
+		},
+		{
+			name:                      "subscription domain from payload not found in any domain resource",
+			payloadSubscriptionDomain: "unknown.domain.com",
+			tenantSubdomain:           subDomain,
+			expectError:               true,
+		},
+		{
+			name:                      "fallback to annotation subscription domain with matching Domain",
+			payloadSubscriptionDomain: "",
+			tenantSubdomain:           subDomain,
+			caAnnotations:             map[string]string{AnnotationSubscriptionDomain: "auth.service.local"},
+			createDomain:              true,
+			expectedURL:               "https://" + subDomain + ".auth.service.local",
+		},
+		{
+			name:                      "fallback to annotation subscription domain not found in any domain",
+			payloadSubscriptionDomain: "",
+			tenantSubdomain:           subDomain,
+			caAnnotations:             map[string]string{AnnotationSubscriptionDomain: "unknown.domain.com"},
+			expectError:               true,
+		},
+		{
+			name:                      "fallback to primary domain calculation (Domain ref)",
+			payloadSubscriptionDomain: "",
+			tenantSubdomain:           subDomain,
+			domainRefs:                []v1alpha1.DomainRef{{Kind: "Domain", Name: "primary-domain"}},
+			createDomain:              true,
+			expectedURL:               "https://" + subDomain + ".auth.service.local",
+		},
+		{
+			name:                      "fallback to primary domain calculation (ClusterDomain ref)",
+			payloadSubscriptionDomain: "",
+			tenantSubdomain:           subDomain,
+			domainRefs:                []v1alpha1.DomainRef{{Kind: "ClusterDomain", Name: "external-domain"}},
+			createClusterDomain:       true,
+			expectedURL:               "https://" + subDomain + ".external.service.sap",
+		},
+		{
+			name:                      "fallback to primary domain with no domain refs",
+			payloadSubscriptionDomain: "",
+			tenantSubdomain:           subDomain,
+			expectedURL:               "https://" + subDomain + ".",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ca := createCA()
+			if tt.caAnnotations != nil {
+				ca.Annotations = tt.caAnnotations
+			}
+			if tt.domainRefs != nil {
+				ca.Spec.DomainRefs = tt.domainRefs
+			}
+
+			runtimeObjs := []runtime.Object{ca}
+			if tt.createDomain {
+				runtimeObjs = append(runtimeObjs, createDomain())
+			}
+			if tt.createClusterDomain {
+				runtimeObjs = append(runtimeObjs, createClusterDomain())
+			}
+
+			subHandler := setup(nil, createSecrets(), runtimeObjs...)
+			appURL, err := subHandler.getAppURL(tt.payloadSubscriptionDomain, tt.tenantSubdomain, ca)
+
+			if tt.expectError {
+				if err == nil {
+					t.Fatalf("expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err.Error())
+			}
+			if appURL != tt.expectedURL {
+				t.Errorf("getAppURL() = %q, want %q", appURL, tt.expectedURL)
+			}
+		})
+	}
+}
+
+func TestValidateDomain(t *testing.T) {
+	tests := []struct {
+		name                string
+		domain              string
+		createDomain        bool
+		createClusterDomain bool
+		expectError         bool
+	}{
+		{
+			name:         "domain found in namespace Domains",
+			domain:       "auth.service.local",
+			createDomain: true,
+		},
+		{
+			name:                "domain found in ClusterDomains",
+			domain:              "external.service.sap",
+			createClusterDomain: true,
+		},
+		{
+			name:        "domain not found anywhere",
+			domain:      "nonexistent.domain.com",
+			expectError: true,
+		},
+		{
+			name:                "domain not matching but resources exist",
+			domain:              "other.domain.com",
+			createDomain:        true,
+			createClusterDomain: true,
+			expectError:         true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			runtimeObjs := []runtime.Object{}
+			if tt.createDomain {
+				runtimeObjs = append(runtimeObjs, createDomain())
+			}
+			if tt.createClusterDomain {
+				runtimeObjs = append(runtimeObjs, createClusterDomain())
+			}
+
+			subHandler := setup(nil, createSecrets(), runtimeObjs...)
+			err := subHandler.validateDomain(tt.domain, v1.NamespaceDefault)
+
+			if tt.expectError && err == nil {
+				t.Error("expected error, got nil")
+			}
+			if !tt.expectError && err != nil {
+				t.Errorf("unexpected error: %s", err.Error())
+			}
+		})
+	}
 }
 
 func execTestsWithBLI(t *testing.T, name string, backlogItems []string, test func(t *testing.T)) {
