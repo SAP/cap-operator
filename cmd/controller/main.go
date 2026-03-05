@@ -7,8 +7,10 @@ package main
 
 import (
 	"context"
+	"maps"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -31,7 +33,8 @@ import (
 )
 
 const (
-	LeaseLockName = "capoperator-lease-lock"
+	LeaseLockName                    = "capoperator-lease-lock"
+	MaxConcurrentReconcilesEnvPrefix = "MAX_CONCURRENT_RECONCILES_"
 )
 
 func main() {
@@ -81,6 +84,9 @@ func main() {
 
 	// Initialize/start metrics server
 	util.InitMetricsServer()
+
+	// Get concurrency config for each resource kind from environment variables or use defaults
+	concurrencyConfig := getDefaultConcurrencyConfig()
 
 	// context for the reconciliation controller
 	ctx, cancel := context.WithCancel(context.Background())
@@ -133,6 +139,8 @@ func main() {
 				klog.InfoS("check & update of subscriptionGUID label done")
 
 				c := controller.NewController(coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient, promClient)
+				// Update the controller's concurrency config before starting the controller
+				maps.Copy(controller.DefaultConcurrentReconciles, concurrencyConfig)
 				go c.Start(ctx)
 			},
 			OnStoppedLeading: func() {
@@ -147,4 +155,29 @@ func main() {
 			},
 		},
 	})
+}
+
+func getDefaultConcurrencyConfig() map[int]int {
+	// inline function to get concurrency config for each resource kind from environment variables or use defaults
+	getConcurrencyConfigForResource := func(resourceEnvSuffix string, defaultVal int) int {
+		reconcileEnv := MaxConcurrentReconcilesEnvPrefix + resourceEnvSuffix
+		if val := os.Getenv(reconcileEnv); val != "" {
+			if intVal, err := strconv.Atoi(val); err == nil {
+				return intVal
+			}
+		}
+		return defaultVal
+	}
+
+	// Configure default concurrency for each resource kind, can be overridden by environment variables
+	concurrencyConfig := make(map[int]int)
+
+	for resourceKey, resourceEnvSuffix := range controller.ResourceEnvSuffixMap {
+		defaultReconcileForResource, ok := controller.DefaultConcurrentReconciles[resourceKey]
+		if !ok {
+			defaultReconcileForResource = controller.DefaultReconcile
+		}
+		concurrencyConfig[resourceKey] = getConcurrencyConfigForResource(resourceEnvSuffix, defaultReconcileForResource)
+	}
+	return concurrencyConfig
 }

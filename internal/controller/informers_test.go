@@ -95,7 +95,8 @@ func TestController_initializeInformers(t *testing.T) {
 				ResourceCAPApplicationVersion: &dummyType{},
 				ResourceCAPTenant:             &dummyType{},
 				ResourceCAPTenantOperation:    &dummyType{},
-				// ResourceOperatorDomains:       &dummyType{},
+				ResourceDomain:                &dummyType{},
+				ResourceClusterDomain:         &dummyType{},
 			}
 
 			testC := &Controller{
@@ -125,9 +126,9 @@ func TestController_initializeInformers(t *testing.T) {
 			case ResourceCertificate:
 				// set label on a pod to simulate certificate in a different namespace
 				cert := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: tt.itemName, Annotations: map[string]string{
-					AnnotationOwnerIdentifier: KindMap[ResourceCAPApplication] + "." + tt.itemNamespace + "." + tt.itemName,
+					AnnotationOwnerIdentifier: KindMap[ResourceDomain] + "." + tt.itemNamespace + "." + tt.itemName,
 				}, Labels: map[string]string{
-					LabelOwnerIdentifierHash: sha1Sum(KindMap[ResourceCAPApplication], tt.itemNamespace, tt.itemName),
+					LabelOwnerIdentifierHash: sha1Sum(KindMap[ResourceDomain], tt.itemNamespace, tt.itemName),
 				}}}
 				// Invalid label
 				if tt.invalidOwnerRef {

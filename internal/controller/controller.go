@@ -23,6 +23,7 @@ import (
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned"
 	v1alpha1scheme "github.com/sap/cap-operator/pkg/client/clientset/versioned/scheme"
 	crdInformers "github.com/sap/cap-operator/pkg/client/informers/externalversions"
+	"golang.org/x/time/rate"
 	istio "istio.io/client-go/pkg/clientset/versioned"
 	istioscheme "istio.io/client-go/pkg/clientset/versioned/scheme"
 	istioInformers "istio.io/client-go/pkg/informers/externalversions"
@@ -56,6 +57,24 @@ type Controller struct {
 	eventRecorder                events.EventRecorder
 }
 
+var (
+	// Application and Domain resources are less frequently updated, so assume a default concurrency of 1.
+	DefaultReconcile            = 1
+	DefaultConcurrentReconciles = map[int]int{
+		ResourceCAPApplicationVersion: 3,  // Moderate concurrency to handle multiple versions efficiently
+		ResourceCAPTenant:             10, // High concurrency to handle multiple tenants efficiently
+		ResourceCAPTenantOperation:    10, // High concurrency to handle multiple tenant operations efficiently
+	}
+	ResourceEnvSuffixMap = map[int]string{
+		ResourceCAPApplication:        "CAP_APPLICATION",
+		ResourceCAPApplicationVersion: "CAP_APPLICATION_VERSION",
+		ResourceCAPTenant:             "CAP_TENANT",
+		ResourceCAPTenantOperation:    "CAP_TENANT_OPERATION",
+		ResourceDomain:                "DOMAIN",
+		ResourceClusterDomain:         "CLUSTER_DOMAIN",
+	}
+)
+
 func NewController(client kubernetes.Interface, crdClient versioned.Interface, istioClient istio.Interface, gardenerCertificateClient gardenerCert.Interface, certManagerCertificateClient certManager.Interface, gardenerDNSClient gardenerDNS.Interface, promClient promop.Interface) *Controller {
 	// Register metrics provider on the workqueue
 	initializeMetrics()
@@ -63,10 +82,10 @@ func NewController(client kubernetes.Interface, crdClient versioned.Interface, i
 	queues := map[int]workqueue.TypedRateLimitingInterface[QueueItem]{
 		ResourceCAPApplication:        workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPApplication]}),
 		ResourceCAPApplicationVersion: workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPApplicationVersion]}),
-		ResourceCAPTenant:             workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPTenant]}),
-		ResourceCAPTenantOperation:    workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPTenantOperation]}),
-		ResourceClusterDomain:         workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceClusterDomain]}),
+		ResourceCAPTenant:             workqueue.NewTypedRateLimitingQueueWithConfig(customRateLimiter(), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPTenant]}),
+		ResourceCAPTenantOperation:    workqueue.NewTypedRateLimitingQueueWithConfig(customRateLimiter(), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPTenantOperation]}),
 		ResourceDomain:                workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceDomain]}),
+		ResourceClusterDomain:         workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceClusterDomain]}),
 	}
 
 	// Use 30mins as the default Resync interval for kube / proprietary  resources
@@ -89,8 +108,8 @@ func NewController(client kubernetes.Interface, crdClient versioned.Interface, i
 		// no activity needed on our side so far
 	}
 
-	// Use 60 as the default Resync interval for our custom resources (CAP CROs)
-	crdInformerFactory := crdInformers.NewSharedInformerFactory(crdClient, 60*time.Second)
+	// Use 5 mins as the default Resync interval for our custom resources (CAP CROs)
+	crdInformerFactory := crdInformers.NewSharedInformerFactory(crdClient, 5*time.Minute)
 
 	// initialize event recorder
 	scheme := runtime.NewScheme()
@@ -120,6 +139,21 @@ func NewController(client kubernetes.Interface, crdClient versioned.Interface, i
 		eventRecorder:                recorder,
 	}
 	return c
+}
+
+// Custom Rate limiter for Tenant and TenantOperation queues to allow faster retries and higher throughput.
+func customRateLimiter() workqueue.TypedRateLimiter[QueueItem] {
+	return workqueue.NewTypedMaxOfRateLimiter(
+		// Faster exponential backoff for transient errors
+		workqueue.NewTypedItemExponentialFailureRateLimiter[QueueItem](
+			10*time.Millisecond, // base delay (was 5ms)
+			300*time.Second,     // max delay (was ~1000s)
+		),
+		// Higher QPS for bulk processing
+		&workqueue.TypedBucketRateLimiter[QueueItem]{
+			Limiter: rate.NewLimiter(rate.Limit(50), 200), // 50 QPS, 200 burst (was 10/100)
+		},
+	)
 }
 
 func throwInformerStartError(resources map[reflect.Type]bool) {
@@ -179,15 +213,18 @@ func (c *Controller) Start(ctx context.Context) {
 
 	var wg sync.WaitGroup
 	for k := range c.queues {
-		wg.Add(1)
-		go func(key int) {
-			defer wg.Done()
-			err := c.processQueue(qCxt, key)
-			if err != nil {
-				klog.ErrorS(err, "worker queue ended with error", "key", key)
-			}
-			qCancel() // cancel context to inform other workers
-		}(k)
+		concurrency := getConcurrencyForResource(k)
+		for i := range concurrency {
+			wg.Add(1)
+			go func(key, workerId int) {
+				defer wg.Done()
+				err := c.processQueue(qCxt, key)
+				if err != nil {
+					klog.ErrorS(err, "worker queue ended with error", "key", key)
+				}
+				qCancel() // cancel context to inform other workers
+			}(k, i)
+		}
 	}
 
 	// start version cleanup routines
@@ -197,6 +234,14 @@ func (c *Controller) Start(ctx context.Context) {
 
 	// wait for workers
 	wg.Wait()
+}
+
+func getConcurrencyForResource(key int) int {
+	concurrency, ok := DefaultConcurrentReconciles[key]
+	if !ok {
+		concurrency = DefaultReconcile // default concurrency
+	}
+	return concurrency
 }
 
 func (c *Controller) processQueue(ctx context.Context, key int) error {
