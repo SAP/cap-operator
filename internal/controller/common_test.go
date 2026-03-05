@@ -272,7 +272,6 @@ func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAc
 	istioClient.PrependReactor("*", "*", getErrorReactorWithResources(items))
 
 	coreClient.PrependReactor("create", "*", generateNameCreateHandler)
-	coreClient.PrependReactor("create", "*", generateNameCreateHandler)
 	coreClient.PrependReactor("*", "*", getErrorReactorWithResources(items))
 
 	gardenerDNSClient.PrependReactor("create", "*", generateNameCreateHandler)
@@ -285,6 +284,7 @@ func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAc
 
 	c := NewController(coreClient, copClient, istioClient, gardenerCertClient, certManagerClient, gardenerDNSClient, promopClient)
 	c.eventRecorder = events.NewFakeRecorder(10)
+
 	return c
 }
 
@@ -509,7 +509,7 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 	}
 
 	switch obj.(type) {
-	case *corev1.Secret, *corev1.Pod, *corev1.Namespace, *corev1.Service:
+	case *corev1.Secret, *corev1.Pod, *corev1.Namespace, *corev1.Service, *appsv1.Deployment, *batchv1.Job, *networkingv1.NetworkPolicy, *discoveryv1.EndpointSlice:
 		fakeClient, ok := c.kubeClient.(*k8sfake.Clientset)
 		if !ok {
 			return fmt.Errorf("controller is not using a fake clientset")
@@ -524,21 +524,16 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 			err = c.kubeInformerFactory.Core().V1().Namespaces().Informer().GetIndexer().Add(obj)
 		case *corev1.Service:
 			err = c.kubeInformerFactory.Core().V1().Services().Informer().GetIndexer().Add(obj)
+
+		case *appsv1.Deployment:
+			err = c.kubeInformerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(obj)
+
+		case *batchv1.Job:
+			err = c.kubeInformerFactory.Batch().V1().Jobs().Informer().GetIndexer().Add(obj)
+
+		case *networkingv1.NetworkPolicy:
+			err = c.kubeInformerFactory.Networking().V1().NetworkPolicies().Informer().GetIndexer().Add(obj)
 		}
-	case *appsv1.Deployment:
-		fakeClient, ok := c.kubeClient.(*k8sfake.Clientset)
-		if !ok {
-			return fmt.Errorf("controller is not using a fake clientset")
-		}
-		fakeClient.Tracker().Add(obj)
-		err = c.kubeInformerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(obj)
-	case *batchv1.Job:
-		fakeClient, ok := c.kubeClient.(*k8sfake.Clientset)
-		if !ok {
-			return fmt.Errorf("controller is not using a fake clientset")
-		}
-		fakeClient.Tracker().Add(obj)
-		err = c.kubeInformerFactory.Batch().V1().Jobs().Informer().GetIndexer().Add(obj)
 	case *gardenercertv1alpha1.Certificate:
 		fakeClient, ok := c.gardenerCertificateClient.(*gardenercertfake.Clientset)
 		if !ok {
@@ -560,13 +555,6 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 		}
 		fakeClient.Tracker().Add(obj)
 		err = c.gardenerDNSInformerFactory.Dns().V1alpha1().DNSEntries().Informer().GetIndexer().Add(obj)
-	case *networkingv1.NetworkPolicy:
-		fakeClient, ok := c.kubeClient.(*k8sfake.Clientset)
-		if !ok {
-			return fmt.Errorf("controller is not using a fake clientset")
-		}
-		fakeClient.Tracker().Add(obj)
-		err = c.kubeInformerFactory.Networking().V1().NetworkPolicies().Informer().GetIndexer().Add(obj)
 	case *istionwv1.Gateway, *istionwv1.VirtualService, *istionwv1.DestinationRule:
 		fakeClient, ok := c.istioClient.(*istiofake.Clientset)
 		if !ok {
@@ -609,12 +597,6 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 		}
 	case *monv1.ServiceMonitor:
 		fakeClient, ok := c.promClient.(*promopFake.Clientset)
-		if !ok {
-			return fmt.Errorf("controller is not using a fake clientset")
-		}
-		fakeClient.Tracker().Add(obj)
-	case *discoveryv1.EndpointSlice:
-		fakeClient, ok := c.kubeClient.(*k8sfake.Clientset)
 		if !ok {
 			return fmt.Errorf("controller is not using a fake clientset")
 		}
