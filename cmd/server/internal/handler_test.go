@@ -399,7 +399,7 @@ func Test_provisioning(t *testing.T) {
 		{
 			name:                 "Provisioning Request valid (invalid clusterdomains)",
 			method:               http.MethodPut,
-			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `","subscriptionParams":""}`,
 			createCROs:           true,
 			invalidClusterDomain: true,
 			expectedStatusCode:   http.StatusAccepted,
@@ -1219,11 +1219,9 @@ func TestAsyncCallback(t *testing.T) {
 			subHandler.handleAsyncCallback(
 				ctx,
 				callbackReqInfo,
-				p.status,
 				"/async/callback",
 				"https://app.cluster.local",
-				p.additionalData,
-				p.isProvisioning,
+				getCallbackResponseStatus(p.status, p.isProvisioning, p.additionalData),
 			)
 		})
 	}
@@ -1245,11 +1243,9 @@ func TestAsyncCallback(t *testing.T) {
 			subHandler.handleAsyncCallback(
 				ctx,
 				callbackReqInfo,
-				p.status,
 				"/async/callback",
 				"https://app.cluster.local",
-				p.additionalData,
-				p.isProvisioning,
+				getCallbackResponseStatus(p.status, p.isProvisioning, p.additionalData),
 			)
 		})
 	}

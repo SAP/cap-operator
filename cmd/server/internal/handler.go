@@ -57,6 +57,7 @@ const (
 	TenantNotFound   = "tenant not found"
 )
 
+const SubscriptionDomain = "subscription domain"
 const ErrorOccurred = "Error occurred "
 const InvalidRequestMethod = "invalid request method"
 const AuthorizationCheckFailed = "authorization check failed"
@@ -81,6 +82,8 @@ const (
 type RequestInfo struct {
 	// One of "SMS" or "SaaS"
 	subscriptionType subscriptionType
+	// subscription domain from the subscription request, used for constructing the subscription URL. If not present, existing fallbacks will be used
+	subscriptionDomain string
 	// payload Details
 	payload *payloadDetails
 	// header details
@@ -129,12 +132,12 @@ type callbackResponse struct {
 
 type SaaSCallbackResponse struct {
 	callbackResponse `json:",inline"`
-	SubscriptionUrl  string `json:"subscriptionUrl"`
+	SubscriptionUrl  string `json:"subscriptionUrl,omitempty"`
 }
 
 type SmsCallbackResponse struct {
 	callbackResponse `json:",inline"`
-	ApplicationUrl   string `json:"applicationUrl"`
+	ApplicationUrl   string `json:"applicationUrl,omitempty"`
 }
 
 type CallbackReqInfo struct {
@@ -150,8 +153,9 @@ type OAuthResponse struct {
 }
 
 type tenantInfo struct {
-	tenantId        string
-	tenantSubDomain string
+	tenantId           string
+	tenantSubDomain    string
+	subscriptionDomain string
 }
 
 func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
@@ -171,6 +175,11 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 	if err != nil {
 		util.LogError(err, AuthorizationCheckFailed, TenantProvisioning, ca, nil)
 		return &Result{Tenant: nil, Message: err.Error()}
+	}
+
+	appUrl, err := s.getAppURL(reqInfo.subscriptionDomain, reqInfo.payload.subdomain, ca)
+	if err != nil {
+		return &Result{Tenant: nil, Message: "Error constructing subscription URL: " + err.Error()}
 	}
 
 	// Check if A CRO for CAPTenant already exists
@@ -193,9 +202,9 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 
 	// TODO: consider retrying tenant creation if it is in Error state
 	if tenant != nil {
-		tenantIn := tenantInfo{tenantId: reqInfo.payload.tenantId, tenantSubDomain: reqInfo.payload.subdomain}
+		tenantIn := tenantInfo{tenantId: reqInfo.payload.tenantId, tenantSubDomain: reqInfo.payload.subdomain, subscriptionDomain: reqInfo.subscriptionDomain}
 		callbackReqInfo := s.getCallbackReqInfo(reqInfo.subscriptionType, reqInfo.headerDetails.callbackInfo, saasData, smsData)
-		s.initializeCallback(tenant.Name, ca, callbackReqInfo, tenantIn, true)
+		s.initializeCallback(appUrl, tenant.Name, ca, callbackReqInfo, tenantIn, true)
 	}
 
 	// Tenant created/exists
@@ -493,9 +502,9 @@ func (s *SubscriptionHandler) DeleteTenant(reqInfo *RequestInfo) *Result {
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
 
-	tenantIn := tenantInfo{tenantId: reqInfo.payload.tenantId, tenantSubDomain: reqInfo.payload.subdomain}
+	tenantIn := tenantInfo{tenantId: reqInfo.payload.tenantId, tenantSubDomain: reqInfo.payload.subdomain, subscriptionDomain: reqInfo.subscriptionDomain}
 	callbackReqInfo := s.getCallbackReqInfo(reqInfo.subscriptionType, reqInfo.headerDetails.callbackInfo, saasData, smsData)
-	s.initializeCallback(tenant.Name, ca, callbackReqInfo, tenantIn, false)
+	s.initializeCallback("", tenant.Name, ca, callbackReqInfo, tenantIn, false)
 
 	return &Result{Tenant: tenant, Message: ResourceDeleted}
 }
@@ -591,54 +600,131 @@ func (s *SubscriptionHandler) checkCertIssuerAndSubject(xForwardedClientCert str
 	return nil
 }
 
-func (s *SubscriptionHandler) initializeCallback(tenantName string, ca *v1alpha1.CAPApplication, callbackReqInfo *CallbackReqInfo, tenantIn tenantInfo, isProvisioning bool) {
-	subscriptionDomain := ca.Annotations[AnnotationSubscriptionDomain]
-	if subscriptionDomain == "" {
-		subscriptionDomain = s.getPrimaryDomain(ca)
-	}
+func (s *SubscriptionHandler) initializeCallback(appUrl, tenantName string, ca *v1alpha1.CAPApplication, callbackReqInfo *CallbackReqInfo, tenantIn tenantInfo, isProvisioning bool) {
+	go s.checkTenantAndTriggerCallback(tenantName, tenantIn.tenantId, appUrl, ca, callbackReqInfo, isProvisioning)
+}
 
-	appUrl := "https://" + tenantIn.tenantSubDomain + "." + subscriptionDomain
-	asyncCallbackPath := callbackReqInfo.CallbackPath
-	util.LogInfo("Callback initialized", TenantProvisioning, ca, nil, "subscription URL", appUrl, "async callback path", asyncCallbackPath, "tenantName", tenantName)
-
+func (s *SubscriptionHandler) checkTenantAndTriggerCallback(tenantName, tenantId, appUrl string, ca *v1alpha1.CAPApplication, callbackReqInfo *CallbackReqInfo, isProvisioning bool) {
 	step := TenantProvisioning
 	if !isProvisioning {
 		step = TenantDeprovisioning
 	}
 
-	go func() {
-		// create a context for tenant checks and outgoing requests
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+	util.LogInfo("Callback initialized", step, ca, nil, "subscription URL", appUrl, "async callback path", callbackReqInfo.CallbackPath, "tenantName", tenantName)
+	// create a context for tenant checks and outgoing requests
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-		// Check tenant status asynchronously
-		util.LogInfo("Starting tenant status check", step, ca, nil, "tenantName", tenantName)
-		status := s.checkCAPTenantStatus(ctx, ca.Namespace, tenantName, isProvisioning, callbackReqInfo.CallbackTimeoutMillis)
-		util.LogInfo("Tenant status check complete", step, ca, nil, "tenantName", tenantName, "status", status)
+	// Check tenant status asynchronously
+	util.LogInfo("Starting tenant status check", step, ca, nil, "tenantName", tenantName)
+	status := s.checkCAPTenantStatus(ctx, ca.Namespace, tenantName, isProvisioning, callbackReqInfo.CallbackTimeoutMillis)
+	util.LogInfo("Tenant status check complete", step, ca, nil, "tenantName", tenantName, "status", status)
 
-		additionalOutput := &map[string]any{}
-		if isProvisioning {
-			saasAdditionalOutput := ca.Annotations[AnnotationSaaSAdditionalOutput]
-			if saasAdditionalOutput != "" {
-				// Add additional output to the callback response
-				err := json.Unmarshal([]byte(saasAdditionalOutput), additionalOutput)
-				if err != nil {
-					util.LogError(err, "Error parsing additional output", step, ca, nil, "annotation value", saasAdditionalOutput)
-					additionalOutput = nil
-				}
-			}
-			// Add tenant data to the additional output if it exists
-			err := s.enrichAdditionalOutput(ca.Namespace, tenantIn.tenantId, additionalOutput)
+	additionalOutput := &map[string]any{}
+	if isProvisioning {
+		saasAdditionalOutput := ca.Annotations[AnnotationSaaSAdditionalOutput]
+		if saasAdditionalOutput != "" {
+			// Add additional output to the callback response
+			err := json.Unmarshal([]byte(saasAdditionalOutput), additionalOutput)
 			if err != nil {
-				util.LogError(err, "Error updating tenant data", step, ca, nil, "tenantId", tenantIn.tenantId)
+				util.LogError(err, "Error parsing additional output", step, ca, nil, "annotation value", saasAdditionalOutput)
+				additionalOutput = nil
 			}
-		} else {
-			additionalOutput = nil
 		}
-		s.handleAsyncCallback(ctx, callbackReqInfo, status, asyncCallbackPath, appUrl, additionalOutput, isProvisioning)
-	}()
+		// Add tenant data to the additional output if it exists
+		err := s.enrichAdditionalOutput(ca.Namespace, tenantId, additionalOutput)
+		if err != nil {
+			util.LogError(err, "Error updating tenant data", step, ca, nil, "tenantId", tenantId)
+		}
+	} else {
+		additionalOutput = nil
+	}
 
-	util.LogInfo("Waiting for async callback after checks...", step, ca, nil, "tenantName", tenantName)
+	callbackResponse := getCallbackResponseStatus(status, isProvisioning, additionalOutput)
+
+	s.handleAsyncCallback(ctx, callbackReqInfo, callbackReqInfo.CallbackPath, appUrl, callbackResponse)
+}
+
+func getCallbackResponseStatus(status bool, isProvisioning bool, additionalOutput *map[string]any) *callbackResponse {
+	var responseStatus string
+	var message string
+	if status {
+		responseStatus = CallbackSucceeded
+		if isProvisioning {
+			message = ProvisioningSucceededMessage
+		} else {
+			message = DeprovisioningSucceededMessage
+		}
+	} else {
+		responseStatus = CallbackFailed
+		if isProvisioning {
+			message = ProvisioningFailedMessage
+		} else {
+			message = DeprovisioningFailedMessage
+		}
+	}
+
+	return &callbackResponse{
+		Status:           responseStatus,
+		Message:          message,
+		AdditionalOutput: additionalOutput,
+	}
+}
+
+func (s *SubscriptionHandler) getAppURL(payloadSubscriptionDomain, tenantSubdomain string, ca *v1alpha1.CAPApplication) (string, error) {
+	needsValidaton := true
+	var subscriptionDomain string
+	// Check if subscription domain is provided in the request payload.
+	if payloadSubscriptionDomain != "" {
+		subscriptionDomain = payloadSubscriptionDomain
+		util.LogInfo("Using subscription domain from request payload", TenantProvisioning, ca, nil, SubscriptionDomain, subscriptionDomain)
+	} else {
+		// Fallback:
+		// First, check if subscription domain is provided in the CAPApplication annotation. If not, fallback to calculating the primary domain from the CAPApplication domain refs and use that as the subscription domain.
+		subscriptionDomain = ca.Annotations[AnnotationSubscriptionDomain]
+		if subscriptionDomain == "" {
+			subscriptionDomain = s.getPrimaryDomain(ca)
+			needsValidaton = false
+			util.LogInfo("Using subscription domain from fallback 'primary' calculation", TenantProvisioning, ca, nil, SubscriptionDomain, subscriptionDomain)
+		} else {
+			util.LogInfo("Using subscription domain from CAPApplication annotation", TenantProvisioning, ca, nil, SubscriptionDomain, subscriptionDomain)
+		}
+	}
+
+	if needsValidaton {
+		err := s.validateDomain(subscriptionDomain, ca.Namespace)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return "https://" + tenantSubdomain + "." + subscriptionDomain, nil
+}
+
+func (s *SubscriptionHandler) validateDomain(domain, namespace string) error {
+	// First check for Domains in the apps namespace
+	domainsList, err := s.Clientset.SmeV1alpha1().Domains(namespace).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, d := range domainsList.Items {
+		if d.Spec.Domain == domain {
+			return nil
+		}
+	}
+
+	// Check for ClusterDomains if not found in the namespace
+	clusterDomainsList, err := s.Clientset.SmeV1alpha1().ClusterDomains(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return err
+	}
+	for _, cd := range clusterDomainsList.Items {
+		if cd.Spec.Domain == domain {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("domain %s not found in Domains or ClusterDomains", domain)
 }
 
 func (s *SubscriptionHandler) getPrimaryDomain(ca *v1alpha1.CAPApplication) string {
@@ -859,7 +945,7 @@ func prepareTokenRequest(ctx context.Context, callbackReqInfo *CallbackReqInfo, 
 	return tokenReq, nil
 }
 
-func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, callbackReqInfo *CallbackReqInfo, status bool, asyncCallbackPath string, appUrl string, additionalOutput *map[string]any, isProvisioning bool) {
+func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, callbackReqInfo *CallbackReqInfo, asyncCallbackPath, appUrl string, callbackResponse *callbackResponse) {
 	// Get OAuth token
 	tokenClient := s.httpClientGenerator.NewHTTPClient()
 	tokenReq, err := prepareTokenRequest(ctx, callbackReqInfo, tokenClient)
@@ -886,19 +972,8 @@ func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, callbackR
 	}
 	defer tokenResponse.Body.Close()
 
-	checkMatch := func(match bool, trueVal string, falseVal string) string {
-		if match {
-			return trueVal
-		}
-		return falseVal
-	}
-
 	var payload []byte
-	callbackResponse := &callbackResponse{
-		Status:           checkMatch(status, CallbackSucceeded, CallbackFailed),
-		Message:          checkMatch(status, checkMatch(isProvisioning, ProvisioningSucceededMessage, DeprovisioningSucceededMessage), checkMatch(isProvisioning, ProvisioningFailedMessage, DeprovisioningFailedMessage)),
-		AdditionalOutput: additionalOutput,
-	}
+
 	switch callbackReqInfo.SubscriptionType {
 	case SMS:
 		payload, _ = json.Marshal(&SmsCallbackResponse{
@@ -983,8 +1058,8 @@ func (s *SubscriptionHandler) HandleSMSRequest(w http.ResponseWriter, req *http.
 }
 
 func ProcessRequest(req *http.Request, subscriptionType subscriptionType) (*RequestInfo, error) {
-	var subscriptionGUID, tenantId, subdomain, globalAccountId, providerSubaccountId, appName string
-	var jsonPayload map[string]any
+	var subscriptionGUID, tenantId, subdomain, globalAccountId, providerSubaccountId, appName, subscriptionDomain string
+	jsonPayload := map[string]any{}
 
 	if !(req.Method == http.MethodDelete && subscriptionType == SMS) {
 		decoder := json.NewDecoder(req.Body)
@@ -993,6 +1068,9 @@ func ProcessRequest(req *http.Request, subscriptionType subscriptionType) (*Requ
 			return nil, fmt.Errorf("error decoding request: %w", err)
 		}
 	}
+
+	// @TODO: remove
+	klog.InfoS(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>Request payload decoded", "payload", jsonPayload)
 
 	var headerDetails requestHeaderDetails
 	headerDetails.callbackInfo = req.Header.Get("STATUS_CALLBACK")
@@ -1010,6 +1088,7 @@ func ProcessRequest(req *http.Request, subscriptionType subscriptionType) (*Requ
 			rootApp := jsonPayload["rootApplication"].(map[string]any)
 			providerSubaccountId = rootApp["providerSubaccountId"].(string)
 			appName = rootApp["appName"].(string)
+			subscriptionDomain = getSubscriptionDomain(rootApp)
 		case http.MethodDelete:
 			// get paramater from URL
 			subscriptionGUID = req.URL.Query().Get("subscriptionGUID")
@@ -1032,6 +1111,7 @@ func ProcessRequest(req *http.Request, subscriptionType subscriptionType) (*Requ
 		globalAccountId = jsonPayload["globalAccountGUID"].(string)
 		providerSubaccountId = jsonPayload["providerSubaccountId"].(string)
 		appName = jsonPayload["subscriptionAppName"].(string)
+		subscriptionDomain = getSubscriptionDomain(jsonPayload)
 	}
 
 	payload := &payloadDetails{
@@ -1045,10 +1125,22 @@ func ProcessRequest(req *http.Request, subscriptionType subscriptionType) (*Requ
 		raw:                  &jsonPayload,
 	}
 	return &RequestInfo{
-		subscriptionType: subscriptionType,
-		payload:          payload,
-		headerDetails:    &headerDetails,
+		subscriptionType:   subscriptionType,
+		subscriptionDomain: subscriptionDomain,
+		payload:            payload,
+		headerDetails:      &headerDetails,
 	}, nil
+}
+
+func getSubscriptionDomain(payload map[string]any) string {
+	if subscriptionParams, ok := payload["subscriptionParams"]; ok {
+		if subscriptionParamsMap, ok := subscriptionParams.(map[string]any); ok {
+			if subscriptionDomain, ok := subscriptionParamsMap["subscriptionDomain"]; ok {
+				return subscriptionDomain.(string)
+			}
+		}
+	}
+	return ""
 }
 
 func NewSubscriptionHandler(clientset versioned.Interface, kubeClienset kubernetes.Interface) *SubscriptionHandler {
