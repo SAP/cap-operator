@@ -16,14 +16,14 @@ import (
 )
 
 const (
-	ResourceCAPTenant = iota
+	ResourceCAPApplication = iota
 	ResourceCAPApplicationVersion
-	ResourceCAPApplication
+	ResourceCAPTenant
 	ResourceCAPTenantOperation
-	ResourceClusterDomain
 	ResourceDomain
-	ResourceJob
+	ResourceClusterDomain
 	ResourceSecret
+	ResourceJob
 	ResourceGateway
 	ResourceCertificate
 	ResourceDNSEntry
@@ -31,20 +31,16 @@ const (
 	ResourceDestinationRule
 )
 
-const (
-	OperatorDomains = "OperatorDomains"
-)
-
 const queuing = "queuing resource for reconciliation"
 
 var (
 	KindMap = map[int]string{
-		ResourceCAPTenant:             v1alpha1.CAPTenantKind,
-		ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind,
 		ResourceCAPApplication:        v1alpha1.CAPApplicationKind,
+		ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind,
+		ResourceCAPTenant:             v1alpha1.CAPTenantKind,
 		ResourceCAPTenantOperation:    v1alpha1.CAPTenantOperationKind,
-		ResourceClusterDomain:         v1alpha1.ClusterDomainKind,
 		ResourceDomain:                v1alpha1.DomainKind,
+		ResourceClusterDomain:         v1alpha1.ClusterDomainKind,
 	}
 )
 
@@ -54,19 +50,19 @@ type NamespacedResourceKey struct {
 }
 
 var QueueMapping map[int]map[int]string = map[int]map[int]string{
-	ResourceCAPTenantOperation:    {ResourceCAPTenantOperation: v1alpha1.CAPTenantOperationKind, ResourceCAPTenant: v1alpha1.CAPTenantKind},
-	ResourceJob:                   {ResourceCAPTenantOperation: v1alpha1.CAPTenantOperationKind, ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
-	ResourceSecret:                {ResourceCAPApplication: v1alpha1.CAPApplicationKind, ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
-	ResourceGateway:               {ResourceCAPApplication: v1alpha1.CAPApplicationKind},
-	ResourceCertificate:           {ResourceCAPApplication: v1alpha1.CAPApplicationKind},
-	ResourceDNSEntry:              {ResourceCAPApplication: v1alpha1.CAPApplicationKind, ResourceCAPTenant: v1alpha1.CAPTenantKind},
+	ResourceCAPApplication:        {ResourceCAPApplication: v1alpha1.CAPApplicationKind},
+	ResourceCAPApplicationVersion: {ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind, ResourceCAPApplication: v1alpha1.CAPApplicationKind},
 	ResourceCAPTenant:             {ResourceCAPTenant: v1alpha1.CAPTenantKind, ResourceCAPApplication: v1alpha1.CAPApplicationKind},
+	ResourceCAPTenantOperation:    {ResourceCAPTenantOperation: v1alpha1.CAPTenantOperationKind, ResourceCAPTenant: v1alpha1.CAPTenantKind},
+	ResourceDomain:                {ResourceDomain: v1alpha1.DomainKind},
+	ResourceClusterDomain:         {ResourceClusterDomain: v1alpha1.ClusterDomainKind},
+	ResourceSecret:                {ResourceCAPApplication: v1alpha1.CAPApplicationKind, ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
+	ResourceJob:                   {ResourceCAPTenantOperation: v1alpha1.CAPTenantOperationKind, ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
+	ResourceGateway:               {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
+	ResourceCertificate:           {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
+	ResourceDNSEntry:              {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
 	ResourceVirtualService:        {ResourceCAPTenant: v1alpha1.CAPTenantKind},
 	ResourceDestinationRule:       {ResourceCAPTenant: v1alpha1.CAPTenantKind},
-	ResourceCAPApplicationVersion: {ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind, ResourceCAPApplication: v1alpha1.CAPApplicationKind},
-	ResourceCAPApplication:        {ResourceCAPApplication: v1alpha1.CAPApplicationKind},
-	ResourceClusterDomain:         {ResourceClusterDomain: v1alpha1.ClusterDomainKind},
-	ResourceDomain:                {ResourceDomain: v1alpha1.DomainKind},
 }
 
 type QueueItem struct {
@@ -75,14 +71,14 @@ type QueueItem struct {
 }
 
 func (c *Controller) initializeInformers() {
-	c.registerCAPTenantListeners()
 	c.registerCAPApplicationListeners()
 	c.registerCAPApplicationVersionListeners()
+	c.registerCAPTenantListeners()
 	c.registerCAPTenantOperationListeners()
-	c.registerClusterDomainListeners()
 	c.registerDomainListeners()
-	c.registerJobListeners()
+	c.registerClusterDomainListeners()
 	c.registerSecretListeners()
+	c.registerJobListeners()
 	c.registerGatewayListeners()
 	c.registerVirtualServiceListeners()
 	c.registerDestinationRuleListeners()
