@@ -40,6 +40,12 @@
 | controller.volumeMounts | list | `[]` | Optionally specify list of additional volumeMounts for the controller container(s) |
 | controller.dnsTarget | string | `""` | The dns target mentioned on the public ingress gateway service used in the cluster |
 | controller.detailedOperationalMetrics | bool | `false` | Optionally enable detailed opertational metrics for the controller by setting this to true |
+| controller.maxConcurrentReconciles.capApplication | string | `""` | The maximum number of concurrent reconciles (e.g. "1") for the cap application |
+| controller.maxConcurrentReconciles.capApplicationVersion | string | `""` | The maximum number of concurrent reconciles (e.g. "3") for the cap application version |
+| controller.maxConcurrentReconciles.capTenant | string | `""` | The maximum number of concurrent reconciles (e.g. "10") for the cap tenant |
+| controller.maxConcurrentReconciles.capTenantOperation | string | `""` | The maximum number of concurrent reconciles (e.g. "10") for the cap tenant operation |
+| controller.maxConcurrentReconciles.domain | string | `""` | The maximum number of concurrent reconciles (e.g. "1") for the domain |
+| controller.maxConcurrentReconciles.clusterDomain | string | `""` | The maximum number of concurrent reconciles (e.g. "1") for the cluster domain |
 | controller.versionMonitoring.prometheusAddress | string | `""` | The URL of the Prometheus server from which metrics related to managed application versions can be queried |
 | controller.versionMonitoring.metricsEvaluationInterval | string | `"1h"` | The duration (example 2h) after which versions are evaluated for deletion; based on specified workload metrics |
 | controller.versionMonitoring.promClientAcquireRetryDelay | string | `"1h"` | The duration (example 10m) to wait before retrying to acquire Prometheus client and verify connection, after a failed attempt |

@@ -21,3 +21,9 @@ Here's a list of environment variables used by CAP Operator.
 - `PROMETHEUS_ADDRESS`: URL of the Prometheus server (or service) for executing PromQL queries e.g. `http://prometheus-operated.monitoring.svc.cluster.local:9090`. If no URL is supplied, the controller will not start the version monitoring function.
 - `PROM_ACQUIRE_CLIENT_RETRY_DELAY`: Time delay between retries when a Prometheus client creation and connection check fails.
 - `METRICS_EVAL_INTERVAL`: Time interval between subsequent iterations where outdated versions are identified and queued for evaluation.
+- `MAX_CONCURRENT_RECONCILES_CAP_APPLICATION`: The maximum number of concurrent reconciles for CAPApplication e.g. `1`.
+- `MAX_CONCURRENT_RECONCILES_CAP_APPLICATION_VERSION`: The maximum number of concurrent reconciles for CAPApplicationVersion e.g. `3`.
+- `MAX_CONCURRENT_RECONCILES_CAP_TENANT`: The maximum number of concurrent reconciles for CAPTenant e.g. `10`.
+- `MAX_CONCURRENT_RECONCILES_CAP_TENANT_OPERATION`: The maximum number of concurrent reconciles for CAPTenantOperation e.g. `10`.
+- `MAX_CONCURRENT_RECONCILES_DOMAIN`: The maximum number of concurrent reconciles for Domain e.g. `1`.
+- `MAX_CONCURRENT_RECONCILES_CLUSTER_DOMAIN`: The maximum number of concurrent reconciles for ClusterDomain e.g. `1`.
