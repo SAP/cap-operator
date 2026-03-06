@@ -177,7 +177,11 @@ func getDefaultConcurrencyConfig() map[int]int {
 		if !ok {
 			defaultReconcileForResource = controller.DefaultReconcile
 		}
-		concurrencyConfig[resourceKey] = getConcurrencyConfigForResource(resourceEnvSuffix, defaultReconcileForResource)
+		concurrencyValue := getConcurrencyConfigForResource(resourceEnvSuffix, defaultReconcileForResource)
+		if concurrencyValue < 1 {
+			concurrencyValue = 1
+		}
+		concurrencyConfig[resourceKey] = concurrencyValue
 	}
 	return concurrencyConfig
 }
