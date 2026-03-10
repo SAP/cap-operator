@@ -41,6 +41,25 @@ func TestDomain_InitialState(t *testing.T) {
 	)
 }
 
+func TestDomain_ProcessingWithError(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress error",
+			initialResources: []string{
+				"testdata/domain/domain-no-ingress-error.yaml",
+			},
+			expectedResources: "testdata/domain/domain-no-ingress-error.yaml",
+			expectError:       true,
+		},
+	)
+
+	if err.Error() != "failed to get ingress information for Domain.default.test-cap-01-primary: no matching ingress gateway pods found matching selector from Domain.default.test-cap-01-primary" {
+		t.Error("Wrong error message")
+	}
+}
+
 func TestDomain_ProcessingWithoutIngress(t *testing.T) {
 	err := reconcileTestItem(
 		context.TODO(), t,
