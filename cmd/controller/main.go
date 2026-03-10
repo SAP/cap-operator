@@ -124,20 +124,6 @@ func main() {
 			OnStartedLeading: func(ctx context.Context) {
 				klog.InfoS("Started leading: ", LeaseLockName, leaseLockId)
 
-				migrationDone := make(chan bool, 1)
-				go func() {
-					migrationDone <- migrateToDomainRefs(crdClient, istioClient, certClient, certManagerClient, dnsClient)
-				}()
-				if !<-migrationDone {
-					klog.Errorf("Migration failed; not starting controller")
-					os.Exit(1)
-				}
-
-				checkDone := make(chan bool, 1)
-				go checkGUID(checkDone, coreClient, crdClient)
-				<-checkDone
-				klog.InfoS("check & update of subscriptionGUID label done")
-
 				c := controller.NewController(coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient, promClient)
 				// Update the controller's concurrency config before starting the controller
 				maps.Copy(controller.DefaultConcurrentReconciles, concurrencyConfig)
