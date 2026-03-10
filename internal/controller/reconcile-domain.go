@@ -134,10 +134,13 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 		return handleDomainResourceDeletion(ctx, c, dom)
 	}
 
-	if dom.GetStatus().State != v1alpha1.DomainStateProcessing {
-		// set processing status
+	if dom.GetStatus().State == "" {
+		// When no status state is set, we set it to processing state first and requeue for processing.
 		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateProcessing, metav1.ConditionFalse, "Processing", "Processing domain resources")
 		return NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0), nil
+	} else if dom.GetStatus().State != v1alpha1.DomainStateProcessing {
+		// If not in processing state, we set it to processing state first and continue without requeuing. This ensures Error scenarios (if any) stay rate limited.
+		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateProcessing, metav1.ConditionFalse, "Processing", "Processing domain resources")
 	}
 
 	defer func() {
