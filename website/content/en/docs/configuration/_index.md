@@ -5,25 +5,25 @@ weight: 40
 type: "docs"
 tags: ["setup"]
 description: >
-  How to configure
+  How to configure CAP Operator
 ---
 
-Here's a list of environment variables used by CAP Operator.
+The following environment variables are used to configure CAP Operator.
 
 ### Controller
 
-- `CERT_MANAGER`: specifies the certificate manager to be used for TLS certificates. Possible values are:
+- `CERT_MANAGER`: The certificate manager used for TLS certificates. Possible values:
   - `gardener`: ["Gardener" certificate management](https://github.com/gardener/cert-management)
   - `cert-manager.io`: [cert-manager.io cert-manager](https://github.com/cert-manager/cert-manager)
-- `DNS_MANAGER`: specifies the external DNS manager to be used. Possible values are:
+- `DNS_MANAGER`: The external DNS manager to use. Possible values:
   - `gardener`: ["Gardener" external DNS manager](https://github.com/gardener/external-dns-management)
   - `kubernetes`: [external DNS management from Kubernetes](https://github.com/kubernetes-sigs/external-dns)
-- `PROMETHEUS_ADDRESS`: URL of the Prometheus server (or service) for executing PromQL queries e.g. `http://prometheus-operated.monitoring.svc.cluster.local:9090`. If no URL is supplied, the controller will not start the version monitoring function.
-- `PROM_ACQUIRE_CLIENT_RETRY_DELAY`: Time delay between retries when a Prometheus client creation and connection check fails.
-- `METRICS_EVAL_INTERVAL`: Time interval between subsequent iterations where outdated versions are identified and queued for evaluation.
-- `MAX_CONCURRENT_RECONCILES_CAP_APPLICATION`: The maximum number of concurrent reconciles for CAPApplication e.g. `1`.
-- `MAX_CONCURRENT_RECONCILES_CAP_APPLICATION_VERSION`: The maximum number of concurrent reconciles for CAPApplicationVersion e.g. `3`.
-- `MAX_CONCURRENT_RECONCILES_CAP_TENANT`: The maximum number of concurrent reconciles for CAPTenant e.g. `10`.
-- `MAX_CONCURRENT_RECONCILES_CAP_TENANT_OPERATION`: The maximum number of concurrent reconciles for CAPTenantOperation e.g. `10`.
-- `MAX_CONCURRENT_RECONCILES_DOMAIN`: The maximum number of concurrent reconciles for Domain e.g. `1`.
-- `MAX_CONCURRENT_RECONCILES_CLUSTER_DOMAIN`: The maximum number of concurrent reconciles for ClusterDomain e.g. `1`.
+- `PROMETHEUS_ADDRESS`: URL of the Prometheus server for executing PromQL queries, for example `http://prometheus-operated.monitoring.svc.cluster.local:9090`. If not set, the version monitoring function is not started.
+- `PROM_ACQUIRE_CLIENT_RETRY_DELAY`: Time delay between retries when Prometheus client creation or connection check fails.
+- `METRICS_EVAL_INTERVAL`: Time interval between iterations where outdated versions are identified and queued for evaluation.
+- `MAX_CONCURRENT_RECONCILES_CAP_APPLICATION`: Maximum number of concurrent reconciles for `CAPApplication` (for example, `1`).
+- `MAX_CONCURRENT_RECONCILES_CAP_APPLICATION_VERSION`: Maximum number of concurrent reconciles for `CAPApplicationVersion` (for example, `3`).
+- `MAX_CONCURRENT_RECONCILES_CAP_TENANT`: Maximum number of concurrent reconciles for `CAPTenant` (for example, `10`).
+- `MAX_CONCURRENT_RECONCILES_CAP_TENANT_OPERATION`: Maximum number of concurrent reconciles for `CAPTenantOperation` (for example, `10`).
+- `MAX_CONCURRENT_RECONCILES_DOMAIN`: Maximum number of concurrent reconciles for `Domain` (for example, `1`).
+- `MAX_CONCURRENT_RECONCILES_CLUSTER_DOMAIN`: Maximum number of concurrent reconciles for `ClusterDomain` (for example, `1`).

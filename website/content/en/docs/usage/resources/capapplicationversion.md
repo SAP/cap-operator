@@ -36,11 +36,11 @@ spec:
   tenantOperations: # ... <-- (optional)
 ```
 
-- An instance of `CAPApplicationVersion` is always related to an instance of `CAPApplication` in the same namespace. This reference is established using the attribute `capApplicationInstance`.
-- An array of workloads (`workloads`) must be defined that include the various software components of the SAP Cloud Application Programming Model application. A deployment representing the CAP application server or a job that which is used for tenant operations are examples of such workloads. A workload must have either a `deploymentDefinition` or a `jobDefinition`. See the next section for more details.
-- An optional attribute `tenantOperations` can be used to define a sequence of steps (jobs) to be executed during tenant operations (provisioning / upgrade / deprovisioning).
+- A `CAPApplicationVersion` is always associated with a `CAPApplication` in the same namespace, referenced via the `capApplicationInstance` attribute.
+- The `workloads` array defines the software components of the application. Examples include a deployment for the CAP application server or a job for tenant operations. Each workload must have either a `deploymentDefinition` or a `jobDefinition`. See the next section for details.
+- The optional `tenantOperations` attribute defines a sequence of steps (jobs) to execute during tenant operations (provisioning, upgrade, or deprovisioning).
 
-> The `CAPApplicationVersion` resource is meant to be immutable - it's spec should not be modified once it is deployed. This is also prevented by our web-hooks which we recommend to always keep active (default).
+> The `CAPApplicationVersion` resource is immutable — its spec must not be modified after deployment. This is enforced by webhooks, which we recommend keeping active (the default).
 
 ### Workloads with `deploymentDefinition`
 
@@ -140,7 +140,7 @@ Workloads with a `jobDefinition` represent a job execution at a particular point
 
 - `Content`: A content deployer job that can be used to deploy (SAP BTP) service specific content from the application version. This job is executed as soon as a new `CAPApplicationVersion` resource is created in the cluster. Multiple workloads of this type may be defined in the `CAPApplicationVersion` and the order in which they are executed can be specified via `ContentJobs`.
 - `TenantOperation`: A job executed during provisioning, upgrade, or deprovisioning of a tenant (`CAPTenant`). These jobs are controlled by the operator and use the `cds/mtxs` APIs to perform HDI content deployment by default. If a workload of type `TenantOperation` isn't provided as part of the `CAPApplicationVersion`, the workload with `deploymentDefinition` of type `CAP` will be used to determine the `jobDefinition` (`image`, `env`, etc.). Also, if `cds/mtxs` APIs are used, `command` can be used by applications to trigger tenant operations with custom command.
-- `CustomTenantOperation`: An optional job which runs before or after the `TenantOperation` where the application can perform tenant-specific tasks (for example, create test data).
+- `CustomTenantOperation`: An optional job that runs before or after the `TenantOperation`, allowing the application to perform tenant-specific tasks (for example, creating test data).
 
 ### Sequencing tenant operations
 
@@ -169,13 +169,13 @@ spec:
 
 In the example above, for each tenant operation, not only are the valid jobs (steps) specified, but also the order in which they are to be executed. Each step in an operation is defined with:
 
-- `workloadName`refers to the job workload executed in this operation step
-- `continueOnFailure` is valid only for `CustomTenantOperation` steps and indicates whether the overall tenant operation can proceed when this operation step fails.
+- `workloadName` refers to the job workload executed in this operation step.
+- `continueOnFailure` is valid only for `CustomTenantOperation` steps and indicates whether the overall tenant operation can proceed when this step fails.
 
 > NOTE:
 >
-> - Specifying `tenantOperations` is required only if `CustomTenantOperations` are to be used. If not specified, each operation will comprise of only the `TenantOperation` step (the first one available from `workloads`).
-> - The `tenantOperations` and specified sequencing are valid only for tenants provisioned (or deprovisioned) on the corresponding `CAPApplicationVersion` and for tenants being upgraded to this `CAPApplicationVersion`.
+> - `tenantOperations` is only required if `CustomTenantOperations` are used. If not specified, each operation consists only of the `TenantOperation` step (the first one found in `workloads`).
+> - The `tenantOperations` sequencing applies only to tenants provisioned (or deprovisioned) on this `CAPApplicationVersion` and to tenants being upgraded to it.
 
 ### Sequencing content jobs
 
@@ -372,11 +372,11 @@ spec:
     - ui-content
 ```
 > NOTE:
-> The CAP Operator [workloads](../../../reference/#sme.sap.com/v1alpha1.WorkloadDetails) supports several configurations (present in the [kubernetes API](https://kubernetes.io/docs/reference/using-api/)), which can be configured by looking into our API reference:
-> - [Common API reference](../../../reference/#sme.sap.com/v1alpha1.CommonDetails) for generic container-specific configuration
+> The CAP Operator [workloads](../../../reference/#sme.sap.com/v1alpha1.WorkloadDetails) support several configurations (drawn from the [Kubernetes API](https://kubernetes.io/docs/reference/using-api/)), which can be found in the API reference:
+> - [Common API reference](../../../reference/#sme.sap.com/v1alpha1.CommonDetails) for generic container configuration
 > - [Deployment API reference](../../../reference/#sme.sap.com/v1alpha1.DeploymentDetails) for deployment-specific configuration
 > - [Job API reference](../../../reference/#sme.sap.com/v1alpha1.JobDetails) for job-specific configuration
 >
-> The supported configurations is kept minimal intentionally to keep the overall API simple by considering commonly used configurations.
+> The supported configurations are intentionally kept minimal to keep the overall API simple, covering only the most commonly used options.
 
-> Note: For `initContainers` nearly the same environment variables as the main container are made available including VCAP_SERVICES environment.
+> Note: `initContainers` have access to nearly the same environment variables as the main container, including the `VCAP_SERVICES` environment variable.

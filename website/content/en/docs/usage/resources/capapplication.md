@@ -54,11 +54,12 @@ spec:
     tenantId: 7a49218f-c750-4e1f-a248-7f1cefa13010
 ```
 
-The overall list of SAP BTP service instances and respective Secrets (credentials) required by the application is specified as an array in `btp.services`. These service instances are assumed to exist in the provider subaccount. Operators such as [cf-service-operator](https://sap.github.io/cf-service-operator/docs/) or [sap-btp-service-operator](https://github.com/SAP/sap-btp-service-operator) can be used to declaratively create these service instances and their credentials as Kubernetes resources.
+The `btp.services` array specifies all SAP BTP service instances and their corresponding Kubernetes Secrets (containing credentials) required by the application. These service instances are assumed to exist in the provider subaccount. You can use operators such as [cf-service-operator](https://sap.github.io/cf-service-operator/docs/) or [sap-btp-service-operator](https://github.com/SAP/sap-btp-service-operator) to declaratively create these service instances and their credentials as Kubernetes resources.
 
-The `provider` section specifies details of the provider subaccount linked to this application, while `globalAccountId` denotes the global account in which the provider subaccount is created. Within a global account, the `btpAppName` has to be unique as this is equivalent to `XSAPPNAME`, which is used in various SAP BTP service and application constructs.
+The `provider` section specifies the provider subaccount linked to this application. The `globalAccountId` identifies the global account containing the provider subaccount. Within a global account, `btpAppName` must be unique, as it is equivalent to `XSAPPNAME` used in various SAP BTP service and application constructs.
 
-The `domainRefs` section specifies references one or more `Domain` or `ClusterDomain` resources.
-> NOTE: While the same secondary domain can technically be used across applications using `ClusterDomain`; the consumers need to ensure that the tenant sub-domains are unique across such applications that share the same domain!
+The `domainRefs` section references one or more `Domain` or `ClusterDomain` resources.
 
-> NOTE: The `provider` section is omitted for [Services Only Applications](../../service-exposure/#deploying-services-only-applications)
+> NOTE: While the same secondary domain can technically be shared across applications using `ClusterDomain`, tenant subdomains must be unique across all applications sharing that domain.
+
+> NOTE: The `provider` section is omitted for [services-only applications](../../service-exposure/#deploying-services-only-applications).
