@@ -8,7 +8,7 @@ description: >
 ---
 
 {{% alert color="warning" title="Warning" %}}
-The `CAPTenantOperation` resource is managed by CAP Operator and must not be created or modified manually. The creation of `CAPTenantOperation` is initiated by the `CAPTenant` for executing provisioning, deprovisioning, or upgrade.
+The `CAPTenantOperation` resource is managed by CAP Operator and must not be created or modified manually. It is created by the `CAPTenant` to execute provisioning, deprovisioning, or upgrade operations.
 {{% /alert %}}
 
 ```yaml
@@ -32,20 +32,20 @@ spec:
   tenantId: cb46733-1279-48be-fdf434-aa2bae55d7b5
 ```
 
-The example above shows a `CAPTenantOperation` created to execute an upgrade operation on a tenant. In addition to tenant details, the `CAPApplicationVersion` to be used for the operation is specified. In case of upgrade or a provisioning operation, this would be the target `CAPApplicationVersion` whereas for deprovisioning, it would be the current `CAPApplicationVersion` of the tenant.
+The example above shows a `CAPTenantOperation` for an upgrade operation. In addition to tenant details, it specifies the `CAPApplicationVersion` to use. For upgrade and provisioning operations, this is the target version; for deprovisioning, it is the tenant's current version.
 
-The operation is completed by executing a series of steps (jobs) which are specified in or derived from the `CAPApplicationVersion`. Each step refers to a workload of type `TenantOperation` or `CustomTenantOperation`. When `CAPTenantOperation` is created by CAP Pperator, there must be at least one step of type `TenantOperation` (which is the job used for the database schema update using CAP provided modules).
+The operation executes a series of steps (jobs) specified in or derived from the `CAPApplicationVersion`. Each step refers to a workload of type `TenantOperation` or `CustomTenantOperation`. When CAP Operator creates a `CAPTenantOperation`, at least one step of type `TenantOperation` must be present (this is the job that performs the database schema update using CAP-provided modules).
 
-`CustomTenantOperation` jobs are hooks provided to the application, which can be executed before or after the actual `TenantOperation`. For applications to be able to identify the context of an execution, each job is injected with the following environment variables:
+`CustomTenantOperation` jobs are hooks that the application can execute before or after the `TenantOperation`. To help applications identify the execution context, each job receives the following environment variables:
 
-- `CAPOP_APP_VERSION`: The (semantic) version from the relevant `CAPApplicationVersion`
-- `CAPOP_TENANT_ID`: Tenant identifier of the tenant for which the operation is executed
-- `CAPOP_TENANT_OPERATION`: The type of operation - `provisioning`, `deprovisioning`, or `upgrade`
-- `CAPOP_TENANT_SUBDOMAIN`: Subdomain (from subaccount) belonging to the tenant for which the operation is executed
-- `CAPOP_TENANT_TYPE`: The type of tenant - `provider` or `consumer`
-- `CAPOP_APP_NAME`: The BTP App Name from the corresponding `CAPApplication` configuration
-- `CAPOP_GLOBAL_ACCOUNT_ID`: The Global Account Identifier from the corresponding `CAPApplication` configuration
-- `CAPOP_PROVIDER_TENANT_ID`: The provider tenant identifier from the corresponding `CAPApplication` configuration
-- `CAPOP_PROVIDER_SUBDOMAIN`: The provider tenant subdomain from the corresponding `CAPApplication` configuration
+- `CAPOP_APP_VERSION`: The semantic version from the relevant `CAPApplicationVersion`
+- `CAPOP_TENANT_ID`: The tenant identifier
+- `CAPOP_TENANT_OPERATION`: The operation type — `provisioning`, `deprovisioning`, or `upgrade`
+- `CAPOP_TENANT_SUBDOMAIN`: The subdomain (from the subaccount) of the tenant
+- `CAPOP_TENANT_TYPE`: The tenant type — `provider` or `consumer`
+- `CAPOP_APP_NAME`: The BTP app name from the corresponding `CAPApplication`
+- `CAPOP_GLOBAL_ACCOUNT_ID`: The global account identifier from the corresponding `CAPApplication`
+- `CAPOP_PROVIDER_TENANT_ID`: The provider tenant identifier from the corresponding `CAPApplication`
+- `CAPOP_PROVIDER_SUBDOMAIN`: The provider tenant subdomain from the corresponding `CAPApplication`
 
-Note that all of the above environment variables are also made available on the corresponding `initContainers` (along with other relevant `VCAP_SERVICES` credentials)
+All of the above environment variables are also available on the corresponding `initContainers`, along with relevant `VCAP_SERVICES` credentials.

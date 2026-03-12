@@ -15,9 +15,9 @@ This guide explains how to deploy applications with tenant-agnostic service work
 
 ### Service Exposure Setup
 
-The `serviceExposures` section in the `CAPApplicationVersion` configuration is crucial for exposing workloads. Each entry in the `serviceExposures` array specifies a subdomain under which workloads are accessible, allowing multiple routes per subdomain.
+The `serviceExposures` section in the `CAPApplicationVersion` configuration is used to expose workloads. Each entry in the `serviceExposures` array specifies a subdomain under which workloads are accessible, with support for multiple routes per subdomain.
 
-For some more details on configuring routes, see the [Route API reference](../../reference/#sme.sap.com/v1alpha1.Route).
+For details on configuring routes, see the [Route API reference](../../reference/#sme.sap.com/v1alpha1.Route).
 
 ### Example Configuration
 
@@ -100,10 +100,10 @@ For a cluster domain like `my.cluster.shoot.url.k8s.example.com`, the configurat
 - `api.my.cluster.shoot.url.k8s.example.com/api` for `cap-backend-service` on port `8000`
 - `app.my.cluster.shoot.url.k8s.example.com` for `app` on port `5000`.
 
-In the above example, the `router` workload is not exposed through `servicesExposure`. However, for multi-tenant scenarios, it may be exposed per tenant subdomain as usual.
+In the example above, the `router` workload is not exposed through `serviceExposures`. However, in multi-tenant scenarios, it may be exposed per tenant subdomain as usual.
 
-#### Additional Consideration:
-Ensure routes are ordered correctly to prevent routing errors. If you define multiple routes for a subdomain, the application needs to maintain the routes in the right order to avoid incorrect routing. For instance, in the example configuration above, the `api` subdomain requires the more specific path `/api/v2` to be defined before the more general path `/api`.
+#### Route ordering:
+Ensure routes are ordered correctly to prevent routing errors. When multiple routes are defined for a subdomain, more specific paths must come before more general ones. For example, in the configuration above, the `api` subdomain requires `/api/v2` to be defined before `/api`.
 
 ## Deploying Services-Only Applications
 
