@@ -85,12 +85,21 @@ spec:
 
 ### Automatic Migration During Upgrade
 
-Upgrading to CAP Operator version [v0.15.0](https://github.com/SAP/cap-operator/releases/tag/v0.15.0) or later triggers an automatic migration routine that:
+{{% alert color="warning" title="Note" %}}
+The automatic migration routine described below was available from [v0.15.0](https://github.com/SAP/cap-operator/releases/tag/v0.15.0) through [v0.25.0](https://github.com/SAP/cap-operator/releases/tag/v0.25.0) and has been removed as of v0.26.0. If you need this migration, first upgrade to v0.25.0 (or lower), allow the migration to complete, and then upgrade to the latest release.
+{{% /alert %}}
+
+<details>
+<summary>Details (v0.15.0 – v0.25.0)</summary>
+
+Upgrading to CAP Operator version v0.15.0 through v0.25.0 triggers an automatic migration routine that:
 
 - Scans existing `CAPApplication` resources.
 - Removes network-related resources (Gateways, DNSEntries, Certificates) linked to the deprecated `domains`.
 - Creates equivalent `Domain` or `ClusterDomain` resources.
 - Updates `CAPApplication` resources to use `domainRefs`.
+
+</details>
 
 ### Mutation Webhook
 
