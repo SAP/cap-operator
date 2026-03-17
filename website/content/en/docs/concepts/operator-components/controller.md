@@ -7,7 +7,7 @@ description: >
   Reconciliation of custom resource objects
 ---
 
-To implement the CAP controller, you use the [client-go](https://github.com/kubernetes/client-go) from Kubernetes, which provides the required tools and utilities to interact with the Kubernetes API server. It manages custom resources that are included in CAP Operator.
+The CAP controller uses [client-go](https://github.com/kubernetes/client-go) from Kubernetes, which provides the tools and utilities needed to interact with the Kubernetes API server and manage the custom resources included in CAP Operator.
 
 The controller uses `Informers` to watch certain resources and invokes registered event handlers when these resources are modified. To streamline the processing of such notifications, rate limiting queues are implemented, which store the changes and allow the processing of these items in independent reconciliation threads (go routines). Such a design allows sequential processing of the changed items and avoids conflicts.
 

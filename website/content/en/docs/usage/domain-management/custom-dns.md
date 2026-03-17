@@ -1,5 +1,5 @@
 ---
-title: "A Guide to Flexibile DNS Configuration"
+title: "A Guide to Flexible DNS Configuration"
 linkTitle: "Flexible DNS"
 weight: 20
 type: "docs"
@@ -9,27 +9,28 @@ description: >
 ---
 
 ## Overview
-Configuring DNS settings can be a daunting task. However, with Custom DNS mode, you can leverage Go templates to streamline the process. This guide walks you through the essentials of setting up Custom DNS for your `Domain` or `ClusterDomain` resources.
+Custom DNS mode lets you use Go templates to generate DNS entries dynamically, giving you precise control over complex DNS configurations. Specify your desired setup in the `dnsTemplates` field.
+
+You can use functions from the [Slim Sprig library](https://go-task.github.io/slim-sprig/) in your templates.
 
 ### What is Custom DNS Mode?
-Custom DNS mode lets you use [Go templates](https://pkg.go.dev/text/template) to generate DNS entries dynamically. This feature is especially helpful for managing complex DNS configurations with ease. Specify your desired setup in the `dnsTemplates` field. 
-You can enhance your templates with functions from the Slim Sprig library, detailed [here](https://go-task.github.io/slim-sprig/).
+Custom DNS mode uses [Go templates](https://pkg.go.dev/text/template) to generate DNS entries. Specify your configuration in the `dnsTemplates` field.
 
-#### Allowed Variables in DNSTemplate
-- **{{.domain}}**: Represents the value of `spec.domain`.
+#### Available Variables in DNS Templates
+- **{{.domain}}**: The value of `spec.domain`.
 - **{{.dnsTarget}}**: The effective ingress target, specified by `spec.dnsTarget` or derived from `spec.istioIngressSelector`.
-- **{{.subDomain}}**: Refers to the subdomain of a CAPTenant or a tenant agnostic workload.
+- **{{.subDomain}}**: The subdomain of a `CAPTenant` or a tenant-agnostic workload.
 
 
 ### DNS Record Behavior
 
-- Each template typically results in one DNS record.
+- Each template typically produces one DNS record.
 - If the name contains **{{.subDomain}}**, a DNS record is created for each valid subdomain from tenants or service exposures.
-- **{{.subDomain}}** may appear in the target only if it appears in the name.
+- **{{.subDomain}}** may appear in the target only if it also appears in the name.
 
 
 ### Example Configuration
-Below is an example of how to configure Custom DNS mode for a `Domain` resource:
+The following example configures Custom DNS mode for a `Domain` resource:
 
 
 ```yaml
@@ -53,4 +54,4 @@ spec:
     target: '{{ .subDomain }}.{{ .domain }}'
 ```
 
-This configuration can be applied to both `Domain` and `ClusterDomain` resources, offering flexibility and control over your DNS configurations.
+This configuration applies to both `Domain` and `ClusterDomain` resources.

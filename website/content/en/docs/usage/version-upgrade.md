@@ -7,9 +7,9 @@ description: >
   How to upgrade to a new Application Version
 ---
 
-An important lifecycle aspect of operating multi-tenant CAP applications is the tenant upgrade process. With CAP Operator, these tenant upgrades can be fully automated by providing a new instance of the `capapplicationversions.sme.sap.com` custom resource.
-As you've already seen during the [initial deployment](../deploying-application), the `CAPApplicationVersion` resource describes the different components (workloads) of an application version that includes the container image to be used and the services consumed by each component.
-To upgrade the application, provide a new `CAPApplicationVersion` with the relevant `image` for each component and use a newer (higher) semantic version in the `version` field. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
+An important lifecycle aspect of operating multi-tenant CAP applications is the tenant upgrade process. With CAP Operator, tenant upgrades can be fully automated by providing a new `CAPApplicationVersion` custom resource.
+
+As covered in [initial deployment](../deploying-application), the `CAPApplicationVersion` resource describes the workloads of an application version, including the container image and services consumed by each component. To upgrade the application, create a new `CAPApplicationVersion` with the updated `image` for each component and a higher semantic version in the `version` field. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -35,7 +35,7 @@ spec:
           - name: CDS_ENV
             value: production
           - name: CDS_CONFIG
-            value: value: '{ "requires":{"cds.xt.DeploymentService":{"hdi": { "create":{ "database_id": "16e25c51-5455-4b17-a4d7-43545345345" } } } } }'
+            value: '{ "requires":{"cds.xt.DeploymentService":{"hdi": { "create":{ "database_id": "16e25c51-5455-4b17-a4d7-43545345345" } } } } }'
     - name: app-router
       consumedBTPServices:
         - app-uaa
@@ -90,11 +90,11 @@ spec:
         continueOnFailure: true
 ```
 
-Note that in this version (compared to version "1" used for the [initial deployment](../deploying-application)), new workloads of type `TenantOperation` and `CustomTenantOperation` have been added.
+Note that compared to version "1" used for [initial deployment](../deploying-application), new workloads of type `TenantOperation` and `CustomTenantOperation` have been added.
 
-The controller component of CAP Operator reacts to the new `CAPApplicationVersion` resource and triggers another deployment for the application server, router and triggers the content deployment job. Once the new `CAPApplicationVersion` is `Ready`, **the controller proceeds to automatically upgrade all relevant tenants** i.e. by updating the `version` attribute on the `CAPTenant` resources.
+The CAP Operator controller reacts to the new `CAPApplicationVersion` resource by triggering a new deployment for the application server and router, and running the content deployment job. Once the new `CAPApplicationVersion` is `Ready`, **the controller automatically upgrades all relevant tenants** by updating the `version` attribute on the `CAPTenant` resources.
 
-The reconciliation of a `CAPTenant` changes its state to `Upgrading` and creates the `CAPTenantOperation` resource of type upgrade.
+`CAPTenant` reconciliation changes the tenant state to `Upgrading` and creates a `CAPTenantOperation` resource of type upgrade.
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -112,16 +112,16 @@ spec:
       type: TenantOperation
     - name: "notify-upgrade"
       type: CustomTenantOperation
-      continueOnFailure: true # <-- can be set for workloads of type CustomTenantOperation to indicate that the success of this job is optional for the completion of the overall operation
+      continueOnFailure: true # <-- indicates that the overall operation may proceed even if this step fails
 ```
 
-The `CAPTenantOperation` creates jobs for each of the steps involved and executes them sequentially until all the jobs are finished or one of them fails. The `CAPTenant` is notified about the result and updates its state accordingly.
+The `CAPTenantOperation` creates jobs for each step and executes them sequentially until all jobs complete or one fails. The `CAPTenant` is notified of the result and updates its state accordingly.
 
-A successful completion of the `CAPTenantOperation` will cause the `VirtualService` managed by the `CAPTenant` to be modified to route HTTP traffic to the deployments of the newer `CAPApplicationVersion`. Once all tenants have been upgraded, the outdated `CAPApplicationVersion` can be deleted.
+When the `CAPTenantOperation` completes successfully, the `VirtualService` managed by the `CAPTenant` is updated to route HTTP traffic to the deployments of the newer `CAPApplicationVersion`. Once all tenants are upgraded, the outdated `CAPApplicationVersion` can be deleted.
 
 ## Version Affinity during Upgrade (Experimental)
 
-You can optionally enable Version Affinity for multi-tenant applications by adding the following annotation `sme.sap.com/enable-version-affinity: "true"` to the `CAPApplication` resource. With this experimental feature, you can ensure that during an upgrade, the users remain on the previous `CAPApplicationVersion` until the session expires or the user logs out.
+You can optionally enable Version Affinity for multi-tenant applications by adding the annotation `sme.sap.com/enable-version-affinity: "true"` to the `CAPApplication` resource. With this experimental feature, users remain on the previous `CAPApplicationVersion` during an upgrade until their session expires or they log out.
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -141,7 +141,7 @@ spec:
   ....
 ```
 
-By default, the CAP Operator recognizes `logout` and `logoff` as logout endpoints. If your application uses a different endpoint, you can specify it using the `sme.sap.com/logout-endpoint` annotation in your `CAPApplicationVersion` resource (do not include a leading slash).
+By default, CAP Operator recognizes `logout` and `logoff` as logout endpoints. If your application uses a different endpoint, specify it using the `sme.sap.com/logout-endpoint` annotation on your `CAPApplicationVersion` resource (without a leading slash).
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1

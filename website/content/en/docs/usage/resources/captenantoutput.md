@@ -7,7 +7,7 @@ description: >
   How to configure the `CAPTenantOutput` resource
 ---
 
-The [`CAPTenantOutput`](../../../reference/#sme.sap.com/v1alpha1.CAPTenantOutput) may be used to add additional data to the asynchronous callback parameters from the SaaS provisioning service during tenant onboarding. The resource is not reconciled but just consumed by the subscription server to generate additional data. It has the following structure:
+[`CAPTenantOutput`](../../../reference/#sme.sap.com/v1alpha1.CAPTenantOutput) can be used to add additional data to the asynchronous callback parameters sent by the SaaS provisioning service during tenant onboarding. The resource is not reconciled; it is consumed by the subscription server to generate additional callback data. It has the following structure:
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -19,14 +19,14 @@ metadata:
     sme.sap.com/btp-tenant-id: cb46733-1279-48be-fdf434-aa2bae55d7b5
 spec:
   subscriptionCallbackData: '{foo: bar}'
-  
+
 ```
-The example above shows an instance of the resource that is associated with a tenant via the `sme.sap.com/btp-tenant-id` label (which must be set by consumers).
+The example above shows a resource associated with a tenant via the `sme.sap.com/btp-tenant-id` label, which must be set by consumers.
 
 {{% alert color="warning" title="Warning" %}}
-The resource is meant to be created/updated during tenant operations for e.g. the ones created during tenant onboarding. As of now, the primary intention of this resource is to enhance the parameters of subscription callback during tenant onboarding. But the resources may be used for further scenarios in the future.
+This resource is intended to be created or updated during tenant operations, such as those triggered during tenant onboarding. Its primary purpose is to enhance the parameters of the subscription callback during tenant onboarding, though it may be used for additional scenarios in the future.
 
-Any RBAC related updates needed to create/modify the resources for e.g. in a custom tenant operation needs to be handled by consumers and assigned to the relevant job via `serviceAccountName` config for that workload (job).
+Any RBAC changes required to create or modify this resource (for example, in a custom tenant operation) must be handled by consumers and assigned to the relevant job via the `serviceAccountName` configuration for that workload.
 
-Note that all instances of this resources found for a given tenant will be cleaned up before any `CAPTenantOperation` is created.
+All instances of this resource for a given tenant are cleaned up before any `CAPTenantOperation` is created.
 {{% /alert %}}

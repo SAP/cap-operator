@@ -7,21 +7,21 @@ description: >
   How to deploy a new CAP-based application
 ---
 
-Deploying a multi-tenant CAP application involves defining several key resources provided by the CAP Operator. These resources help manage the application's runtime components and external traffic routing.
+Deploying a multi-tenant CAP application involves defining several key resources provided by the CAP Operator. These resources manage the application's runtime components and external traffic routing.
 
 ## Key Resources
 
-1. **CAPApplication** (`capapplications.sme.sap.com`): This resource is namespaced, meaning it is confined to a specific namespace within your cluster. It represents the application itself.
+1. **CAPApplication** (`capapplications.sme.sap.com`): A namespaced resource that represents the application.
 
-2. **CAPApplicationVersion** (`capapplicationversions.sme.sap.com`): Also namespaced, this resource specifies the version of the application you are deploying. It ensures that all runtime components like deployments, services, and jobs are created with the specified image version in the same namespace.
+2. **CAPApplicationVersion** (`capapplicationversions.sme.sap.com`): A namespaced resource that specifies the version of the application being deployed. It ensures that all runtime components (deployments, services, and jobs) are created with the specified image version in the same namespace.
 
-3. **Domain Resources**: These resources determine how external traffic reaches your application and how DNS and TLS settings are applied. You can choose between:
-   - **Domain** (`domains.sme.sap.com`): A namespaced resource intended for a single application, typically for internal domain use within your application or cluster.
-   - **ClusterDomain** (`clusterdomains.sme.sap.com`): A cluster-scoped resource that can be used across multiple applications within the cluster.
+3. **Domain resources**: These resources determine how external traffic reaches the application and how DNS and TLS settings are applied. You can choose between:
+   - **Domain** (`domains.sme.sap.com`): A namespaced resource for a single application.
+   - **ClusterDomain** (`clusterdomains.sme.sap.com`): A cluster-scoped resource that can be shared across multiple applications.
 
 ## Deployment Process
 
-To deploy your application, ensure that the `CAPApplication` and `CAPApplicationVersion` resources are created within the same namespace. This allows the CAP Operator to manage all associated application runtime components. For external traffic management, define either a `Domain` or `ClusterDomain` resource based on your application's needs.
+Create the `CAPApplication` and `CAPApplicationVersion` resources in the same namespace. This allows CAP Operator to manage all associated runtime components. For external traffic management, define either a `Domain` or `ClusterDomain` resource.
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -38,7 +38,7 @@ spec:
   dnsMode: Wildcard
 ```
 
-The `ClusterDomain` resource is not namespaced and is suited for global or shared domain configurations. For example, multiple applications can share the same external domain. If needed, either create a new one or reuse an existing one in the cluster. See [API Reference](../../reference/#sme.sap.com/v1alpha1.ClusterDomain).
+The `ClusterDomain` resource is cluster-scoped and suited for global or shared domain configurations — for example, when multiple applications share the same external domain. See [API Reference](../../reference/#sme.sap.com/v1alpha1.ClusterDomain).
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -54,7 +54,7 @@ spec:
   dnsMode: Subdomain
 ```
 
-The `CAPApplication` resource describes the high-level attributes of an application such as the SAP BTP account where it is hosted, the consumed SAP BTP services, list of `Domain` and `ClusterDomain` resources etc. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplication).
+The `CAPApplication` resource describes the high-level attributes of an application: the SAP BTP account where it is hosted, the consumed SAP BTP services, and references to `Domain` and `ClusterDomain` resources. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplication).
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -63,12 +63,12 @@ metadata:
   name: cap-app-01
   namespace: cap-app-01
 spec:
-  btpAppName: cap-app-01 # <-- short name (similar to SAP BTP XSAPPNAME)
+  btpAppName: cap-app-01 # <-- short name (equivalent to SAP BTP XSAPPNAME)
   btp:
     services:
       - class: xsuaa # <-- SAP BTP service technical name
         name: app-uaa # <-- name of the service instance
-        secret: cap-app-01-uaa-bind-cf # <-- secret containing the credentials to access the service existing in the same namespace
+        secret: cap-app-01-uaa-bind-cf # <-- secret containing credentials for accessing the service (must exist in the same namespace)
       - class: saas-registry
         name: app-saas-registry
         secret: cap-app-01-saas-bind-cf
@@ -91,16 +91,14 @@ spec:
   - kind: Domain
     name: cap-app-01-primary # <-- reference to Domain resource in the same namespace
   - kind: ClusterDomain
-    name: common-external-domain # <-- reference to ClusterDomain resource in the cluster (either new or existing)
+    name: common-external-domain # <-- reference to ClusterDomain resource in the cluster
   globalAccountId: global-account-id
   provider:
     subDomain: cap-app-01-provider
     tenantId: e55d7b5-279-48be-a7b0-aa2bae55d7b5
 ```
 
-The `CAPApplicationVersion` describes the different components of an application version including the container images to be used and the services consumed by each component. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
-
-The `CAPApplicationVersion` must be created in the same namespace as the `CAPApplication` and refers to it.
+The `CAPApplicationVersion` describes the components of an application version, including the container images to use and the services consumed by each component. It must be created in the same namespace as the `CAPApplication` and must reference it. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -115,7 +113,7 @@ spec:
     - regcred
   workloads:
     - name: cap-backend
-      consumedBTPServices: # <-- these are services used by the application server (already defines as part of CAPApplication resource). Corresponding credential secrets will be mounted onto the component pods as volumes.
+      consumedBTPServices: # <-- services used by the application server (defined in CAPApplication). Credential secrets are mounted as volumes on component pods.
         - app-uaa
         - app-service-manager
         - app-saas-registry
@@ -153,20 +151,20 @@ spec:
         backoffLimit: 1
 ```
 
-> NOTE: The example above is a minimal `CAPApplicationVersion` that can be deployed. For a more supported configuration and their explanations, see [here](../resources/capapplicationversion).
+> NOTE: The example above shows a minimal `CAPApplicationVersion`. For a complete configuration with explanations, see [here](../resources/capapplicationversion).
 
-The controller component of CAP Operator reacts to these objects and creates further resources, which constitute a running application:
+The CAP Operator controller reacts to these objects and creates additional resources that constitute a running application:
 
-- Deployment (and service) for the application server with credentials (from secrets) to access SAP BTP services injected as `VCAP_SERVICES` environment variable
-- Deployment (and service) for the approuter with destination mapping to the application server and subscription server (for the tenant provisioning route)
+- Deployment (and service) for the application server, with SAP BTP service credentials injected as the `VCAP_SERVICES` environment variable
+- Deployment (and service) for the approuter, with destination mappings to the application server and subscription server (for tenant provisioning)
 - Job for the version content deployer
-- TLS certificates for the domains provided using either ["Gardener" cert-management](https://github.com/gardener/cert-management) or [cert-manager.io cert-manager](https://github.com/cert-manager/cert-manager)
+- TLS certificates for the specified domains using either ["Gardener" cert-management](https://github.com/gardener/cert-management) or [cert-manager.io cert-manager](https://github.com/cert-manager/cert-manager)
 - Istio gateway resource for the application domains
 
-> The content deployer is used to deploy content or configuration to SAP BTP services, before using them.
+> The content deployer deploys content or configuration to SAP BTP services before they are used.
 
-Once these resources are available, the `CAPApplicationVersion` status changes to `Ready`. **The controller proceeds to automatically create an object of type `CAPTenant`, which corresponds to the tenant of the provider subaccount.** Please see [tenant subscription](../tenant-provisioning) for details on how the `CAPTenant` resource is reconciled.
+Once these resources are available, the `CAPApplicationVersion` status changes to `Ready`. **The controller then automatically creates a `CAPTenant` object for the provider subaccount tenant.** See [tenant subscription](../tenant-provisioning) for details on how the `CAPTenant` resource is reconciled.
 
-> The `CAPApplicationVersion` resource is meant to be immutable - it's spec should not be modified once it is deployed. This is also prevented by our web-hooks which we recommend to always keep active (default).
+> The `CAPApplicationVersion` resource is immutable — its spec must not be modified after deployment. This is enforced by webhooks, which we recommend keeping active (the default).
 
 > NOTE: Follow the recommended [security measures](../security) to safeguard exposed workloads.
