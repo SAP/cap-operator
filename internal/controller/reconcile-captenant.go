@@ -400,7 +400,6 @@ func (c *Controller) createCAPTenantOperation(ctx context.Context, cat *v1alpha1
 		LabelOwnerIdentifierHash: sha1Sum(cat.Namespace, cat.Name),
 		LabelTenantOperationType: string(opType),
 		LabelTenantType:          cat.Labels[LabelTenantType],
-		LabelSubscriptionGUID:    cat.Labels[LabelSubscriptionGUID],
 	}
 	selector, err := labels.ValidatedSelectorFromSet(labelsMap)
 	if err != nil {
