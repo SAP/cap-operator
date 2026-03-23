@@ -18,6 +18,7 @@ import (
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -713,7 +714,61 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 		}
 	}
 
+	// Create HPA for the deployment if configured
+	if err == nil && workload.DeploymentDefinition.HorizontalPodAutoscaler != nil {
+		err = c.createOrUpdateHorizontalPodAutoscaler(deploymentName, workload, cav, ca)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return workloadDeployment, doChecks(err, workloadDeployment, cav, workload.Name)
+}
+
+func (c *Controller) createOrUpdateHorizontalPodAutoscaler(deploymentName string, workload *v1alpha1.WorkloadDetails, cav *v1alpha1.CAPApplicationVersion, ca *v1alpha1.CAPApplication) error {
+	hpaName := deploymentName
+	// Get the HPA which should exist for this deployment
+	hpa, err := c.kubeClient.AutoscalingV2().HorizontalPodAutoscalers(cav.Namespace).Get(context.TODO(), hpaName, metav1.GetOptions{})
+	// If the resource doesn't exist, we'll create it
+	if k8sErrors.IsNotFound(err) {
+		hpa, err = c.kubeClient.AutoscalingV2().HorizontalPodAutoscalers(cav.Namespace).Create(context.TODO(), newHorizontalPodAutoscaler(deploymentName, ca, cav, workload), metav1.CreateOptions{})
+		if err == nil {
+			util.LogInfo("Horizontal Pod Autoscaler created successfully", string(Processing), cav, hpa, "version", cav.Spec.Version)
+		}
+	}
+	return doChecks(err, hpa, cav, workload.Name)
+}
+
+func newHorizontalPodAutoscaler(deploymentName string, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails) *autoscalingv2.HorizontalPodAutoscaler {
+	hpaName := deploymentName
+	labels := copyMaps(workload.Labels, getLabels(ca, cav, CategoryWorkload, string(workload.DeploymentDefinition.Type), getWorkloadName(cav.Name, workload.Name), true))
+
+	// Copy the HPA spec defined in the CRD and set the scale target ref to the deployment created for this workload.
+	// As scaleTargetRef from k8s client is required, we used our own copy without that field and set it here to avoid users having to set it.
+	hpaSpec := autoscalingv2.HorizontalPodAutoscalerSpec{
+		ScaleTargetRef: autoscalingv2.CrossVersionObjectReference{
+			Kind:       "Deployment",
+			Name:       deploymentName,
+			APIVersion: "apps/v1",
+		},
+		MinReplicas: workload.DeploymentDefinition.HorizontalPodAutoscaler.MinReplicas,
+		MaxReplicas: workload.DeploymentDefinition.HorizontalPodAutoscaler.MaxReplicas,
+		Metrics:     workload.DeploymentDefinition.HorizontalPodAutoscaler.Metrics,
+		Behavior:    workload.DeploymentDefinition.HorizontalPodAutoscaler.Behavior,
+	}
+
+	return &autoscalingv2.HorizontalPodAutoscaler{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      hpaName,
+			Namespace: cav.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind)),
+			},
+			Labels:      labels,
+			Annotations: copyMaps(workload.Annotations, getAnnotations(ca, cav, true)),
+		},
+		Spec: hpaSpec,
+	}
 }
 
 func (c *Controller) createOrUpdatePodDisruptionBudget(workload *v1alpha1.WorkloadDetails, cav *v1alpha1.CAPApplicationVersion, ca *v1alpha1.CAPApplication) error {

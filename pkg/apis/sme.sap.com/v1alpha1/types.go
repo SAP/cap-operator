@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -285,6 +286,24 @@ type DeploymentDetails struct {
 	Monitoring *WorkloadMonitoring `json:"monitoring,omitempty"`
 	// Pod Disruption Budget may be used to specify the minimum number of available pods for this workload
 	PodDisruptionBudget *policyv1.PodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
+	// Horizontal Pod Autoscaler may be used to specify the scaling behavior for this workload
+	HorizontalPodAutoscaler *HorizontalPodAutoscalerSpec `json:"horizontalPodAutoscaler,omitempty"`
+}
+
+// HorizontalPodAutoscalerSpec wraps autoscalingv2.HorizontalPodAutoscalerSpec but gets rid of scaleTargetRef,
+// as the operator always sets it to the deployment created for the workload.
+type HorizontalPodAutoscalerSpec struct {
+	// minReplicas is the lower limit for the number of replicas to which the autoscaler can scale down.
+	// +optional
+	MinReplicas *int32 `json:"minReplicas,omitempty"`
+	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale up.
+	MaxReplicas int32 `json:"maxReplicas"`
+	// metrics contains the specifications for which to use to calculate the desired replica count.
+	// +optional
+	Metrics []autoscalingv2.MetricSpec `json:"metrics,omitempty"`
+	// behavior configures the scaling behavior of the target in both Up and Down directions.
+	// +optional
+	Behavior *autoscalingv2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
 }
 
 // ServiceExposure specifies the details of the VirtualService to be exposed for `Service` type workload(s)

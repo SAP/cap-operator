@@ -43,6 +43,7 @@ import (
 	istiofake "istio.io/client-go/pkg/clientset/versioned/fake"
 	istioscheme "istio.io/client-go/pkg/clientset/versioned/scheme"
 	appsv1 "k8s.io/api/apps/v1"
+	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
@@ -671,8 +672,10 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 		actual, err = c.kubeClient.(*k8sfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("endpointslices"), mo.GetNamespace(), mo.GetName())
 	case *policyv1.PodDisruptionBudget:
 		actual, err = c.kubeClient.(*k8sfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("poddisruptionbudgets"), mo.GetNamespace(), mo.GetName())
+	case *autoscalingv2.HorizontalPodAutoscaler:
+		actual, err = c.kubeClient.(*k8sfake.Clientset).Tracker().Get(gvk.GroupVersion().WithResource("horizontalpodautoscalers"), mo.GetNamespace(), mo.GetName())
 	default:
-		return fmt.Errorf("unknown expected object type")
+		return fmt.Errorf("unknown expected object type (common_test might need to be extended): %T", expected)
 	}
 
 	if err == nil {

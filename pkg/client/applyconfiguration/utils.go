@@ -79,6 +79,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.DomainStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("GenericStatus"):
 		return &smesapcomv1alpha1.GenericStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("HorizontalPodAutoscalerSpec"):
+		return &smesapcomv1alpha1.HorizontalPodAutoscalerSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("JobDetails"):
 		return &smesapcomv1alpha1.JobDetailsApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("MetricRule"):
