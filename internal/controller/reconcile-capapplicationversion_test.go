@@ -1015,3 +1015,49 @@ func TestCAV_PodDisruptionBudget(t *testing.T) {
 		},
 	)
 }
+
+func TestCAV_HorizontalPodAutoscalerError(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01-cav-v1"}},
+		TestData{
+			description: "capapplication version - horizontal pod autoscaler error scenario",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/cav-hpa.yaml",
+				"testdata/capapplicationversion/services-ready.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems: []string{},
+			expectError:  true,
+			mockErrorForResources: []ResourceAction{
+				{Verb: "get", Group: "autoscaling", Version: "v2", Resource: "horizontalpodautoscalers", Namespace: "default", Name: "*"},
+			},
+		},
+	)
+}
+
+func TestCAV_HorizontalPodAutoscaler(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-ca-01-cav-v1"}},
+		TestData{
+			description: "capapplication version - horizontal pod autoscaler",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/common/ca-services.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/cav-hpa.yaml",
+				"testdata/capapplicationversion/services-ready.yaml",
+				"testdata/capapplicationversion/service-content-job-completed.yaml",
+			},
+			backlogItems:      []string{},
+			expectError:       false,
+			expectedResources: "testdata/capapplicationversion/expected/cav-hpa-ready.yaml",
+		},
+	)
+}

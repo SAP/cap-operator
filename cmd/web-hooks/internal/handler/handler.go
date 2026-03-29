@@ -377,8 +377,8 @@ func validateWorkloads(ca *v1alpha1.CAPApplication, cavObjNew *v1alpha1.CAPAppli
 			return workloadPortValidate
 		}
 
-		if workloadPortValidate := checkWorkloadPodDistruptionBudget(&workload); !workloadPortValidate.allowed {
-			return workloadPortValidate
+		if workloadPDBValidate := checkWorkloadPodDistruptionBudget(&workload); !workloadPDBValidate.allowed {
+			return workloadPDBValidate
 		}
 
 		// get count of workload names
