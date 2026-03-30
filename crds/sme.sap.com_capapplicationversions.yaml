@@ -113,11 +113,6 @@ spec:
                 type: string
               workloads:
                 items:
-                  oneOf:
-                    - required:
-                        - deploymentDefinition
-                    - required:
-                        - jobDefinition
                   properties:
                     annotations:
                       additionalProperties:
@@ -1815,11 +1810,6 @@ spec:
                         monitoring:
                           properties:
                             deletionRules:
-                              oneOf:
-                                - required:
-                                    - metrics
-                                - required:
-                                    - expression
                               properties:
                                 expression:
                                   type: string
@@ -1847,6 +1837,11 @@ spec:
                                     type: object
                                   type: array
                               type: object
+                              x-kubernetes-validations:
+                              - message: exactly one of the fields in [metrics expression]
+                                  must be set
+                                rule: '[has(self.metrics),has(self.expression)].filter(x,x==true).size()
+                                  == 1'
                             scrapeConfig:
                               properties:
                                 interval:
@@ -5483,6 +5478,12 @@ spec:
                   - consumedBTPServices
                   - name
                   type: object
+                  x-kubernetes-validations:
+                  - message: exactly one of the fields in [deploymentDefinition jobDefinition]
+                      must be set
+                    rule: '[has(self.deploymentDefinition),has(self.jobDefinition)].filter(x,x==true).size()
+                      == 1'
+                maxItems: 100
                 type: array
             required:
             - capApplicationInstance

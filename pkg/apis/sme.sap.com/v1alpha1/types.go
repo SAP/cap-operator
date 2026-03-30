@@ -244,6 +244,7 @@ type CAPApplicationVersionSpec struct {
 	// Registry secrets used to pull images of the application components
 	RegistrySecrets []string `json:"registrySecrets,omitempty"`
 	// Information about the Workloads
+	// +kubebuilder:validation:MaxItems=100
 	Workloads []WorkloadDetails `json:"workloads"`
 	// Tenant Operations may be used to specify how jobs are sequenced for the different tenant operations
 	TenantOperations *TenantOperations `json:"tenantOperations,omitempty"`
@@ -254,6 +255,7 @@ type CAPApplicationVersionSpec struct {
 }
 
 // WorkloadDetails specifies the details of the Workload
+// +kubebuilder:validation:ExactlyOneOf=deploymentDefinition;jobDefinition
 type WorkloadDetails struct {
 	// Name of the workload
 	Name string `json:"name"`
@@ -345,6 +347,7 @@ type MonitoringConfig struct {
 	Timeout Duration `json:"scrapeTimeout,omitempty"`
 }
 
+// +kubebuilder:validation:ExactlyOneOf=metrics;expression
 type DeletionRules struct {
 	Metrics []MetricRule `json:"metrics,omitempty"`
 	// A promQL expression that evaluates to a scalar boolean (1 or 0).

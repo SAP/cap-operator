@@ -14,7 +14,7 @@ import (
 // HorizontalPodAutoscalerSpecApplyConfiguration represents a declarative configuration of the HorizontalPodAutoscalerSpec type for use
 // with apply.
 //
-// HorizontalPodAutoscalerSpec wraps autoscalingv2.HorizontalPodAutoscalerSpec but makes scaleTargetRef optional,
+// HorizontalPodAutoscalerSpec wraps autoscalingv2.HorizontalPodAutoscalerSpec but gets rid of scaleTargetRef,
 // as the operator always sets it to the deployment created for the workload.
 type HorizontalPodAutoscalerSpecApplyConfiguration struct {
 	// minReplicas is the lower limit for the number of replicas to which the autoscaler can scale down.
