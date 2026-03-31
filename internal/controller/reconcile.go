@@ -81,9 +81,6 @@ var (
 
 const TenantTypeProvider = "provider"
 
-// Use a different name for sticky cookie than the one from approuter (JSESSIONID) used for session handling
-const RouterHttpCookieName = "CAPOP_ROUTER_STICKY"
-
 const (
 	EnvCAPOpAppVersion          = "CAPOP_APP_VERSION"
 	EnvCAPOpTenantId            = "CAPOP_TENANT_ID"

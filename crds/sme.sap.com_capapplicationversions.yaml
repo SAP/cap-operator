@@ -2201,6 +2201,45 @@ spec:
                           type: object
                         serviceAccountName:
                           type: string
+                        stickiness:
+                          properties:
+                            hash:
+                              properties:
+                                httpCookie:
+                                  properties:
+                                    attributes:
+                                      items:
+                                        properties:
+                                          name:
+                                            type: string
+                                          value:
+                                            type: string
+                                        required:
+                                        - name
+                                        - value
+                                        type: object
+                                      type: array
+                                    name:
+                                      type: string
+                                    path:
+                                      type: string
+                                    ttl:
+                                      type: string
+                                  type: object
+                                httpHeaderName:
+                                  type: string
+                                httpQueryParameterName:
+                                  type: string
+                                useSourceIp:
+                                  type: boolean
+                              type: object
+                              x-kubernetes-validations:
+                              - message: at most one of the fields in [httpHeaderName
+                                  httpCookie useSourceIp httpQueryParameterName] may
+                                  be set
+                                rule: '[has(self.httpHeaderName),has(self.httpCookie),has(self.useSourceIp),has(self.httpQueryParameterName)].filter(x,x==true).size()
+                                  <= 1'
+                          type: object
                         tolerations:
                           items:
                             properties:

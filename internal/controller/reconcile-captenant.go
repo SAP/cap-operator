@@ -53,21 +53,20 @@ const (
 )
 
 const (
-	CAPTenantEventProcessingStarted                 = "ProcessingStarted"
-	CAPTenantEventProvisioningFailed                = "ProvisioningFailed"
-	CAPTenantEventProvisioningCompleted             = "ProvisioningCompleted"
-	CAPTenantEventProvisioningOperationCreated      = "ProvisioningOperationCreated"
-	CAPTenantEventDeprovisioningFailed              = "DeprovisioningFailed"
-	CAPTenantEventDeprovisioningCompleted           = "DeprovisioningCompleted"
-	CAPTenantEventDeprovisioningOperationCreated    = "DeprovisioningOperationCreated"
-	CAPTenantEventUpgradeFailed                     = "UpgradeFailed"
-	CAPTenantEventUpgradeCompleted                  = "UpgradeCompleted"
-	CAPTenantEventUpgradeOperationCreated           = "UpgradeOperationCreated"
-	CAPTenantEventTenantNetworkingModified          = "TenantNetworkingModified"
-	CAPTenantEventVirtualServiceModificationFailed  = "VirtualServiceModificationFailed"
-	CAPTenantEventDestinationRuleModificationFailed = "DestinationRuleModificationFailed"
-	CAPTenantEventInvalidReference                  = "InvalidReference"
-	CAPTenantEventAutoVersionUpdate                 = "AutoVersionUpdate"
+	CAPTenantEventProcessingStarted                = "ProcessingStarted"
+	CAPTenantEventProvisioningFailed               = "ProvisioningFailed"
+	CAPTenantEventProvisioningCompleted            = "ProvisioningCompleted"
+	CAPTenantEventProvisioningOperationCreated     = "ProvisioningOperationCreated"
+	CAPTenantEventDeprovisioningFailed             = "DeprovisioningFailed"
+	CAPTenantEventDeprovisioningCompleted          = "DeprovisioningCompleted"
+	CAPTenantEventDeprovisioningOperationCreated   = "DeprovisioningOperationCreated"
+	CAPTenantEventUpgradeFailed                    = "UpgradeFailed"
+	CAPTenantEventUpgradeCompleted                 = "UpgradeCompleted"
+	CAPTenantEventUpgradeOperationCreated          = "UpgradeOperationCreated"
+	CAPTenantEventTenantNetworkingModified         = "TenantNetworkingModified"
+	CAPTenantEventVirtualServiceModificationFailed = "VirtualServiceModificationFailed"
+	CAPTenantEventInvalidReference                 = "InvalidReference"
+	CAPTenantEventAutoVersionUpdate                = "AutoVersionUpdate"
 )
 
 const (

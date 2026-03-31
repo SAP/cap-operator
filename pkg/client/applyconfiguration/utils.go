@@ -81,6 +81,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.GenericStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("HorizontalPodAutoscalerSpec"):
 		return &smesapcomv1alpha1.HorizontalPodAutoscalerSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("HTTPCookie"):
+		return &smesapcomv1alpha1.HTTPCookieApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("JobDetails"):
 		return &smesapcomv1alpha1.JobDetailsApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("MetricRule"):
@@ -97,6 +99,10 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.ServiceExposureApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ServiceInfo"):
 		return &smesapcomv1alpha1.ServiceInfoApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Stickiness"):
+		return &smesapcomv1alpha1.StickinessApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("StickinessHash"):
+		return &smesapcomv1alpha1.StickinessHashApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("TenantOperations"):
 		return &smesapcomv1alpha1.TenantOperationsApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("TenantOperationWorkloadReference"):

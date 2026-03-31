@@ -709,20 +709,45 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 	// Create PDB for the deployment if configured
 	if err == nil && workload.DeploymentDefinition.PodDisruptionBudget != nil {
 		err = c.createOrUpdatePodDisruptionBudget(workload, cav, ca)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	// Create HPA for the deployment if configured
 	if err == nil && workload.DeploymentDefinition.HorizontalPodAutoscaler != nil {
 		err = c.createOrUpdateHorizontalPodAutoscaler(deploymentName, workload, cav, ca)
-		if err != nil {
-			return nil, err
-		}
+	}
+
+	// Create DestinationRule for the deployment based on stickiness configuration (if any)
+	if err == nil {
+		err = c.createOrUpdateDestinationRule(deploymentName, workload, cav)
 	}
 
 	return workloadDeployment, doChecks(err, workloadDeployment, cav, workload.Name)
+}
+
+func (c *Controller) createOrUpdateDestinationRule(deploymentName string, workload *v1alpha1.WorkloadDetails, cav *v1alpha1.CAPApplicationVersion) error {
+	// Only create DestinationRule if stickiness is configured for the workload
+	stickiness := getStickinessForWorkload(workload)
+	if stickiness == nil {
+		return nil
+	}
+	return c.handleDestinationRule(context.TODO(), deploymentName, stickiness, cav)
+}
+
+func getStickinessForWorkload(workload *v1alpha1.WorkloadDetails) *v1alpha1.Stickiness {
+	if workload.DeploymentDefinition.Stickiness != nil {
+		return workload.DeploymentDefinition.Stickiness
+	} else if workload.DeploymentDefinition.Type == v1alpha1.DeploymentRouter {
+		return &v1alpha1.Stickiness{
+			Hash: &v1alpha1.StickinessHash{
+				HttpCookie: &v1alpha1.HTTPCookie{
+					Name: RouterHttpCookieName,
+					Path: "/",
+					Ttl:  &metav1.Duration{Duration: 0 * time.Second}, // session cookie
+				},
+			},
+		}
+	}
+	return nil
 }
 
 func (c *Controller) createOrUpdateHorizontalPodAutoscaler(deploymentName string, workload *v1alpha1.WorkloadDetails, cav *v1alpha1.CAPApplicationVersion, ca *v1alpha1.CAPApplication) error {

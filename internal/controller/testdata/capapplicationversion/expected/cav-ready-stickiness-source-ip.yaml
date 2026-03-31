@@ -37,35 +37,26 @@ spec:
       deploymentDefinition:
         image: docker.image.repo/srv/server:latest
         type: CAP
-        env:
-          - name: HOST_IP
-            valueFrom:
-              fieldRef:
-                fieldPath: status.PodIp
+        ports:
+          - name: server-app-port
+            port: 4000
+            routerDestinationName: srv-api
+        stickiness:
+          hash:
+            useSourceIp: true
     - name: app-router
       consumedBTPServices:
         - cap-uaa
         - cap-saas-registry
       deploymentDefinition:
         image: docker.image.repo/approuter/approuter:latest
-        imagePullPolicy: "Always"
         type: Router
-        env:
-          - name: debug
-            valueFrom:
-              configMapKeyRef:
-                key: someKey
-                name: someCM
-                optional: true
     - name: content-job
       consumedBTPServices:
         - cap-uaa
       jobDefinition:
         image: docker.image.repo/content/cap-content:latest
         type: Content
-        env:
-          - name: SOME_VERSION
-            value: 0.0.1
     - name: mtx-job
       consumedBTPServices:
         - cap-uaa
@@ -74,21 +65,6 @@ spec:
       jobDefinition:
         image: docker.image.repo/srv/server:latest
         type: TenantOperation
-    - name: job-worker
-      consumedBTPServices:
-        - cap-uaa
-        - cap-service-manager
-        - cap-saas-registry
-      deploymentDefinition:
-        image: docker.image.repo/srv/server:latest
-        type: Additional
-        env:
-          - name: TEST_SEC_REF
-            valueFrom:
-              secretKeyRef:
-                key: someKey
-                name: someSecret
-                optional: true
 status:
   conditions:
     - reason: WaitingForWorkloads
@@ -158,20 +134,13 @@ spec:
         - env:
             - name: CAPOP_APP_VERSION
               value: "1.2.3"
-            - name: debug
-              valueFrom:
-                configMapKeyRef:
-                  key: someKey
-                  name: someCM
-                  optional: true
             - name: destinations
-              value: '[{"name":"srv-api","url":"http://test-cap-01-cav-v1-cap-backend-srv-svc:4004","forwardAuthToken":true}]'
+              value: '[{"name":"srv-api","url":"http://test-cap-01-cav-v1-cap-backend-srv-svc:4000","forwardAuthToken":true}]'
           envFrom:
             - secretRef:
                 name: test-cap-01-cav-v1-app-router-gen
                 optional: true
           image: docker.image.repo/approuter/approuter:latest
-          imagePullPolicy: "Always"
           name: app-router
       imagePullSecrets:
         - name: regcred
@@ -197,3 +166,22 @@ spec:
           name: CAPOP_ROUTER_STICKY
           path: /
           ttl: 0s
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: test-cap-01-cav-v1-cap-backend-srv
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPApplicationVersion
+      name: test-cap-01-cav-v1
+      uid: 5e64489b-7346-4984-8617-e8c37338b3d8
+spec:
+  host: test-cap-01-cav-v1-cap-backend-srv-svc.default.svc.cluster.local
+  trafficPolicy:
+    loadBalancer:
+      consistentHash:
+        useSourceIp: true

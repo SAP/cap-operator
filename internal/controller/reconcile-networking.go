@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
@@ -34,13 +33,108 @@ const (
 	serviceDNSSuffix          = ".svc.cluster.local"
 	setCookie                 = "Set-Cookie"
 	VersionAffinityCookieName = "CAPOP_CAV"
+	// Use a different name for sticky cookie than the one from approuter (JSESSIONID) used for session handling
+	RouterHttpCookieName = "CAPOP_ROUTER_STICKY"
 )
+
+// This region is for handling DestinationRule creation for stickiness based on the configuration in CAPApplicationVersion.
+// #region Destination Rule for stickiness
+func (c *Controller) handleDestinationRule(ctx context.Context, drName string, stickiness *v1alpha1.Stickiness, cav *v1alpha1.CAPApplicationVersion) (err error) {
+	drSpec := getDestinationRuleFromConfig(drName, cav.Namespace, stickiness)
+	if drSpec == nil {
+		// if no valid stickiness configuration is found, ignore creation
+		return
+	}
+
+	_, err = c.istioInformerFactory.Networking().V1().DestinationRules().Lister().DestinationRules(cav.Namespace).Get(drName)
+	if errors.IsNotFound(err) {
+		dr := &istionwv1.DestinationRule{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:            drName,
+				Namespace:       cav.Namespace,
+				Labels:          map[string]string{},
+				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind))},
+			},
+			Spec: *drSpec.DeepCopy(),
+		}
+
+		util.LogInfo("Creating destination rule", string(Processing), cav, dr, "version", cav.Spec.Version)
+		_, err = c.istioClient.NetworkingV1().DestinationRules(cav.Namespace).Create(ctx, dr, metav1.CreateOptions{})
+	}
+
+	return err
+}
+
+func getDestinationRuleFromConfig(drName, namespace string, stickiness *v1alpha1.Stickiness) *networkingv1.DestinationRule {
+	if stickiness.Hash == nil {
+		return nil
+	}
+	hash := stickiness.Hash
+	var lbHash *networkingv1.LoadBalancerSettings_ConsistentHashLB
+	if hash.HttpHeaderName != "" {
+		lbHash = &networkingv1.LoadBalancerSettings_ConsistentHashLB{
+			HashKey: &networkingv1.LoadBalancerSettings_ConsistentHashLB_HttpHeaderName{
+				HttpHeaderName: hash.HttpHeaderName,
+			},
+		}
+	} else if hash.HttpCookie != nil {
+		var ttl *durationpb.Duration
+		if hash.HttpCookie.Ttl != nil {
+			ttl = durationpb.New(hash.HttpCookie.Ttl.Duration)
+		}
+		var attributes []*networkingv1.LoadBalancerSettings_ConsistentHashLB_HTTPCookie_Attribute
+		for _, attr := range hash.HttpCookie.Attributes {
+			attributes = append(attributes, &networkingv1.LoadBalancerSettings_ConsistentHashLB_HTTPCookie_Attribute{
+				Name:  attr.Name,
+				Value: attr.Value,
+			})
+		}
+		lbHash = &networkingv1.LoadBalancerSettings_ConsistentHashLB{
+			HashKey: &networkingv1.LoadBalancerSettings_ConsistentHashLB_HttpCookie{
+				HttpCookie: &networkingv1.LoadBalancerSettings_ConsistentHashLB_HTTPCookie{
+					Name:       hash.HttpCookie.Name,
+					Path:       hash.HttpCookie.Path,
+					Ttl:        ttl,
+					Attributes: attributes,
+				},
+			},
+		}
+	} else if hash.HttpQueryParameterName != "" {
+		lbHash = &networkingv1.LoadBalancerSettings_ConsistentHashLB{
+			HashKey: &networkingv1.LoadBalancerSettings_ConsistentHashLB_HttpQueryParameterName{
+				HttpQueryParameterName: hash.HttpQueryParameterName,
+			},
+		}
+	} else if hash.UseSourceIp {
+		lbHash = &networkingv1.LoadBalancerSettings_ConsistentHashLB{
+			HashKey: &networkingv1.LoadBalancerSettings_ConsistentHashLB_UseSourceIp{
+				UseSourceIp: trueVal,
+			},
+		}
+	}
+
+	if lbHash != nil {
+		return &networkingv1.DestinationRule{
+			Host: drName + ServiceSuffix + "." + namespace + serviceDNSSuffix,
+			TrafficPolicy: &networkingv1.TrafficPolicy{
+				LoadBalancer: &networkingv1.LoadBalancerSettings{
+					LbPolicy: &networkingv1.LoadBalancerSettings_ConsistentHash{
+						ConsistentHash: lbHash,
+					},
+				},
+			},
+		}
+	}
+	return nil
+}
+
+// #endregion
 
 func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (err error) {
 	var (
-		reason, message                           string
-		drModified, vsModified, prevCavDrModified bool
-		eventType                                 string = corev1.EventTypeNormal
+		reason, message string
+		vsModified      bool
+		eventType       string = corev1.EventTypeNormal
 	)
 
 	defer func() {
@@ -53,19 +147,6 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 		}
 	}()
 
-	if drModified, err = c.reconcileTenantDestinationRule(ctx, cat, cat.Name, cavName); err != nil {
-		util.LogError(err, "Destination rule reconciliation failed", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
-		reason = CAPTenantEventDestinationRuleModificationFailed
-		return
-	}
-
-	// Enable session affinity
-	if prevCavDrModified, err = c.reconcileTenantDestinationRuleForPrevCav(ctx, ca, cat); err != nil {
-		util.LogError(err, "Destination rule reconciliation failed for previous cav", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
-		reason = CAPTenantEventDestinationRuleModificationFailed
-		return
-	}
-
 	if vsModified, err = c.reconcileTenantVirtualService(ctx, cat, cavName, ca); err != nil {
 		util.LogError(err, "Virtual service reconciliation failed", string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		reason = CAPTenantEventVirtualServiceModificationFailed
@@ -73,8 +154,8 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 	}
 
 	// update tenant status
-	if drModified || vsModified || prevCavDrModified {
-		message = fmt.Sprintf("VirtualService (and DestinationRule) %s.%s was reconciled", cat.Namespace, cat.Name)
+	if vsModified {
+		message = fmt.Sprintf("VirtualService %s.%s was reconciled", cat.Namespace, cat.Name)
 		reason = CAPTenantEventTenantNetworkingModified
 		conditionStatus := metav1.ConditionFalse
 		if isCROConditionReady(cat.Status.GenericStatus) {
@@ -84,173 +165,6 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 	}
 
 	return
-}
-
-func (c *Controller) reconcileTenantDestinationRule(ctx context.Context, cat *v1alpha1.CAPTenant, drName string, cavName string) (modified bool, err error) {
-	var (
-		create, update bool
-		dr             *istionwv1.DestinationRule
-	)
-	dr, err = c.istioClient.NetworkingV1().DestinationRules(cat.Namespace).Get(ctx, drName, metav1.GetOptions{})
-	if errors.IsNotFound(err) {
-		dr = &istionwv1.DestinationRule{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:            drName,
-				Namespace:       cat.Namespace,
-				Labels:          map[string]string{},
-				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(cat, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind))},
-			},
-		}
-		create = true
-	} else if err != nil {
-		return
-	}
-
-	if update, err = c.getUpdatedTenantDestinationRuleObject(cat, dr, cavName); err != nil {
-		util.LogError(err, "", string(Processing), cat, dr, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
-		return
-	}
-
-	if create {
-		util.LogInfo("Creating destination rule", string(Processing), cat, dr, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
-		_, err = c.istioClient.NetworkingV1().DestinationRules(cat.Namespace).Create(ctx, dr, metav1.CreateOptions{})
-	} else if update {
-		util.LogInfo("Updating destination rule", string(Processing), cat, dr, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
-		_, err = c.istioClient.NetworkingV1().DestinationRules(cat.Namespace).Update(ctx, dr, metav1.UpdateOptions{})
-	}
-
-	return create || update, err
-}
-
-func (c *Controller) reconcileTenantDestinationRuleForPrevCav(ctx context.Context, ca *v1alpha1.CAPApplication, cat *v1alpha1.CAPTenant) (modified bool, err error) {
-	if len(cat.Status.PreviousCAPApplicationVersions) == 0 {
-		return false, nil
-	}
-
-	if ca.Annotations[AnnotationEnableVersionAffinity] == "true" {
-		return c.handleSessionAffinityEnabled(ctx, cat)
-	}
-
-	return c.cleanupAllPreviousCavDRs(ctx, cat)
-}
-
-func (c *Controller) handleSessionAffinityEnabled(ctx context.Context, cat *v1alpha1.CAPTenant) (bool, error) {
-	var modified bool
-	var err error
-	prevCav := cat.Status.PreviousCAPApplicationVersions[len(cat.Status.PreviousCAPApplicationVersions)-1]
-
-	// Check if previous CAV exists
-	_, cavGetErr := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(prevCav)
-	switch {
-	case errors.IsNotFound(cavGetErr):
-		// CAV doesn't exist, cleanup its DR
-		modified, err = c.deleteDRIfExists(ctx, cat.Namespace, cat.Name+"-"+prevCav)
-		if err != nil {
-			return false, err
-		}
-	case cavGetErr != nil:
-		// Some other error occurred while fetching CAV
-		return false, cavGetErr
-	default:
-		// CAV exists, reconcile its DR
-		modified, err = c.reconcileTenantDestinationRule(ctx, cat, cat.Name+"-"+prevCav, prevCav)
-		if err != nil {
-			return false, err
-		}
-	}
-
-	// Clean up second-to-last CAV DR if it exists
-	if len(cat.Status.PreviousCAPApplicationVersions) > 1 {
-		secondLastCav := cat.Status.PreviousCAPApplicationVersions[len(cat.Status.PreviousCAPApplicationVersions)-2]
-		drDeleted, err := c.deleteDRIfExists(ctx, cat.Namespace, cat.Name+"-"+secondLastCav)
-		if err != nil {
-			return false, err
-		}
-		modified = modified || drDeleted
-	}
-
-	return modified, nil
-}
-
-func (c *Controller) cleanupAllPreviousCavDRs(ctx context.Context, cat *v1alpha1.CAPTenant) (bool, error) {
-	drNames := make(map[string]struct{})
-	for _, cav := range cat.Status.PreviousCAPApplicationVersions {
-		drNames[cat.Name+"-"+cav] = struct{}{}
-	}
-
-	drList, err := c.istioClient.NetworkingV1().DestinationRules(cat.Namespace).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return false, err
-	}
-
-	var modified bool
-	for _, dr := range drList.Items {
-		if _, exists := drNames[dr.Name]; exists {
-			if err := c.istioClient.NetworkingV1().DestinationRules(cat.Namespace).Delete(ctx, dr.Name, metav1.DeleteOptions{}); err != nil {
-				return false, err
-			}
-			modified = true
-		}
-	}
-	return modified, nil
-}
-
-func (c *Controller) deleteDRIfExists(ctx context.Context, namespace, drName string) (bool, error) {
-	err := c.istioClient.NetworkingV1().DestinationRules(namespace).Delete(ctx, drName, metav1.DeleteOptions{})
-	switch {
-	case errors.IsNotFound(err):
-		return false, nil // Nothing to delete
-	case err != nil:
-		return false, err // Unexpected error
-	default:
-		return true, nil // Deleted successfully
-	}
-}
-
-func (c *Controller) getUpdatedTenantDestinationRuleObject(cat *v1alpha1.CAPTenant, dr *istionwv1.DestinationRule, cavName string) (modified bool, err error) {
-	// verify owner reference
-	modified, err = c.enforceTenantResourceOwnership(&dr.ObjectMeta, &dr.TypeMeta, cat)
-	if err != nil {
-		return modified, err
-	}
-
-	routerPortInfo, err := c.getRouterServicePortInfo(cavName, cat.Namespace)
-	if err != nil {
-		return modified, err
-	}
-
-	spec := &networkingv1.DestinationRule{
-		Host: routerPortInfo.WorkloadName + ServiceSuffix + "." + cat.Namespace + serviceDNSSuffix,
-		TrafficPolicy: &networkingv1.TrafficPolicy{
-			LoadBalancer: &networkingv1.LoadBalancerSettings{
-				LbPolicy: &networkingv1.LoadBalancerSettings_ConsistentHash{
-					ConsistentHash: &networkingv1.LoadBalancerSettings_ConsistentHashLB{
-						HashKey: &networkingv1.LoadBalancerSettings_ConsistentHashLB_HttpCookie{
-							HttpCookie: &networkingv1.LoadBalancerSettings_ConsistentHashLB_HTTPCookie{
-								Name: RouterHttpCookieName,
-								Ttl:  durationpb.New(0 * time.Second),
-								Path: "/",
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	// check whether changes have to be applied using hash comparison
-	serializedSpec, err := json.Marshal(spec)
-	if err != nil {
-		return modified, fmt.Errorf("error serializing destination rule spec: %s", err.Error())
-	}
-	hash := sha256Sum(string(serializedSpec))
-	if dr.Annotations[AnnotationResourceHash] != hash {
-		dr.Spec = *spec.DeepCopy()
-		updateResourceAnnotation(&dr.ObjectMeta, hash)
-		modified = true
-	}
-
-	return modified, err
 }
 
 func (c *Controller) reconcileTenantVirtualService(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (modified bool, err error) {

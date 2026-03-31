@@ -35,6 +35,8 @@ type DeploymentDetailsApplyConfiguration struct {
 	PodDisruptionBudget *policyv1.PodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// Horizontal Pod Autoscaler may be used to specify the scaling behavior for this workload
 	HorizontalPodAutoscaler *HorizontalPodAutoscalerSpecApplyConfiguration `json:"horizontalPodAutoscaler,omitempty"`
+	// Stickiness configuration based on istio consistent hashing for the workload. When present, this is used to create a DestinationRule for the workload.
+	Stickiness *StickinessApplyConfiguration `json:"stickiness,omitempty"`
 }
 
 // DeploymentDetailsApplyConfiguration constructs a declarative configuration of the DeploymentDetails type for use with
@@ -283,5 +285,13 @@ func (b *DeploymentDetailsApplyConfiguration) WithPodDisruptionBudget(value poli
 // If called multiple times, the HorizontalPodAutoscaler field is set to the value of the last call.
 func (b *DeploymentDetailsApplyConfiguration) WithHorizontalPodAutoscaler(value *HorizontalPodAutoscalerSpecApplyConfiguration) *DeploymentDetailsApplyConfiguration {
 	b.HorizontalPodAutoscaler = value
+	return b
+}
+
+// WithStickiness sets the Stickiness field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Stickiness field is set to the value of the last call.
+func (b *DeploymentDetailsApplyConfiguration) WithStickiness(value *StickinessApplyConfiguration) *DeploymentDetailsApplyConfiguration {
+	b.Stickiness = value
 	return b
 }
