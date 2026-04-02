@@ -251,7 +251,7 @@ func getContentJobName(contentJobWorkloadName string, cav *v1alpha1.CAPApplicati
 func getNextContentJob(cav *v1alpha1.CAPApplicationVersion) *v1alpha1.WorkloadDetails {
 
 	// If the previous job failed, we should not trigger the next job
-	if len(cav.Status.Conditions) > 0 && cav.Status.Conditions[0].Reason == "ErrorInWorkloadStatus" {
+	if len(cav.Status.Conditions) > 0 && cav.Status.Conditions[0].Reason == "ErrorInContentDeploymentJob" {
 		return nil
 	}
 
@@ -1126,7 +1126,7 @@ func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alph
 	// Once the cav goes into Error state, we should not check the jobs again in the next reconciliation loop
 	// because it could happen that the job can get deleted meanwhile and we won't be able
 	// to determine the state of the job correctly.
-	if len(cav.Status.Conditions) > 0 && cav.Status.Conditions[0].Reason == "ErrorInWorkloadStatus" {
+	if len(cav.Status.Conditions) > 0 && cav.Status.Conditions[0].Reason == "ErrorInContentDeploymentJob" {
 		return false, fmt.Errorf("%s", cav.Status.Conditions[0].Message)
 	}
 
