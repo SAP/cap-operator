@@ -2515,6 +2515,32 @@ Kubernetes policy/v1.PodDisruptionBudgetSpec
 <p>Pod Disruption Budget may be used to specify the minimum number of available pods for this workload</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>horizontalPodAutoscaler</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.HorizontalPodAutoscalerSpec">
+HorizontalPodAutoscalerSpec
+</a>
+</em>
+</td>
+<td>
+<p>Horizontal Pod Autoscaler may be used to specify the scaling behavior for this workload</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>stickiness</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.Stickiness">
+Stickiness
+</a>
+</em>
+</td>
+<td>
+<p>Stickiness configuration based on istio consistent hashing for the workload. When present, this is used to create a DestinationRule for the workload.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.DeploymentType">DeploymentType
@@ -2844,6 +2870,143 @@ int64
 </tr>
 </tbody>
 </table>
+<h3 id="sme.sap.com/v1alpha1.HTTPCookie">HTTPCookie
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.StickinessHash">StickinessHash</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the cookie.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path to set for the cookie.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ttl</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<p>Lifetime of the cookie. If specified, a cookie with the TTL will be
+generated if the cookie is not present. If the TTL is present and zero,
+the generated cookie will be a session cookie.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>attributes</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.NameValue">
+[]NameValue
+</a>
+</em>
+</td>
+<td>
+<p>Additional attributes for the cookie. They will be used when generating a new cookie.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.HorizontalPodAutoscalerSpec">HorizontalPodAutoscalerSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>)
+</p>
+<div>
+<p>HorizontalPodAutoscalerSpec wraps autoscalingv2.HorizontalPodAutoscalerSpec but gets rid of scaleTargetRef,
+as the operator always sets it to the deployment created for the workload.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>minReplicas</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>minReplicas is the lower limit for the number of replicas to which the autoscaler can scale down.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxReplicas</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale up.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>metrics</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/autoscaling/v2#MetricSpec">
+[]Kubernetes autoscaling/v2.MetricSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>metrics contains the specifications for which to use to calculate the desired replica count.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>behavior</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/autoscaling/v2#HorizontalPodAutoscalerBehavior">
+Kubernetes autoscaling/v2.HorizontalPodAutoscalerBehavior
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>behavior configures the scaling behavior of the target in both Up and Down directions.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="sme.sap.com/v1alpha1.JobDetails">JobDetails
 </h3>
 <p>
@@ -3112,7 +3275,7 @@ Duration
 <h3 id="sme.sap.com/v1alpha1.NameValue">NameValue
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ApplicationDomains">ApplicationDomains</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ApplicationDomains">ApplicationDomains</a>, <a href="#sme.sap.com/v1alpha1.HTTPCookie">HTTPCookie</a>)
 </p>
 <div>
 <p>Generic Name/Value configuration</p>
@@ -3404,6 +3567,101 @@ string
 <td></td>
 </tr></tbody>
 </table>
+<h3 id="sme.sap.com/v1alpha1.Stickiness">Stickiness
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>hash</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.StickinessHash">
+StickinessHash
+</a>
+</em>
+</td>
+<td>
+<p>Hash based stickiness configuration.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.StickinessHash">StickinessHash
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.Stickiness">Stickiness</a>)
+</p>
+<div>
+<p>Loosely based on the options available for consistent hash load balancer in istio (<a href="https://istio.io/latest/docs/reference/config/networking/destination-rule/#ConsistentHashLB">https://istio.io/latest/docs/reference/config/networking/destination-rule/#ConsistentHashLB</a>), but only include the options that make sense for our use case.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>httpHeaderName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Hash based on a specific HTTP header.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>httpCookie</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.HTTPCookie">
+HTTPCookie
+</a>
+</em>
+</td>
+<td>
+<p>Hash based on HTTP cookie.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>useSourceIp</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Hash based on the source IP address.
+This is applicable for both TCP and HTTP connections.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>httpQueryParameterName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Hash based on a specific HTTP query parameter.</p>
+</td>
+</tr>
+</tbody>
+</table>
 <h3 id="sme.sap.com/v1alpha1.TLSMode">TLSMode
 (<code>string</code> alias)</h3>
 <p>
@@ -3684,5 +3942,5 @@ If not specified, CAP Operator will not attempt to create a ServiceMonitor for t
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>34c872a</code>.
+on git commit <code>537363a</code>.
 </em></p>
