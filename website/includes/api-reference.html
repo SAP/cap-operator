@@ -113,7 +113,7 @@ string
 </em>
 </td>
 <td>
-<p>SAP BTP Global Account Identifier where services are entitles for the current application
+<p>SAP BTP Global Account Identifier where services are entitled for the current application
 Will soon be deprecated, use ProviderSubaccountId instead</p>
 </td>
 </tr>
@@ -1179,7 +1179,7 @@ string
 </em>
 </td>
 <td>
-<p>SAP BTP Global Account Identifier where services are entitles for the current application
+<p>SAP BTP Global Account Identifier where services are entitled for the current application
 Will soon be deprecated, use ProviderSubaccountId instead</p>
 </td>
 </tr>
@@ -2349,7 +2349,7 @@ string
 </em>
 </td>
 <td>
-<p>Target of the DNS reord</p>
+<p>Target of the DNS record</p>
 </td>
 </tr>
 </tbody>
@@ -3081,7 +3081,7 @@ int64
 </em>
 </td>
 <td>
-<p>Specifies the duration in sections for which the job may be continuously active.</p>
+<p>Specifies the duration in seconds for which the job may be continuously active.</p>
 </td>
 </tr>
 </tbody>
@@ -3121,10 +3121,10 @@ int64
 <p>MetricRule specifies a Prometheus metric and rule which represents a cleanup condition. Metrics of type Gauge and Counter are supported.</p>
 <p>Rule evaluation for Gauge type metric: The time series data of the metric (restricted to the current workload by setting <code>job</code> label as workload service name) is calculated as an average over the specified period.
 A sum of the calculated average from different time series is then compared to the provided threshold value to determine whether the rule has been satisfied.
-Evaluation: <code>sum(avg_over_time(&lt;gauge-metric&gt;{job=&lt;workload-service-name&gt;}[&lt;lookback-duration&gt;])) &lt;= &lt;lower0threshold-value&gt;</code></p>
+Evaluation: <code>sum(avg_over_time(&lt;gauge-metric&gt;{job=&lt;workload-service-name&gt;}[&lt;lookback-duration&gt;])) &lt;= &lt;lower-threshold-value&gt;</code></p>
 <p>Rule evaluation for Counter type metric: The time series data of the metric (restricted to the current workload by setting <code>job</code> label as workload service name) is calculated as rate of increase over the specified period.
 The sum of the calculated rates from different time series is then compared to the provided threshold value to determine whether the rule has been satisfied.
-Evaluation: <code>sum(rate(&lt;counter-metric&gt;{job=&lt;workload-service-name&gt;}[&lt;lookback-duration&gt;])) &lt;= &lt;lower0threshold-value&gt;</code></p>
+Evaluation: <code>sum(rate(&lt;counter-metric&gt;{job=&lt;workload-service-name&gt;}[&lt;lookback-duration&gt;])) &lt;= &lt;lower-threshold-value&gt;</code></p>
 </div>
 <table>
 <thead>
@@ -3942,5 +3942,5 @@ If not specified, CAP Operator will not attempt to create a ServiceMonitor for t
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>537363a</code>.
+on git commit <code>ab07890</code>.
 </em></p>

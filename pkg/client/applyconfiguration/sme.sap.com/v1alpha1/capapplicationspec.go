@@ -16,7 +16,7 @@ type CAPApplicationSpecApplyConfiguration struct {
 	DomainRefs []DomainRefApplyConfiguration `json:"domainRefs,omitempty"`
 	// [DEPRECATED] Domains used by the application // Will be removed in future versions
 	Domains *ApplicationDomainsApplyConfiguration `json:"domains,omitempty"`
-	// SAP BTP Global Account Identifier where services are entitles for the current application
+	// SAP BTP Global Account Identifier where services are entitled for the current application
 	// Will soon be deprecated, use ProviderSubaccountId instead
 	GlobalAccountId *string `json:"globalAccountId,omitempty"`
 	// The subaccount ID in which the application is provided (will soon replace GlobalAccountId)
