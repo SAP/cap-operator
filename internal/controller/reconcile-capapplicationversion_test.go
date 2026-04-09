@@ -1061,3 +1061,75 @@ func TestCAV_HorizontalPodAutoscaler(t *testing.T) {
 		},
 	)
 }
+
+func TestCAV_StickinessHttpHeader(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with http header stickiness on CAP workload",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/content-job-completed.yaml",
+				"testdata/capapplicationversion/cav-stickiness-http-header.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-stickiness-http-header.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
+		},
+	)
+}
+
+func TestCAV_StickinessSourceIp(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with source IP stickiness on CAP workload",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/content-job-completed.yaml",
+				"testdata/capapplicationversion/cav-stickiness-source-ip.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-stickiness-source-ip.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
+		},
+	)
+}
+
+func TestCAV_StickinessQueryParam(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with HTTP query parameter stickiness on CAP workload",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/content-job-completed.yaml",
+				"testdata/capapplicationversion/cav-stickiness-query-param.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-stickiness-query-param.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
+		},
+	)
+}
+
+func TestCAV_StickinessHttpCookieCustom(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with custom HTTP cookie stickiness (TTL and attributes) on CAP workload",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/content-job-completed.yaml",
+				"testdata/capapplicationversion/cav-stickiness-http-cookie-custom.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-stickiness-http-cookie-custom.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
+		},
+	)
+}

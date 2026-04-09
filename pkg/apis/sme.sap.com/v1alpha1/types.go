@@ -290,6 +290,40 @@ type DeploymentDetails struct {
 	PodDisruptionBudget *policyv1.PodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
 	// Horizontal Pod Autoscaler may be used to specify the scaling behavior for this workload
 	HorizontalPodAutoscaler *HorizontalPodAutoscalerSpec `json:"horizontalPodAutoscaler,omitempty"`
+	// Stickiness configuration based on istio consistent hashing for the workload. When present, this is used to create a DestinationRule for the workload.
+	Stickiness *Stickiness `json:"stickiness,omitempty"`
+}
+
+type Stickiness struct {
+	// Hash based stickiness configuration.
+	Hash *StickinessHash `json:"hash,omitempty"`
+}
+
+// Loosely based on the options available for consistent hash load balancer in istio (https://istio.io/latest/docs/reference/config/networking/destination-rule/#ConsistentHashLB), but only include the options that make sense for our use case.
+// +kubebuilder:validation:AtMostOneOf=httpHeaderName;httpCookie;useSourceIp;httpQueryParameterName
+type StickinessHash struct {
+	// Hash based on a specific HTTP header.
+	HttpHeaderName string `json:"httpHeaderName,omitempty"`
+	// Hash based on HTTP cookie.
+	HttpCookie *HTTPCookie `json:"httpCookie,omitempty"`
+	// Hash based on the source IP address.
+	// This is applicable for both TCP and HTTP connections.
+	UseSourceIp bool `json:"useSourceIp,omitempty"`
+	// Hash based on a specific HTTP query parameter.
+	HttpQueryParameterName string `json:"httpQueryParameterName,omitempty"`
+}
+
+type HTTPCookie struct {
+	// Name of the cookie.
+	Name string `json:"name,omitempty"`
+	// Path to set for the cookie.
+	Path string `json:"path,omitempty"`
+	// Lifetime of the cookie. If specified, a cookie with the TTL will be
+	// generated if the cookie is not present. If the TTL is present and zero,
+	// the generated cookie will be a session cookie.
+	Ttl *metav1.Duration `json:"ttl,omitempty"`
+	// Additional attributes for the cookie. They will be used when generating a new cookie.
+	Attributes []NameValue `json:"attributes,omitempty"`
 }
 
 // HorizontalPodAutoscalerSpec wraps autoscalingv2.HorizontalPodAutoscalerSpec but gets rid of scaleTargetRef,

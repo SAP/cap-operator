@@ -62,7 +62,7 @@ var QueueMapping map[int]map[int]string = map[int]map[int]string{
 	ResourceCertificate:           {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
 	ResourceDNSEntry:              {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
 	ResourceVirtualService:        {ResourceCAPTenant: v1alpha1.CAPTenantKind},
-	ResourceDestinationRule:       {ResourceCAPTenant: v1alpha1.CAPTenantKind},
+	ResourceDestinationRule:       {ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
 }
 
 type QueueItem struct {

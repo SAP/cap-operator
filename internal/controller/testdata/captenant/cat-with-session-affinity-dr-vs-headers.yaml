@@ -109,31 +109,3 @@ spec:
         port:
           number: 5000
       weight: 100
----
-apiVersion: networking.istio.io/v1
-kind: DestinationRule
-metadata:
-  annotations:
-    sme.sap.com/resource-hash: 76ac6b80ce55711ae052011d8d29727030c897d4869ba6c403ac6842f08b93d6
-    sme.sap.com/owner-identifier: default.test-cap-01-provider
-  labels:
-    sme.sap.com/owner-generation: "0"
-    sme.sap.com/owner-identifier-hash: db1f1fd7eaeb0e6407c741b7e4b2540044bcc4ec
-    sme.sap.com/tenant-type: provider
-  name: test-cap-01-provider
-  namespace: default
-  ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
-      blockOwnerDeletion: true
-      controller: true
-      kind: CAPTenant
-      name: test-cap-01-provider
-spec:
-  host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
-  trafficPolicy:
-    loadBalancer:
-      consistentHash:
-        httpCookie:
-          name: CAPOP_ROUTER_STICKY
-          path: /
-          ttl: 0s

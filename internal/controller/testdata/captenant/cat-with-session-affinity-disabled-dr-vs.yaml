@@ -30,7 +30,7 @@ spec:
   versionUpgradeStrategy: always
 status:
   conditions:
-    - message: "VirtualService (and DestinationRule) default.test-cap-01-provider was reconciled"
+    - message: "VirtualService default.test-cap-01-provider was reconciled"
       reason: TenantNetworkingModified
       observedGeneration: 2
       status: "True"
@@ -76,32 +76,3 @@ spec:
             port:
               number: 5000
           weight: 100
----
-apiVersion: networking.istio.io/v1
-kind: DestinationRule
-metadata:
-  annotations:
-    sme.sap.com/resource-hash: 97ecccd1443b2219a85159a5fdb2f8444543746a5ae890114462e6666e556696
-    sme.sap.com/owner-identifier: default.test-cap-01-provider
-  generation: 1
-  labels:
-    sme.sap.com/owner-generation: "2"
-    sme.sap.com/owner-identifier-hash: db1f1fd7eaeb0e6407c741b7e4b2540044bcc4ec
-    sme.sap.com/tenant-type: provider
-  name: test-cap-01-provider
-  namespace: default
-  ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
-      blockOwnerDeletion: true
-      controller: true
-      kind: CAPTenant
-      name: test-cap-01-provider
-spec:
-  host: test-cap-01-cav-v2-app-router-svc.default.svc.cluster.local
-  trafficPolicy:
-    loadBalancer:
-      consistentHash:
-        httpCookie:
-          name: CAPOP_ROUTER_STICKY
-          path: /
-          ttl: 0s

@@ -108,29 +108,6 @@ func TestCAPTenantProvisioningCompleted(t *testing.T) {
 	)
 }
 
-func TestCAPTenantProvisioningCompletedDestinationRuleModificationFailure(t *testing.T) {
-	err := reconcileTestItem(
-		context.TODO(), t,
-		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
-		TestData{
-			description: "captenant provisioning operation completed (destination rule creation fails)",
-			initialResources: []string{
-				"testdata/common/domain-ready.yaml",
-				"testdata/common/cluster-domain-ready.yaml",
-				"testdata/common/capapplication.yaml",
-				"testdata/common/capapplicationversion-v1.yaml",
-				"testdata/captenant/cat-04.initial.yaml",
-			},
-			expectError:           true,
-			mockErrorForResources: []ResourceAction{{Verb: "create", Group: "networking.istio.io", Version: "v1", Resource: "destinationrules", Namespace: "default", Name: "test-cap-01-provider"}},
-			backlogItems:          []string{"ERP4SMEPREPWORKAPPPLAT-2811"},
-		},
-	)
-	if err.Error() != "mocked api error (destinationrules.networking.istio.io/v1)" {
-		t.Error("error message is different from expected")
-	}
-}
-
 func TestCAPTenantProvisioningFailed(t *testing.T) {
 	reconcileTestItem(
 		context.TODO(), t,
@@ -231,7 +208,6 @@ func TestCAPTenantStartUpgradeWithStrategyNever(t *testing.T) {
 				"testdata/common/capapplicationversion-v2.yaml",
 				"testdata/captenant/cat-08.initial.yaml",
 				"testdata/captenant/provider-tenant-vs-v1.yaml",
-				"testdata/captenant/provider-tenant-dr-v1.yaml",
 			},
 			expectedResources: "testdata/captenant/cat-08.expected.yaml",
 		},
@@ -301,7 +277,6 @@ func TestCAPTenantUpgradeOperationCompleted(t *testing.T) {
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2.yaml",
 				"testdata/captenant/provider-tenant-vs-v1.yaml",
-				"testdata/captenant/provider-tenant-dr-v1.yaml",
 				"testdata/captenant/cat-13.initial.yaml",
 			},
 			expectedResources: "testdata/captenant/cat-13.expected.yaml",
@@ -325,7 +300,6 @@ func TestCAPTenantUpgradeOperationCompletedPreviousVersionsLimited(t *testing.T)
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2.yaml",
 				"testdata/captenant/provider-tenant-vs-v1.yaml",
-				"testdata/captenant/provider-tenant-dr-v1.yaml",
 				"testdata/captenant/cat-29.initial.yaml",
 			},
 			expectedResources: "testdata/captenant/cat-29.expected.yaml",
@@ -411,7 +385,6 @@ func TestCAPTenantWithUpgradeErrorSameVersion(t *testing.T) {
 				"testdata/common/capapplicationversion-v3.yaml",
 				"testdata/captenant/cat-23.initial.yaml",
 				"testdata/captenant/provider-tenant-vs-v1.yaml",
-				"testdata/captenant/provider-tenant-dr-v1.yaml",
 			},
 			expectedResources: "testdata/captenant/cat-23.expected.yaml",
 		},
@@ -644,7 +617,6 @@ func TestCAPTenantUpgradeOperationCompletedWithSessionAffinityEnabled(t *testing
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2.yaml",
 				"testdata/captenant/provider-tenant-vs-v1.yaml",
-				"testdata/captenant/provider-tenant-dr-v1.yaml",
 				"testdata/captenant/cat-13.initial.yaml",
 			},
 			expectedResources: "testdata/captenant/cat-with-session-affinity-dr-vs-upgrade.yaml",
@@ -707,27 +679,4 @@ func TestCAPTenantUpgradeOperationCompletedWithSessionAffinitySwitchedFromEnable
 			expectedResources: "testdata/captenant/cat-with-session-affinity-disabled-dr-vs.yaml",
 		},
 	)
-}
-
-func TestCAPTenantUpgradeOperationCompletedWithSessionAffinityEnabledAndPreviousCAVRemovedButDRDeletionFailed(t *testing.T) {
-	err := reconcileTestItem(
-		context.TODO(), t,
-		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
-		TestData{
-			description: "captenant upgraded - expecting virtual service, destination rule adjustments after removing previous cav v1 but DR deletion fails for some reason",
-			initialResources: []string{
-				"testdata/common/domain-ready.yaml",
-				"testdata/common/cluster-domain-ready.yaml",
-				"testdata/common/capapplication-session-affinity.yaml",
-				"testdata/common/capapplicationversion-v2.yaml",
-				"testdata/captenant/cat-with-session-affinity-dr-vs-upgrade.yaml",
-			},
-			mockErrorForResources: []ResourceAction{{Verb: "delete", Group: "networking.istio.io", Version: "v1", Resource: "destinationrules", Namespace: "*", Name: "test-cap-01-provider-test-cap-01-cav-v1"}},
-			expectError:           true,
-		},
-	)
-
-	if err.Error() != "mocked api error (destinationrules.networking.istio.io/v1)" {
-		t.Error("error message is different from expected, actual:", err.Error())
-	}
 }
