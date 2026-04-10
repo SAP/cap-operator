@@ -24,7 +24,7 @@ const (
 	CAPTenantOperationKind        = "CAPTenantOperation"
 	CAPTenantOperationResource    = "captenantoperations"
 	CAPTenantOutputKind           = "CAPTenantOutput"
-	CAPTenantOutputResource       = "captenantouputs"
+	CAPTenantOutputResource       = "captenantoutputs"
 	DomainKind                    = "Domain"
 	DomainResource                = "domains"
 	ClusterDomainKind             = "ClusterDomain"
@@ -92,7 +92,7 @@ type CAPApplicationSpec struct {
 	DomainRefs []DomainRef `json:"domainRefs,omitempty"`
 	// [DEPRECATED] Domains used by the application // Will be removed in future versions
 	Domains ApplicationDomains `json:"domains,omitempty"`
-	// SAP BTP Global Account Identifier where services are entitles for the current application
+	// SAP BTP Global Account Identifier where services are entitled for the current application
 	// Will soon be deprecated, use ProviderSubaccountId instead
 	GlobalAccountId string `json:"globalAccountId"`
 	// The subaccount ID in which the application is provided (will soon replace GlobalAccountId)
@@ -393,11 +393,11 @@ type DeletionRules struct {
 //
 // Rule evaluation for Gauge type metric: The time series data of the metric (restricted to the current workload by setting `job` label as workload service name) is calculated as an average over the specified period.
 // A sum of the calculated average from different time series is then compared to the provided threshold value to determine whether the rule has been satisfied.
-// Evaluation: `sum(avg_over_time(<gauge-metric>{job=<workload-service-name>}[<lookback-duration>])) <= <lower0threshold-value>`
+// Evaluation: `sum(avg_over_time(<gauge-metric>{job=<workload-service-name>}[<lookback-duration>])) <= <lower-threshold-value>`
 //
 // Rule evaluation for Counter type metric: The time series data of the metric (restricted to the current workload by setting `job` label as workload service name) is calculated as rate of increase over the specified period.
 // The sum of the calculated rates from different time series is then compared to the provided threshold value to determine whether the rule has been satisfied.
-// Evaluation: `sum(rate(<counter-metric>{job=<workload-service-name>}[<lookback-duration>])) <= <lower0threshold-value>`
+// Evaluation: `sum(rate(<counter-metric>{job=<workload-service-name>}[<lookback-duration>])) <= <lower-threshold-value>`
 type MetricRule struct {
 	// Prometheus metric. For example `http_request_count`
 	Name string `json:"name"`
@@ -450,7 +450,7 @@ type JobDetails struct {
 	BackoffLimit *int32 `json:"backoffLimit,omitempty"`
 	// Specifies the time after which the job may be cleaned up.
 	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished,omitempty"`
-	// Specifies the duration in sections for which the job may be continuously active.
+	// Specifies the duration in seconds for which the job may be continuously active.
 	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty"`
 }
 
@@ -798,7 +798,7 @@ type DomainSpec struct {
 type DNSTemplate struct {
 	// Domain name for which a DNS record will be created
 	Name string `json:"name"`
-	// Target of the DNS reord
+	// Target of the DNS record
 	Target string `json:"target"`
 }
 

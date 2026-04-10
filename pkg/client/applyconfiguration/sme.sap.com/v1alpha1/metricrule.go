@@ -18,11 +18,11 @@ import (
 //
 // Rule evaluation for Gauge type metric: The time series data of the metric (restricted to the current workload by setting `job` label as workload service name) is calculated as an average over the specified period.
 // A sum of the calculated average from different time series is then compared to the provided threshold value to determine whether the rule has been satisfied.
-// Evaluation: `sum(avg_over_time(<gauge-metric>{job=<workload-service-name>}[<lookback-duration>])) <= <lower0threshold-value>`
+// Evaluation: `sum(avg_over_time(<gauge-metric>{job=<workload-service-name>}[<lookback-duration>])) <= <lower-threshold-value>`
 //
 // Rule evaluation for Counter type metric: The time series data of the metric (restricted to the current workload by setting `job` label as workload service name) is calculated as rate of increase over the specified period.
 // The sum of the calculated rates from different time series is then compared to the provided threshold value to determine whether the rule has been satisfied.
-// Evaluation: `sum(rate(<counter-metric>{job=<workload-service-name>}[<lookback-duration>])) <= <lower0threshold-value>`
+// Evaluation: `sum(rate(<counter-metric>{job=<workload-service-name>}[<lookback-duration>])) <= <lower-threshold-value>`
 type MetricRuleApplyConfiguration struct {
 	// Prometheus metric. For example `http_request_count`
 	Name *string `json:"name,omitempty"`

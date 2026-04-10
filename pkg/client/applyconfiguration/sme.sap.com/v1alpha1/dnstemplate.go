@@ -14,7 +14,7 @@ package v1alpha1
 type DNSTemplateApplyConfiguration struct {
 	// Domain name for which a DNS record will be created
 	Name *string `json:"name,omitempty"`
-	// Target of the DNS reord
+	// Target of the DNS record
 	Target *string `json:"target,omitempty"`
 }
 

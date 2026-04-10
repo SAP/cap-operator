@@ -580,7 +580,7 @@ func (c *Controller) getCAPApplicationVersionForTenantOperationType(ctx context.
 	case v1alpha1.CAPTenantOperationTypeDeprovisioning: // for deletion - use the current CAPApplicationVersion (from status)
 		if cat.Status.CurrentCAPApplicationVersionInstance == "" {
 			err := fmt.Errorf("cannot identify %s for %s %s.%s", v1alpha1.CAPApplicationVersionKind, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name)
-			util.LogError(err, "Cannot identify applicaion version", string(Deprovisioning), cat, nil, "tenantId", cat.Spec.TenantId)
+			util.LogError(err, "Cannot identify application version", string(Deprovisioning), cat, nil, "tenantId", cat.Spec.TenantId)
 			return nil, err
 		}
 		cav, err := c.crdClient.SmeV1alpha1().CAPApplicationVersions(cat.Namespace).Get(ctx, cat.Status.CurrentCAPApplicationVersionInstance, metav1.GetOptions{})

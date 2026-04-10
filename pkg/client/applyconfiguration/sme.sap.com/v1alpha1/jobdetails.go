@@ -24,7 +24,7 @@ type JobDetailsApplyConfiguration struct {
 	BackoffLimit *int32 `json:"backoffLimit,omitempty"`
 	// Specifies the time after which the job may be cleaned up.
 	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished,omitempty"`
-	// Specifies the duration in sections for which the job may be continuously active.
+	// Specifies the duration in seconds for which the job may be continuously active.
 	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty"`
 }
 

@@ -510,7 +510,6 @@ func (s *SubscriptionHandler) DeleteTenant(reqInfo *RequestInfo) *Result {
 }
 
 func (s *SubscriptionHandler) authorizationCheck(headerDetails *requestHeaderDetails, ca *v1alpha1.CAPApplication, subscription subscriptionType, step string) (saasData *util.SaasRegistryCredentials, smsData *util.SmsCredentials, err error) {
-	uaaData := &util.XSUAACredentials{}
 	switch subscription {
 	case SMS:
 		// fetch SMS information
@@ -523,6 +522,7 @@ func (s *SubscriptionHandler) authorizationCheck(headerDetails *requestHeaderDet
 		err = s.checkCertIssuerAndSubject(headerDetails.xForwardedClientCert, smsData, step)
 
 	default:
+		uaaData := &util.XSUAACredentials{}
 		// fetch SaaS Registry and XSUAA information
 		saasData, uaaData = s.getServiceDetails(ca, step)
 		if saasData == nil || uaaData == nil {
