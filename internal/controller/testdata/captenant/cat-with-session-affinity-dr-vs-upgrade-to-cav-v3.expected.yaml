@@ -46,7 +46,7 @@ apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   annotations:
-    sme.sap.com/resource-hash: 4ffc680079e1711f962e91fc30cde7cf23e9d6ab260a0ed69de693f0ac2043ea
+    sme.sap.com/resource-hash: 014a26b701fbda31e6fee65adbcc0ff2b580568ef6b9835f847e2dac3e8975f3
     sme.sap.com/owner-identifier: default.test-cap-01-provider
   labels:
     sme.sap.com/owner-generation: "2"
@@ -68,6 +68,22 @@ spec:
     - my-provider.app-domain.test.local
     - my-provider.foo.bar.local
   http:
+  - headers:
+      response:
+        set:
+          Set-Cookie: CAPOP_CAV=test-cap-01-cav-v1;Path=/;HttpOnly;Secure;Max-Age=0
+    match:
+    - headers:
+        Cookie:
+          regex: (^|.*; )CAPOP_CAV=test-cap-01-cav-v1($|; .*)
+      uri:
+        regex: ^|.*(logout|logoff).*
+    route:
+    - destination:
+        host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
+        port:
+          number: 5000
+      weight: 100
   - headers:
       response:
         set:
@@ -97,6 +113,16 @@ spec:
     route:
     - destination:
         host: test-cap-01-cav-v3-app-router-svc.default.svc.cluster.local
+        port:
+          number: 5000
+      weight: 100
+  - match:
+    - headers:
+        Cookie:
+          regex: (^|.*; )CAPOP_CAV=test-cap-01-cav-v1($|; .*)
+    route:
+    - destination:
+        host: test-cap-01-cav-v1-app-router-svc.default.svc.cluster.local
         port:
           number: 5000
       weight: 100
