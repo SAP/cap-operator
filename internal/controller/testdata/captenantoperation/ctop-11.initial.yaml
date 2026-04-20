@@ -49,13 +49,11 @@ kind: Job
 metadata:
   annotations:
     sme.sap.com/owner-identifier: default.test-cap-01-provider-abcd
-    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
   labels:
     sme.sap.com/tenant-operation-step: "3"
     sme.sap.com/tenant-operation-type: upgrade
     sme.sap.com/owner-generation: "1"
     sme.sap.com/owner-identifier-hash: ce6bb3ae0b5ebbd0116259415ccac00bff0dc431
-    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
     app: test-cap-01
     sme.sap.com/category: "Workload"
     sme.sap.com/workload-name: "custom-say"
@@ -76,13 +74,11 @@ spec:
     metadata:
       annotations:
         sme.sap.com/owner-identifier: default.test-cap-01-provider-abcd
-        sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
       labels:
         sme.sap.com/tenant-operation-step: "3"
         sme.sap.com/tenant-operation-type: upgrade
         sme.sap.com/owner-generation: "1"
         sme.sap.com/owner-identifier-hash: ce6bb3ae0b5ebbd0116259415ccac00bff0dc431
-        sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
         app: test-cap-01
         sme.sap.com/category: "Workload"
         sme.sap.com/workload-name: "custom-say"

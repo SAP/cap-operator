@@ -90,10 +90,9 @@ func handleDnsEntries[T v1alpha1.DomainEntity](ctx context.Context, c *Controlle
 				GenerateName: subResourceName + "-",
 				Namespace:    subResourceNamespace,
 				Labels: map[string]string{
-					LabelOwnerIdentifierHash:          sha1Sum(ownerId),
-					LabelOwnerGeneration:              fmt.Sprintf("%d", dom.GetMetadata().Generation),
-					LabelBTPApplicationIdentifierHash: info.appId,
-					LabelDNSNameHash:                  dnsHash,
+					LabelOwnerIdentifierHash: sha1Sum(ownerId),
+					LabelOwnerGeneration:     fmt.Sprintf("%d", dom.GetMetadata().Generation),
+					LabelDNSNameHash:         dnsHash,
 				},
 				Annotations: map[string]string{
 					AnnotationResourceHash:     hash,
@@ -132,7 +131,6 @@ func checkRelevantDNSEntries(ctx context.Context, dnsEntries []dnsv1alpha1.DNSEn
 			if entry.Annotations[AnnotationResourceHash] != hash {
 				updateResourceAnnotation(&entry.ObjectMeta, hash)
 				entry.Labels[LabelOwnerGeneration] = fmt.Sprintf("%d", generation)
-				entry.Labels[LabelBTPApplicationIdentifierHash] = info.appId
 				entry.Labels[LabelDNSNameHash] = dnsHash
 				entry.Spec = getDnsEntrySpec(info)
 				_, err = c.gardenerDNSClient.DnsV1alpha1().DNSEntries(entry.Namespace).Update(ctx, &entry, metav1.UpdateOptions{})
@@ -275,8 +273,8 @@ func collectAppSubdomainInfos[T v1alpha1.DomainEntity](c *Controller, dom T) (su
 		if len(ca.Status.ObservedSubdomains) > 0 {
 			for _, subdomain := range ca.Status.ObservedSubdomains {
 				if appId, ok := subdomains[subdomain]; !ok {
-					subdomains[subdomain] = ca.Labels[LabelBTPApplicationIdentifierHash]
-				} else if appId != ca.Labels[LabelBTPApplicationIdentifierHash] {
+					subdomains[subdomain] = string(ca.UID)
+				} else if appId != string(ca.UID) {
 					// this subdomain is already used by another application
 					// skip and raise warning event
 					c.Event(ca, runtime.Object(dom), corev1.EventTypeWarning, DomainEventSubdomainAlreadyInUse, EventActionProcessingDomainResources,

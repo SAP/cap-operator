@@ -126,10 +126,15 @@ func main() {
 
 				c := controller.NewController(coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient, promClient)
 
-				checkDone := make(chan bool, 1)
-				go checkDRs(checkDone, istioClient, crdClient)
-				<-checkDone
+				checkDR := make(chan bool, 1)
+				go checkDRs(checkDR, istioClient, crdClient)
+				<-checkDR
 				klog.InfoS("check & update of DestinationRules done")
+
+				migrateApp := make(chan bool, 1)
+				go migrateApps(migrateApp, crdClient)
+				<-migrateApp
+				klog.InfoS("migration of app Id done")
 
 				// Update the controller's concurrency config before starting the controller
 				maps.Copy(controller.DefaultConcurrentReconciles, concurrencyConfig)

@@ -8,12 +8,10 @@ metadata:
     sme.sap.com/workload-name: test-ca-01-cav-v1-cap-backend-service
     sme.sap.com/workload-type: Service
     sme.sap.com/exposed-workload: "true"
-    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
     sme.sap.com/cav-version: "0.0.1"
     sme.sap.com/owner-generation: "1"
     sme.sap.com/owner-identifier-hash: e95e0682f33a657e75e1fc435972d19bd407ba3b
   annotations:
-    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-ca-01
     sme.sap.com/owner-identifier: default.test-ca-01-cav-v1
   name: test-ca-01-cav-v1-cap-backend-service
   namespace: default
@@ -47,12 +45,10 @@ metadata:
     sme.sap.com/workload-name: test-ca-01-cav-v1-app-router
     sme.sap.com/workload-type: Service
     sme.sap.com/exposed-workload: "true"
-    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
     sme.sap.com/cav-version: "0.0.1"
     sme.sap.com/owner-generation: "1"
     sme.sap.com/owner-identifier-hash: e95e0682f33a657e75e1fc435972d19bd407ba3b
   annotations:
-    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-ca-01
     sme.sap.com/owner-identifier: default.test-ca-01-cav-v1
   name: test-ca-01-cav-v1-app-router
   namespace: default

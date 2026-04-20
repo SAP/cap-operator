@@ -117,8 +117,12 @@ spec:
             required:
             - btp
             - btpAppName
-            - globalAccountId
             type: object
+            x-kubernetes-validations:
+            - message: at least one of the fields in [globalAccountId providerSubaccountId]
+                must be set
+              rule: '[has(self.globalAccountId),has(self.providerSubaccountId)].filter(x,x==true).size()
+                >= 1'
           status:
             properties:
               conditions:

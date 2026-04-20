@@ -95,14 +95,12 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   annotations:
-    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
     sme.sap.com/owner-identifier: default.test-ca-01-cav-v1
   labels:
     app: test-cap-01
     sme.sap.com/category: Workload
     sme.sap.com/workload-name: test-ca-01-cav-v1-cap-backend-service
     sme.sap.com/workload-type: Service
-    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
     sme.sap.com/cav-version: "0.0.1"
     sme.sap.com/owner-generation: "1"
     sme.sap.com/owner-identifier-hash: 00a7bd3cb89af3010bf21dcdc056f176adf3a862
@@ -123,7 +121,6 @@ spec:
       sme.sap.com/category: Workload
       sme.sap.com/workload-name: test-ca-01-cav-v1-cap-backend-service
       sme.sap.com/workload-type: Service
-      sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
       sme.sap.com/cav-version: "0.0.1"
       sme.sap.com/owner-generation: "1"
       sme.sap.com/owner-identifier-hash: 00a7bd3cb89af3010bf21dcdc056f176adf3a862
@@ -132,14 +129,12 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   annotations:
-    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
     sme.sap.com/owner-identifier: default.test-ca-01-cav-v1
   labels:
     app: test-cap-01
     sme.sap.com/category: Workload
     sme.sap.com/workload-name: test-ca-01-cav-v1-app-router
     sme.sap.com/workload-type: Service
-    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
     sme.sap.com/cav-version: "0.0.1"
     sme.sap.com/owner-generation: "1"
     sme.sap.com/owner-identifier-hash: 00a7bd3cb89af3010bf21dcdc056f176adf3a862
@@ -160,7 +155,6 @@ spec:
       sme.sap.com/category: Workload
       sme.sap.com/workload-name: test-ca-01-cav-v1-app-router
       sme.sap.com/workload-type: Service
-      sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
       sme.sap.com/cav-version: "0.0.1"
       sme.sap.com/owner-generation: "1"
       sme.sap.com/owner-identifier-hash: 00a7bd3cb89af3010bf21dcdc056f176adf3a862

@@ -152,9 +152,8 @@ func createTenantSubscriptionContextSecret(subscriptionContext string) runtime.O
 			Name:      subscriptionContextSecretName,
 			Namespace: v1.NamespaceDefault,
 			Labels: map[string]string{
-				LabelBTPApplicationIdentifierHash: sha1Sum(globalAccountId, appName),
-				LabelTenantId:                     tenantId,
-				LabelSubscriptionGUID:             subscriptionGUID,
+				LabelTenantId:         tenantId,
+				LabelSubscriptionGUID: subscriptionGUID,
 			},
 		},
 		StringData: map[string]string{
