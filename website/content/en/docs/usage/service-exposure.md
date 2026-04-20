@@ -137,7 +137,7 @@ spec:
     name: cap-app-01-primary
   - kind: ClusterDomain
     name: common-external-domain
-  globalAccountId: btp-glo-acc-id
+  providerSubaccountId: provider-subaccount-id
 ```
 
 ### Version Configuration
