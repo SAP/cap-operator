@@ -49,13 +49,11 @@ metadata:
     foo: "bar"
     sme.sap.com/my-custom-operation-identifier: "some value for the annotation: `sme.sap.com/my-custom-operation-identifier`"
     sme.sap.com/owner-identifier: default.test-cap-01-provider-abcd
-    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
   labels:
     sme.sap.com/tenant-operation-step: "1"
     sme.sap.com/tenant-operation-type: provisioning
     sme.sap.com/owner-generation: "1"
     sme.sap.com/owner-identifier-hash: ce6bb3ae0b5ebbd0116259415ccac00bff0dc431
-    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
     app: test-cap-01
     sme.sap.com/category: "Workload"
     sme.sap.com/workload-name: "mtx"
@@ -76,13 +74,11 @@ spec:
         foo: "bar"
         sme.sap.com/my-custom-operation-identifier: "some value for the annotation: `sme.sap.com/my-custom-operation-identifier`"
         sme.sap.com/owner-identifier: default.test-cap-01-provider-abcd
-        sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
       labels:
         sme.sap.com/tenant-operation-step: "1"
         sme.sap.com/tenant-operation-type: provisioning
         sme.sap.com/owner-generation: "1"
         sme.sap.com/owner-identifier-hash: ce6bb3ae0b5ebbd0116259415ccac00bff0dc431
-        sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
         app: test-cap-01
         sme.sap.com/category: "Workload"
         sme.sap.com/workload-name: "mtx"

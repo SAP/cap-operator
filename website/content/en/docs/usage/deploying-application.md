@@ -92,7 +92,7 @@ spec:
     name: cap-app-01-primary # <-- reference to Domain resource in the same namespace
   - kind: ClusterDomain
     name: common-external-domain # <-- reference to ClusterDomain resource in the cluster
-  globalAccountId: global-account-id
+  providerSubaccountId: provider-subaccount-id
   provider:
     subDomain: cap-app-01-provider
     tenantId: e55d7b5-279-48be-a7b0-aa2bae55d7b5
@@ -168,3 +168,7 @@ Once these resources are available, the `CAPApplicationVersion` status changes t
 > The `CAPApplicationVersion` resource is immutable — its spec must not be modified after deployment. This is enforced by webhooks, which we recommend keeping active (the default).
 
 > NOTE: Follow the recommended [security measures](../security) to safeguard exposed workloads.
+
+{{% alert color="warning" title="Warning" %}}
+The `globalSubaccountId` field in the `CAPApplication` spec is deprecated and will be removed in a future release. Use `providerSubaccountId` instead.
+{{% /alert %}}

@@ -183,7 +183,7 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 	}
 
 	// Check if A CRO for CAPTenant already exists
-	tenant := s.getTenantByBtpAppIdentifier(ca.Spec.GlobalAccountId, reqInfo.payload.appName, reqInfo.payload.tenantId, ca.Namespace, TenantProvisioning).Tenant
+	tenant := s.getTenantByAppIdentifier(ca.Spec.GlobalAccountId, ca.Spec.ProviderSubaccountId, reqInfo.payload.appName, reqInfo.payload.tenantId, ca.Namespace, TenantProvisioning).Tenant
 
 	// If the resource doesn't exist, we'll create it
 	if tenant == nil {
@@ -235,9 +235,8 @@ func (s *SubscriptionHandler) createTenant(reqInfo *RequestInfo, ca *v1alpha1.CA
 			GenerateName: ca.Name + "-consumer-",
 			Namespace:    ca.Namespace,
 			Labels: map[string]string{
-				LabelBTPApplicationIdentifierHash: sha1Sum(ca.Spec.GlobalAccountId, reqInfo.payload.appName),
-				LabelTenantId:                     reqInfo.payload.tenantId,
-				LabelSubscriptionGUID:             subscriptionGUID,
+				LabelTenantId:         reqInfo.payload.tenantId,
+				LabelSubscriptionGUID: subscriptionGUID,
 			},
 		},
 		StringData: map[string]string{
@@ -259,10 +258,9 @@ func (s *SubscriptionHandler) createTenant(reqInfo *RequestInfo, ca *v1alpha1.CA
 				AnnotationSubscriptionContextSecret: secret.Name, // Store the secret name in the tenant annotation
 			},
 			Labels: map[string]string{
-				LabelBTPApplicationIdentifierHash: sha1Sum(ca.Spec.GlobalAccountId, reqInfo.payload.appName),
-				LabelTenantId:                     reqInfo.payload.tenantId,
-				LabelSubscriptionGUID:             subscriptionGUID,
-				LabelTenantType:                   "consumer", // Default tenant type for consumer tenants
+				LabelTenantId:         reqInfo.payload.tenantId,
+				LabelSubscriptionGUID: subscriptionGUID,
+				LabelTenantType:       "consumer", // Default tenant type for consumer tenants
 			},
 		},
 		Spec: v1alpha1.CAPTenantSpec{
@@ -408,12 +406,20 @@ func (s *SubscriptionHandler) updateSecret(tenant *v1alpha1.CAPTenant, secret *c
 	return err
 }
 
-func (s *SubscriptionHandler) getTenantByBtpAppIdentifier(globalAccountGUID, btpAppName, tenantId, namespace, step string) *Result {
-	labelsMap := map[string]string{
-		LabelBTPApplicationIdentifierHash: sha1Sum(globalAccountGUID, btpAppName),
-		LabelTenantId:                     tenantId,
+func (s *SubscriptionHandler) getTenantByAppIdentifier(globalAccountGUID, providerSubAccountId, btpAppName, tenantId, namespace, step string) (result *Result) {
+	tenantlabels := map[string]string{
+		LabelTenantId: tenantId,
 	}
-	return s.getTenantByLabels(labelsMap, namespace, step, "getTenantByBtpAppIdentifier")
+
+	labelsMaps := maps.Clone(tenantlabels)
+	labelsMaps[LabelAppIdHash] = sha1Sum(providerSubAccountId, btpAppName)
+
+	if result = s.getTenantByLabels(labelsMaps, namespace, step, "getTenantByAppIdentifier"); result.Tenant == nil {
+		oldLabelsMap := maps.Clone(tenantlabels)
+		oldLabelsMap[LabelBTPApplicationIdentifierHash] = sha1Sum(globalAccountGUID, btpAppName)
+		result = s.getTenantByLabels(oldLabelsMap, namespace, step, "getTenantByAppIdentifier")
+	}
+	return
 }
 
 func (s *SubscriptionHandler) getTenantBySubscriptionGUID(subscriptionGUID, tenantId, step string) *Result {
@@ -481,7 +487,7 @@ func (s *SubscriptionHandler) DeleteTenant(reqInfo *RequestInfo) *Result {
 		}
 		// if tenant is not found in SaaS subscription scenario, check if it exists by btpApp identifier to handle cases where tenant was created without subscriptionGUID
 		util.LogInfo("Tenant not found by subscriptionGUID, checking by BTP app identifier", TenantDeprovisioning, "DeleteTenant", nil, "subscriptionGUID", reqInfo.payload.subscriptionGUID)
-		tenant = s.getTenantByBtpAppIdentifier(ca.Spec.GlobalAccountId, reqInfo.payload.appName, reqInfo.payload.tenantId, metav1.NamespaceAll, TenantDeprovisioning).Tenant
+		tenant = s.getTenantByAppIdentifier(ca.Spec.GlobalAccountId, ca.Spec.ProviderSubaccountId, reqInfo.payload.appName, reqInfo.payload.tenantId, metav1.NamespaceAll, TenantDeprovisioning).Tenant
 	}
 
 	if tenant == nil {

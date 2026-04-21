@@ -463,7 +463,7 @@ func newService(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion
 
 	workload := getWorkloadByName(workloadServicePortInfo.WorkloadName[len(cav.Name)+1:], cav)
 
-	annotations := copyMaps(workload.Annotations, getAnnotations(ca, cav, true))
+	annotations := copyMaps(workload.Annotations, getAnnotations(cav))
 
 	labels := copyMaps(workload.Labels, getLabels(ca, cav, CategoryService, workloadServicePortInfo.DeploymentType, workloadServicePortInfo.WorkloadName+ServiceSuffix, true))
 
@@ -562,7 +562,7 @@ func newServiceMonitor(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplication
 			Name:        wlPortInfos.WorkloadName + ServiceSuffix,
 			Namespace:   cav.Namespace,
 			Labels:      copyMaps(wl.Labels, getLabels(ca, cav, CategoryServiceMonitor, string(wl.DeploymentDefinition.Type), wlPortInfos.WorkloadName+ServiceSuffix, true)),
-			Annotations: copyMaps(wl.Annotations, getAnnotations(ca, cav, true)),
+			Annotations: copyMaps(wl.Annotations, getAnnotations(cav)),
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind)),
 			},
@@ -790,7 +790,7 @@ func newHorizontalPodAutoscaler(deploymentName string, ca *v1alpha1.CAPApplicati
 				*metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind)),
 			},
 			Labels:      labels,
-			Annotations: copyMaps(workload.Annotations, getAnnotations(ca, cav, true)),
+			Annotations: copyMaps(workload.Annotations, getAnnotations(cav)),
 		},
 		Spec: hpaSpec,
 	}
@@ -821,7 +821,7 @@ func newPodDisruptionBudget(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplic
 				*metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind)),
 			},
 			Labels:      labels,
-			Annotations: copyMaps(workload.Annotations, getAnnotations(ca, cav, true)),
+			Annotations: copyMaps(workload.Annotations, getAnnotations(cav)),
 		},
 		Spec: newPodDisruptionBudgetSpec(workload, labels),
 	}
@@ -850,7 +850,7 @@ func newDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVers
 
 func createDeployment(params *DeploymentParameters) *appsv1.Deployment {
 	workloadName := getWorkloadName(params.CAV.Name, params.WorkloadDetails.Name)
-	annotations := copyMaps(params.WorkloadDetails.Annotations, getAnnotations(params.CA, params.CAV, true))
+	annotations := copyMaps(params.WorkloadDetails.Annotations, getAnnotations(params.CAV))
 	labels := copyMaps(params.WorkloadDetails.Labels, getLabels(params.CA, params.CAV, CategoryWorkload, string(params.WorkloadDetails.DeploymentDefinition.Type), workloadName, true))
 	if isExposedWorkload(params.WorkloadDetails, params.CAV) {
 		labels[LabelExposedWorkload] = "true"
@@ -1031,26 +1031,18 @@ func (c *Controller) prepareCAPApplicationVersion(cav *v1alpha1.CAPApplicationVe
 }
 
 // Annotations
-func getAnnotations(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, ownerInfo bool) map[string]string {
-	annotations := map[string]string{
-		AnnotationBTPApplicationIdentifier: strings.Join([]string{ca.Spec.GlobalAccountId, ca.Spec.BTPAppName}, "."),
+func getAnnotations(cav *v1alpha1.CAPApplicationVersion) map[string]string {
+	return map[string]string{
+		AnnotationOwnerIdentifier: cav.Namespace + "." + cav.Name,
 	}
-
-	if ownerInfo {
-		annotations[AnnotationOwnerIdentifier] = cav.Namespace + "." + cav.Name
-
-	}
-
-	return annotations
 }
 
 // Labels
 func getLabels(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, category string, workloadType string, workloadName string, additionalDetails bool) map[string]string {
 	labels := map[string]string{
-		App:                               ca.Spec.BTPAppName,
-		LabelBTPApplicationIdentifierHash: sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName),
-		LabelCAVVersion:                   cav.Spec.Version,
-		LabelResourceCategory:             category,
+		App:                   ca.Spec.BTPAppName,
+		LabelCAVVersion:       cav.Spec.Version,
+		LabelResourceCategory: category,
 	}
 
 	addIfNotEmpty := func(k, v string) {
@@ -1071,8 +1063,9 @@ func getLabels(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion,
 
 func addCAPApplicationVersionLabels(cav *v1alpha1.CAPApplicationVersion, ca *v1alpha1.CAPApplication) (updated bool) {
 	appMetadata := appMetadataIdentifiers{
-		globalAccountId: ca.Spec.GlobalAccountId,
-		appName:         ca.Spec.BTPAppName,
+		globalAccountId:      ca.Spec.GlobalAccountId,
+		providerSubaccountId: ca.Spec.ProviderSubaccountId,
+		appName:              ca.Spec.BTPAppName,
 		ownerInfo: &ownerInfo{
 			ownerNamespace:  ca.Namespace,
 			ownerName:       ca.Name,
@@ -1243,8 +1236,14 @@ func (c *Controller) getRelevantTenantsForCAV(cav *v1alpha1.CAPApplicationVersio
 	// Get CAPApplication instance
 	ca, _ := c.getCachedCAPApplication(cav.Namespace, cav.Spec.CAPApplicationInstance)
 	if ca != nil {
+		tenantLabels := map[string]string{}
+		if ca.Spec.ProviderSubaccountId != "" {
+			tenantLabels[LabelAppIdHash] = sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
+		} else {
+			tenantLabels[LabelBTPApplicationIdentifierHash] = sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName)
+		}
 		// Get all tenants in the namespace for the CAPApplication
-		allTenants, _ := c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(cav.Namespace).List(labels.SelectorFromSet(map[string]string{LabelBTPApplicationIdentifierHash: sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName)}))
+		allTenants, _ := c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(cav.Namespace).List(labels.SelectorFromSet(tenantLabels))
 		// Filter out relevant tenants for the CAPApplicationVersion
 		for _, tenant := range allTenants {
 			// If a tenant is already on a given version -or- is being provisioned/upgraded to a version, it is relevant for this CAPApplicationVersion

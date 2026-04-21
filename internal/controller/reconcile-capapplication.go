@@ -380,8 +380,11 @@ func (c *Controller) getRelevantTenantsForCA(ca *v1alpha1.CAPApplication) ([]*v1
 	if ca.IsServicesOnly() {
 		return []*v1alpha1.CAPTenant{}, nil
 	}
-	tenantLabels := map[string]string{
-		LabelBTPApplicationIdentifierHash: sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName),
+	tenantLabels := map[string]string{}
+	if ca.Spec.ProviderSubaccountId != "" {
+		tenantLabels[LabelAppIdHash] = sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
+	} else {
+		tenantLabels[LabelBTPApplicationIdentifierHash] = sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName)
 	}
 	selector, err := labels.ValidatedSelectorFromSet(tenantLabels)
 	if err != nil {
@@ -426,27 +429,33 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 }
 
 func (c *Controller) createProviderTenant(ctx context.Context, ca *v1alpha1.CAPApplication, version string, providerTenantName string) (tenant *v1alpha1.CAPTenant, err error) {
-	// Create a secret with the provider subscription context (dervied from the spec of CAPApplication)
-	// Try to get the provider subaccount id from the annotations
-	providerSubAccountId := ca.Annotations[AnnotationProviderSubAccountId]
-	// If no provider subaccount id annotation is found use provider tenantId that is needed because some cds / hana APIs seem to rely on this field instead of tenantId!
-	if providerSubAccountId == "" {
-		providerSubAccountId = ca.Spec.Provider.TenantId
+	providerSubaccountId := ""
+	tenantLabels := map[string]string{
+		LabelTenantId: ca.Spec.Provider.TenantId,
 	}
+	// Create a secret with the provider subscription context (dervied from the spec of CAPApplication)
+	if ca.Spec.ProviderSubaccountId != "" {
+		providerSubaccountId = ca.Spec.ProviderSubaccountId
+	} else {
+		// Try to get the provider subaccount id from the annotations
+		providerSubaccountId = ca.Annotations[AnnotationProviderSubAccountId]
+		// If no provider subaccount id annotation is found use provider tenantId that is needed because some cds / hana APIs seem to rely on this field instead of tenantId!
+		if providerSubaccountId == "" {
+			providerSubaccountId = ca.Spec.Provider.TenantId
+		}
+	}
+
 	secret, err := c.kubeClient.CoreV1().Secrets(ca.Namespace).Create(context.TODO(), &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: providerTenantName + "-",
 			Namespace:    ca.Namespace,
-			Labels: map[string]string{
-				LabelBTPApplicationIdentifierHash: sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName),
-				LabelTenantId:                     ca.Spec.Provider.TenantId,
-			},
+			Labels:       tenantLabels,
 		},
 		StringData: map[string]string{
 			SubscriptionContext: `{
 					"subscriptionAppName": "` + ca.Spec.BTPAppName + `",
 					"subscribedTenantId": "` + ca.Spec.Provider.TenantId + `",
-					"subscribedSubaccountId": "` + providerSubAccountId + `",
+					"subscribedSubaccountId": "` + providerSubaccountId + `",
 					"subscribedSubdomain": "` + ca.Spec.Provider.SubDomain + `",
 					"globalAccountGUID": "` + ca.Spec.GlobalAccountId + `"
 				}`,
@@ -460,22 +469,26 @@ func (c *Controller) createProviderTenant(ctx context.Context, ca *v1alpha1.CAPA
 
 	// Create provider tenant
 	util.LogInfo("Creating provider tenant", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
+	annotations := map[string]string{
+		AnnotationSubscriptionContextSecret: secret.Name, // Store the secret name in the tenant annotation
+	}
+	labels := map[string]string{
+		LabelTenantType: TenantTypeProvider,
+		LabelTenantId:   ca.Spec.Provider.TenantId,
+	}
+	if ca.Spec.ProviderSubaccountId != "" {
+		labels[LabelAppIdHash] = sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
+	} else {
+		labels[LabelBTPApplicationIdentifierHash] = sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName)
+	}
 
 	if tenant, err = c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Create(
 		ctx, &v1alpha1.CAPTenant{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      providerTenantName,
-				Namespace: ca.Namespace,
-				Annotations: map[string]string{
-					AnnotationBTPApplicationIdentifier:  ca.Spec.GlobalAccountId + "." + ca.Spec.BTPAppName,
-					AnnotationSubscriptionContextSecret: secret.Name, // Store the secret name in the tenant annotation
-
-				},
-				Labels: map[string]string{
-					LabelBTPApplicationIdentifierHash: sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName),
-					LabelTenantType:                   TenantTypeProvider,
-					LabelTenantId:                     ca.Spec.Provider.TenantId,
-				},
+				Name:        providerTenantName,
+				Namespace:   ca.Namespace,
+				Annotations: annotations,
+				Labels:      labels,
 			},
 			Spec: v1alpha1.CAPTenantSpec{
 				CAPApplicationInstance: ca.Name,
@@ -580,8 +593,8 @@ func (c *Controller) prepareCAPApplication(ca *v1alpha1.CAPApplication) (update 
 	// add Label/Annotation for BTP App
 	appMetadata := appMetadataIdentifiers{
 		globalAccountId:      ca.Spec.GlobalAccountId,
-		appName:              ca.Spec.BTPAppName,
 		providerSubaccountId: ca.Spec.ProviderSubaccountId,
+		appName:              ca.Spec.BTPAppName,
 	}
 	if updateLabelAnnotationMetadata(&ca.ObjectMeta, &appMetadata) {
 		update = true
@@ -708,13 +721,19 @@ func (c *Controller) addApplicationResourcesToReconcileResult(ca *v1alpha1.CAPAp
 }
 
 // Collect service operation metrics based on the status of the CAV
-func collectServiceOperationMetrics(cav *v1alpha1.CAPApplicationVersion, err error) {
+func collectServiceOperationMetrics(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, err error) {
+	appIdHash := ""
+	if ca.Spec.ProviderSubaccountId != "" {
+		appIdHash = cav.Labels[LabelAppIdHash]
+	} else {
+		appIdHash = cav.Labels[LabelBTPApplicationIdentifierHash]
+	}
 	// Collect/Increment overall completed service operation metrics
-	ServiceOperations.WithLabelValues(cav.Labels[LabelBTPApplicationIdentifierHash]).Inc()
+	ServiceOperations.WithLabelValues(appIdHash).Inc()
 
 	if err != nil {
 		// Collect/Increment failed service operation metrics with CAV details
-		ServiceOperationFailures.WithLabelValues(cav.Labels[LabelBTPApplicationIdentifierHash], cav.Spec.Version, cav.Namespace, cav.Name).Inc()
+		ServiceOperationFailures.WithLabelValues(appIdHash, cav.Spec.Version, cav.Namespace, cav.Name).Inc()
 	}
 }
 
