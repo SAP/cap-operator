@@ -274,16 +274,18 @@ func (c *Controller) getVirtualServiceHttpRoutes(cat *v1alpha1.CAPTenant, curren
 	for _, prevCavName := range cat.Status.PreviousCAPApplicationVersions {
 		prevCav, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(prevCavName)
 		if err != nil {
+			util.LogInfo("Failed to get previous CAV, skipping the virtual service HTTP route", string(Processing), cat, nil, "cavName", prevCavName)
 			continue
 		}
 		prevDest, err := c.getVirtualServiceHttpRouteDestination(prevCavName, cat.Namespace)
 		if err != nil {
+			util.LogInfo("Failed to get router port info for previous CAV, skipping the virtual service HTTP route", string(Processing), cat, nil, "cavName", prevCavName)
 			continue
 		}
 		prevCavs = append(prevCavs, prevCavInfo{cav: prevCav, dest: prevDest})
 	}
 
-	// Lookup current CAV destination and object
+	// Lookup current CAV destination
 	currentDest, err := c.getVirtualServiceHttpRouteDestination(currentCavName, cat.Namespace)
 	if err != nil {
 		return nil, err

@@ -555,7 +555,7 @@ func TestCAPTenantProvisioningCompletedWithSessionAffinityEnabled(t *testing.T) 
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
 		TestData{
-			description: "captenant provisioning operation completed (creates virtual service and destination rule) with session affinity enabled",
+			description: "captenant provisioning operation completed - creates virtual service with session affinity enabled",
 			initialResources: []string{
 				"testdata/common/domain-ready.yaml",
 				"testdata/common/cluster-domain-ready.yaml",
@@ -573,7 +573,7 @@ func TestCAPTenantProvisioningCompletedWithSessionAffinityEnabledAndVsheaders(t 
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
 		TestData{
-			description: "captenant provisioning operation completed (creates virtual service and destination rule) with session affinity enabled and virtual service headers",
+			description: "captenant provisioning operation completed - creates virtual service with session affinity enabled and virtual service headers",
 			initialResources: []string{
 				"testdata/common/domain-ready.yaml",
 				"testdata/common/cluster-domain-ready.yaml",
@@ -591,7 +591,7 @@ func TestCAPTenantProvisioningCompletedWithSessionAffinityEnabledCustomLogout(t 
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
 		TestData{
-			description: "captenant provisioning operation completed (creates virtual service and destination rule) with session affinity enabled using custom logout routes",
+			description: "captenant provisioning operation completed - creates virtual service with session affinity enabled using custom logout routes",
 			initialResources: []string{
 				"testdata/common/domain-ready.yaml",
 				"testdata/common/cluster-domain-ready.yaml",
@@ -609,7 +609,7 @@ func TestCAPTenantUpgradeOperationCompletedWithSessionAffinityEnabled(t *testing
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
 		TestData{
-			description: "captenant upgrade operation completed expecting virtual service, destination rule adjustments with session affinity enabled",
+			description: "captenant upgrade operation completed - expecting virtual service adjustments with session affinity enabled",
 			initialResources: []string{
 				"testdata/common/domain-ready.yaml",
 				"testdata/common/cluster-domain-ready.yaml",
@@ -629,7 +629,7 @@ func TestCAPTenantUpgradedThirdTimeWithSessionAffinityEnabled(t *testing.T) {
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
 		TestData{
-			description: "captenant upgraded third time - expecting virtual service, destination rule adjustments by removing config corresponding to v1 and by adding config for v3",
+			description: "captenant upgraded third time - expecting virtual service adjustments by adding config for v3",
 			initialResources: []string{
 				"testdata/common/domain-ready.yaml",
 				"testdata/common/cluster-domain-ready.yaml",
@@ -649,7 +649,7 @@ func TestCAPTenantUpgradeOperationCompletedWithSessionAffinityEnabledAndPrevious
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
 		TestData{
-			description: "captenant upgraded - expecting virtual service, destination rule adjustments after removing previous cav v1",
+			description: "captenant upgraded - expecting virtual service adjustments after removing previous cav v1",
 			initialResources: []string{
 				"testdata/common/domain-ready.yaml",
 				"testdata/common/cluster-domain-ready.yaml",
@@ -667,7 +667,7 @@ func TestCAPTenantUpgradeOperationCompletedWithSessionAffinitySwitchedFromEnable
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
 		TestData{
-			description: "captenant upgraded - expecting virtual service, destination rule adjustments after switching session affinity from enabled to disabled",
+			description: "captenant upgraded - expecting virtual service adjustments after switching session affinity from enabled to disabled",
 			initialResources: []string{
 				"testdata/common/domain-ready.yaml",
 				"testdata/common/cluster-domain-ready.yaml",
