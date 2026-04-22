@@ -305,9 +305,9 @@ func (c *Controller) getVirtualServiceHttpRoutes(cat *v1alpha1.CAPTenant, curren
 
 	// Cookie routes: all prev CAVs, then current
 	for _, p := range prevCavs {
-		httpRoutes = append(httpRoutes, buildVirtualServiceCookieHttpRoute(p.cav.Name, p.dest))
+		httpRoutes = append(httpRoutes, buildVirtualServiceCookieHttpRoute(p.cav.Name, p.dest, headers))
 	}
-	httpRoutes = append(httpRoutes, buildVirtualServiceCookieHttpRoute(currentCavName, currentDest))
+	httpRoutes = append(httpRoutes, buildVirtualServiceCookieHttpRoute(currentCavName, currentDest, headers))
 
 	// Default route to current CAV
 	httpRoutes = append(httpRoutes, buildVirtualServiceDefaultHttpRoute(currentCavName, currentDest, headers))
@@ -361,7 +361,7 @@ func buildVirtualServiceLogOffHttpRoute(cavName, logoutEndpoint string, dest *ne
 	}
 }
 
-func buildVirtualServiceCookieHttpRoute(cavName string, dest *networkingv1.Destination) *networkingv1.HTTPRoute {
+func buildVirtualServiceCookieHttpRoute(cavName string, dest *networkingv1.Destination, headers *networkingv1.Headers) *networkingv1.HTTPRoute {
 	return &networkingv1.HTTPRoute{
 		Match: []*networkingv1.HTTPMatchRequest{{
 			Headers: map[string]*networkingv1.StringMatch{
@@ -372,15 +372,19 @@ func buildVirtualServiceCookieHttpRoute(cavName string, dest *networkingv1.Desti
 			Destination: dest,
 			Weight:      100,
 		}},
+		Headers: headers,
 	}
 }
 
 func enhanceHeadersWithCookie(headers *networkingv1.Headers, cookie string, op string) *networkingv1.Headers {
 	var h *networkingv1.Headers
-	if headers != nil && headers.Response != nil {
+	if headers != nil {
 		h = headers.DeepCopy()
 	} else {
-		h = &networkingv1.Headers{Response: &networkingv1.Headers_HeaderOperations{}}
+		h = &networkingv1.Headers{}
+	}
+	if h.Response == nil {
+		h.Response = &networkingv1.Headers_HeaderOperations{}
 	}
 
 	switch op {

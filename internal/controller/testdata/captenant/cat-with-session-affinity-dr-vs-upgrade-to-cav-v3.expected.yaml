@@ -46,7 +46,7 @@ apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   annotations:
-    sme.sap.com/resource-hash: 014a26b701fbda31e6fee65adbcc0ff2b580568ef6b9835f847e2dac3e8975f3
+    sme.sap.com/resource-hash: 9e5298d1e6d0e14414cc702b9635773e6fc90a0d5c4dc9e297dad5ff8ae9140c
     sme.sap.com/owner-identifier: default.test-cap-01-provider
   labels:
     sme.sap.com/owner-generation: "2"
@@ -69,9 +69,14 @@ spec:
     - my-provider.foo.bar.local
   http:
   - headers:
+      request:
+        set:
+          x-downstream-peer-subject: "%DOWNSTREAM_PEER_SUBJECT%"
+          x-tenant-id: invalid-tenant-id
       response:
         set:
           Set-Cookie: CAPOP_CAV=test-cap-01-cav-v1;Path=/;HttpOnly;Secure;Max-Age=0
+          foo: bar
     match:
     - headers:
         Cookie:
@@ -85,9 +90,14 @@ spec:
           number: 5000
       weight: 100
   - headers:
+      request:
+        set:
+          x-downstream-peer-subject: "%DOWNSTREAM_PEER_SUBJECT%"
+          x-tenant-id: invalid-tenant-id
       response:
         set:
           Set-Cookie: CAPOP_CAV=test-cap-01-cav-v2;Path=/;HttpOnly;Secure;Max-Age=0
+          foo: bar
     match:
     - headers:
         Cookie:
@@ -101,9 +111,14 @@ spec:
           number: 5000
       weight: 100
   - headers:
+      request:
+        set:
+          x-downstream-peer-subject: "%DOWNSTREAM_PEER_SUBJECT%"
+          x-tenant-id: invalid-tenant-id
       response:
         set:
           Set-Cookie: CAPOP_CAV=test-cap-01-cav-v3;Path=/;HttpOnly;Secure;Max-Age=0
+          foo: bar
     match:
     - headers:
         Cookie:
@@ -116,7 +131,15 @@ spec:
         port:
           number: 5000
       weight: 100
-  - match:
+  - headers:
+      request:
+        set:
+          x-downstream-peer-subject: "%DOWNSTREAM_PEER_SUBJECT%"
+          x-tenant-id: invalid-tenant-id
+      response:
+        set:
+          foo: bar
+    match:
     - headers:
         Cookie:
           regex: (^|.*; )CAPOP_CAV=test-cap-01-cav-v1($|; .*)
@@ -126,7 +149,15 @@ spec:
         port:
           number: 5000
       weight: 100
-  - match:
+  - headers:
+      request:
+        set:
+          x-downstream-peer-subject: "%DOWNSTREAM_PEER_SUBJECT%"
+          x-tenant-id: invalid-tenant-id
+      response:
+        set:
+          foo: bar
+    match:
     - headers:
         Cookie:
           regex: (^|.*; )CAPOP_CAV=test-cap-01-cav-v2($|; .*)
@@ -136,7 +167,15 @@ spec:
         port:
           number: 5000
       weight: 100
-  - match:
+  - headers:
+      request:
+        set:
+          x-downstream-peer-subject: "%DOWNSTREAM_PEER_SUBJECT%"
+          x-tenant-id: invalid-tenant-id
+      response:
+        set:
+          foo: bar
+    match:
     - headers:
         Cookie:
           regex: (^|.*; )CAPOP_CAV=test-cap-01-cav-v3($|; .*)
@@ -147,7 +186,13 @@ spec:
           number: 5000
       weight: 100
   - headers:
+      request:
+        set:
+          x-downstream-peer-subject: "%DOWNSTREAM_PEER_SUBJECT%"
+          x-tenant-id: invalid-tenant-id
       response:
+        set:
+          foo: bar
         add:
           Set-Cookie: CAPOP_CAV=test-cap-01-cav-v3;Path=/;HttpOnly;Secure
     route:

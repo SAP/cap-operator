@@ -629,11 +629,11 @@ func TestCAPTenantUpgradedThirdTimeWithSessionAffinityEnabled(t *testing.T) {
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
 		TestData{
-			description: "captenant upgraded third time - expecting virtual service adjustments by adding config for v3",
+			description: "captenant upgraded third time - expecting virtual service adjustments by adding config for v3 with session affinity enabled and virtual service headers",
 			initialResources: []string{
 				"testdata/common/domain-ready.yaml",
 				"testdata/common/cluster-domain-ready.yaml",
-				"testdata/common/capapplication-session-affinity.yaml",
+				"testdata/common/capapplication-session-affinity-vs-headers.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2.yaml",
 				"testdata/common/capapplicationversion-v3.yaml",
