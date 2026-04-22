@@ -241,6 +241,7 @@ type CAPApplicationVersionSpec struct {
 	// Denotes to which CAPApplication the current version belongs
 	CAPApplicationInstance string `json:"capApplicationInstance"`
 	// Semantic version
+	// +kubebuilder:validation:Pattern=^(0|[1-9]\d*)(\.(0|[1-9]\d*)(\.(0|[1-9]\d*)(-((0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?)?)?$
 	Version string `json:"version"`
 	// Registry secrets used to pull images of the application components
 	RegistrySecrets []string `json:"registrySecrets,omitempty"`
