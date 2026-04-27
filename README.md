@@ -7,6 +7,10 @@
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/7803/badge)](https://www.bestpractices.dev/projects/7803)
 [![REUSE status](https://api.reuse.software/badge/github.com/SAP/cap-operator)](https://api.reuse.software/info/github.com/SAP/cap-operator)
 
+> [!WARNING]
+> ## Action Required:
+> As [announced](https://github.com/SAP/cap-operator/discussions/343), the `globalAccountId` field in the `CAPApplication` spec is deprecated and will be removed in a future release. Update your `CAPApplication` resources to use `providerSubaccountId` instead.
+
 CAP Operator manages the lifecycle operations involved in running multi-tenant CAP applications on Kubernetes clusters, primarily project "Gardener" managed clusters.
 
 #### Documentation
