@@ -39,9 +39,6 @@ gen-helm-docs: helm-docs ## Generate helm doc.
 	$(HELM_DOCS) -c $(SRC)/$(TEMPDIR)/chart -s file
 	cp $(SRC)/$(TEMPDIR)/chart/README.md $(SRC)/../cap-operator-lifecycle/chart
 
-	echo '{{ template "chart.valuesSection" . }}' >$(SRC)/$(TEMPDIR)/chart/README.md.gotmpl
-	$(HELM_DOCS) -c $(SRC)/$(TEMPDIR) -s file
-	cp $(SRC)/$(TEMPDIR)/chart/README.md $(SRC)/website/includes/chart-values.md
 	rm -rf $(SRC)/$(TEMPDIR)
 
 ##@ Build Dependencies
