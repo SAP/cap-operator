@@ -40,7 +40,6 @@ const (
 	LabelTenantOperationStep            = "sme.sap.com/tenant-operation-step"
 	LabelCAVVersion                     = "sme.sap.com/cav-version"
 	LabelRelevantDNSTarget              = "sme.sap.com/relevant-dns-target-hash"
-	LabelDisableKarydia                 = "x4.sap.com/disable-karydia"
 	LabelExposedWorkload                = "sme.sap.com/exposed-workload"
 	LabelDNSNameHash                    = "sme.sap.com/dns-name-hash"
 	LabelSubscriptionGUID               = "sme.sap.com/subscription-guid"
