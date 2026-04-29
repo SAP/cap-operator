@@ -52,7 +52,7 @@ const (
 	AnnotationGardenerDNSTarget         = "dns.gardener.cloud/dnsnames"
 	AnnotationKubernetesDNSTarget       = "external-dns.alpha.kubernetes.io/hostname"
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
-	AnnotationProviderSubAccountId      = "sme.sap.com/provider-sub-account-id"
+	AnnotationGlobalAccountId           = "sme.sap.com/global-account-id"
 	AnnotationEnableCleanupMonitoring   = "sme.sap.com/enable-cleanup-monitoring"
 	AnnotationVSRouteRequestHeaderSet   = "sme.sap.com/vs-route-request-header-set"  // used to set the header for the vs route request
 	AnnotationVSRouteResponseHeaderSet  = "sme.sap.com/vs-route-response-header-set" // used to set the header for the vs route response
@@ -82,18 +82,19 @@ var (
 const TenantTypeProvider = "provider"
 
 const (
-	EnvCAPOpAppVersion          = "CAPOP_APP_VERSION"
-	EnvCAPOpTenantId            = "CAPOP_TENANT_ID"
-	EnvCAPOpTenantSubDomain     = "CAPOP_TENANT_SUBDOMAIN"
-	EnvCAPOpTenantOperation     = "CAPOP_TENANT_OPERATION"
-	EnvCAPOpTenantMtxsOperation = "CAPOP_TENANT_MTXS_OPERATION"
-	EnvCAPOpTenantType          = "CAPOP_TENANT_TYPE"
-	EnvCAPOpAppName             = "CAPOP_APP_NAME"
-	EnvCAPOpGlobalAccountId     = "CAPOP_GLOBAL_ACCOUNT_ID"
-	EnvCAPOpProviderTenantId    = "CAPOP_PROVIDER_TENANT_ID"
-	EnvCAPOpProviderSubDomain   = "CAPOP_PROVIDER_SUBDOMAIN"
-	EnvCAPOpSubscriptionPayload = "CAPOP_SUBSCRIPTION_PAYLOAD"
-	EnvVCAPServices             = "VCAP_SERVICES"
+	EnvCAPOpAppVersion           = "CAPOP_APP_VERSION"
+	EnvCAPOpTenantId             = "CAPOP_TENANT_ID"
+	EnvCAPOpTenantSubDomain      = "CAPOP_TENANT_SUBDOMAIN"
+	EnvCAPOpTenantOperation      = "CAPOP_TENANT_OPERATION"
+	EnvCAPOpTenantMtxsOperation  = "CAPOP_TENANT_MTXS_OPERATION"
+	EnvCAPOpTenantType           = "CAPOP_TENANT_TYPE"
+	EnvCAPOpAppName              = "CAPOP_APP_NAME"
+	EnvCAPOpGlobalAccountId      = "CAPOP_GLOBAL_ACCOUNT_ID"
+	EnvCAPOpProviderSubaccountId = "CAPOP_PROVIDER_SUBACCOUNT_ID"
+	EnvCAPOpProviderTenantId     = "CAPOP_PROVIDER_TENANT_ID"
+	EnvCAPOpProviderSubDomain    = "CAPOP_PROVIDER_SUBDOMAIN"
+	EnvCAPOpSubscriptionPayload  = "CAPOP_SUBSCRIPTION_PAYLOAD"
+	EnvVCAPServices              = "VCAP_SERVICES"
 )
 
 type JobState string

@@ -423,17 +423,18 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 	})
 
 	params := &jobCreateParams{
-		namePrefix:        relatedResources.CAPTenant.Name + "-" + workload.Name + "-",
-		labels:            labels,
-		annotations:       annotations,
-		vcapSecretName:    vcapSecretName,
-		imagePullSecrets:  convertToLocalObjectReferences(relatedResources.CAPApplicationVersion.Spec.RegistrySecrets),
-		version:           relatedResources.CAPApplicationVersion.Spec.Version,
-		appName:           relatedResources.CAPApplication.Spec.BTPAppName,
-		globalAccountId:   relatedResources.CAPApplication.Spec.GlobalAccountId,
-		providerTenantId:  relatedResources.CAPApplication.Spec.Provider.TenantId,
-		providerSubdomain: relatedResources.CAPApplication.Spec.Provider.SubDomain,
-		tenantType:        relatedResources.CAPTenant.Labels[LabelTenantType],
+		namePrefix:           relatedResources.CAPTenant.Name + "-" + workload.Name + "-",
+		labels:               labels,
+		annotations:          annotations,
+		vcapSecretName:       vcapSecretName,
+		imagePullSecrets:     convertToLocalObjectReferences(relatedResources.CAPApplicationVersion.Spec.RegistrySecrets),
+		version:              relatedResources.CAPApplicationVersion.Spec.Version,
+		appName:              relatedResources.CAPApplication.Spec.BTPAppName,
+		globalAccountId:      relatedResources.CAPApplication.Spec.GlobalAccountId,
+		providerSubaccountId: relatedResources.CAPApplication.Spec.ProviderSubaccountId,
+		providerTenantId:     relatedResources.CAPApplication.Spec.Provider.TenantId,
+		providerSubdomain:    relatedResources.CAPApplication.Spec.Provider.SubDomain,
+		tenantType:           relatedResources.CAPTenant.Labels[LabelTenantType],
 	}
 
 	var job *batchv1.Job
@@ -457,17 +458,18 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 }
 
 type jobCreateParams struct {
-	namePrefix        string
-	labels            map[string]string
-	annotations       map[string]string
-	vcapSecretName    string
-	imagePullSecrets  []corev1.LocalObjectReference
-	version           string
-	appName           string
-	globalAccountId   string
-	providerTenantId  string
-	providerSubdomain string
-	tenantType        string
+	namePrefix           string
+	labels               map[string]string
+	annotations          map[string]string
+	vcapSecretName       string
+	imagePullSecrets     []corev1.LocalObjectReference
+	version              string
+	appName              string
+	globalAccountId      string
+	providerSubaccountId string
+	providerTenantId     string
+	providerSubdomain    string
+	tenantType           string
 }
 
 func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {
@@ -709,6 +711,10 @@ func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation, step
 		{Name: EnvCAPOpGlobalAccountId, Value: params.globalAccountId},
 		{Name: EnvCAPOpProviderTenantId, Value: params.providerTenantId},
 		{Name: EnvCAPOpProviderSubDomain, Value: params.providerSubdomain},
+	}
+
+	if params.providerSubaccountId != "" {
+		env = append(env, corev1.EnvVar{Name: EnvCAPOpProviderSubaccountId, Value: params.providerSubaccountId})
 	}
 
 	if stepType == v1alpha1.JobTenantOperation {
