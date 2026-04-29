@@ -409,14 +409,14 @@ type MetricRule struct {
 	// Duration of time series data used for the rule evaluation
 	CalculationPeriod Duration `json:"calculationPeriod"`
 	// The threshold value which is compared against the calculated value. If calculated value is less than or equal to the threshold the rule condition is fulfilled.
-	// +kubebuilder:validation:Format:=double
+	// +kubebuilder:validation:Format=double
 	ThresholdValue string `json:"thresholdValue"`
 }
 
 // Duration is a valid time duration that can be parsed by Prometheus
 // Supported units: y, w, d, h, m, s, ms
 // Examples: `30s`, `1m`, `1h20m15s`, `15d`
-// +kubebuilder:validation:Pattern:="^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$"
+// +kubebuilder:validation:Pattern="^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$"
 type Duration string
 
 // Type of Prometheus metric

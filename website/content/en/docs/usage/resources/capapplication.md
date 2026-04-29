@@ -63,7 +63,3 @@ The `domainRefs` section references one or more `Domain` or `ClusterDomain` reso
 > NOTE: While the same secondary domain can technically be shared across applications using `ClusterDomain`, tenant subdomains must be unique across all applications sharing that domain.
 
 > NOTE: The `provider` section is omitted for [services-only applications](../../service-exposure/#deploying-services-only-applications).
-
-{{% alert color="warning" title="Warning" %}}
-The `globalSubaccountId` field in the `CAPApplication` spec is deprecated and will be removed in a future release. Use `providerSubaccountId` instead.
-{{% /alert %}}
