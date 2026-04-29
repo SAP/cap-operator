@@ -528,7 +528,7 @@ func (s *SubscriptionHandler) authorizationCheck(headerDetails *requestHeaderDet
 		err = s.checkCertIssuerAndSubject(headerDetails.xForwardedClientCert, smsData, step)
 
 	default:
-		uaaData := &util.XSUAACredentials{}
+		var uaaData *util.XSUAACredentials
 		// fetch SaaS Registry and XSUAA information
 		saasData, uaaData = s.getServiceDetails(ca, step)
 		if saasData == nil || uaaData == nil {
@@ -577,7 +577,7 @@ func (s *SubscriptionHandler) getAppByLabelSelector(labelSelector labels.Selecto
 }
 
 func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *util.SaasRegistryCredentials, uaaData *util.XSUAACredentials, step string) error {
-	if strings.Index(authHeader, BearerPrefix) != 0 {
+	if !strings.HasPrefix(authHeader, BearerPrefix) {
 		return errors.New("expected bearer token")
 	}
 
@@ -795,12 +795,9 @@ func (s *SubscriptionHandler) checkCAPTenantStatus(ctx context.Context, tenantNa
 	}
 }
 
-func (s *SubscriptionHandler) getServiceDetails(ca *v1alpha1.CAPApplication, step string) (*util.SaasRegistryCredentials, *util.XSUAACredentials) {
-	var (
-		wg       sync.WaitGroup
-		saasData *util.SaasRegistryCredentials
-		uaaData  *util.XSUAACredentials
-	)
+func (s *SubscriptionHandler) getServiceDetails(ca *v1alpha1.CAPApplication, step string) (saasData *util.SaasRegistryCredentials, uaaData *util.XSUAACredentials) {
+	var wg sync.WaitGroup
+
 	wg.Go(func() {
 		saasData = s.getSaasDetails(ca, step)
 	})

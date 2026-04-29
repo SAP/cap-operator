@@ -2,7 +2,7 @@
   "name": "website",
   "devDependencies": {
     "autoprefixer": "^10.5.0",
-    "hugo-extended": "^0.160.1",
+    "hugo-extended": "^0.161.0",
     "postcss-cli": "^11.0.1"
   }
 }
