@@ -274,12 +274,10 @@ func (c *Controller) getVirtualServiceHttpRoutes(cat *v1alpha1.CAPTenant, curren
 	for _, prevCavName := range cat.Status.PreviousCAPApplicationVersions {
 		prevCav, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(prevCavName)
 		if err != nil {
-			util.LogInfo("Failed to get previous CAV, skipping the virtual service HTTP route", string(Processing), cat, nil, "cavName", prevCavName)
 			continue
 		}
 		prevDest, err := c.getVirtualServiceHttpRouteDestination(prevCavName, cat.Namespace)
 		if err != nil {
-			util.LogInfo("Failed to get router port info for previous CAV, skipping the virtual service HTTP route", string(Processing), cat, nil, "cavName", prevCavName)
 			continue
 		}
 		prevCavs = append(prevCavs, prevCavInfo{cav: prevCav, dest: prevDest})
@@ -333,7 +331,7 @@ func buildVirtualServiceDefaultHttpRoute(cavName string, dest *networkingv1.Dest
 			Destination: dest,
 			Weight:      100,
 		}},
-		Headers: enhanceHeadersWithCookie(headers, sessionCookie(cavName), "add"),
+		Headers: enhanceHeadersWithCookie(headers, sessionCookie(cavName), "add"), // Use "add" instead of "set" to avoid overwriting any existing Set-Cookie header
 	}
 }
 
