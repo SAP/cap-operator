@@ -264,25 +264,23 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(cat *v1alpha1.CAPTenan
 }
 
 func (c *Controller) getVirtualServiceHttpRoutes(cat *v1alpha1.CAPTenant, currentCavName string, headers *networkingv1.Headers) ([]*networkingv1.HTTPRoute, error) {
-	var (
-		httpRoutes []*networkingv1.HTTPRoute
-		prevCav    *v1alpha1.CAPApplicationVersion
-		prevDest   *networkingv1.Destination
-		err        error
-	)
+	type prevCavInfo struct {
+		cav  *v1alpha1.CAPApplicationVersion
+		dest *networkingv1.Destination
+	}
 
-	// Lookup previous CAV (if any)
-	if len(cat.Status.PreviousCAPApplicationVersions) > 0 {
-		prevCavName := cat.Status.PreviousCAPApplicationVersions[len(cat.Status.PreviousCAPApplicationVersions)-1]
-		prevCav, err = c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(prevCavName)
-
-		if err == nil { // only if found
-			if prevDest, err = c.getVirtualServiceHttpRouteDestination(prevCavName, cat.Namespace); err != nil {
-				return nil, err
-			}
-		} else if !errors.IsNotFound(err) {
-			return nil, err
+	// Get all previous CAVs (skip any that are missing or have no router port info)
+	var prevCavs []prevCavInfo
+	for _, prevCavName := range cat.Status.PreviousCAPApplicationVersions {
+		prevCav, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(prevCavName)
+		if err != nil {
+			continue
 		}
+		prevDest, err := c.getVirtualServiceHttpRouteDestination(prevCavName, cat.Namespace)
+		if err != nil {
+			continue
+		}
+		prevCavs = append(prevCavs, prevCavInfo{cav: prevCav, dest: prevDest})
 	}
 
 	// Lookup current CAV destination
@@ -290,25 +288,24 @@ func (c *Controller) getVirtualServiceHttpRoutes(cat *v1alpha1.CAPTenant, curren
 	if err != nil {
 		return nil, err
 	}
-
-	// Retrieve current CAV for logout endpointannotations
 	currentCav, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(currentCavName)
 	if err != nil {
 		return nil, err
 	}
 
-	// --- Add routes ---
-	// Logoff/logout routes
-	if prevDest != nil {
-		httpRoutes = append(httpRoutes, buildVirtualServiceLogOffHttpRoute(prevCav.Name, prevCav.Annotations[AnnotationLogoutEndpoint], prevDest, headers))
+	var httpRoutes []*networkingv1.HTTPRoute
+
+	// Logoff routes: all prev CAVs, then current
+	for _, p := range prevCavs {
+		httpRoutes = append(httpRoutes, buildVirtualServiceLogOffHttpRoute(p.cav.Name, p.cav.Annotations[AnnotationLogoutEndpoint], p.dest, headers))
 	}
 	httpRoutes = append(httpRoutes, buildVirtualServiceLogOffHttpRoute(currentCavName, currentCav.Annotations[AnnotationLogoutEndpoint], currentDest, headers))
 
-	// Cookie routes
-	if prevDest != nil {
-		httpRoutes = append(httpRoutes, buildVirtualServiceCookieHttpRoute(prevCav.Name, prevDest))
+	// Cookie routes: all prev CAVs, then current
+	for _, p := range prevCavs {
+		httpRoutes = append(httpRoutes, buildVirtualServiceCookieHttpRoute(p.cav.Name, p.dest, headers))
 	}
-	httpRoutes = append(httpRoutes, buildVirtualServiceCookieHttpRoute(currentCavName, currentDest))
+	httpRoutes = append(httpRoutes, buildVirtualServiceCookieHttpRoute(currentCavName, currentDest, headers))
 
 	// Default route to current CAV
 	httpRoutes = append(httpRoutes, buildVirtualServiceDefaultHttpRoute(currentCavName, currentDest, headers))
@@ -334,7 +331,7 @@ func buildVirtualServiceDefaultHttpRoute(cavName string, dest *networkingv1.Dest
 			Destination: dest,
 			Weight:      100,
 		}},
-		Headers: enhanceHeadersWithCookie(headers, sessionCookie(cavName), "add"),
+		Headers: enhanceHeadersWithCookie(headers, sessionCookie(cavName), "add"), // Use "add" instead of "set" to avoid overwriting any existing Set-Cookie header
 	}
 }
 
@@ -362,7 +359,7 @@ func buildVirtualServiceLogOffHttpRoute(cavName, logoutEndpoint string, dest *ne
 	}
 }
 
-func buildVirtualServiceCookieHttpRoute(cavName string, dest *networkingv1.Destination) *networkingv1.HTTPRoute {
+func buildVirtualServiceCookieHttpRoute(cavName string, dest *networkingv1.Destination, headers *networkingv1.Headers) *networkingv1.HTTPRoute {
 	return &networkingv1.HTTPRoute{
 		Match: []*networkingv1.HTTPMatchRequest{{
 			Headers: map[string]*networkingv1.StringMatch{
@@ -373,15 +370,19 @@ func buildVirtualServiceCookieHttpRoute(cavName string, dest *networkingv1.Desti
 			Destination: dest,
 			Weight:      100,
 		}},
+		Headers: headers,
 	}
 }
 
 func enhanceHeadersWithCookie(headers *networkingv1.Headers, cookie string, op string) *networkingv1.Headers {
 	var h *networkingv1.Headers
-	if headers != nil && headers.Response != nil {
+	if headers != nil {
 		h = headers.DeepCopy()
 	} else {
-		h = &networkingv1.Headers{Response: &networkingv1.Headers_HeaderOperations{}}
+		h = &networkingv1.Headers{}
+	}
+	if h.Response == nil {
+		h.Response = &networkingv1.Headers_HeaderOperations{}
 	}
 
 	switch op {

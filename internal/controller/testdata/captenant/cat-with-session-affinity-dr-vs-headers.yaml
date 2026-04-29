@@ -40,7 +40,7 @@ apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
   annotations:
-    sme.sap.com/resource-hash: 96085be3c39f1f2de3042fbf71bac43f256e139aada33ee4f2d435b8c1e6e7cd
+    sme.sap.com/resource-hash: 4eb1315e07bab42e3cf46fa37cfe6e95192514030fed12777d67d003cf1b13d1
     sme.sap.com/owner-identifier: default.test-cap-01-provider
   labels:
     sme.sap.com/owner-generation: "0"
@@ -83,7 +83,15 @@ spec:
         port:
           number: 5000
       weight: 100
-  - match:
+  - headers:
+      request:
+        set:
+          x-downstream-peer-subject: "%DOWNSTREAM_PEER_SUBJECT%"
+          x-tenant-id: invalid-tenant-id
+      response:
+        set:
+          foo: bar
+    match:
     - headers:
         Cookie:
           regex: (^|.*; )CAPOP_CAV=test-cap-01-cav-v1($|; .*)
