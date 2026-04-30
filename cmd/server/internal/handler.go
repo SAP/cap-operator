@@ -1150,7 +1150,7 @@ func checkSaasRegistryEnabled(credential map[string]interface{}) bool {
 }
 
 func (s *SubscriptionHandler) getServiceDependencies(capApp *v1alpha1.CAPApplication, service v1alpha1.ServiceInfo) map[string]interface{} {
-	var credentials map[string]interface{}
+	var credentials map[string]any
 
 	serviceSecretCred, err := s.KubeClienset.CoreV1().Secrets(capApp.Namespace).Get(context.TODO(), service.Secret, metav1.GetOptions{})
 	if err != nil {
@@ -1163,24 +1163,8 @@ func (s *SubscriptionHandler) getServiceDependencies(capApp *v1alpha1.CAPApplica
 		return nil
 	}
 
-	if service.Class == "destination" || service.Class == "connectivity" || (service.Class == "auditlog" && credentials["plan"] == "oauth2") {
-		if checkXsAppNameInCredentials(credentials) {
-			return map[string]interface{}{
-				"appId":   credentials["xsappname"].(string),
-				"appName": service.Class,
-			}
-		} else if checkXsAppNameInUaaCredentials(credentials) {
-			return map[string]interface{}{
-				"appId":   credentials["uaa"].(map[string]interface{})["xsappname"].(string),
-				"appName": service.Class,
-			}
-		}
-	} else if checkSaasRegistryAppNameInCredentials(credentials) && checkXsAppNameInUaaCredentials(credentials) {
-		return map[string]interface{}{
-			"appId":   credentials["uaa"].(map[string]interface{})["xsappname"].(string),
-			"appName": credentials["saasregistryappname"].(string),
-		}
-	} else if checkSaasRegistryEnabled(credentials) {
+	// Subscription Dependency check
+	if isServiceRelevantForDependencies(service, credentials) {
 		if checkXsAppNameInCredentials(credentials) {
 			return map[string]interface{}{
 				"xsappname": credentials["xsappname"].(string),
@@ -1192,6 +1176,18 @@ func (s *SubscriptionHandler) getServiceDependencies(capApp *v1alpha1.CAPApplica
 		}
 	}
 	return nil
+}
+
+func isServiceRelevantForDependencies(serviceInfo v1alpha1.ServiceInfo, credentials map[string]any) bool {
+	if serviceInfo.GetSubscriptionDependency() == v1alpha1.SubscriptionDependencyAlways {
+		return true
+	}
+
+	if serviceInfo.GetSubscriptionDependency() == v1alpha1.SubscriptionDependencyAuto {
+		return serviceInfo.Class == "destination" || serviceInfo.Class == "connectivity" || (serviceInfo.Class == "auditlog" && credentials["plan"] == "oauth2") || (checkSaasRegistryAppNameInCredentials(credentials) && checkXsAppNameInUaaCredentials(credentials)) || checkSaasRegistryEnabled(credentials)
+	}
+
+	return false
 }
 
 func (s *SubscriptionHandler) getDependencies(req *http.Request) ([]byte, error) {

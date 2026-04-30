@@ -46,10 +46,17 @@ spec:
                           type: string
                         secret:
                           type: string
+                        subscriptionDependency:
+                          enum:
+                          - Auto
+                          - Always
+                          - Never
+                          type: string
                       required:
                       - class
                       - name
                       - secret
+                      - subscriptionDependency
                       type: object
                     type: array
                 required:

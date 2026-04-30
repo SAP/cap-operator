@@ -7,6 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 
 package v1alpha1
 
+import (
+	smesapcomv1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+)
+
 // ServiceInfoApplyConfiguration represents a declarative configuration of the ServiceInfo type for use
 // with apply.
 //
@@ -18,6 +22,8 @@ type ServiceInfoApplyConfiguration struct {
 	Secret *string `json:"secret,omitempty"`
 	// Type of service
 	Class *string `json:"class,omitempty"`
+	// SubscriptionDependency may be used to specify whether this service should be part of getDependencies call from subscripton service (e.g. saas-registry)
+	SubscriptionDependency *smesapcomv1alpha1.SubscriptionDependency `json:"subscriptionDependency,omitempty"`
 }
 
 // ServiceInfoApplyConfiguration constructs a declarative configuration of the ServiceInfo type for use with
@@ -47,5 +53,13 @@ func (b *ServiceInfoApplyConfiguration) WithSecret(value string) *ServiceInfoApp
 // If called multiple times, the Class field is set to the value of the last call.
 func (b *ServiceInfoApplyConfiguration) WithClass(value string) *ServiceInfoApplyConfiguration {
 	b.Class = &value
+	return b
+}
+
+// WithSubscriptionDependency sets the SubscriptionDependency field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the SubscriptionDependency field is set to the value of the last call.
+func (b *ServiceInfoApplyConfiguration) WithSubscriptionDependency(value smesapcomv1alpha1.SubscriptionDependency) *ServiceInfoApplyConfiguration {
+	b.SubscriptionDependency = &value
 	return b
 }
