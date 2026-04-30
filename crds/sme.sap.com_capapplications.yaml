@@ -56,7 +56,6 @@ spec:
                       - class
                       - name
                       - secret
-                      - subscriptionDependency
                       type: object
                     type: array
                 required:

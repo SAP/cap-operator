@@ -164,7 +164,7 @@ type ServiceInfo struct {
 	// Type of service
 	Class string `json:"class"`
 	// SubscriptionDependency may be used to specify whether this service should be part of getDependencies call from subscripton service (e.g. saas-registry)
-	SubscriptionDependency *SubscriptionDependency `json:"subscriptionDependency"`
+	SubscriptionDependency *SubscriptionDependency `json:"subscriptionDependency,omitempty"`
 }
 
 // +kubebuilder:validation:Enum=Auto;Always;Never
