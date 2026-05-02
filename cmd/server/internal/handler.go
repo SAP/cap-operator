@@ -406,13 +406,13 @@ func (s *SubscriptionHandler) updateSecret(tenant *v1alpha1.CAPTenant, secret *c
 	return err
 }
 
-func (s *SubscriptionHandler) getTenantByAppIdentifier(globalAccountGUID, providerSubAccountId, btpAppName, tenantId, namespace, step string) (result *Result) {
+func (s *SubscriptionHandler) getTenantByAppIdentifier(globalAccountGUID, providerSubaccountId, btpAppName, tenantId, namespace, step string) (result *Result) {
 	tenantlabels := map[string]string{
 		LabelTenantId: tenantId,
 	}
 
 	labelsMaps := maps.Clone(tenantlabels)
-	labelsMaps[LabelAppIdHash] = sha1Sum(providerSubAccountId, btpAppName)
+	labelsMaps[LabelAppIdHash] = sha1Sum(providerSubaccountId, btpAppName)
 
 	if result = s.getTenantByLabels(labelsMaps, namespace, step, "getTenantByAppIdentifier"); result.Tenant == nil {
 		oldLabelsMap := maps.Clone(tenantlabels)

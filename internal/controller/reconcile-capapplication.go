@@ -429,22 +429,22 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 }
 
 func (c *Controller) createProviderTenant(ctx context.Context, ca *v1alpha1.CAPApplication, version string, providerTenantName string) (tenant *v1alpha1.CAPTenant, err error) {
-	providerSubaccountId := ""
+	providerSubaccountId := ca.Spec.ProviderSubaccountId
 	tenantLabels := map[string]string{
 		LabelTenantId: ca.Spec.Provider.TenantId,
 	}
-	// Create a secret with the provider subscription context (dervied from the spec of CAPApplication)
-	if ca.Spec.ProviderSubaccountId != "" {
-		providerSubaccountId = ca.Spec.ProviderSubaccountId
-	} else {
-		// Try to get the provider subaccount id from the annotations
-		providerSubaccountId = ca.Annotations[AnnotationProviderSubAccountId]
+
+	if providerSubaccountId == "" {
 		// If no provider subaccount id annotation is found use provider tenantId that is needed because some cds / hana APIs seem to rely on this field instead of tenantId!
-		if providerSubaccountId == "" {
-			providerSubaccountId = ca.Spec.Provider.TenantId
-		}
+		providerSubaccountId = ca.Spec.Provider.TenantId
 	}
 
+	globalAccountGUID := ca.Spec.GlobalAccountId
+	if globalAccountGUID == "" {
+		globalAccountGUID = ca.Annotations[AnnotationGlobalAccountId]
+	}
+
+	// Create a secret with the provider subscription context (dervied from the spec of CAPApplication)
 	secret, err := c.kubeClient.CoreV1().Secrets(ca.Namespace).Create(context.TODO(), &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: providerTenantName + "-",
@@ -457,7 +457,7 @@ func (c *Controller) createProviderTenant(ctx context.Context, ca *v1alpha1.CAPA
 					"subscribedTenantId": "` + ca.Spec.Provider.TenantId + `",
 					"subscribedSubaccountId": "` + providerSubaccountId + `",
 					"subscribedSubdomain": "` + ca.Spec.Provider.SubDomain + `",
-					"globalAccountGUID": "` + ca.Spec.GlobalAccountId + `"
+					"globalAccountGUID": "` + globalAccountGUID + `"
 				}`,
 		},
 	}, metav1.CreateOptions{})
