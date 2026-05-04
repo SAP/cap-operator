@@ -911,6 +911,7 @@ func getContainer(params *DeploymentParameters) []corev1.Container {
 		VolumeMounts:    params.WorkloadDetails.DeploymentDefinition.VolumeMounts,
 		LivenessProbe:   params.WorkloadDetails.DeploymentDefinition.LivenessProbe,
 		ReadinessProbe:  params.WorkloadDetails.DeploymentDefinition.ReadinessProbe,
+		StartupProbe:    params.WorkloadDetails.DeploymentDefinition.StartupProbe,
 		Resources:       params.WorkloadDetails.DeploymentDefinition.Resources,
 		SecurityContext: params.WorkloadDetails.DeploymentDefinition.SecurityContext,
 	}

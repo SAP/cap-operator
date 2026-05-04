@@ -29,6 +29,8 @@ type DeploymentDetailsApplyConfiguration struct {
 	LivenessProbe *v1.Probe `json:"livenessProbe,omitempty"`
 	// Readiness probe
 	ReadinessProbe *v1.Probe `json:"readinessProbe,omitempty"`
+	// Startup Probe
+	StartupProbe *v1.Probe `json:"startupProbe,omitempty"`
 	// Workload monitoring specification
 	Monitoring *WorkloadMonitoringApplyConfiguration `json:"monitoring,omitempty"`
 	// Pod Disruption Budget may be used to specify the minimum number of available pods for this workload
@@ -261,6 +263,14 @@ func (b *DeploymentDetailsApplyConfiguration) WithLivenessProbe(value v1.Probe) 
 // If called multiple times, the ReadinessProbe field is set to the value of the last call.
 func (b *DeploymentDetailsApplyConfiguration) WithReadinessProbe(value v1.Probe) *DeploymentDetailsApplyConfiguration {
 	b.ReadinessProbe = &value
+	return b
+}
+
+// WithStartupProbe sets the StartupProbe field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the StartupProbe field is set to the value of the last call.
+func (b *DeploymentDetailsApplyConfiguration) WithStartupProbe(value v1.Probe) *DeploymentDetailsApplyConfiguration {
+	b.StartupProbe = &value
 	return b
 }
 
