@@ -44,7 +44,8 @@ The operation executes a series of steps (jobs) specified in or derived from the
 - `CAPOP_TENANT_SUBDOMAIN`: The subdomain (from the subaccount) of the tenant
 - `CAPOP_TENANT_TYPE`: The tenant type — `provider` or `consumer`
 - `CAPOP_APP_NAME`: The BTP app name from the corresponding `CAPApplication`
-- `CAPOP_GLOBAL_ACCOUNT_ID`: The global account identifier from the corresponding `CAPApplication`
+- `CAPOP_GLOBAL_ACCOUNT_ID`: The global account identifier from the corresponding `CAPApplication` (Deprecated: Will be removed soon).
+- `CAPOP_PROVIDER_SUBACCOUNT_ID`: The provider subaccount identifier from the corresponding `CAPApplication`
 - `CAPOP_PROVIDER_TENANT_ID`: The provider tenant identifier from the corresponding `CAPApplication`
 - `CAPOP_PROVIDER_SUBDOMAIN`: The provider tenant subdomain from the corresponding `CAPApplication`
 
