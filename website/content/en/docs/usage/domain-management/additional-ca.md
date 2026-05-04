@@ -8,12 +8,12 @@ description: >
    How to configure Additional CA Certificates for `Domain` or `ClusterDomain`
 ---
 ## Overview
-When using X509 client authentication on the Istio Gateway, setting `tlsMode` to `Mutual` or `OptionalMutual` requires additional CA certificates. These certificates are essential for verifying client certificates, ensuring secure communication between services.
+When using X509 client authentication on the Istio Gateway, setting `tlsMode` to `Mutual` or `OptionalMutual` requires additional CA certificates. These certificates are essential for verifying client certificates and ensuring secure communication between services.
 
 ## Configuration Steps
 
 ### Understanding the Configuration
-The `certConfig.additionalCACertificate` field is where you specify the additional CA certificates. This configuration is crucial for environments where mutual TLS is enforced, as it allows Istio to authenticate incoming client requests.
+The `certConfig.additionalCACertificate` field specifies the additional CA certificates. This configuration is required for environments where mutual TLS is enforced, as it allows Istio to authenticate incoming client requests.
 
 
 ### Example Configuration

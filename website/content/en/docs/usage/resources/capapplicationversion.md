@@ -7,7 +7,7 @@ description: >
   How to configure the `CAPApplicationVersion` resource
 ---
 
-The `CAPApplicationVersion` has the following high level structure:
+The `CAPApplicationVersion` has the following high-level structure:
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -69,33 +69,33 @@ deploymentDefinition:
       expression: scalar(sum(avg_over_time(current_sessions{job="cav-cap-app-v1-cap-backend-svc",namespace="cap-ns"}[2h]))) <= bool 5
 ```
 
-The `type` of the deployment is important to indicate how the operator handles this workload (for example, injection of `destinations` to be used by the approuter). Valid values are:
+The `type` of the deployment indicates how the operator handles this workload (for example, injection of `destinations` used by the Approuter). Valid values are:
 
-- `CAP` to indicate a CAP application server. Only one workload of this type can be used at present.
-- `Router` to indicate a version of [AppRouter](https://www.npmjs.com/package/@sap/approuter). Only one workload of this type can be used.
-- `Additional` to indicate supporting components that can be deployed along with the CAP application server.
-- `Service` to indicate workloads that are tenant agnostic.
+- `CAP` to indicate a CAP application server. Only one workload of this type is allowed.
+- `Router` to indicate a version of the [Approuter](https://www.npmjs.com/package/@sap/approuter). Only one workload of this type is allowed.
+- `Additional` to indicate supporting components deployed alongside the CAP application server.
+- `Service` to indicate workloads that are tenant-agnostic.
 
-You can define optional attributes such as `replicas`, `env`, `resources`, `probes`, `securityContext`, `initContainers` and `ports` to configure the deployment.
+You can define optional attributes such as `replicas`, `env`, `resources`, `probes`, `securityContext`, `initContainers`, and `ports` to configure the deployment.
 
 #### Port configuration
 
-It's possible to define which (and how many) ports exposed by a deployment container are exposed inside the cluster (via services of type `ClusterIP`). The port definition includes a `name` in addition to the `port` number being exposed.
+You can define which ports (and how many) exposed by a deployment container are made available inside the cluster (via Services of type `ClusterIP`). The port definition includes a `name` in addition to the `port` number being exposed.
 
-For `deploymentDefinition`, other than type `Router` it would be possible to specify a `routerDestinationName` which would be used as a named `destination` injected into the approuter.
+For `deploymentDefinition` types other than `Router`, you can specify a `routerDestinationName` that is used as a named `destination` injected into the Approuter.
 
-The port configurations aren't mandatory and can be omitted. This would mean that the operator will configure services using defaults. The following defaults are applied if port configuration is omitted:
+The port configurations are not mandatory and can be omitted. When omitted, the operator applies the following defaults:
 
-- For workload of type `CAP`, the default port used by CAP, `4004`, will be added to the service and a destination with name `srv-api` will be added to the approuter referring to this service port (any existing `destinations` environment configuration for this workload will be taken over by overwriting the `URL`).
-- For workload of type `Router`, the port `5000` will be exposed in the service. This service will be used as the target for HTTP traffic reaching the application domain (domains are specified within the `CAPApplication` resource).
+- For workloads of type `CAP`, the default port `4004` is added to the Service, and a destination named `srv-api` is added to the Approuter referencing this service port (any existing `destinations` environment configuration for this workload is preserved, with only the `URL` overwritten).
+- For workloads of type `Router`, port `5000` is exposed in the Service. This Service is used as the target for HTTP traffic reaching the application domain (domains are specified in the `CAPApplication` resource).
 
-> NOTE: If multiple ports are configured for a workload of type `Router`, the first available port will be used to target external traffic to the application domain.
+> NOTE: If multiple ports are configured for a workload of type `Router`, the first port is used to target external traffic to the application domain.
 
 #### Monitoring configuration
 
-For each _workload of type deployment_ in a `CAPApplicationVersion`, it is possible to define:
-1. Deletion rules: A criteria based on metrics which when satisfied signifies that the workload can be removed
-2. Scrape configuration: Configuration which defines how metrics are scraped from the workload service.
+For each _deployment workload_ in a `CAPApplicationVersion`, you can define:
+1. Deletion rules: Criteria based on metrics that, when satisfied, indicate the workload can be removed.
+2. Scrape configuration: Defines how metrics are scraped from the workload service.
 
 Details of how to configure workload monitoring can be found [here](../../version-monitoring#configure-capapplicationversion).
 
@@ -136,21 +136,21 @@ workloads:
       command: ["npm", "run ", "deploy:testdata"]
 ```
 
-Workloads with a `jobDefinition` represent a job execution at a particular point in the lifecycle of the application or tenant. The following values are allowed for `type` in such workloads:
+Workloads with a `jobDefinition` represent a job that executes at a particular point in the lifecycle of the application or tenant. The following values are allowed for `type` in such workloads:
 
-- `Content`: A content deployer job that can be used to deploy (SAP BTP) service specific content from the application version. This job is executed as soon as a new `CAPApplicationVersion` resource is created in the cluster. Multiple workloads of this type may be defined in the `CAPApplicationVersion` and the order in which they are executed can be specified via `ContentJobs`.
-- `TenantOperation`: A job executed during provisioning, upgrade, or deprovisioning of a tenant (`CAPTenant`). These jobs are controlled by the operator and use the `cds/mtxs` APIs to perform HDI content deployment by default. If a workload of type `TenantOperation` isn't provided as part of the `CAPApplicationVersion`, the workload with `deploymentDefinition` of type `CAP` will be used to determine the `jobDefinition` (`image`, `env`, etc.). Also, if `cds/mtxs` APIs are used, `command` can be used by applications to trigger tenant operations with custom command.
+- `Content`: A content deployer job that deploys SAP BTP service-specific content from the application version. This job runs as soon as a new `CAPApplicationVersion` resource is created in the cluster. Multiple workloads of this type may be defined, and the order in which they run can be specified via `ContentJobs`.
+- `TenantOperation`: A job executed during provisioning, upgrade, or deprovisioning of a tenant (`CAPTenant`). These jobs are controlled by the operator and use the `cds/mtxs` APIs to perform HDI content deployment by default. If a workload of type `TenantOperation` is not provided in the `CAPApplicationVersion`, the workload with `deploymentDefinition` of type `CAP` is used to determine the `jobDefinition` (`image`, `env`, etc.). If `cds/mtxs` APIs are used, `command` can be specified to trigger tenant operations with a custom command.
 - `CustomTenantOperation`: An optional job that runs before or after the `TenantOperation`, allowing the application to perform tenant-specific tasks (for example, creating test data).
 
 ### Sequencing tenant operations
 
-A tenant operation refers to `provisioning`, `upgrade` or `deprovisioning` which are executed in the context of a CAP application for individual tenants (i.e. using the `cds/mtxs` or similar modules provided by CAP). Within the `workloads`, we have already defined two types of jobs that are valid for such operations, namely `TenantOperation` and `CustomTenantOperation`.
+A tenant operation refers to `provisioning`, `upgrade`, or `deprovisioning`, which are executed in the context of a CAP application for individual tenants (using the `cds/mtxs` or similar modules provided by CAP). Within the `workloads`, two types of jobs are valid for such operations: `TenantOperation` and `CustomTenantOperation`.
 
 The `TenantOperation` is mandatory for all tenant operations.
 
-In addition, you can choose which `CustomTenantOperation` jobs run for a specific operation and in which order. For example, a `CustomTenantOperation` deploying test data to the tenant database schema would need to run during `provisioning`, but must not run during `deprovisioning`.
+In addition, you can choose which `CustomTenantOperation` jobs run for a specific operation and in which order. For example, a `CustomTenantOperation` that deploys test data to the tenant database schema should run during `provisioning` but must not run during `deprovisioning`.
 
-The field `tenantOperations` specifies which jobs are executed during the different tenant operations and the order they are executed in.
+The field `tenantOperations` specifies which jobs run during the different tenant operations and their execution order.
 
 ```yaml
 spec:
@@ -167,7 +167,7 @@ spec:
     # <-- as the deprovisioning steps are not specified, only the `TenantOperation` workload (first available) will be executed
 ```
 
-In the example above, for each tenant operation, not only are the valid jobs (steps) specified, but also the order in which they are to be executed. Each step in an operation is defined with:
+In the example above, for each tenant operation, the valid jobs (steps) and their execution order are specified. Each step in an operation is defined with:
 
 - `workloadName` refers to the job workload executed in this operation step.
 - `continueOnFailure` is valid only for `CustomTenantOperation` steps and indicates whether the overall tenant operation can proceed when this step fails.
@@ -179,7 +179,7 @@ In the example above, for each tenant operation, not only are the valid jobs (st
 
 ### Sequencing content jobs
 
-When you create a `CAPApplicationVersion` workload, you can define multiple content jobs. The order in which these jobs are executed is important, as some jobs may depend on the output of others. The `ContentJobs` property allows you to specify the order in which content jobs are executed.
+When you create a `CAPApplicationVersion`, you can define multiple content jobs. The order in which these jobs run is important, as some jobs may depend on the output of others. The `ContentJobs` property specifies the execution order of content jobs.
 
 ```yaml
 spec:
@@ -198,9 +198,9 @@ _Other attributes can be configured as documented._
 
 #### Port configuration
 
-It's possible to define which (and how many) ports exposed by a deployment container are exposed inside the cluster (via services of type `ClusterIP`). The port definition includes a `name` in addition to the `port` number being exposed.
+You can define which ports (and how many) exposed by a deployment container are made available inside the cluster (via Services of type `ClusterIP`). The port definition includes a `name` in addition to the `port` number being exposed.
 
-For service only workloads the `routerDestinationName` is not relevant.
+For service-only workloads, the `routerDestinationName` is not relevant.
 
 The port configurations are mandatory and cannot be omitted.
 

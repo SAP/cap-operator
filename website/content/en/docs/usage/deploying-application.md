@@ -7,13 +7,13 @@ description: >
   How to deploy a new CAP-based application
 ---
 
-Deploying a multi-tenant CAP application involves defining several key resources provided by the CAP Operator. These resources manage the application's runtime components and external traffic routing.
+Deploying a multi-tenant CAP application involves defining several key resources provided by CAP Operator. These resources manage the application's runtime components and external traffic routing.
 
 ## Key Resources
 
 1. **CAPApplication** (`capapplications.sme.sap.com`): A namespaced resource that represents the application.
 
-2. **CAPApplicationVersion** (`capapplicationversions.sme.sap.com`): A namespaced resource that specifies the version of the application being deployed. It ensures that all runtime components (deployments, services, and jobs) are created with the specified image version in the same namespace.
+2. **CAPApplicationVersion** (`capapplicationversions.sme.sap.com`): A namespaced resource that specifies the version of the application being deployed. It ensures that all runtime components (Deployments, Services, and Jobs) are created with the specified image version in the same namespace.
 
 3. **Domain resources**: These resources determine how external traffic reaches the application and how DNS and TLS settings are applied. You can choose between:
    - **Domain** (`domains.sme.sap.com`): A namespaced resource for a single application.
@@ -155,13 +155,13 @@ spec:
 
 The CAP Operator controller reacts to these objects and creates additional resources that constitute a running application:
 
-- Deployment (and service) for the application server, with SAP BTP service credentials injected as the `VCAP_SERVICES` environment variable
-- Deployment (and service) for the approuter, with destination mappings to the application server and subscription server (for tenant provisioning)
+- Deployment (and Service) for the application server, with SAP BTP service credentials injected as the `VCAP_SERVICES` environment variable
+- Deployment (and Service) for the Approuter, with destination mappings to the application server and subscription server (for tenant provisioning)
 - Job for the version content deployer
 - TLS certificates for the specified domains using either ["Gardener" cert-management](https://github.com/gardener/cert-management) or [cert-manager.io cert-manager](https://github.com/cert-manager/cert-manager)
-- Istio gateway resource for the application domains
+- Istio Gateway resource for the application domains
 
-> The content deployer deploys content or configuration to SAP BTP services before they are used.
+> The content deployer deploys content or configuration to SAP BTP services before they are consumed.
 
 Once these resources are available, the `CAPApplicationVersion` status changes to `Ready`. **The controller then automatically creates a `CAPTenant` object for the provider subaccount tenant.** See [tenant subscription](../tenant-provisioning) for details on how the `CAPTenant` resource is reconciled.
 

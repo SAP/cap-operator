@@ -7,7 +7,7 @@ description: >
   How to configure the `CAPTenantOutput` resource
 ---
 
-[`CAPTenantOutput`](../../../reference/#sme.sap.com/v1alpha1.CAPTenantOutput) can be used to add additional data to the asynchronous callback parameters sent by the SaaS provisioning service during tenant onboarding. The resource is not reconciled; it is consumed by the subscription server to generate additional callback data. It has the following structure:
+[`CAPTenantOutput`](../../../reference/#sme.sap.com/v1alpha1.CAPTenantOutput) can be used to add additional data to the asynchronous callback parameters sent by the SaaS Provisioning service during tenant onboarding. The resource is not reconciled; it is consumed by the subscription server to generate additional callback data. It has the following structure:
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1

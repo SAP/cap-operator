@@ -13,10 +13,10 @@ description: >
   CAP Operator now allows any deployment workload to be exposed as a service. Learn more about [Service Exposure](../usage/service-exposure).
   {{% /card %}}
   {{% card header="Q2 2025" %}}
-  CAP Operator now has enhanced Domain Management features. Learn more about [Domain Management](../usage/domain-management).
+  CAP Operator now includes enhanced domain management features. Learn more about [Domain Management](../usage/domain-management).
   {{% /card %}}
   {{% card header="Q1 2025" %}}
-  CAP Operator now supports `Services Only` applications that are tenant agnostic. Learn more about [Services Only Applications](../usage/service-exposure/#deploying-services-only-applications).
+  CAP Operator now supports `Services Only` applications that are tenant-agnostic. Learn more about [Services-Only Applications](../usage/service-exposure/#deploying-services-only-applications).
   {{% /card %}}
 {{% /cardpane %}}
 

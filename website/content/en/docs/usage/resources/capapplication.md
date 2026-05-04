@@ -56,7 +56,7 @@ spec:
 
 The `btp.services` array specifies all SAP BTP service instances and their corresponding Kubernetes Secrets (containing credentials) required by the application. These service instances are assumed to exist in the provider subaccount. You can use operators such as [cf-service-operator](https://sap.github.io/cf-service-operator/docs/) or [sap-btp-service-operator](https://github.com/SAP/sap-btp-service-operator) to declaratively create these service instances and their credentials as Kubernetes resources.
 
-The `provider` section specifies the provider subaccount linked to this application. The `providerSubaccountId` identifies the the provider subaccount. The combination of `providerSubaccountId` and `btpAppName` (equivalent to `XSAPPNAME`) must be unique, as it is used in various SAP BTP service and application constructs.
+The `provider` section specifies the provider subaccount linked to this application. The `providerSubaccountId` identifies the provider subaccount. The combination of `providerSubaccountId` and `btpAppName` (equivalent to `XSAPPNAME`) must be unique, as it is used in various SAP BTP service and application constructs.
 
 The `domainRefs` section references one or more `Domain` or `ClusterDomain` resources.
 

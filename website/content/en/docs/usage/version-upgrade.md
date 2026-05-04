@@ -9,7 +9,7 @@ description: >
 
 An important lifecycle aspect of operating multi-tenant CAP applications is the tenant upgrade process. With CAP Operator, tenant upgrades can be fully automated by providing a new `CAPApplicationVersion` custom resource.
 
-As covered in [initial deployment](../deploying-application), the `CAPApplicationVersion` resource describes the workloads of an application version, including the container image and services consumed by each component. To upgrade the application, create a new `CAPApplicationVersion` with the updated `image` for each component and a higher semantic version in the `version` field. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
+As covered in [initial deployment](../deploying-application), the `CAPApplicationVersion` resource describes the workloads of an application version, including the container image and services consumed by each component. To upgrade the application, create a new `CAPApplicationVersion` with updated `image` values for each component and a higher semantic version in the `version` field. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -92,7 +92,7 @@ spec:
 
 Note that compared to version "1" used for [initial deployment](../deploying-application), new workloads of type `TenantOperation` and `CustomTenantOperation` have been added.
 
-The CAP Operator controller reacts to the new `CAPApplicationVersion` resource by triggering a new deployment for the application server and router, and running the content deployment job. Once the new `CAPApplicationVersion` is `Ready`, **the controller automatically upgrades all relevant tenants** by updating the `version` attribute on the `CAPTenant` resources.
+The CAP Operator controller reacts to the new `CAPApplicationVersion` resource by triggering a new Deployment for the application server and router, and running the content deployment Job. Once the new `CAPApplicationVersion` is `Ready`, **the controller automatically upgrades all relevant tenants** by updating the `version` attribute on the `CAPTenant` resources.
 
 `CAPTenant` reconciliation changes the tenant state to `Upgrading` and creates a `CAPTenantOperation` resource of type upgrade.
 
@@ -115,13 +115,13 @@ spec:
       continueOnFailure: true # <-- indicates that the overall operation may proceed even if this step fails
 ```
 
-The `CAPTenantOperation` creates jobs for each step and executes them sequentially until all jobs complete or one fails. The `CAPTenant` is notified of the result and updates its state accordingly.
+The `CAPTenantOperation` creates Jobs for each step and executes them sequentially until all Jobs complete or one fails. The `CAPTenant` is notified of the result and updates its state accordingly.
 
-When the `CAPTenantOperation` completes successfully, the `VirtualService` managed by the `CAPTenant` is updated to route HTTP traffic to the deployments of the newer `CAPApplicationVersion`. Once all tenants are upgraded, the outdated `CAPApplicationVersion` can be deleted.
+When the `CAPTenantOperation` completes successfully, the `VirtualService` managed by the `CAPTenant` is updated to route HTTP traffic to the Deployments of the newer `CAPApplicationVersion`. Once all tenants are upgraded, the outdated `CAPApplicationVersion` can be deleted.
 
 ## Version Affinity during Upgrade (Experimental)
 
-You can optionally enable Version Affinity for multi-tenant applications by adding the annotation `sme.sap.com/enable-version-affinity: "true"` to the `CAPApplication` resource. With this experimental feature, users remain on the previous `CAPApplicationVersion` during an upgrade until their session expires or they log out.
+You can optionally enable Version Affinity for multi-tenant applications by adding the annotation `sme.sap.com/enable-version-affinity: "true"` to the `CAPApplication` resource. With this experimental feature, users remain on their currently active `CAPApplicationVersion` during an upgrade until their session expires or they log out.
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
