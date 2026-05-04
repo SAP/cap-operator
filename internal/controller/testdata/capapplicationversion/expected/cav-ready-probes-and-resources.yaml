@@ -84,7 +84,7 @@ spec:
           httpGet:
             path: /
             port: 4000
-          initialDelaySeconds: 20
+          initialDelaySeconds: 10
           periodSeconds: 10
           timeoutSeconds: 2
         readinessProbe:
@@ -95,6 +95,14 @@ spec:
           initialDelaySeconds: 20
           periodSeconds: 10
           timeoutSeconds: 2
+        startupProbe:
+          failureThreshold: 30
+          httpGet:
+            path: /
+            port: 4004
+          initialDelaySeconds: 20
+          periodSeconds: 10
+          timeoutSeconds: 10
         resources:
           limits:
             cpu: 200m
@@ -223,7 +231,7 @@ spec:
             httpGet:
               path: /
               port: 4000
-            initialDelaySeconds: 20
+            initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 2
           readinessProbe:
@@ -234,6 +242,14 @@ spec:
             initialDelaySeconds: 20
             periodSeconds: 10
             timeoutSeconds: 2
+          startupProbe:
+            failureThreshold: 30
+            httpGet:
+              path: /
+              port: 4004
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 10
           resources:
             limits:
               cpu: 200m
