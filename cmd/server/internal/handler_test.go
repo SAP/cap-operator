@@ -148,7 +148,7 @@ func createSecrets() []runtime.Object {
 				"uaadomain": "auth.service.local",
 				"sburl": "internal.auth.service.local",
 				"url": "https://app-domain.auth.service.local",
-				"saasregistryappname": "saasregistryappname",
+				"saasregistryenabled": true,
 				"uaa": {"xsappname": "appname!b15" },
 				"credential-type": "instance-secret"
 			}`),
