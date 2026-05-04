@@ -91,8 +91,10 @@ func logArgs(step string, entity any, child any, inArgs ...any) []any {
 		}
 	}
 
-	rootMeta := extractEntityMeta(entity, true, skipLabel)
-	args = append(args, extractArgs(rootMeta)...)
+	if entity != nil {
+		rootMeta := extractEntityMeta(entity, true, skipLabel)
+		args = append(args, extractArgs(rootMeta)...)
+	}
 	// Child entity
 	skipLabel = true
 	if child != nil {

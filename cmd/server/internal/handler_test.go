@@ -228,6 +228,7 @@ func createCA() *v1alpha1.CAPApplication {
 			Namespace: v1.NamespaceDefault,
 			Labels: map[string]string{
 				LabelBTPApplicationIdentifierHash: sha1Sum(globalAccountId, appName),
+				LabelAppIdHash:                    sha1Sum(providerSubaccountId, appName),
 			},
 		},
 		Spec: v1alpha1.CAPApplicationSpec{
@@ -1641,8 +1642,8 @@ func TestGetDependencies(t *testing.T) {
 			expectedResponse: []map[string]string{
 				{"xsappname": "appname!b15"},
 				{"xsappname": "appname!b15"},
-				{"appId": "appname!b15", "appName": "destination"},
-				{"appId": "appname!b15", "appName": "saasregistryappname"},
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
 			},
 		},
 	}
@@ -1655,16 +1656,16 @@ func TestGetDependencies(t *testing.T) {
 			if err != nil {
 				t.Fatal(err.Error())
 			}
-			subHandler := setup(ca, nil, nil, client)
+			subHandler := setup(client, createSecrets(), ca)
 
 			res := httptest.NewRecorder()
 			var req *http.Request
 			if testData.invalidURI == true {
-				req = httptest.NewRequest(testData.method, "/callback/dependencies/globalAccountId/{appName}", nil)
+				req = httptest.NewRequest(testData.method, "/callback/dependencies/providerSubaccountId/{appName}", nil)
 				req.SetPathValue("appName", appName)
 			} else {
-				req = httptest.NewRequest(testData.method, "/dependencies/{globalAccountId}/{appName}", nil)
-				req.SetPathValue("globalAccountId", globalAccountId)
+				req = httptest.NewRequest(testData.method, "/dependencies/{providerSubaccountId}/{appName}", nil)
+				req.SetPathValue("providerSubaccountId", providerSubaccountId)
 				req.SetPathValue("appName", appName)
 			}
 
@@ -1673,13 +1674,99 @@ func TestGetDependencies(t *testing.T) {
 			}
 
 			req.Header.Set("Authorization", "Bearer "+tokenString)
-			subHandler.HandleGetDependenciesRequest(res, req)
+			subHandler.HandleSaaSGetDependenciesRequest(res, req)
 
 			if res.Code != testData.expectedStatusCode {
 				t.Errorf("Expected status '%d', received '%d'", testData.expectedStatusCode, res.Code)
 			}
 
 			// Get the relevant response
+			if res.Code == http.StatusOK {
+				resBodyStr := res.Body.String()
+				expectedResponseByte, _ := json.Marshal(testData.expectedResponse)
+				if resBodyStr != string(expectedResponseByte) {
+					t.Error("Unexpected error in expected response: ", res.Body)
+				}
+			}
+		})
+	}
+}
+
+func TestGetSMSDependencies(t *testing.T) {
+	tests := []struct {
+		name               string
+		method             string
+		invalidCert        bool
+		invalidURI         bool
+		expectedStatusCode int
+		expectedResponse   []map[string]string
+	}{
+		{
+			name:               "Invalid get SMS dependency request - wrong method",
+			method:             http.MethodPut,
+			expectedStatusCode: http.StatusMethodNotAllowed,
+			expectedResponse:   nil,
+		},
+		{
+			name:               "Not authorized SMS request - invalid certificate",
+			method:             http.MethodGet,
+			invalidCert:        true,
+			expectedStatusCode: http.StatusUnauthorized,
+			expectedResponse:   nil,
+		},
+		{
+			name:               "Invalid URI",
+			method:             http.MethodGet,
+			invalidURI:         true,
+			expectedStatusCode: http.StatusBadRequest,
+			expectedResponse:   nil,
+		},
+		{
+			name:               "Valid get SMS dependency request",
+			method:             http.MethodGet,
+			expectedStatusCode: http.StatusOK,
+			expectedResponse: []map[string]string{
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+			},
+		},
+	}
+
+	certBytes, _ := os.ReadFile("testdata/rootCA.pem")
+	certStr := strings.TrimSpace(string(certBytes))
+	encodedCert := url.QueryEscape(certStr)
+
+	for _, testData := range tests {
+		t.Run(testData.name, func(t *testing.T) {
+			ca := createCA()
+			secrets := append(createSmsSecret(), createSecrets()...)
+			subHandler := setup(nil, secrets, ca)
+
+			res := httptest.NewRecorder()
+			var req *http.Request
+			if testData.invalidURI {
+				req = httptest.NewRequest(testData.method, "/sms/dependencies/providerSubaccountId/{appName}", nil)
+				req.SetPathValue("appName", appName)
+			} else {
+				req = httptest.NewRequest(testData.method, "/sms/dependencies/{providerSubaccountId}/{appName}", nil)
+				req.SetPathValue("providerSubaccountId", providerSubaccountId)
+				req.SetPathValue("appName", appName)
+			}
+
+			if testData.invalidCert {
+				req.Header.Set("X-Forwarded-Client-Cert", "invalid-cert")
+			} else {
+				req.Header.Set("X-Forwarded-Client-Cert", encodedCert)
+			}
+
+			subHandler.HandleSMSGetDependenciesRequest(res, req)
+
+			if res.Code != testData.expectedStatusCode {
+				t.Errorf("Expected status '%d', received '%d'", testData.expectedStatusCode, res.Code)
+			}
+
 			if res.Code == http.StatusOK {
 				resBodyStr := res.Body.String()
 				expectedResponseByte, _ := json.Marshal(testData.expectedResponse)
