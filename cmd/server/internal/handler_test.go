@@ -1614,6 +1614,7 @@ func TestGetDependencies(t *testing.T) {
 		invalidURI         bool
 		expectedStatusCode int
 		expectedResponse   []map[string]string
+		caModifier         func(*v1alpha1.CAPApplication)
 	}{
 		{
 			name:               "Invalid get dependency request - wrong method",
@@ -1646,11 +1647,59 @@ func TestGetDependencies(t *testing.T) {
 				{"xsappname": "appname!b15"},
 			},
 		},
+		{
+			name:               "SubscriptionDependency Always - service included regardless of class",
+			method:             http.MethodGet,
+			expectedStatusCode: http.StatusOK,
+			caModifier: func(ca *v1alpha1.CAPApplication) {
+				dep := v1alpha1.SubscriptionDependencyAlways
+				ca.Spec.BTP.Services[0].SubscriptionDependency = &dep // xsuaa: not auto-qualified, but Always forces inclusion
+			},
+			expectedResponse: []map[string]string{
+				{"xsappname": "appname!b14"},
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+			},
+		},
+		{
+			name:               "SubscriptionDependency Auto - non-qualifying service excluded",
+			method:             http.MethodGet,
+			expectedStatusCode: http.StatusOK,
+			caModifier: func(ca *v1alpha1.CAPApplication) {
+				dep := v1alpha1.SubscriptionDependencyAuto
+				ca.Spec.BTP.Services[0].SubscriptionDependency = &dep // xsuaa: explicit Auto, still not qualified by class/credentials
+			},
+			expectedResponse: []map[string]string{
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+			},
+		},
+		{
+			name:               "SubscriptionDependency Never - service excluded regardless of credentials",
+			method:             http.MethodGet,
+			expectedStatusCode: http.StatusOK,
+			caModifier: func(ca *v1alpha1.CAPApplication) {
+				dep := v1alpha1.SubscriptionDependencyNever
+				ca.Spec.BTP.Services[4].SubscriptionDependency = &dep // destination: auto-qualified by class, but Never prevents inclusion
+			},
+			expectedResponse: []map[string]string{
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+			},
+		},
 	}
 
 	for _, testData := range tests {
 		t.Run(testData.name, func(t *testing.T) {
 			ca := createCA()
+			if testData.caModifier != nil {
+				testData.caModifier(ca)
+			}
 
 			client, tokenString, err := SetupValidTokenAndIssuerForSubscriptionTests("appname!b14")
 			if err != nil {
@@ -1700,6 +1749,7 @@ func TestGetSMSDependencies(t *testing.T) {
 		invalidURI         bool
 		expectedStatusCode int
 		expectedResponse   []map[string]string
+		caModifier         func(*v1alpha1.CAPApplication)
 	}{
 		{
 			name:               "Invalid get SMS dependency request - wrong method",
@@ -1732,6 +1782,51 @@ func TestGetSMSDependencies(t *testing.T) {
 				{"xsappname": "appname!b15"},
 			},
 		},
+		{
+			name:               "SubscriptionDependency Always - service included regardless of class",
+			method:             http.MethodGet,
+			expectedStatusCode: http.StatusOK,
+			caModifier: func(ca *v1alpha1.CAPApplication) {
+				dep := v1alpha1.SubscriptionDependencyAlways
+				ca.Spec.BTP.Services[0].SubscriptionDependency = &dep // xsuaa: not auto-qualified, but Always forces inclusion
+			},
+			expectedResponse: []map[string]string{
+				{"xsappname": "appname!b14"},
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+			},
+		},
+		{
+			name:               "SubscriptionDependency Auto - non-qualifying service excluded",
+			method:             http.MethodGet,
+			expectedStatusCode: http.StatusOK,
+			caModifier: func(ca *v1alpha1.CAPApplication) {
+				dep := v1alpha1.SubscriptionDependencyAuto
+				ca.Spec.BTP.Services[0].SubscriptionDependency = &dep // xsuaa: explicit Auto, still not qualified by class/credentials
+			},
+			expectedResponse: []map[string]string{
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+			},
+		},
+		{
+			name:               "SubscriptionDependency Never - service excluded regardless of credentials",
+			method:             http.MethodGet,
+			expectedStatusCode: http.StatusOK,
+			caModifier: func(ca *v1alpha1.CAPApplication) {
+				dep := v1alpha1.SubscriptionDependencyNever
+				ca.Spec.BTP.Services[4].SubscriptionDependency = &dep // destination: auto-qualified by class, but Never prevents inclusion
+			},
+			expectedResponse: []map[string]string{
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+				{"xsappname": "appname!b15"},
+			},
+		},
 	}
 
 	certBytes, _ := os.ReadFile("testdata/rootCA.pem")
@@ -1741,6 +1836,9 @@ func TestGetSMSDependencies(t *testing.T) {
 	for _, testData := range tests {
 		t.Run(testData.name, func(t *testing.T) {
 			ca := createCA()
+			if testData.caModifier != nil {
+				testData.caModifier(ca)
+			}
 			secrets := append(createSmsSecret(), createSecrets()...)
 			subHandler := setup(nil, secrets, ca)
 

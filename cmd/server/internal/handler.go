@@ -1194,7 +1194,7 @@ func (s *SubscriptionHandler) getDependencies(req *http.Request, subscriptionTyp
 	var dependenciesArray []map[string]interface{}
 
 	// Read the cap application by using the provider subaccount id & app-name passed in the URI
-	// URI format - /dependencies/providersubaccountId/app-name or /sms/dependencies/providersubaccountId/app-name
+	// URI format - /dependencies/providersubaccountId/app-name or /sms/dependencies/providersubaccountId/app-name/{app_tid}
 	providersubaccountId := req.PathValue("providerSubaccountId")
 	appName := req.PathValue("appName")
 	if providersubaccountId == "" || appName == "" {
