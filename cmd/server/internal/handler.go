@@ -161,7 +161,6 @@ type tenantInfo struct {
 
 type serviceCredentials struct {
 	XSAppName           string `json:"xsappname"`
-	SaasRegistryAppName string `json:"saasregistryappname"`
 	SaasRegistryEnabled bool   `json:"saasregistryenabled"`
 	Plan                string `json:"plan"`
 	UAA                 *struct {
@@ -928,7 +927,7 @@ func prepareTokenRequest(ctx context.Context, callbackReqInfo *CallbackReqInfo, 
 	if err != nil {
 		return nil, err
 	}
-	tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	tokenReq.Header.Set(ContentType, "application/x-www-form-urlencoded")
 	if callbackReqInfo.CredentialType != "x509" {
 		tokenReq.Header.Set("Authorization", BasicPrefix+base64.StdEncoding.EncodeToString([]byte(callbackReqInfo.ClientId+":"+callbackReqInfo.ClientSecret)))
 	}
@@ -991,7 +990,7 @@ func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, callbackR
 	}
 
 	callbackReq, _ := http.NewRequestWithContext(ctx, http.MethodPut, callbackReqInfo.CallbackUrl+asyncCallbackPath, bytes.NewBuffer(payload))
-	callbackReq.Header.Set("Content-Type", "application/json")
+	callbackReq.Header.Set(ContentType, "application/json")
 	callbackReq.Header.Set("Authorization", BearerPrefix+oAuthType.AccessToken)
 
 	client := s.httpClientGenerator.NewHTTPClient()
@@ -1153,7 +1152,7 @@ func (c *serviceCredentials) xsAppName() string {
 	return ""
 }
 
-func (s *SubscriptionHandler) getServiceDependencies(capApp *v1alpha1.CAPApplication, service v1alpha1.ServiceInfo) map[string]any {
+func (s *SubscriptionHandler) getServiceDependencies(capApp *v1alpha1.CAPApplication, service v1alpha1.ServiceInfo) map[string]string {
 	serviceSecretCred, err := s.KubeClienset.CoreV1().Secrets(capApp.Namespace).Get(context.TODO(), service.Secret, metav1.GetOptions{})
 	if err != nil {
 		util.LogError(err, "Failed to read secret for service", GetDependencies, capApp, nil, "service", service.Name, "secret", service.Secret)
@@ -1168,7 +1167,7 @@ func (s *SubscriptionHandler) getServiceDependencies(capApp *v1alpha1.CAPApplica
 
 	if isServiceRelevantForDependencies(service, &creds) {
 		if name := creds.xsAppName(); name != "" {
-			return map[string]any{"xsappname": name}
+			return map[string]string{"xsappname": name}
 		}
 	}
 
@@ -1191,7 +1190,7 @@ func isServiceRelevantForDependencies(serviceInfo v1alpha1.ServiceInfo, creds *s
 }
 
 func (s *SubscriptionHandler) getDependencies(req *http.Request, subscriptionType subscriptionType) ([]byte, error) {
-	var dependenciesArray []map[string]interface{}
+	var dependenciesArray []map[string]string
 
 	// Read the cap application by using the provider subaccount id & app-name passed in the URI
 	// URI format - /dependencies/providersubaccountId/app-name or /sms/dependencies/providersubaccountId/app-name/{app_tid}
