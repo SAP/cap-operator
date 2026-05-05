@@ -298,8 +298,10 @@ type DeploymentDetails struct {
 	Ports []Ports `json:"ports,omitempty"`
 	// Liveness probe
 	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty"`
-	//  Readiness probe
+	// Readiness probe
 	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty"`
+	// Startup Probe
+	StartupProbe *corev1.Probe `json:"startupProbe,omitempty"`
 	// Workload monitoring specification
 	Monitoring *WorkloadMonitoring `json:"monitoring,omitempty"`
 	// Pod Disruption Budget may be used to specify the minimum number of available pods for this workload

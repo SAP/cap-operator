@@ -867,6 +867,11 @@ func (in *DeploymentDetails) DeepCopyInto(out *DeploymentDetails) {
 		*out = new(v1.Probe)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.StartupProbe != nil {
+		in, out := &in.StartupProbe, &out.StartupProbe
+		*out = new(v1.Probe)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Monitoring != nil {
 		in, out := &in.Monitoring, &out.Monitoring
 		*out = new(WorkloadMonitoring)
