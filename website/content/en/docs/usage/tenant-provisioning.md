@@ -58,6 +58,76 @@ The `CAPTenant` reaches a `Ready` state only after:
 
 ![tenant-provisioning](/cap-operator/img/activity-tenantprovisioning.drawio.svg)
 
+### Get Dependencies
+
+During provisioning, the SaaS provisioning service calls a `getDependencies` endpoint to retrieve the list of reuse services that the multitenant application requires. The CAP Operator subscription server exposes this endpoint and resolves dependencies by inspecting the BTP services defined in the `CAPApplication`.
+
+The subscription server exposes the following endpoint:
+
+```
+GET /dependencies/{providerSubaccountId}/{appName}/
+```
+
+The `providerSubaccountId` and `appName` path parameters identify the corresponding `CAPApplication` resource. The system authorizes the request using the same mechanism as the provisioning endpoints (Bearer token).
+
+{{% alert color="info" title="Note" %}}
+The `appName` value in the URL must match `spec.btpAppName` of the `CAPApplication` resource. Because it is also registered with the SaaS provisioning service, it should follow the service's `xsappname` conventions.
+{{% /alert %}}
+
+A successful response returns a JSON array of objects. Each object contains the `xsappname` of a qualifying service:
+
+```json
+[
+  { "xsappname": "my-destination-service!b42" },
+  { "xsappname": "my-auditlog-service!b7" }
+]
+```
+
+#### Service Qualification
+
+The subscription server iterates over all BTP services listed in `CAPApplication.spec.btp.services`. For each service, it reads the associated Kubernetes secret, parses the credentials, and determines whether to include the service in the response.
+
+The `xsappname` is read from either the top-level `xsappname` field or the nested `uaa.xsappname` field in the service credentials. If not found, the service is excluded from the response.
+
+#### Configuring Dependencies with `subscriptionDependency`
+
+Each entry in `spec.btp.services` can include an optional `subscriptionDependency` field that controls whether the service is included:
+
+| Value | Behaviour |
+|---|---|
+| `Auto` (default) | The operator determines inclusion based on service class and credentials (see below) |
+| `Always` | Includes the service regardless of class |
+| `Never` | Excludes the service regardless of class or credentials |
+
+```yaml
+spec:
+  btp:
+    services:
+      - name: my-destination
+        class: destination
+        secret: my-destination-secret
+        subscriptionDependency: Always   # force inclusion
+      - name: my-xsuaa
+        class: xsuaa
+        secret: my-xsuaa-secret
+        subscriptionDependency: Never    # force exclusion
+      - name: my-auditlog
+        class: auditlog
+        secret: my-auditlog-secret
+        # subscriptionDependency omitted → Auto
+```
+
+**`Auto` qualification rules**
+
+When `subscriptionDependency` is set to `Auto` or omitted, the system includes the service if any of the following conditions apply:
+
+- The service credentials contain `"saasregistryenabled": true`
+- Service `class` is `destination`
+- Service `class` is `connectivity`
+- Service `class` is `auditlog` **and** the credential `plan` is `oauth2`
+
+This behavior aligns with the implementation in the [`@sap/approuter`](https://www.npmjs.com/package/@sap/approuter) package.
+
 ### Tenant Deprovisioning
 
 When a tenant unsubscribes from the application, the subscription server receives the request, validates the existence and status of the `CAPTenant`, and submits a deletion request to the Kubernetes API server.

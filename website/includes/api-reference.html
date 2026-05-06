@@ -2491,6 +2491,19 @@ Kubernetes core/v1.Probe
 </tr>
 <tr>
 <td>
+<code>startupProbe</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Probe">
+Kubernetes core/v1.Probe
+</a>
+</em>
+</td>
+<td>
+<p>Startup Probe</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>monitoring</code><br/>
 <em>
 <a href="#sme.sap.com/v1alpha1.WorkloadMonitoring">
@@ -3550,6 +3563,19 @@ string
 <p>Type of service</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>subscriptionDependency</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.SubscriptionDependency">
+SubscriptionDependency
+</a>
+</em>
+</td>
+<td>
+<p>SubscriptionDependency may be used to specify whether this service should be part of getDependencies call from subscripton service (e.g. saas-registry)</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.StatusConditionType">StatusConditionType
@@ -3661,6 +3687,31 @@ string
 </td>
 </tr>
 </tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.SubscriptionDependency">SubscriptionDependency
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ServiceInfo">ServiceInfo</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Always&#34;</p></td>
+<td><p>Always return the service in getDependencies call</p>
+</td>
+</tr><tr><td><p>&#34;Auto&#34;</p></td>
+<td><p>Automatically determine if the service needs to be returned in getDependencies call</p>
+</td>
+</tr><tr><td><p>&#34;Never&#34;</p></td>
+<td><p>Never return the service in getDependencies call</p>
+</td>
+</tr></tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.TLSMode">TLSMode
 (<code>string</code> alias)</h3>
@@ -3942,5 +3993,5 @@ If not specified, CAP Operator will not attempt to create a ServiceMonitor for t
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>d608e8f</code>.
+on git commit <code>cb07f09</code>.
 </em></p>
