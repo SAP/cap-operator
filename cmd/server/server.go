@@ -19,18 +19,20 @@ import (
 )
 
 const (
-	subsctiptionHandlerMetricPrefix = "cap_op_subscription_requests"
-	subscriptionHandlerDesc         = "subscription-server requests."
+	subsctiptionHandlerMetricPrefix     = "cap_op_subscription_requests"
+	dependenciesHandlerMetricPrefix     = "cap_op_dependencies_requests"
+	subscriptionHandlerProvisioningDesc = "subscription-server provisioning requests."
+	subscriptionHandlerDependenciesDesc = "subscription-server dependencies requests."
 )
 
 func main() {
 	klog.SetLogger(util.GetLogger())
 	subHandler := getSubscriptionHandler()
 
-	http.HandleFunc("/provision/", util.InstrumentHttpHandler(subHandler.HandleSaaSRequest, subsctiptionHandlerMetricPrefix, subscriptionHandlerDesc))
-	http.HandleFunc("/sms/provision/", util.InstrumentHttpHandler(subHandler.HandleSMSRequest, subsctiptionHandlerMetricPrefix+"_sms", subscriptionHandlerDesc))
-	http.HandleFunc("/dependencies/{providerSubaccountId}/{appName}/", util.InstrumentHttpHandler(subHandler.HandleSaaSGetDependenciesRequest, subsctiptionHandlerMetricPrefix+"_dependencies", subscriptionHandlerDesc))
-	http.HandleFunc("/sms/dependencies/{providerSubaccountId}/{appName}/", util.InstrumentHttpHandler(subHandler.HandleSMSGetDependenciesRequest, subsctiptionHandlerMetricPrefix+"_sms_dependencies", subscriptionHandlerDesc))
+	http.HandleFunc("/provision/", util.InstrumentHttpHandler(subHandler.HandleSaaSRequest, subsctiptionHandlerMetricPrefix, subscriptionHandlerProvisioningDesc))
+	http.HandleFunc("/sms/provision/", util.InstrumentHttpHandler(subHandler.HandleSMSRequest, subsctiptionHandlerMetricPrefix+"_sms", subscriptionHandlerProvisioningDesc))
+	http.HandleFunc("/dependencies/{providerSubaccountId}/{appName}/", util.InstrumentHttpHandler(subHandler.HandleSaaSGetDependenciesRequest, dependenciesHandlerMetricPrefix, subscriptionHandlerDependenciesDesc))
+	http.HandleFunc("/sms/dependencies/{providerSubaccountId}/{appName}/", util.InstrumentHttpHandler(subHandler.HandleSMSGetDependenciesRequest, dependenciesHandlerMetricPrefix+"_sms", subscriptionHandlerDependenciesDesc))
 
 	// Initialize/start metrics server
 	util.InitMetricsServer()
