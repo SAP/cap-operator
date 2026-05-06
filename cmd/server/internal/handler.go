@@ -63,6 +63,7 @@ const InvalidRequestMethod = "invalid request method"
 const AuthorizationCheckFailed = "authorization check failed"
 const BearerPrefix = "Bearer "
 const BasicPrefix = "Basic "
+const ContentType = "Content-Type"
 
 const (
 	CallbackSucceeded              = "SUCCEEDED"
@@ -77,6 +78,7 @@ const (
 	Step                 = "step"
 	TenantProvisioning   = "Tenant Provisioning"
 	TenantDeprovisioning = "Tenant Deprovisioning"
+	GetDependencies      = "Get Dependencies"
 )
 
 type RequestInfo struct {
@@ -155,6 +157,21 @@ type OAuthResponse struct {
 type tenantInfo struct {
 	tenantId        string
 	tenantSubDomain string
+}
+
+type serviceCredentials struct {
+	XSAppName           string `json:"xsappname"`
+	SaasRegistryEnabled bool   `json:"saasregistryenabled"`
+	Plan                string `json:"plan"`
+	UAA                 *struct {
+		XSAppName string `json:"xsappname"`
+	} `json:"uaa"`
+}
+
+type GetDependenciesAuthError struct{}
+
+func (err *GetDependenciesAuthError) Error() string {
+	return "Not authorized"
 }
 
 func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
@@ -910,7 +927,7 @@ func prepareTokenRequest(ctx context.Context, callbackReqInfo *CallbackReqInfo, 
 	if err != nil {
 		return nil, err
 	}
-	tokenReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	tokenReq.Header.Set(ContentType, "application/x-www-form-urlencoded")
 	if callbackReqInfo.CredentialType != "x509" {
 		tokenReq.Header.Set("Authorization", BasicPrefix+base64.StdEncoding.EncodeToString([]byte(callbackReqInfo.ClientId+":"+callbackReqInfo.ClientSecret)))
 	}
@@ -973,7 +990,7 @@ func (s *SubscriptionHandler) handleAsyncCallback(ctx context.Context, callbackR
 	}
 
 	callbackReq, _ := http.NewRequestWithContext(ctx, http.MethodPut, callbackReqInfo.CallbackUrl+asyncCallbackPath, bytes.NewBuffer(payload))
-	callbackReq.Header.Set("Content-Type", "application/json")
+	callbackReq.Header.Set(ContentType, "application/json")
 	callbackReq.Header.Set("Authorization", BearerPrefix+oAuthType.AccessToken)
 
 	client := s.httpClientGenerator.NewHTTPClient()
@@ -1123,6 +1140,136 @@ func getSubscriptionDomain(payload map[string]any) string {
 		}
 	}
 	return ""
+}
+
+func (c *serviceCredentials) xsAppName() string {
+	if c.XSAppName != "" {
+		return c.XSAppName
+	}
+	if c.UAA != nil && c.UAA.XSAppName != "" {
+		return c.UAA.XSAppName
+	}
+	return ""
+}
+
+func (s *SubscriptionHandler) getServiceDependencies(capApp *v1alpha1.CAPApplication, service v1alpha1.ServiceInfo) map[string]string {
+	serviceSecretCred, err := s.KubeClienset.CoreV1().Secrets(capApp.Namespace).Get(context.TODO(), service.Secret, metav1.GetOptions{})
+	if err != nil {
+		util.LogError(err, "Failed to read secret for service", GetDependencies, capApp, nil, "service", service.Name, "secret", service.Secret)
+		return nil
+	}
+
+	var creds serviceCredentials
+	if err = json.Unmarshal(serviceSecretCred.Data["credentials"], &creds); err != nil {
+		util.LogError(err, "Failed to unmarshal credentials from service secret", GetDependencies, capApp, nil, "service", service.Name, "secret", service.Secret)
+		return nil
+	}
+
+	if isServiceRelevantForDependencies(service, &creds) {
+		if name := creds.xsAppName(); name != "" {
+			return map[string]string{"xsappname": name}
+		}
+	}
+
+	return nil
+}
+
+func isServiceRelevantForDependencies(serviceInfo v1alpha1.ServiceInfo, creds *serviceCredentials) bool {
+	if serviceInfo.GetSubscriptionDependency() == v1alpha1.SubscriptionDependencyAlways {
+		return true
+	}
+
+	if serviceInfo.GetSubscriptionDependency() == v1alpha1.SubscriptionDependencyAuto {
+		return serviceInfo.Class == "destination" ||
+			serviceInfo.Class == "connectivity" ||
+			(serviceInfo.Class == "auditlog" && creds.Plan == "oauth2") ||
+			creds.SaasRegistryEnabled
+	}
+
+	return false
+}
+
+func (s *SubscriptionHandler) getDependencies(req *http.Request, subscriptionType subscriptionType) ([]byte, error) {
+	var dependenciesArray []map[string]string
+
+	// Read the cap application by using the provider subaccount id & app-name passed in the URI
+	// URI format - /dependencies/providersubaccountId/app-name or /sms/dependencies/providersubaccountId/app-name/{app_tid}
+	providersubaccountId := req.PathValue("providerSubaccountId")
+	appName := req.PathValue("appName")
+	if providersubaccountId == "" || appName == "" {
+		err := errors.New("missing providerSubaccountId or appName in request URI")
+		util.LogError(err, "Missing providerSubaccountId or appName in request URI", GetDependencies, nil, nil, "uri", req.RequestURI)
+		return nil, err
+	}
+
+	util.LogInfo("Get dependencies request received", GetDependencies, nil, nil, "subscriptionType", subscriptionType, "providerSubaccountId", providersubaccountId, "btpAppName", appName)
+
+	ca, err := s.checkCAPApp("", providersubaccountId, appName)
+	if err != nil {
+		util.LogError(err, "CAPApplication not found for providerSubaccountId and appName", GetDependencies, nil, nil, "providerSubaccountId", providersubaccountId, "btpAppName", appName)
+		return nil, err
+	}
+
+	var headerDetails requestHeaderDetails
+	switch subscriptionType {
+	case SMS:
+		headerDetails.xForwardedClientCert = req.Header.Get("X-Forwarded-Client-Cert")
+	default:
+		headerDetails.authorization = req.Header.Get("Authorization")
+	}
+
+	if _, _, err = s.authorizationCheck(&headerDetails, ca, subscriptionType, GetDependencies); err != nil {
+		util.LogError(err, "Authorization check failed for get dependencies request", GetDependencies, ca, nil, "subscriptionType", subscriptionType)
+		return nil, &GetDependenciesAuthError{}
+	}
+
+	for _, service := range ca.Spec.BTP.Services {
+		if serviceDependency := s.getServiceDependencies(ca, service); serviceDependency != nil {
+			dependenciesArray = append(dependenciesArray, serviceDependency)
+		}
+	}
+
+	if len(dependenciesArray) == 0 {
+		util.LogInfo("No subscription dependencies found", GetDependencies, ca, nil)
+		return nil, nil
+	}
+
+	dependencies, err := json.Marshal(dependenciesArray)
+	if err != nil {
+		util.LogError(err, "Failed to marshal dependencies to JSON", GetDependencies, ca, nil)
+		return nil, err
+	}
+
+	util.LogInfo("Subscription dependencies resolved", GetDependencies, ca, nil, "count", len(dependenciesArray), "dependencies", string(dependencies))
+
+	return dependencies, nil
+}
+
+func (s *SubscriptionHandler) handleGetDependenciesRequest(w http.ResponseWriter, req *http.Request, subscriptionType subscriptionType) {
+	switch req.Method {
+	case http.MethodGet:
+		dependencies, err := s.getDependencies(req, subscriptionType)
+		if err != nil {
+			if _, ok := err.(*GetDependenciesAuthError); ok {
+				w.WriteHeader(http.StatusUnauthorized)
+			} else {
+				w.WriteHeader(http.StatusBadRequest)
+			}
+		} else {
+			w.Header().Set(ContentType, "application/json")
+			w.Write(dependencies)
+		}
+	default:
+		w.WriteHeader(http.StatusMethodNotAllowed)
+	}
+}
+
+func (s *SubscriptionHandler) HandleSaaSGetDependenciesRequest(w http.ResponseWriter, req *http.Request) {
+	s.handleGetDependenciesRequest(w, req, SaaS)
+}
+
+func (s *SubscriptionHandler) HandleSMSGetDependenciesRequest(w http.ResponseWriter, req *http.Request) {
+	s.handleGetDependenciesRequest(w, req, SMS)
 }
 
 func NewSubscriptionHandler(clientset versioned.Interface, kubeClienset kubernetes.Interface) *SubscriptionHandler {

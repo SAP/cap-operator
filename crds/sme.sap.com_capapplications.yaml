@@ -46,6 +46,12 @@ spec:
                           type: string
                         secret:
                           type: string
+                        subscriptionDependency:
+                          enum:
+                          - Auto
+                          - Always
+                          - Never
+                          type: string
                       required:
                       - class
                       - name
