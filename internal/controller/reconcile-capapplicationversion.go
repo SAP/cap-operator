@@ -298,7 +298,7 @@ func (c *Controller) handleContentDeployJob(ca *v1alpha1.CAPApplication, cav *v1
 		ownerRef := *metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind))
 
 		// Get VCAP secret name
-		vcapSecretName, err = createVCAPSecret(jobName, cav.Namespace, ownerRef, consumedServiceInfos, c.kubeClient)
+		vcapSecretName, err = c.createVCAPSecret(jobName, cav.Namespace, ownerRef, consumedServiceInfos)
 
 		if err == nil {
 			contentDeployJob, err = c.kubeClient.BatchV1().Jobs(cav.Namespace).Create(context.TODO(), newContentDeploymentJob(cav, workload, ownerRef, vcapSecretName), metav1.CreateOptions{})
@@ -696,7 +696,7 @@ func (c *Controller) updateDeployment(ca *v1alpha1.CAPApplication, cav *v1alpha1
 		ownerRef := *metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind))
 
 		// Get VCAP secret name
-		vcapSecretName, err = createVCAPSecret(deploymentName, cav.Namespace, ownerRef, consumedServiceInfos, c.kubeClient)
+		vcapSecretName, err = c.createVCAPSecret(deploymentName, cav.Namespace, ownerRef, consumedServiceInfos)
 
 		if err == nil {
 			workloadDeployment, err = c.kubeClient.AppsV1().Deployments(cav.Namespace).Create(context.TODO(), newDeployment(ca, cav, workload, ownerRef, vcapSecretName), metav1.CreateOptions{})

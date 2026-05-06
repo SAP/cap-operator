@@ -22,7 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/informers"
 	"k8s.io/klog/v2"
 )
 
@@ -44,6 +44,7 @@ const (
 	LabelExposedWorkload                = "sme.sap.com/exposed-workload"
 	LabelDNSNameHash                    = "sme.sap.com/dns-name-hash"
 	LabelSubscriptionGUID               = "sme.sap.com/subscription-guid"
+	LabelSecretOwnerHash                = "sme.sap.com/secret-owner-hash"
 	AnnotationOwnerIdentifier           = "sme.sap.com/owner-identifier"
 	AnnotationBTPApplicationIdentifier  = "sme.sap.com/btp-app-identifier"
 	AnnotationAppId                     = "sme.sap.com/app-identifier"
@@ -394,10 +395,10 @@ func getConsumedServiceInfos(consumedServicesMap map[string]string, serviceInfos
 	return consumedServiceInfo
 }
 
-func generateVCAPEnv(ns string, serviceInfos []v1alpha1.ServiceInfo, kubeClient kubernetes.Interface) ([]byte, error) {
+func generateVCAPEnv(ns string, serviceInfos []v1alpha1.ServiceInfo, kubeInformerFactory informers.SharedInformerFactory) ([]byte, error) {
 	envVCAPServices := map[string][]map[string]any{}
 	for _, serviceInfo := range serviceInfos {
-		entry, err := util.CreateVCAPEntryFromSecret(&serviceInfo, ns, kubeClient)
+		entry, err := util.CreateVCAPEntryFromSecret(&serviceInfo, ns, nil, kubeInformerFactory)
 		if err != nil {
 			return nil, err
 		}
@@ -414,19 +415,32 @@ func generateVCAPEnv(ns string, serviceInfos []v1alpha1.ServiceInfo, kubeClient 
 	return json.Marshal(envVCAPServices)
 }
 
-func createVCAPSecret(namePrefix string, ns string, ownerRef metav1.OwnerReference, serviceInfos []v1alpha1.ServiceInfo, kubeClient kubernetes.Interface) (string, error) {
+func (c Controller) createVCAPSecret(namePrefix string, ns string, ownerRef metav1.OwnerReference, serviceInfos []v1alpha1.ServiceInfo) (string, error) {
 	// Generate VCAP_SERVICES env. variable
-	vcapEnv, err := generateVCAPEnv(ns, serviceInfos, kubeClient)
+	vcapEnv, err := generateVCAPEnv(ns, serviceInfos, c.kubeInformerFactory)
 	if err != nil {
 		return "", err
 	}
 
+	secretLabels := map[string]string{
+		LabelSecretOwnerHash: sha1Sum(ns, ownerRef.Name, namePrefix),
+	}
+
+	secretList, err := c.kubeInformerFactory.Core().V1().Secrets().Lister().Secrets(ns).List(labels.SelectorFromSet(secretLabels))
+	if err != nil { // Some error occurred
+		return "", err
+	} else if len(secretList) > 0 { // Existing secret present
+		return secretList[0].Name, nil
+	}
+
+	// Nothing Found -->
 	// Create a secret for VCAP_SERVICES for the given workload
-	secret, err := kubeClient.CoreV1().Secrets(ns).Create(context.TODO(),
+	secret, err := c.kubeClient.CoreV1().Secrets(ns).Create(context.TODO(),
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName:    namePrefix + "-",
 				OwnerReferences: []metav1.OwnerReference{ownerRef},
+				Labels:          secretLabels,
 			},
 			StringData: map[string]string{
 				EnvVCAPServices: string(vcapEnv),
@@ -438,7 +452,6 @@ func createVCAPSecret(namePrefix string, ns string, ownerRef metav1.OwnerReferen
 		return "", err
 	}
 	// Successfully created deployment secret --> return name
-	// @TODO: Reconcile CAV once we expect secrets/credentials to be updated
 	return secret.Name, nil
 }
 

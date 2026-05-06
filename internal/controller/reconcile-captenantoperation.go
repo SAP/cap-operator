@@ -402,7 +402,7 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 
 	// create VCAP secret from consumed BTP services
 	consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), relatedResources.CAPApplication.Spec.BTP.Services)
-	vcapSecretName, err := createVCAPSecret(ctop.Name+"-"+strings.ToLower(workload.Name), ctop.Namespace, *metav1.NewControllerRef(ctop, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantOperationKind)), consumedServiceInfos, c.kubeClient)
+	vcapSecretName, err := c.createVCAPSecret(ctop.Name+"-"+strings.ToLower(workload.Name), ctop.Namespace, *metav1.NewControllerRef(ctop, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantOperationKind)), consumedServiceInfos)
 	if err != nil {
 		return nil, err
 	}

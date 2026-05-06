@@ -11,7 +11,9 @@ import (
 	"fmt"
 
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 )
 
@@ -65,7 +67,7 @@ const (
 )
 
 func ReadServiceCredentialsFromSecret[T any](serviceInfo *v1alpha1.ServiceInfo, ns string, kubeClient kubernetes.Interface) (*T, error) {
-	entry, err := CreateVCAPEntryFromSecret(serviceInfo, ns, kubeClient)
+	entry, err := CreateVCAPEntryFromSecret(serviceInfo, ns, kubeClient, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -76,9 +78,15 @@ func ReadServiceCredentialsFromSecret[T any](serviceInfo *v1alpha1.ServiceInfo, 
 	return ParseJSON[T](b)
 }
 
-func CreateVCAPEntryFromSecret(serviceInfo *v1alpha1.ServiceInfo, ns string, kubeClient kubernetes.Interface) (entry map[string]any, err error) {
+func CreateVCAPEntryFromSecret(serviceInfo *v1alpha1.ServiceInfo, ns string, kubeClient kubernetes.Interface, kubeInformerFactory informers.SharedInformerFactory) (entry map[string]any, err error) {
+	var secret *corev1.Secret
 	// Get secret
-	secret, err := kubeClient.CoreV1().Secrets(ns).Get(context.TODO(), serviceInfo.Secret, metav1.GetOptions{})
+	if kubeInformerFactory != nil {
+		secret, err = kubeInformerFactory.Core().V1().Secrets().Lister().Secrets(ns).Get(serviceInfo.Secret)
+	} else {
+		secret, err = kubeClient.CoreV1().Secrets(ns).Get(context.TODO(), serviceInfo.Secret, metav1.GetOptions{})
+	}
+
 	if err != nil {
 		return nil, err
 	}
