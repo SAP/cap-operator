@@ -10,15 +10,17 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func createTestClient() (*fake.Clientset, error) {
+func createTestClient(kubeInformerFactory informers.SharedInformerFactory) (*fake.Clientset, error) {
 	secs := []k8sruntime.Object{
 		&corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: "no-meta-credential-key", Namespace: "default"},
@@ -101,6 +103,11 @@ func createTestClient() (*fake.Clientset, error) {
 			},
 		},
 	}
+	if kubeInformerFactory != nil {
+		for _, sec := range secs {
+			kubeInformerFactory.Core().V1().Secrets().Informer().GetIndexer().Add(sec)
+		}
+	}
 	return fake.NewSimpleClientset(secs...), nil
 }
 
@@ -128,7 +135,7 @@ func testCreateVCAPEntryFromSecret(t *testing.T) {
 			namespace:   "another",
 			serviceInfo: &v1alpha1.ServiceInfo{Name: "service-a", Secret: "no-meta-credential-key", Class: "xzy"},
 			expectError: true,
-			errorMsg:    "secrets \"no-meta-credential-key\" not found",
+			errorMsg:    "secret \"no-meta-credential-key\" not found",
 		},
 		{
 			name:                 "valid credentials (container) with metadata",
@@ -153,17 +160,18 @@ func testCreateVCAPEntryFromSecret(t *testing.T) {
 			expectTags:           true,
 		},
 	}
-	c, _ := createTestClient()
+	kubeInformerFactory := informers.NewSharedInformerFactory(fake.NewSimpleClientset(), 30*time.Minute)
+	c, _ := createTestClient(kubeInformerFactory)
 	for i := range cases {
 		t.Run(cases[i].name, func(t *testing.T) {
 			config := &cases[i]
-			entry, err := CreateVCAPEntryFromSecret(config.serviceInfo, config.namespace, c)
+			entry, err := CreateVCAPEntryFromSecret(config.serviceInfo, config.namespace, c, kubeInformerFactory)
 			if err != nil {
 				if !config.expectError {
 					t.Errorf("unexpected error in test case: %s", config.name)
 				}
 				if config.errorMsg != "" && err.Error() != config.errorMsg {
-					t.Errorf("error differs from expected for test case: %s", config.name)
+					t.Errorf("error '%s' differs from expected for test case: %s", err.Error(), config.name)
 				}
 				return
 			} else {
@@ -182,7 +190,7 @@ func testCreateVCAPEntryFromSecret(t *testing.T) {
 }
 
 func testReadServiceCredentialsFromSecret(t *testing.T) {
-	c, _ := createTestClient()
+	c, _ := createTestClient(nil)
 
 	// test successful read
 	secretName := "metadata-with-credential-key"

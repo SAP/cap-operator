@@ -56,7 +56,7 @@ var QueueMapping map[int]map[int]string = map[int]map[int]string{
 	ResourceCAPTenantOperation:    {ResourceCAPTenantOperation: v1alpha1.CAPTenantOperationKind, ResourceCAPTenant: v1alpha1.CAPTenantKind},
 	ResourceDomain:                {ResourceDomain: v1alpha1.DomainKind},
 	ResourceClusterDomain:         {ResourceClusterDomain: v1alpha1.ClusterDomainKind},
-	ResourceSecret:                {ResourceCAPApplication: v1alpha1.CAPApplicationKind, ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
+	ResourceSecret:                {ResourceCAPApplication: v1alpha1.CAPApplicationKind},
 	ResourceJob:                   {ResourceCAPTenantOperation: v1alpha1.CAPTenantOperationKind, ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
 	ResourceGateway:               {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
 	ResourceCertificate:           {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
