@@ -375,7 +375,7 @@ func TestController_handleCAPApplicationConsistent_Case2(t *testing.T) {
 }
 
 func TestController_handleCAPApplicationConsistent_Case3(t *testing.T) {
-	err := reconcileTestItem(
+	reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01"}},
 		TestData{
@@ -389,13 +389,15 @@ func TestController_handleCAPApplicationConsistent_Case3(t *testing.T) {
 				"testdata/capapplication/cat-consumer-upg-never-ready.yaml",
 				"testdata/common/credential-secrets.yaml",
 			},
-			expectError: true,
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenant: {
+					{Namespace: "default", Name: "test-cap-01-provider"},
+					{Namespace: "default", Name: "test-cap-01-consumer"},
+				},
+			},
+			expectedResources: "testdata/capapplication/ca-31.expected.yaml",
 		},
 	)
-
-	if err.Error() != "failed to reconcile tenant networking: capapplicationversion.sme.sap.com \"test-cap-01-cav-v1\" not found" {
-		t.Error("Wrong error message")
-	}
 }
 
 func TestController_handleCAPApplicationConsistent_Case5(t *testing.T) {
@@ -445,12 +447,12 @@ func TestProviderTenantCreationError(t *testing.T) {
 	}
 }
 
-func TestCAPApplicationConsistentWithNewCAPApplicationVersionTenantUpdateError(t *testing.T) {
-	err := reconcileTestItem(
+func TestCAPApplicationConsistentWithNewCAPApplicationVersionTenantUpdate(t *testing.T) {
+	reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01"}},
 		TestData{
-			description: "Consistent state with a new CAV (ready); tenant update failure",
+			description: "Consistent state with a new CAV (ready); only 1 tenant exists",
 			initialResources: []string{
 				"testdata/common/domain-ready.yaml",
 				"testdata/common/cluster-domain-ready.yaml",
@@ -459,12 +461,20 @@ func TestCAPApplicationConsistentWithNewCAPApplicationVersionTenantUpdateError(t
 				"testdata/capapplication/cat-provider-no-finalizers-ready.yaml",
 				"testdata/common/credential-secrets.yaml",
 			},
-			expectError: true,
+			expectedResources: "testdata/capapplication/ca-31-1.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenant: {
+					{Namespace: "default", Name: "test-cap-01-provider"},
+				},
+				ResourceDomain: {
+					{Namespace: "default", Name: "test-cap-01-primary"},
+				},
+				ResourceClusterDomain: {
+					{Namespace: "", Name: "test-cap-01-secondary"},
+				},
+			},
 		},
 	)
-	if err.Error() != "failed to reconcile tenant networking: capapplicationversion.sme.sap.com \"test-cap-01-cav-v1\" not found" {
-		t.Error("Wrong error message")
-	}
 }
 
 func TestAdditionalConditionsTenantReadyUpgradeStrategyNever(t *testing.T) {
@@ -512,7 +522,7 @@ func TestAdditionalConditionsWithTenantDeletingUpgradeStrategyNever(t *testing.T
 }
 
 func TestController_handleCAPApplicationConsistent_versionUpgrade(t *testing.T) {
-	err := reconcileTestItem(
+	reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01"}},
 		TestData{
@@ -526,13 +536,15 @@ func TestController_handleCAPApplicationConsistent_versionUpgrade(t *testing.T) 
 				"testdata/capapplication/cat-consumer-upgrading.yaml",
 				"testdata/common/credential-secrets.yaml",
 			},
-			expectError: true,
+			expectedResources: "testdata/capapplication/ca-31.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenant: {
+					{Namespace: "default", Name: "test-cap-01-provider"},
+					{Namespace: "default", Name: "test-cap-01-consumer"},
+				},
+			},
 		},
 	)
-
-	if err.Error() != "failed to reconcile tenant networking: capapplicationversion.sme.sap.com \"test-cap-01-cav-v1\" not found" {
-		t.Error("Wrong error message")
-	}
 }
 
 func TestCA_ServicesOnly_Consistent(t *testing.T) {

@@ -6,9 +6,13 @@ SPDX-License-Identifier: Apache-2.0
 package controller
 
 import (
+	"context"
+	"net/url"
 	"os"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	k8sclientmetrics "k8s.io/client-go/tools/metrics"
 	"k8s.io/client-go/util/workqueue"
 )
 
@@ -134,10 +138,47 @@ var (
 		Name:      Retries,
 		Help:      "Retries in workqueue",
 	}, []string{"name"})
+
+	// K8s client-go metrics aren't exposed. This is a copy of: https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/component-base/metrics/prometheus/restclient/metrics.go#L78
+	rateLimiterLatency = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Namespace: CAPOp,
+		Name:      "rest_client_rate_limiter_duration_seconds",
+		Help:      "Client side rate limiter latency in seconds. Broken down by verb, and host.",
+		Buckets:   []float64{0.005, 0.025, 0.1, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 15.0, 30.0, 60.0},
+	},
+		[]string{"verb", "host"},
+	)
+
+	// K8s client-go metrics aren't exposed. This is a copy of: https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/component-base/metrics/prometheus/restclient/metrics.go#L88
+	requestResult = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: CAPOp,
+		Name:      "rest_client_requests_total",
+		Help:      "Number of HTTP requests, partitioned by status code, method, and host.",
+	}, []string{"code", "method", "host"})
 )
 
+// #region k8sRequestResultProvider
+// This isn't exposed by K8s, so we made a copy of: https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/component-base/metrics/prometheus/restclient/metrics.go#L252
+type k8sRequestResultProvider struct {
+	m *prometheus.CounterVec
+}
+
+func (p *k8sRequestResultProvider) Increment(_ context.Context, code string, method string, host string) {
+	p.m.WithLabelValues(code, method, host).Inc()
+}
+
+type k8sRequestlatencyAdapter struct {
+	m *prometheus.HistogramVec
+}
+
+func (l *k8sRequestlatencyAdapter) Observe(_ context.Context, verb string, u url.URL, latency time.Duration) {
+	l.m.WithLabelValues(verb, u.Host).Observe(latency.Seconds())
+}
+
+// #endregion
+
 // Create a variable to hold all the collectors
-var collectors = []prometheus.Collector{ReconcileErrors, Panics, TenantOperations, ServiceOperations, depth, adds, latency, workDuration, unfinished, longestRunningProcessor, retries}
+var collectors = []prometheus.Collector{ReconcileErrors, Panics, TenantOperations, ServiceOperations, depth, adds, latency, workDuration, unfinished, longestRunningProcessor, retries, requestResult}
 
 // #region capOperatorMetricsProvider
 // capOperatorMetricsProvider implements workqueue.MetricsProvider
@@ -183,6 +224,12 @@ func initializeMetrics() {
 
 	// Register CAP Operator metrics
 	prometheus.MustRegister(collectors...)
+
+	// Register Kubernetes client-go REST API metrics with the custom k8sRequestResultProvider
+	k8sclientmetrics.Register(k8sclientmetrics.RegisterOpts{
+		RequestResult:      &k8sRequestResultProvider{requestResult},
+		RateLimiterLatency: &k8sRequestlatencyAdapter{rateLimiterLatency},
+	})
 
 	// Register CAP Operator metrics provider as the workqueue metrics provider (needed for the workqueue metrics, to be done just once)
 	workqueue.SetProvider(capOperatorMetricsProvider{})

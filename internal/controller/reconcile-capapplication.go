@@ -16,7 +16,6 @@ import (
 
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
-	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -39,8 +38,7 @@ const (
 )
 
 func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem, _ int) (result *ReconcileResult, err error) {
-	lister := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister()
-	cached, err := lister.CAPApplications(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
+	cached, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister().CAPApplications(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
 	if err != nil {
 		return nil, handleOperatorResourceErrors(err)
 	}
@@ -78,7 +76,8 @@ func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem
 		result, err = c.handleCAPApplicationDependentResources(ctx, ca)
 	}
 
-	return c.checkAdditionalConditions(ca, result, err)
+	result, err = c.checkAdditionalConditions(ctx, ca, result, err)
+	return
 }
 
 func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
@@ -131,15 +130,10 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 	}
 
 	// step 5 - reconcile service exposure, create/update services based on the latest CAV
-	if err = c.reconcileServiceNetworking(ctx, ca, cav); err != nil {
-		return
-	}
-
-	// step 6 - check and set consistent status; check for newer versions and trigger tenant networking updates
-	return c.verifyApplicationConsistent(ctx, ca)
+	return nil, c.reconcileServiceNetworking(ctx, ca, cav)
 }
 
-func (c *Controller) verifyApplicationConsistent(ctx context.Context, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
+func (c *Controller) verifyApplicationConsistent(ca *v1alpha1.CAPApplication) {
 	if ca.Status.State != v1alpha1.CAPApplicationStateConsistent {
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateConsistent, metav1.ConditionTrue, "VersionExists", "")
 		// Update additional condition `LatestVersionReady` to True
@@ -150,56 +144,59 @@ func (c *Controller) verifyApplicationConsistent(ctx context.Context, ca *v1alph
 			ca.SetStatusCondition(string(v1alpha1.ConditionTypeAllTenantsReady), metav1.ConditionTrue, "ProviderTenantReady", "")
 		}
 	}
-
-	// Check for newer CAPApplicationVersion and trigger tenant networking updates
-	return nil, c.checkNewCavAndTenantNetworking(ctx, ca)
 }
 
-func (c *Controller) checkNewCavAndTenantNetworking(ctx context.Context, ca *v1alpha1.CAPApplication) error {
-	// Get the latest CAV for the tenant
-	cav, err := c.getLatestReadyCAPApplicationVersion(ca, false)
-	if err != nil {
-		return err
+func (c *Controller) checkNewCavAndTenantReconcile(ctx context.Context, ca *v1alpha1.CAPApplication, readyCav *v1alpha1.CAPApplicationVersion, latestCav *v1alpha1.CAPApplicationVersion) (*ReconcileResult, error) {
+	// No tenants for services only scenario
+	if ca.IsServicesOnly() {
+		return nil, nil
 	}
+
+	// Reset ready Condition and Reason for Tenant check AllTenantsReady --> True
+	readyCondition := metav1.ConditionTrue
+	readyReason := string(v1alpha1.ConditionTypeAllTenantsReady)
 
 	// Get all relevant tenants
 	tenants, err := c.getRelevantTenantsForCA(ca)
 	if err != nil || len(tenants) == 0 {
-		return err
+		return nil, err
 	}
-
-	netUpdGrp := errgroup.Group{}
+	checkDone := false
 	updated := false
+	var result *ReconcileResult
+	if ca.Annotations[AnnotationEnableVersionAffinity] == "true" {
+		result = &ReconcileResult{}
+	}
 	for _, tenant := range tenants {
-		if tenant.Status.CurrentCAPApplicationVersionInstance != "" {
-			t := tenant
-			netUpdGrp.Go(func() error {
-				return c.reconcileTenantNetworking(ctx, t, t.Status.CurrentCAPApplicationVersionInstance, ca)
-			})
-		}
-
-		if upd, err := c.checkForTenantVersionUpgrade(ctx, ca, cav, tenant); err != nil {
-			return err
+		if upd, err := c.checkForTenantVersionUpgradeAndReconcile(ctx, ca, readyCav, tenant, result); err != nil {
+			return result, err
 		} else if upd {
 			updated = true
 		}
+		// When a Tenant state is not Ready -or- when version of tenant (with VersionUpgradeStrategy = always) does not match the latest CAV version --> AllTenantsReady = False
+		if !checkDone && (updated || (tenant.Status.State != v1alpha1.CAPTenantStateReady || (tenant.Spec.VersionUpgradeStrategy == v1alpha1.VersionUpgradeStrategyTypeAlways && latestCav.Spec.Version != tenant.Spec.Version))) {
+			readyCondition = metav1.ConditionFalse
+			readyReason = "NotAllTenantsReady"
+			checkDone = true
+		}
 	}
-
-	if err = netUpdGrp.Wait(); err != nil {
-		return fmt.Errorf("failed to reconcile tenant networking: %w", err)
-	}
+	// Update `AllTenantsReady` status condition
+	ca.SetStatusCondition(string(v1alpha1.ConditionTypeAllTenantsReady), readyCondition, readyReason, "")
 
 	if updated {
-		msg := fmt.Sprintf("new version %s.%s was used to trigger tenant upgrades", cav.Namespace, cav.Name)
+		msg := fmt.Sprintf("new version %s.%s was used to trigger tenant upgrades", readyCav.Namespace, readyCav.Name)
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, CAPApplicationEventNewCAVTriggeredTenantUpgrade, msg)
-		ca.SetStatusCondition(string(v1alpha1.ConditionTypeLatestVersionReady), metav1.ConditionTrue, string(v1alpha1.ConditionTypeLatestVersionReady), "")
-		ca.SetStatusCondition(string(v1alpha1.ConditionTypeAllTenantsReady), metav1.ConditionFalse, "UpgradingTenants", "")
 		c.Event(ca, nil, corev1.EventTypeNormal, CAPApplicationEventNewCAVTriggeredTenantUpgrade, EventActionCheckForVersion, msg)
 	}
-	return nil
+	return result, nil
 }
 
-func (c *Controller) checkForTenantVersionUpgrade(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, tenant *v1alpha1.CAPTenant) (bool, error) {
+func (c *Controller) checkForTenantVersionUpgradeAndReconcile(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, tenant *v1alpha1.CAPTenant, result *ReconcileResult) (bool, error) {
+	// This is done to reconcile tenant networking which may be needed for session affinity
+	if result != nil && tenant.Status.CurrentCAPApplicationVersionInstance != "" {
+		result.AddResource(ResourceCAPTenant, tenant.Name, tenant.Namespace, 1)
+	}
+
 	if tenant.Spec.VersionUpgradeStrategy == v1alpha1.VersionUpgradeStrategyTypeNever {
 		// Skip non relevant tenants
 		return false, nil
@@ -226,11 +223,14 @@ func (c *Controller) checkForTenantVersionUpgrade(ctx context.Context, ca *v1alp
 	return false, nil
 }
 
-func (c *Controller) checkAdditionalConditions(ca *v1alpha1.CAPApplication, result *ReconcileResult, err error) (*ReconcileResult, error) {
+func (c *Controller) checkAdditionalConditions(ctx context.Context, ca *v1alpha1.CAPApplication, result *ReconcileResult, err error) (*ReconcileResult, error) {
 	// In case of explicit Reconcile or errors return back with the original result
 	if result != nil || err != nil {
 		return result, err
 	}
+
+	// check and set consistent status;
+	c.verifyApplicationConsistent(ca)
 
 	// Check and update additional status conditions
 	// Set ready Condition and Reason for Version check LatestVersionNotReady = True
@@ -239,6 +239,7 @@ func (c *Controller) checkAdditionalConditions(ca *v1alpha1.CAPApplication, resu
 
 	// Get latest CAV (incl. ones that may not be ready)
 	cav, err := c.getLatestCAPApplicationVersion(ca)
+	readyCav := cav
 	if err != nil {
 		return nil, err
 	}
@@ -246,37 +247,17 @@ func (c *Controller) checkAdditionalConditions(ca *v1alpha1.CAPApplication, resu
 	if cav.Status.State != v1alpha1.CAPApplicationVersionStateReady {
 		readyCondition = metav1.ConditionFalse
 		readyReason = "LatestVersionNotReady"
+		// Get the latest Ready CAV for the tenant
+		readyCav, err = c.getLatestReadyCAPApplicationVersion(ca, false)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Update `LatestVersionReady` status condition
 	ca.SetStatusCondition(string(v1alpha1.ConditionTypeLatestVersionReady), readyCondition, readyReason, "")
 
-	// No tenants for services only scenario
-	if ca.IsServicesOnly() {
-		return nil, nil
-	}
-
-	// Reset ready Condition and Reason for Tenant check AllTenantsReady --> True
-	readyCondition = metav1.ConditionTrue
-	readyReason = string(v1alpha1.ConditionTypeAllTenantsReady)
-
-	// Get all relevant tenants
-	tenants, err := c.getRelevantTenantsForCA(ca)
-	if err != nil {
-		return nil, err
-	}
-	for _, tenant := range tenants {
-		// When a Tenant state is not Ready -or- when version of tenant (with VersionUpgradeStrategy = always) does not match the latest CAV version --> AllTenantsReady = False
-		if tenant.Status.State != v1alpha1.CAPTenantStateReady || (tenant.Spec.VersionUpgradeStrategy == v1alpha1.VersionUpgradeStrategyTypeAlways && cav.Spec.Version != tenant.Spec.Version) {
-			readyCondition = metav1.ConditionFalse
-			readyReason = "NotAllTenantsReady"
-			break
-		}
-	}
-	// Update `AllTenantsReady` status condition
-	ca.SetStatusCondition(string(v1alpha1.ConditionTypeAllTenantsReady), readyCondition, readyReason, "")
-
-	return nil, nil
+	return c.checkNewCavAndTenantReconcile(ctx, ca, readyCav, cav)
 }
 
 func (c *Controller) updateCAPApplication(ctx context.Context, ca *v1alpha1.CAPApplication) error {
