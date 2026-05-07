@@ -9,11 +9,11 @@ description: >
 ---
 
 ## Overview
-Custom DNS mode lets you use Go templates to generate DNS entries dynamically, giving you precise control over complex DNS configurations. Specify your desired setup in the `dnsTemplates` field.
+Custom DNS mode lets you use Go templates to generate DNS entries dynamically, providing precise control over complex DNS configurations. Specify your desired setup in the `dnsTemplates` field.
 
 You can use functions from the [Slim Sprig library](https://go-task.github.io/slim-sprig/) in your templates.
 
-### What is Custom DNS Mode?
+### What Is Custom DNS Mode?
 Custom DNS mode uses [Go templates](https://pkg.go.dev/text/template) to generate DNS entries. Specify your configuration in the `dnsTemplates` field.
 
 #### Available Variables in DNS Templates
@@ -25,8 +25,8 @@ Custom DNS mode uses [Go templates](https://pkg.go.dev/text/template) to generat
 ### DNS Record Behavior
 
 - Each template typically produces one DNS record.
-- If the name contains **{{.subDomain}}**, a DNS record is created for each valid subdomain from tenants or service exposures.
-- **{{.subDomain}}** may appear in the target only if it also appears in the name.
+- If the name contains `{{.subDomain}}`, a DNS record is created for each valid subdomain from tenants or service exposures.
+- `{{.subDomain}}` may appear in the target only if it also appears in the name.
 
 
 ### Example Configuration

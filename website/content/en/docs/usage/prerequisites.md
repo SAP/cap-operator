@@ -9,15 +9,15 @@ description: >
 
 ## Prepare the SAP BTP global account and provider subaccount
 
-CAP-based applications use various SAP BTP services created in a provider subaccount. Before deploying the application, create a global account and entitle the required services. Then create a provider subaccount where the service instances can be created. See the [SAP BTP account administration documentation](https://help.sap.com/docs/btp/sap-business-technology-platform/account-administration) for details.
+CAP-based applications use various SAP BTP services created in a provider subaccount. Before deploying the application, create a global account and entitle the required services, then create a provider subaccount where the service instances can be created. See the [SAP BTP account administration documentation](https://help.sap.com/docs/btp/sap-business-technology-platform/account-administration) for details.
 
 ## Create service instances and bindings
 
-A multi-tenant CAP-based application consumes the following SAP BTP services. Some parameters require special attention during service instance creation. Service keys (bindings) generate access credentials, which must be provided as Kubernetes Secrets in the namespace where the application is deployed.
+A multi-tenant CAP-based application consumes the following SAP BTP services. Some parameters require special attention during service instance creation. Service keys (bindings) generate access credentials that must be provided as Kubernetes Secrets in the namespace where the application is deployed.
 
-Other services (not listed here) may also be used depending on your requirements (for example, SAP HTML5 Application Repository service for SAP BTP, Business Logging, and so on).
+Other services (not listed here) may also be required depending on your application (for example, SAP HTML5 Application Repository service for SAP BTP, Business Logging, and others).
 
-> Note: If some SAP BTP services are not available on Kubernetes, enable Cloud Foundry for the provider subaccount. In such cases, use the [cf-service-operator](https://sap.github.io/cf-service-operator/docs/) to manage service instances and bindings directly from within the Kubernetes cluster. It automatically generates secrets containing service access credentials based on the service bindings.
+> Note: If some SAP BTP services are not available on Kubernetes, enable Cloud Foundry for the provider subaccount. In such cases, use the [cf-service-operator](https://sap.github.io/cf-service-operator/docs/) to manage service instances and bindings directly from within the Kubernetes cluster. It automatically generates Secrets containing service access credentials based on the service bindings.
 
 ### SAP Authorization and Trust Management Service
 
@@ -54,7 +54,7 @@ parameters:
       name: $XSAPPNAME.mtcallback
     ...
 ```
-When using multiple [SAP Authorization and Trust Management Service](https://help.sap.com/docs/authorization-and-trust-management-service?locale=en-US) instances in the app (for example, one for `application` and another for `apiaccess`), set the primary instance using the annotation `sme.sap.com/primary-xsuaa` with the `name` of the service instance:
+When using multiple [SAP Authorization and Trust Management Service](https://help.sap.com/docs/authorization-and-trust-management-service?locale=en-US) instances in the application (for example, one for `application` and another for `apiaccess`), set the primary instance using the annotation `sme.sap.com/primary-xsuaa` with the `name` of the service instance:
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -83,7 +83,7 @@ spec:
 
 ### SAP Software-as-a-Service Provisioning service
 
-When creating an instance of the SaaS Provisioning service, configure asynchronous tenant subscription callbacks. See [Register Your Multi-Tenant Application/Service in SaaS Provisioning](https://help.sap.com/docs/btp/sap-business-technology-platform/register-multitenant-application-to-sap-saas-provisioning-service?locale=en-US&version=LATEST) for more details.
+When creating an instance of the SaaS Provisioning service, configure asynchronous tenant subscription callbacks. See [Register Your Multi-Tenant Application/Service in SaaS Provisioning](https://help.sap.com/docs/btp/sap-business-technology-platform/register-multitenant-application-to-sap-saas-provisioning-service?locale=en-US&version=LATEST) for details.
 
 ```yaml
 parameters:
@@ -98,8 +98,8 @@ parameters:
 
 ### SAP HANA Cloud
 
-An SAP HANA Cloud instance (preferably shared and accessible from the provider subaccount) is required. Note the Instance ID of the database for use in relevant workloads. The SAP HANA Schemas & HDI Containers service must also be entitled for the provider subaccount.
+An SAP HANA Cloud instance (preferably shared and accessible from the provider subaccount) is required. Note the instance ID of the database for use in relevant workloads. The SAP HANA Schemas & HDI Containers service must also be entitled for the provider subaccount.
 
 ### SAP Service Manager service
 
-The SAP Service Manager service allows CAP to retrieve schema- (tenant-) specific credentials for connecting to the SAP HANA Cloud database.
+The SAP Service Manager service allows CAP to retrieve schema-specific (tenant-specific) credentials for connecting to the SAP HANA Cloud database.

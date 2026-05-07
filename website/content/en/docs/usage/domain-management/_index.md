@@ -9,7 +9,7 @@ description: >
 sidebar_root_for: self
 ---
 
-CAP Operator introduced an update to domain management: the deprecated `domains` section in `CAPApplication` resources has been replaced by the more flexible `domainRefs`. This allows you to reference [`Domain`](../resources/domain) or [`ClusterDomain`](../resources/clusterdomain) resources, giving greater control over networking behavior, including TLS handling, ingress routing, and DNS setup.
+CAP Operator introduced an update to domain management: the deprecated `domains` section in `CAPApplication` resources has been replaced by the more flexible `domainRefs`. This allows you to reference [`Domain`](../resources/domain) or [`ClusterDomain`](../resources/clusterdomain) resources, providing greater control over networking behavior, including TLS handling, ingress routing, and DNS setup.
 
 ## Update Your Application Manifests
 
@@ -114,13 +114,13 @@ The webhook rejects updates that reintroduce the deprecated `domains` section. I
 
 ### Verify Migrated Resources
 
-After upgrading, verify your `CAPApplication` resources to confirm that `domainRefs` have been added:
+After upgrading, verify your `CAPApplication` resources to confirm that `domainRefs` have been populated:
 
 ```bash
 kubectl get capapplication -n <your-app-namespace> <your-ca-name> -o yaml
 ```
 
 Ensure that:
-- the `domains` section is removed
-- the `domainRefs` entries exist
-- the corresponding `Domain` or `ClusterDomain` resources are present
+- The `domains` section is removed.
+- The `domainRefs` entries exist.
+- The corresponding `Domain` or `ClusterDomain` resources are present.

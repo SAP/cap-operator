@@ -7,11 +7,11 @@ description: >
   How to monitor versions for automatic cleanup
 ---
 
-In a continuous delivery environment where new application versions are deployed frequently, monitoring and cleaning up older unused versions is important for conserving cluster resources (compute, memory, storage) and keeping the system tidy. CAP Operator allows application developers and operations teams to define how an application version can be monitored for usage.
+In a continuous delivery environment where new application versions are deployed frequently, monitoring and cleaning up older unused versions is important for conserving cluster resources (compute, memory, storage) and keeping the system manageable. CAP Operator allows application developers and operations teams to define how an application version is monitored for usage.
 
 ## Integration with Prometheus
 
-[Prometheus](https://prometheus.io/) is the industry standard for monitoring application metrics and provides a wide variety of tools for managing and reporting metrics. The CAP Operator controller can be connected to a Prometheus server by setting the `PROMETHEUS_ADDRESS` environment variable (see [Configuration](../../configuration)). The controller then queries application-related metrics based on the workload specification of `CAPApplicationVersions`. If no Prometheus address is supplied, the version monitoring function is not started.
+[Prometheus](https://prometheus.io/) is the industry standard for monitoring application metrics and provides a wide variety of tools for managing and reporting metrics. The CAP Operator controller can be connected to a Prometheus server by setting the `PROMETHEUS_ADDRESS` environment variable (see [Configuration](../../configuration)). The controller then queries application-related metrics based on the workload specification of `CAPApplicationVersion` resources. If no Prometheus address is supplied, the version monitoring function is not started.
 
 ## Configure `CAPApplication`
 
@@ -28,7 +28,7 @@ For each _deployment workload_ in a `CAPApplicationVersion`, you can define:
 1. Deletion rules: Criteria based on metrics that, when satisfied, mark the workload as eligible for removal.
 2. Scrape configuration: Defines how metrics are scraped from the workload service.
 
-#### Deletion Rules (Variant 1) based on Metric Type
+#### Deletion Rules (Variant 1) Based on Metric Type
 
 The following example shows a workload named `backend` configured with deletion rules based on multiple metrics.
 ```yaml
@@ -76,7 +76,7 @@ This tells CAP Operator that workload `backend` provides two metrics that can be
 
 All specified metrics of a workload must satisfy the evaluation criteria for the workload to be eligible for cleanup.
 
-#### Deletion Rules (Variant 2) as a PromQL expression
+#### Deletion Rules (Variant 2) as a PromQL Expression
 
 You can also specify deletion criteria for a workload by providing a PromQL expression that returns a boolean scalar.
 ```yaml
@@ -97,8 +97,8 @@ spec:
 The PromQL expression is executed as a Prometheus query. The expected result is a scalar boolean (`0` or `1`). Use [comparison binary operators](https://prometheus.io/docs/prometheus/latest/querying/operators/#comparison-binary-operators) with the `bool` modifier to produce the expected result. If the evaluation result is true (`1`), the workload is eligible for removal.
 
 This variant is useful when:
-- the predefined metric-type evaluation is insufficient for determining workload usage.
-- custom scraping configurations are used where the `job` label in the collected time series data does not match the name of the Kubernetes Service created for the workload.
+- The predefined metric-type evaluation is insufficient for determining workload usage.
+- Custom scraping configurations are used where the `job` label in the collected time series data does not match the name of the Kubernetes Service created for the workload.
 
 ### Scrape Configuration
 
@@ -138,10 +138,10 @@ With this configuration, CAP Operator creates a `ServiceMonitor` targeting the w
 The `scrapeConfig` feature is designed for a minimal configuration that covers the most common use case (scraping the workload service via a defined port). For more complex `ServiceMonitor` configurations, create them separately. If `scrapeConfig` is empty, CAP Operator will not create the related `ServiceMonitor`.
 {{% /alert %}}
 
-## Evaluating `CAPApplicationVersions` for cleanup
+## Evaluating `CAPApplicationVersion` Resources for Cleanup
 
 At specified intervals (controlled by the controller environment variable `METRICS_EVAL_INTERVAL`), CAP Operator selects versions as candidates for evaluation.
-- Only versions for `CAPApplications` with the annotation `sme.sap.com/enable-cleanup-monitoring` are considered.
+- Only versions for `CAPApplication` resources with the annotation `sme.sap.com/enable-cleanup-monitoring` are considered.
 - Versions with a `spec.version` higher than the highest `Ready` version are excluded from evaluation. If no version has `Ready` status, no versions are evaluated.
 - Versions linked to a `CAPTenant` are excluded. This includes versions referenced by the following `CAPTenant` fields:
   - `status.currentCAPApplicationVersionInstance` — the tenant's current version.

@@ -11,10 +11,10 @@ description: >
 
 To report a bug, create an [issue](https://github.com/sap/cap-operator/issues).
 
-Anything missing? Please let us know or [raise a PR](https://github.com/sap/cap-operator/pulls).
+Something missing? Let us know or [raise a PR](https://github.com/sap/cap-operator/pulls).
 
 ### Communication Channels
 
-Reach out to the project team and the project community via the following communication channels:
+Reach out to the project team and community via the following channels:
 - Issues: [GitHub](https://github.com/sap/cap-operator/issues)
 - Email: [CAP Operator](mailto:cap-operator@sap.com)

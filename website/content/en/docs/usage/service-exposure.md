@@ -9,7 +9,7 @@ description: >
 ---
 # Exposing Service Workloads
 
-This guide explains how to deploy applications with tenant-agnostic service workloads. These workloads can be part of multi-tenant applications or standalone applications that are completely tenant agnostic.
+This guide explains how to deploy applications with tenant-agnostic service workloads. These workloads can be part of multi-tenant applications or standalone applications that are entirely tenant-agnostic.
 
 ## Configuration
 
@@ -102,12 +102,13 @@ For a cluster domain like `my.cluster.shoot.url.k8s.example.com`, the configurat
 
 In the example above, the `router` workload is not exposed through `serviceExposures`. However, in multi-tenant scenarios, it may be exposed per tenant subdomain as usual.
 
-#### Route ordering:
+#### Route Ordering
+
 Ensure routes are ordered correctly to prevent routing errors. When multiple routes are defined for a subdomain, more specific paths must come before more general ones. For example, in the configuration above, the `api` subdomain requires `/api/v2` to be defined before `/api`.
 
 ## Deploying Services-Only Applications
 
-Services-only applications don't require tenant-specific configurations. Therefore, the `provider` section is omitted from the `CAPApplication` resource. The `CAPApplicationVersion` may include only `Content` jobs and no tenant-related jobs. The rest of the configuration for your services-only application stays the same.
+Services-only applications do not require tenant-specific configurations. Therefore, the `provider` section is omitted from the `CAPApplication` resource. The `CAPApplicationVersion` may include only `Content` jobs and no tenant-related jobs. The rest of the configuration for your services-only application remains the same.
 
 ### Application Configuration
 
@@ -221,6 +222,6 @@ spec:
 ## Important Considerations
 
 - No tenant-related resources are created for services-only applications.
-- A successful upgrade of the `CAPApplicationVersion` causes any service-related `VirtualService` resources to route HTTP traffic to the workloads associated with that `CAPApplicationVersion`.
-- From the start, choose the appropriate application mode: services-only or multi-tenant. Switching modes later is not possible.
+- A successful upgrade of the `CAPApplicationVersion` causes any service-related `VirtualService` resources to route HTTP traffic to the workloads of that `CAPApplicationVersion`.
+- Choose the appropriate application mode from the start: services-only or multi-tenant. Switching modes later is not possible.
 - Follow the recommended [security measures](../security) to safeguard any exposed workloads.

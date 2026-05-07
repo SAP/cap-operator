@@ -56,9 +56,9 @@ Create a namespace and install the Helm chart in that namespace by specifying th
       promClientAcquireRetryDelay: "2h"
       metricsEvaluationInterval: "30m" # <-- interval at which version metrics are evaluated
   ```
-  On startup, the controller attempts to connect to the Prometheus server and fetch [runtime information](https://prometheus.io/docs/prometheus/latest/querying/api/#runtime-information) to verify the connection. If the connection fails, it retries after the delay specified in `controller.versionMonitoring.promClientAcquireRetryDelay`. See default values [here](./helm-values).
+  On startup, the controller attempts to connect to the Prometheus server and fetch [runtime information](https://prometheus.io/docs/prometheus/latest/querying/api/#runtime-information) to verify the connection. If the connection fails, the controller retries after the delay specified in `controller.versionMonitoring.promClientAcquireRetryDelay`. See default values [here](./helm-values).
 
   {{% alert title="Note" color="info" %}}
-  - When connecting the controller to a Prometheus server running inside the cluster, ensure that the `NetworkPolicies` required for connecting to the service in the Prometheus namespace are also created.
-  - If the Prometheus service is configured to use TLS, mount the relevant CA root certificates as volumes to the controller.
+  - When connecting the controller to a Prometheus server running inside the cluster, ensure that the `NetworkPolicy` resources required for connecting to the service in the Prometheus namespace are also created.
+  - If the Prometheus service is configured to use TLS, mount the relevant CA root certificates as volumes on the controller.
   {{% /alert %}}

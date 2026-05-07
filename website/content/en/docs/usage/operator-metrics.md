@@ -9,7 +9,7 @@ description: >
 
 ## Overview
 
-The CAP Operator includes built-in [Prometheus metrics](https://pkg.go.dev/github.com/prometheus/client_golang/prometheus) that enable users to effectively monitor and analyze the operator's performance. These metrics can provide insights into resource usage, potential issues, and overall operator health. The metrics are accessible at the `/metrics` endpoint on port `9090` of both the [Controller](../../concepts/operator-components/controller/) and the [Subscription Server](../../concepts/operator-components/subscription-server/).
+CAP Operator includes built-in [Prometheus metrics](https://pkg.go.dev/github.com/prometheus/client_golang/prometheus) that enable you to effectively monitor and analyze the operator's performance. These metrics provide insights into resource usage, potential issues, and overall operator health. The metrics are accessible at the `/metrics` endpoint on port `9090` of both the [Controller](../../concepts/operator-components/controller/) and the [Subscription Server](../../concepts/operator-components/subscription-server/).
 
 ## Controller Metrics
 
@@ -77,4 +77,4 @@ cap_op_subscription_requests_inflight{} 4
 
 ## Conclusion
 
-The CAP Operator provides a rich set of metrics to facilitate monitoring and operational insights. By effectively leveraging these metrics, you can monitor and ensure the reliability and performance of your applications. For further details, consider exploring the Prometheus documentation and integrating these metrics into your monitoring systems.
+CAP Operator provides a rich set of metrics to facilitate monitoring and operational insights. By leveraging these metrics, you can monitor and ensure the reliability and performance of your applications. For further details, explore the Prometheus documentation and integrate these metrics into your monitoring systems.

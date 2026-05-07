@@ -58,7 +58,7 @@ spec:
       -----END CERTIFICATE-----
 ```
 
-- The `dnsTarget` field is optional. If specified, it will be used; otherwise, it will be derived from the Istio Ingress Gateway via `ingressSelector`.
-- `Gateway` and `DNSEntry` will be created in the namespace where the cap-operator is installed, while `Certificates` will be created in the namespace where Istio Ingress Gateway is present.
-- In cases when X509 client authentication is enforced on the Istio Gateway by setting `tlsMode` to `Mutual` or `OptionalMutual`, additional CA certificates are needed by Istio for verifying client certificates. These can be specified in the `certConfig.additionalCACertificate` field.
+- The `dnsTarget` field is optional. If specified, it is used; otherwise, the target is derived from the Istio Ingress Gateway via `ingressSelector`.
+- The `Gateway` and `DNSEntry` are created in the namespace where CAP Operator is installed, while `Certificate` resources are created in the namespace where the Istio Ingress Gateway is present.
+- When X509 client authentication is enforced on the Istio Gateway by setting `tlsMode` to `Mutual` or `OptionalMutual`, additional CA certificates are needed by Istio for verifying client certificates. These can be specified in the `certConfig.additionalCACertificate` field.
 
