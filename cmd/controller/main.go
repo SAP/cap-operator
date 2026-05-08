@@ -44,6 +44,11 @@ func main() {
 		klog.Fatal("Config not found")
 	}
 
+	// Configure client side rate limiting settings
+	// @TODO: make this configurable
+	config.QPS = 20
+	config.Burst = 30
+
 	leaseLockNamespace := util.GetNamespace()
 	leaseLockId := uuid.New().String()
 
@@ -174,10 +179,7 @@ func getDefaultConcurrencyConfig() map[int]int {
 		if !ok {
 			defaultReconcileForResource = controller.DefaultReconcile
 		}
-		concurrencyValue := getConcurrencyConfigForResource(resourceEnvSuffix, defaultReconcileForResource)
-		if concurrencyValue < 1 {
-			concurrencyValue = 1
-		}
+		concurrencyValue := max(getConcurrencyConfigForResource(resourceEnvSuffix, defaultReconcileForResource), 1)
 		concurrencyConfig[resourceKey] = concurrencyValue
 	}
 	return concurrencyConfig
