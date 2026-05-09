@@ -1153,19 +1153,13 @@ func (c *serviceCredentials) xsAppName() string {
 }
 
 func (s *SubscriptionHandler) getServiceDependencies(capApp *v1alpha1.CAPApplication, service v1alpha1.ServiceInfo) map[string]string {
-	serviceSecretCred, err := s.KubeClienset.CoreV1().Secrets(capApp.Namespace).Get(context.TODO(), service.Secret, metav1.GetOptions{})
+	creds, err := util.ReadServiceCredentialsFromSecret[serviceCredentials](&service, capApp.Namespace, s.KubeClienset)
 	if err != nil {
 		util.LogError(err, "Failed to read secret for service", GetDependencies, capApp, nil, "service", service.Name, "secret", service.Secret)
 		return nil
 	}
 
-	var creds serviceCredentials
-	if err = json.Unmarshal(serviceSecretCred.Data["credentials"], &creds); err != nil {
-		util.LogError(err, "Failed to unmarshal credentials from service secret", GetDependencies, capApp, nil, "service", service.Name, "secret", service.Secret)
-		return nil
-	}
-
-	if isServiceRelevantForDependencies(service, &creds) {
+	if isServiceRelevantForDependencies(service, creds) {
 		if name := creds.xsAppName(); name != "" {
 			return map[string]string{"xsappname": name}
 		}
