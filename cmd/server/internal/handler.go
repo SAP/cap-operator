@@ -122,7 +122,7 @@ type Result struct {
 
 type SubscriptionHandler struct {
 	Clientset           versioned.Interface
-	KubeClienset        kubernetes.Interface
+	KubeClientset       kubernetes.Interface
 	httpClientGenerator httpClientGenerator
 }
 
@@ -247,7 +247,7 @@ func (s *SubscriptionHandler) createTenant(reqInfo *RequestInfo, ca *v1alpha1.CA
 	subscriptionGUID := reqInfo.payload.subscriptionGUID
 	jsonReqByte, _ := json.Marshal(reqInfo.payload.raw)
 	// Create a secret to store the subscription context (payload from the request)
-	secret, err := s.KubeClienset.CoreV1().Secrets(ca.Namespace).Create(context.TODO(), &corev1.Secret{
+	secret, err := s.KubeClientset.CoreV1().Secrets(ca.Namespace).Create(context.TODO(), &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: ca.Name + "-consumer-",
 			Namespace:    ca.Namespace,
@@ -317,7 +317,7 @@ func (s *SubscriptionHandler) updateTenant(reqInfo *RequestInfo, ca *v1alpha1.CA
 		return updated, nil
 	}
 
-	secret, err := s.KubeClienset.CoreV1().Secrets(ca.Namespace).Get(context.TODO(), tenant.Annotations[AnnotationSubscriptionContextSecret], metav1.GetOptions{})
+	secret, err := s.KubeClientset.CoreV1().Secrets(ca.Namespace).Get(context.TODO(), tenant.Annotations[AnnotationSubscriptionContextSecret], metav1.GetOptions{})
 	if err != nil {
 		util.LogError(err, "subscription context secret not found", TenantProvisioning, tenant, nil, "secretName", tenant.Annotations[AnnotationSubscriptionContextSecret])
 		return updated, err
@@ -331,7 +331,7 @@ func (s *SubscriptionHandler) updateTenant(reqInfo *RequestInfo, ca *v1alpha1.CA
 		}
 
 		util.LogInfo("Updating tenant subscription context secret", TenantProvisioning, secret, nil, "tenantName", tenant.Name)
-		_, err = s.KubeClienset.CoreV1().Secrets(ca.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
+		_, err = s.KubeClientset.CoreV1().Secrets(ca.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
 		if err != nil {
 			util.LogError(err, "Error updating subscription context secret", TenantProvisioning, secret, secret)
 			return false, err
@@ -416,7 +416,7 @@ func (s *SubscriptionHandler) updateSecret(tenant *v1alpha1.CAPTenant, secret *c
 	secret.OwnerReferences = []metav1.OwnerReference{
 		*metav1.NewControllerRef(tenant, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind)),
 	}
-	_, err := s.KubeClienset.CoreV1().Secrets(tenant.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
+	_, err := s.KubeClientset.CoreV1().Secrets(tenant.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
 	if err != nil {
 		util.LogError(err, "Error updating payload tenant subscription secret", TenantProvisioning, tenant, secret)
 	}
@@ -424,15 +424,15 @@ func (s *SubscriptionHandler) updateSecret(tenant *v1alpha1.CAPTenant, secret *c
 }
 
 func (s *SubscriptionHandler) getTenantByAppIdentifier(globalAccountGUID, providerSubaccountId, btpAppName, tenantId, namespace, step string) (result *Result) {
-	tenantlabels := map[string]string{
+	tenantLabels := map[string]string{
 		LabelTenantId: tenantId,
 	}
 
-	labelsMaps := maps.Clone(tenantlabels)
+	labelsMaps := maps.Clone(tenantLabels)
 	labelsMaps[LabelAppIdHash] = sha1Sum(providerSubaccountId, btpAppName)
 
 	if result = s.getTenantByLabels(labelsMaps, namespace, step, "getTenantByAppIdentifier"); result.Tenant == nil {
-		oldLabelsMap := maps.Clone(tenantlabels)
+		oldLabelsMap := maps.Clone(tenantLabels)
 		oldLabelsMap[LabelBTPApplicationIdentifierHash] = sha1Sum(globalAccountGUID, btpAppName)
 		result = s.getTenantByLabels(oldLabelsMap, namespace, step, "getTenantByAppIdentifier")
 	}
@@ -665,7 +665,7 @@ func (s *SubscriptionHandler) initializeCallback(appUrl, tenantName string, ca *
 }
 
 func (s *SubscriptionHandler) getAppURL(payloadSubscriptionDomain, tenantSubdomain string, ca *v1alpha1.CAPApplication) (string, error) {
-	needsValidaton := true
+	needsValidation := true
 	var subscriptionDomain string
 	// Check if subscription domain is provided in the request payload.
 	if payloadSubscriptionDomain != "" {
@@ -677,14 +677,14 @@ func (s *SubscriptionHandler) getAppURL(payloadSubscriptionDomain, tenantSubdoma
 		subscriptionDomain = ca.Annotations[AnnotationSubscriptionDomain]
 		if subscriptionDomain == "" {
 			subscriptionDomain = s.getPrimaryDomain(ca)
-			needsValidaton = false
+			needsValidation = false
 			util.LogInfo("Using subscription domain from fallback 'primary' calculation", TenantProvisioning, ca, nil, SubscriptionDomain, subscriptionDomain)
 		} else {
 			util.LogInfo("Using subscription domain from CAPApplication annotation", TenantProvisioning, ca, nil, SubscriptionDomain, subscriptionDomain)
 		}
 	}
 
-	if needsValidaton {
+	if needsValidation {
 		err := s.validateDomain(subscriptionDomain, ca.Namespace)
 		if err != nil {
 			return "", err
@@ -833,7 +833,7 @@ func (s *SubscriptionHandler) getSaasDetails(capApp *v1alpha1.CAPApplication, st
 		info   *v1alpha1.ServiceInfo
 	)
 	if info, err = s.getServiceInfo(capApp, "saas-registry"); err == nil {
-		result, err = util.ReadServiceCredentialsFromSecret[util.SaasRegistryCredentials](info, capApp.Namespace, s.KubeClienset)
+		result, err = util.ReadServiceCredentialsFromSecret[util.SaasRegistryCredentials](info, capApp.Namespace, s.KubeClientset)
 	}
 	if err != nil {
 		util.LogError(err, "SaaS Registry credentials could not be read. Exiting..", step, capApp, nil)
@@ -852,7 +852,7 @@ func (s *SubscriptionHandler) getXSUAADetails(capApp *v1alpha1.CAPApplication, s
 	if info == nil {
 		err = fmt.Errorf("could not find service with class %s in CAPApplication %s.%s", "xsuaa", capApp.Namespace, capApp.Name)
 	} else {
-		result, err = util.ReadServiceCredentialsFromSecret[util.XSUAACredentials](info, capApp.Namespace, s.KubeClienset)
+		result, err = util.ReadServiceCredentialsFromSecret[util.XSUAACredentials](info, capApp.Namespace, s.KubeClientset)
 	}
 
 	if err != nil {
@@ -868,7 +868,7 @@ func (s *SubscriptionHandler) getSmsDetails(capApp *v1alpha1.CAPApplication, ste
 		info   *v1alpha1.ServiceInfo
 	)
 	if info, err = s.getServiceInfo(capApp, "subscription-manager"); err == nil {
-		result, err = util.ReadServiceCredentialsFromSecret[util.SmsCredentials](info, capApp.Namespace, s.KubeClienset)
+		result, err = util.ReadServiceCredentialsFromSecret[util.SmsCredentials](info, capApp.Namespace, s.KubeClientset)
 	}
 	if err != nil {
 		util.LogError(err, "SMS credentials could not be read. Exiting..", step, capApp, nil)
@@ -1113,6 +1113,7 @@ func ProcessRequest(req *http.Request, subscriptionType subscriptionType) (*Requ
 		subscriptionDomain = getSubscriptionDomain(jsonPayload)
 	}
 
+	//subscription and tenant identifiers extracted from the incoming request
 	payload := &payloadDetails{
 		// GTID
 		subscriptionGUID:     subscriptionGUID,
@@ -1153,7 +1154,7 @@ func (c *serviceCredentials) xsAppName() string {
 }
 
 func (s *SubscriptionHandler) getServiceDependencies(capApp *v1alpha1.CAPApplication, service v1alpha1.ServiceInfo) map[string]string {
-	creds, err := util.ReadServiceCredentialsFromSecret[serviceCredentials](&service, capApp.Namespace, s.KubeClienset)
+	creds, err := util.ReadServiceCredentialsFromSecret[serviceCredentials](&service, capApp.Namespace, s.KubeClientset)
 	if err != nil {
 		util.LogError(err, "Failed to read secret for service", GetDependencies, capApp, nil, "service", service.Name, "secret", service.Secret)
 		return nil
@@ -1267,7 +1268,7 @@ func (s *SubscriptionHandler) HandleSMSGetDependenciesRequest(w http.ResponseWri
 }
 
 func NewSubscriptionHandler(clientset versioned.Interface, kubeClienset kubernetes.Interface) *SubscriptionHandler {
-	return &SubscriptionHandler{Clientset: clientset, KubeClienset: kubeClienset, httpClientGenerator: &httpClientGeneratorImpl{}}
+	return &SubscriptionHandler{Clientset: clientset, KubeClientset: kubeClienset, httpClientGenerator: &httpClientGeneratorImpl{}}
 }
 
 // Returns an sha1 checksum for a given source string
