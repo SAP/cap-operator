@@ -163,7 +163,7 @@ type ServiceInfo struct {
 	Secret string `json:"secret"`
 	// Type of service
 	Class string `json:"class"`
-	// SubscriptionDependency may be used to specify whether this service should be part of getDependencies call from subscripton service (e.g. saas-registry)
+	// SubscriptionDependency may be used to specify whether this service should be part of getDependencies call from subscription service (e.g. saas-registry)
 	SubscriptionDependency *SubscriptionDependency `json:"subscriptionDependency,omitempty"`
 }
 

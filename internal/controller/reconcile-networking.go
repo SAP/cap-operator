@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"slices"
 	"strings"
 
@@ -339,7 +340,7 @@ func buildVirtualServiceLogOffHttpRoute(cavName, logoutEndpoint string, dest *ne
 	// Default logout/logoff regex
 	uriRegex := "^|.*(logout|logoff).*"
 	if logoutEndpoint != "" {
-		uriRegex = "^|.*(" + logoutEndpoint + ").*"
+		uriRegex = "^|.*(" + regexp.QuoteMeta(logoutEndpoint) + ").*"
 	}
 
 	return &networkingv1.HTTPRoute{
@@ -402,7 +403,7 @@ func enhanceHeadersWithCookie(headers *networkingv1.Headers, cookie string, op s
 }
 
 func cookieRegex(cavName string) string {
-	return "(^|.*; )" + VersionAffinityCookieName + "=" + cavName + "($|; .*)"
+	return "(^|.*; )" + VersionAffinityCookieName + "=" + regexp.QuoteMeta(cavName) + "($|; .*)"
 }
 
 func sessionCookie(cavName string) string {
