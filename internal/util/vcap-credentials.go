@@ -66,16 +66,21 @@ const (
 	PropertyFormatJSON PropertyFormat = "json"
 )
 
-func ReadServiceCredentialsFromSecret[T any](serviceInfo *v1alpha1.ServiceInfo, ns string, kubeClient kubernetes.Interface) (*T, error) {
+func ReadServiceCredentialsFromSecret[T any](serviceInfo *v1alpha1.ServiceInfo, ns string, kubeClient kubernetes.Interface, withMeta bool) (*T, error) {
 	entry, err := CreateVCAPEntryFromSecret(serviceInfo, ns, kubeClient, nil)
 	if err != nil {
 		return nil, err
 	}
-	b, err := json.Marshal(entry["credentials"])
+	var serviceCredInfo []byte
+	if withMeta {
+		serviceCredInfo, err = json.Marshal(entry)
+	} else {
+		serviceCredInfo, err = json.Marshal(entry["credentials"])
+	}
 	if err != nil {
 		return nil, fmt.Errorf("could not serialize credentials for service %s: %s", serviceInfo.Name, err)
 	}
-	return ParseJSON[T](b)
+	return ParseJSON[T](serviceCredInfo)
 }
 
 func CreateVCAPEntryFromSecret(serviceInfo *v1alpha1.ServiceInfo, ns string, kubeClient kubernetes.Interface, kubeInformerFactory informers.SharedInformerFactory) (entry map[string]any, err error) {

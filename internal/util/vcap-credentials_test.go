@@ -194,7 +194,7 @@ func testReadServiceCredentialsFromSecret(t *testing.T) {
 
 	// test successful read
 	secretName := "metadata-with-credential-key"
-	credentials, err := ReadServiceCredentialsFromSecret[map[string]string](&v1alpha1.ServiceInfo{Name: "service-a", Class: "xyz", Secret: secretName}, "default", c)
+	credentials, err := ReadServiceCredentialsFromSecret[map[string]string](&v1alpha1.ServiceInfo{Name: "service-a", Class: "xyz", Secret: secretName}, "default", c, false)
 	if err != nil {
 		t.Errorf("could not read credentials from secret %s", secretName)
 	}
@@ -203,7 +203,7 @@ func testReadServiceCredentialsFromSecret(t *testing.T) {
 	}
 
 	// test with type mismatch
-	_, err = ReadServiceCredentialsFromSecret[[]string](&v1alpha1.ServiceInfo{Name: "service-a", Class: "xyz", Secret: secretName}, "default", c)
+	_, err = ReadServiceCredentialsFromSecret[[]string](&v1alpha1.ServiceInfo{Name: "service-a", Class: "xyz", Secret: secretName}, "default", c, false)
 	if err == nil {
 		t.Errorf("expected error when reading credentials as array from secret %s", secretName)
 	}

@@ -111,7 +111,7 @@ func createSecrets() []runtime.Object {
 				"sburl": "internal.auth.service.local",
 				"url": "https://app-domain.auth.service.local",
 				"saasregistryenabled": true,
-				"uaa": {"xsappname": "appname!b15" },
+				"uaa": {"xsappname": "saasappname!b15" },
 				"credential-type": "instance-secret"
 			}`),
 		},
@@ -130,7 +130,7 @@ func createSecrets() []runtime.Object {
 				"sburl": "internal.auth.service.local",
 				"url": "https://app-domain.auth.service.local",
 				"saasregistryenabled": true,
-				"uaa": {"xsappname": "appname!b15" },
+				"uaa": {"xsappname": "destappname!b15" },
 				"credential-type": "instance-secret"
 			}`),
 		},
@@ -149,7 +149,7 @@ func createSecrets() []runtime.Object {
 				"sburl": "internal.auth.service.local",
 				"url": "https://app-domain.auth.service.local",
 				"saasregistryenabled": true,
-				"uaa": {"xsappname": "appname!b15" },
+				"uaa": {"xsappname": "rtappname!b15" },
 				"credential-type": "instance-secret"
 			}`),
 		},
@@ -168,7 +168,7 @@ func createSecrets() []runtime.Object {
 				"sburl": "internal.auth.service.local",
 				"url": "https://app-domain.auth.service.local",
 				"saasregistryenabled": true,
-				"xsappname": "appname!b15",
+				"xsappname": "smappname!b15",
 				"credential-type": "instance-secret"
 			}`),
 		},
@@ -1641,10 +1641,10 @@ func TestGetDependencies(t *testing.T) {
 			method:             http.MethodGet,
 			expectedStatusCode: http.StatusOK,
 			expectedResponse: []map[string]string{
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
+				{"xsappname": "saasappname!b15"},
+				{"xsappname": "smappname!b15"},
+				{"appId": "destappname!b15", "appName": "destination"},
+				{"xsappname": "rtappname!b15"},
 			},
 		},
 		{
@@ -1657,10 +1657,10 @@ func TestGetDependencies(t *testing.T) {
 			},
 			expectedResponse: []map[string]string{
 				{"xsappname": "appname!b14"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
+				{"xsappname": "saasappname!b15"},
+				{"xsappname": "smappname!b15"},
+				{"appId": "destappname!b15", "appName": "destination"},
+				{"xsappname": "rtappname!b15"},
 			},
 		},
 		{
@@ -1672,10 +1672,10 @@ func TestGetDependencies(t *testing.T) {
 				ca.Spec.BTP.Services[0].SubscriptionDependency = &dep // xsuaa: explicit Auto, still not qualified by class/credentials
 			},
 			expectedResponse: []map[string]string{
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
+				{"xsappname": "saasappname!b15"},
+				{"xsappname": "smappname!b15"},
+				{"appId": "destappname!b15", "appName": "destination"},
+				{"xsappname": "rtappname!b15"},
 			},
 		},
 		{
@@ -1687,9 +1687,9 @@ func TestGetDependencies(t *testing.T) {
 				ca.Spec.BTP.Services[4].SubscriptionDependency = &dep // destination: auto-qualified by class, but Never prevents inclusion
 			},
 			expectedResponse: []map[string]string{
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
+				{"xsappname": "saasappname!b15"},
+				{"xsappname": "smappname!b15"},
+				{"xsappname": "rtappname!b15"},
 			},
 		},
 	}
@@ -1776,10 +1776,10 @@ func TestGetSMSDependencies(t *testing.T) {
 			method:             http.MethodGet,
 			expectedStatusCode: http.StatusOK,
 			expectedResponse: []map[string]string{
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
+				{"xsappname": "saasappname!b15"},
+				{"xsappname": "smappname!b15"},
+				{"appId": "destappname!b15", "appName": "destination"},
+				{"xsappname": "rtappname!b15"},
 			},
 		},
 		{
@@ -1792,10 +1792,10 @@ func TestGetSMSDependencies(t *testing.T) {
 			},
 			expectedResponse: []map[string]string{
 				{"xsappname": "appname!b14"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
+				{"xsappname": "saasappname!b15"},
+				{"xsappname": "smappname!b15"},
+				{"appId": "destappname!b15", "appName": "destination"},
+				{"xsappname": "rtappname!b15"},
 			},
 		},
 		{
@@ -1807,10 +1807,10 @@ func TestGetSMSDependencies(t *testing.T) {
 				ca.Spec.BTP.Services[0].SubscriptionDependency = &dep // xsuaa: explicit Auto, still not qualified by class/credentials
 			},
 			expectedResponse: []map[string]string{
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
+				{"xsappname": "saasappname!b15"},
+				{"xsappname": "smappname!b15"},
+				{"appId": "destappname!b15", "appName": "destination"},
+				{"xsappname": "rtappname!b15"},
 			},
 		},
 		{
@@ -1822,9 +1822,9 @@ func TestGetSMSDependencies(t *testing.T) {
 				ca.Spec.BTP.Services[4].SubscriptionDependency = &dep // destination: auto-qualified by class, but Never prevents inclusion
 			},
 			expectedResponse: []map[string]string{
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
-				{"xsappname": "appname!b15"},
+				{"xsappname": "saasappname!b15"},
+				{"xsappname": "smappname!b15"},
+				{"xsappname": "rtappname!b15"},
 			},
 		},
 	}

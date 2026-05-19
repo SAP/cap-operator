@@ -162,10 +162,15 @@ type tenantInfo struct {
 type serviceCredentials struct {
 	XSAppName           string `json:"xsappname"`
 	SaasRegistryEnabled bool   `json:"saasregistryenabled"`
-	Plan                string `json:"plan"`
 	UAA                 *struct {
 		XSAppName string `json:"xsappname"`
 	} `json:"uaa"`
+}
+
+// Credentials with plan
+type serviceMetaInfo struct {
+	Plan        string             `json:"plan"`
+	Credentials serviceCredentials `json:"credentials"`
 }
 
 type GetDependenciesAuthError struct{}
@@ -833,7 +838,7 @@ func (s *SubscriptionHandler) getSaasDetails(capApp *v1alpha1.CAPApplication, st
 		info   *v1alpha1.ServiceInfo
 	)
 	if info, err = s.getServiceInfo(capApp, "saas-registry"); err == nil {
-		result, err = util.ReadServiceCredentialsFromSecret[util.SaasRegistryCredentials](info, capApp.Namespace, s.KubeClientset)
+		result, err = util.ReadServiceCredentialsFromSecret[util.SaasRegistryCredentials](info, capApp.Namespace, s.KubeClientset, false)
 	}
 	if err != nil {
 		util.LogError(err, "SaaS Registry credentials could not be read. Exiting..", step, capApp, nil)
@@ -852,7 +857,7 @@ func (s *SubscriptionHandler) getXSUAADetails(capApp *v1alpha1.CAPApplication, s
 	if info == nil {
 		err = fmt.Errorf("could not find service with class %s in CAPApplication %s.%s", "xsuaa", capApp.Namespace, capApp.Name)
 	} else {
-		result, err = util.ReadServiceCredentialsFromSecret[util.XSUAACredentials](info, capApp.Namespace, s.KubeClientset)
+		result, err = util.ReadServiceCredentialsFromSecret[util.XSUAACredentials](info, capApp.Namespace, s.KubeClientset, false)
 	}
 
 	if err != nil {
@@ -868,7 +873,7 @@ func (s *SubscriptionHandler) getSmsDetails(capApp *v1alpha1.CAPApplication, ste
 		info   *v1alpha1.ServiceInfo
 	)
 	if info, err = s.getServiceInfo(capApp, "subscription-manager"); err == nil {
-		result, err = util.ReadServiceCredentialsFromSecret[util.SmsCredentials](info, capApp.Namespace, s.KubeClientset)
+		result, err = util.ReadServiceCredentialsFromSecret[util.SmsCredentials](info, capApp.Namespace, s.KubeClientset, false)
 	}
 	if err != nil {
 		util.LogError(err, "SMS credentials could not be read. Exiting..", step, capApp, nil)
@@ -1154,14 +1159,22 @@ func (c *serviceCredentials) xsAppName() string {
 }
 
 func (s *SubscriptionHandler) getServiceDependencies(capApp *v1alpha1.CAPApplication, service v1alpha1.ServiceInfo) map[string]string {
-	creds, err := util.ReadServiceCredentialsFromSecret[serviceCredentials](&service, capApp.Namespace, s.KubeClientset)
+	// Read credentials with metadata (as we need a check based on the plan
+	serviceCredInfo, err := util.ReadServiceCredentialsFromSecret[serviceMetaInfo](&service, capApp.Namespace, s.KubeClientset, true)
 	if err != nil {
 		util.LogError(err, "Failed to read secret for service", GetDependencies, capApp, nil, "service", service.Name, "secret", service.Secret)
 		return nil
 	}
 
-	if isServiceRelevantForDependencies(service, creds) {
-		if name := creds.xsAppName(); name != "" {
+	if isServiceRelevantForDependencies(service, serviceCredInfo) {
+
+		if name := serviceCredInfo.Credentials.xsAppName(); name != "" {
+			if isSpecialDependency(service, serviceCredInfo) {
+				return map[string]string{
+					"appName": service.Class,
+					"appId":   name,
+				}
+			}
 			return map[string]string{"xsappname": name}
 		}
 	}
@@ -1169,19 +1182,24 @@ func (s *SubscriptionHandler) getServiceDependencies(capApp *v1alpha1.CAPApplica
 	return nil
 }
 
-func isServiceRelevantForDependencies(serviceInfo v1alpha1.ServiceInfo, creds *serviceCredentials) bool {
+func isServiceRelevantForDependencies(serviceInfo v1alpha1.ServiceInfo, creds *serviceMetaInfo) bool {
 	if serviceInfo.GetSubscriptionDependency() == v1alpha1.SubscriptionDependencyAlways {
 		return true
 	}
 
 	if serviceInfo.GetSubscriptionDependency() == v1alpha1.SubscriptionDependencyAuto {
-		return serviceInfo.Class == "destination" ||
-			serviceInfo.Class == "connectivity" ||
-			(serviceInfo.Class == "auditlog" && creds.Plan == "oauth2") ||
-			creds.SaasRegistryEnabled
+		return isSpecialDependency(serviceInfo, creds) ||
+			creds.Credentials.SaasRegistryEnabled
 	}
 
 	return false
+}
+
+// These services might need some special handling for now, until there is some clarity from BTP as to how saas-registry differentiates b/w xsappname and appId/appName dependencies.
+func isSpecialDependency(serviceInfo v1alpha1.ServiceInfo, creds *serviceMetaInfo) bool {
+	return serviceInfo.Class == "destination" ||
+		serviceInfo.Class == "connectivity" ||
+		(serviceInfo.Class == "auditlog" && creds.Plan == "oauth2")
 }
 
 func (s *SubscriptionHandler) getDependencies(req *http.Request, subscriptionType subscriptionType) ([]byte, error) {
