@@ -310,6 +310,7 @@ func TestDeletion_Case5(t *testing.T) {
 				"testdata/capapplication/cat-consumer-no-finalizers-ready.yaml",
 			},
 			expectedResources: "testdata/capapplication/ca-17.expected.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplication: {{Namespace: "default", Name: "test-cap-01"}}},
 		},
 	)
 }

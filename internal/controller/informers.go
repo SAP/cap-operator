@@ -7,6 +7,7 @@ package controller
 
 import (
 	"reflect"
+	"time"
 
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -33,6 +34,8 @@ const (
 
 const queuing = "queuing resource for reconciliation"
 
+const defaultDependantDelay = 3 * time.Second
+
 var (
 	KindMap = map[int]string{
 		ResourceCAPApplication:        v1alpha1.CAPApplicationKind,
@@ -56,7 +59,6 @@ var QueueMapping map[int]map[int]string = map[int]map[int]string{
 	ResourceCAPTenantOperation:    {ResourceCAPTenantOperation: v1alpha1.CAPTenantOperationKind, ResourceCAPTenant: v1alpha1.CAPTenantKind},
 	ResourceDomain:                {ResourceDomain: v1alpha1.DomainKind},
 	ResourceClusterDomain:         {ResourceClusterDomain: v1alpha1.ClusterDomainKind},
-	ResourceSecret:                {ResourceCAPApplication: v1alpha1.CAPApplicationKind},
 	ResourceJob:                   {ResourceCAPTenantOperation: v1alpha1.CAPTenantOperationKind, ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
 	ResourceGateway:               {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
 	ResourceCertificate:           {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
@@ -77,8 +79,8 @@ func (c *Controller) initializeInformers() {
 	c.registerCAPTenantOperationListeners()
 	c.registerDomainListeners()
 	c.registerClusterDomainListeners()
-	c.registerSecretListeners()
 	c.registerJobListeners()
+	c.registerSecretListeners()
 	c.registerGatewayListeners()
 	c.registerVirtualServiceListeners()
 	c.registerDestinationRuleListeners()
@@ -98,6 +100,10 @@ func (c *Controller) initializeInformers() {
 }
 
 func (c *Controller) getEventHandlerFuncsForResource(res int) cache.ResourceEventHandlerFuncs {
+	_, ok := QueueMapping[res]
+	if !ok {
+		return cache.ResourceEventHandlerFuncs{}
+	}
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(new any) {
 			c.enqueueModifiedResource(res, new, nil)
@@ -106,7 +112,7 @@ func (c *Controller) getEventHandlerFuncsForResource(res int) cache.ResourceEven
 			c.enqueueModifiedResource(res, new, old)
 		},
 		DeleteFunc: func(old any) {
-			c.enqueueModifiedResource(res, old, nil)
+			c.enqueueModifiedResource(res, nil, old)
 		},
 	}
 }
@@ -182,13 +188,10 @@ func (c *Controller) registerGardenerDNSEntrytListeners() {
 }
 
 func (c *Controller) enqueueModifiedResource(sourceKey int, new, old any) {
-	newObj, ok := getMetaObject(new)
-	if !ok {
-		return
-	}
-
-	oldObj, ok := getMetaObject(old)
-	if ok && oldObj.GetResourceVersion() == newObj.GetResourceVersion() {
+	newObj, newOk := getMetaObject(new)
+	oldObj, oldOk := getMetaObject(old)
+	if newOk && oldOk && oldObj.GetResourceVersion() == newObj.GetResourceVersion() {
+		klog.V(2).InfoS("skipping update scenario", "key", sourceKey, "new", newObj.GetName(), "sourceKey", sourceKey)
 		return // no changes in update
 	}
 
@@ -200,22 +203,48 @@ func (c *Controller) enqueueModifiedResource(sourceKey int, new, old any) {
 
 	for dependentKey, dependentKind := range mapping {
 		q := c.queues[dependentKey]
-
+		item := determineQueueItem(dependentKey, sourceKey, oldObj, newObj, dependentKind)
+		if item == nil {
+			continue
+		}
+		// Change on the main resource
 		if dependentKey == sourceKey {
-			// when the change is directly on the CRO check for spec and annotation changes - omits status changes
-			if oldObj != nil && !hasReconciliationRelevantChanges(newObj, oldObj) {
-				continue // do not enqueue
-			}
-			klog.InfoS(queuing, "namespace", newObj.GetNamespace(), "name", newObj.GetName(), "kind", dependentKind)
-			q.Add(QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: newObj.GetName(), Namespace: newObj.GetNamespace()}})
-		} else if owner, ok := getOwnerByKind(newObj.GetOwnerReferences(), dependentKind); ok {
-			klog.InfoS(queuing, "namespace", newObj.GetNamespace(), "name", owner.Name, "kind", dependentKind)
-			q.Add(QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: owner.Name, Namespace: newObj.GetNamespace()}})
-		} else if owner, ok := getOwnerFromObjectMetadata(newObj, dependentKind); ok {
-			klog.InfoS(queuing, "namespace", owner.Namespace, "name", owner.Name, "kind", dependentKind)
-			q.Add(QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: owner.Name, Namespace: owner.Namespace}})
+			q.Add(*item)
+		} else {
+			q.AddAfter(*item, defaultDependantDelay)
 		}
 	}
+}
+
+func determineQueueItem(dependentKey int, sourceKey int, oldObj metav1.Object, newObj metav1.Object, dependentKind string) *QueueItem {
+	if dependentKey == sourceKey {
+		// Skip queue of CRO itelf on delete
+		// When the change (Update) is directly on the CRO check for spec and annotation changes - omits status changes
+		if newObj == nil || (oldObj != nil && !hasReconciliationRelevantChanges(newObj, oldObj)) {
+			return nil // do not enqueue
+		}
+		klog.InfoS(queuing, "namespace", newObj.GetNamespace(), "name", newObj.GetName(), "kind", dependentKind)
+		return &QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: newObj.GetName(), Namespace: newObj.GetNamespace()}}
+	}
+	// Skip Queue of Owner on create --> the owner would have created these anyway
+	if oldObj == nil {
+		return nil
+	}
+	// Get the relevant obj to find the owner (usually newObj)
+	obj := newObj
+	// In case of delete newObj doesn't exist, hence use the oldObj to determine owner
+	if newObj == nil {
+		obj = oldObj
+	}
+	if owner, ok := getOwnerByKind(obj.GetOwnerReferences(), dependentKind); ok {
+		klog.InfoS(queuing, "namespace", obj.GetNamespace(), "name", owner.Name, "kind", dependentKind)
+		return &QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: owner.Name, Namespace: obj.GetNamespace()}}
+	} else if owner, ok := getOwnerFromObjectMetadata(obj, dependentKind); ok {
+		klog.InfoS(queuing, "namespace", owner.Namespace, "name", owner.Name, "kind", dependentKind)
+		return &QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: owner.Name, Namespace: owner.Namespace}}
+	}
+	klog.V(2).InfoS("skipping --> owner not found", "namespace", obj.GetNamespace(), "name", obj.GetName(), "kind", dependentKind, "sourceKey", sourceKey)
+	return nil
 }
 
 func getMetaObject(obj any) (metav1.Object, bool) {

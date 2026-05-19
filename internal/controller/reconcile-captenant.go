@@ -20,8 +20,8 @@ import (
 )
 
 type IdentifiedCAPTenantOperations struct {
-	active    []v1alpha1.CAPTenantOperation
-	processed []v1alpha1.CAPTenantOperation
+	active    []*v1alpha1.CAPTenantOperation
+	processed []*v1alpha1.CAPTenantOperation
 }
 
 type CAPTenantOperationTypeSelector string
@@ -74,6 +74,8 @@ const (
 	EventActionPrepare                   = "Prepare"
 	EventActionUpgrade                   = "Upgrade"
 )
+
+const tenantOperationTimeout = 30 * time.Second
 
 var operationTypeMsgMap = map[v1alpha1.CAPTenantOperationType]string{
 	v1alpha1.CAPTenantOperationTypeProvisioning:   string(Provisioning),
@@ -129,7 +131,7 @@ var TenantOperationStatusMap = map[v1alpha1.CAPTenantOperationType]StatusInfo{
 
 func getTenantReconcileResultConsideringDeletion(cat *v1alpha1.CAPTenant, fallback *ReconcileResult) *ReconcileResult {
 	if cat.DeletionTimestamp != nil && cat.Status.State != v1alpha1.CAPTenantStateDeleting {
-		return NewReconcileResultWithResource(ResourceCAPTenant, cat.Name, cat.Namespace, 15*time.Second)
+		return NewReconcileResultWithResource(ResourceCAPTenant, cat.Name, cat.Namespace, tenantOperationTimeout)
 	}
 	return fallback
 }
@@ -138,7 +140,7 @@ var handleWaitingForTenantOperation = func(ctx context.Context, c *Controller, c
 	// NOTE: not returning a requeue item is ok, as changes in CAPTenantOperation status will queue the item via the informer
 	util.LogInfo("Waiting for tenant operation to complete", operationTypeMsgMap[ctop.Spec.Operation], cat, ctop, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 	cat.SetStatusWithReadyCondition(target.state, target.conditionStatus, target.conditionReason, fmt.Sprintf("waiting for %s %s.%s of type %s to complete", v1alpha1.CAPTenantOperationKind, ctop.Namespace, ctop.Name, ctop.Spec.Operation))
-	return NewReconcileResultWithResource(ResourceCAPTenant, cat.Name, cat.Namespace, 15*time.Second), nil // requeue while the tenant operation is being processed
+	return NewReconcileResultWithResource(ResourceCAPTenant, cat.Name, cat.Namespace, tenantOperationTimeout), nil // requeue while the tenant operation is being processed
 }
 
 var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *Controller, cat *v1alpha1.CAPTenant, target StateCondition, ctop *v1alpha1.CAPTenantOperation) (*ReconcileResult, error) {
@@ -270,7 +272,7 @@ func (c *Controller) updateCAPTenant(ctx context.Context, cat *v1alpha1.CAPTenan
 	return
 }
 
-func findLatestCreatedTenantOperation(ops []v1alpha1.CAPTenantOperation, selector CAPTenantOperationTypeSelector) (latest *v1alpha1.CAPTenantOperation) {
+func findLatestCreatedTenantOperation(ops []*v1alpha1.CAPTenantOperation, selector CAPTenantOperationTypeSelector) (latest *v1alpha1.CAPTenantOperation) {
 	for _, op := range ops {
 		// workaround to fix pointer resolution after loop -> https://stackoverflow.com/questions/45967305/copying-the-address-of-a-loop-variable-in-go
 		ctop := op
@@ -278,7 +280,7 @@ func findLatestCreatedTenantOperation(ops []v1alpha1.CAPTenantOperation, selecto
 			continue
 		}
 		if latest == nil || ctop.CreationTimestamp.After(latest.CreationTimestamp.Time) {
-			latest = &ctop
+			latest = ctop
 		}
 	}
 
@@ -542,14 +544,14 @@ func (c *Controller) getCAPTenantOperationsByType(ctx context.Context, cat *v1al
 		return nil, err
 	}
 
-	// NOTE: do not use cache for listing (this is not a very frequent operation)
-	ops, err := c.crdClient.SmeV1alpha1().CAPTenantOperations(cat.Namespace).List(ctx, metav1.ListOptions{LabelSelector: selector.String()})
+	// Check if tenant operations already exist via cache
+	ops, err := c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Lister().CAPTenantOperations(cat.Namespace).List(selector)
 	if err != nil {
 		return nil, err
 	}
 
-	var results = IdentifiedCAPTenantOperations{active: []v1alpha1.CAPTenantOperation{}, processed: []v1alpha1.CAPTenantOperation{}}
-	for _, ctop := range ops.Items {
+	var results = IdentifiedCAPTenantOperations{active: []*v1alpha1.CAPTenantOperation{}, processed: []*v1alpha1.CAPTenantOperation{}}
+	for _, ctop := range ops {
 		if isCROConditionReady(ctop.Status.GenericStatus) {
 			results.processed = append(results.processed, ctop)
 		} else {
