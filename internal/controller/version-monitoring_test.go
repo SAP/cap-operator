@@ -14,6 +14,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -56,8 +57,19 @@ func TestMonitoringEnv(t *testing.T) {
 			mEnv := parseMonitoringEnv()
 
 			if tt.add == nil {
-				if mEnv != nil {
-					t.Errorf("did not expect monitoring environment")
+				// New contract: always returns non-nil *monitoringEnv with empty address.
+				if mEnv == nil {
+					t.Errorf("expected non-nil monitoringEnv even when PROMETHEUS_ADDRESS is unset")
+					return
+				}
+				if mEnv.address != "" {
+					t.Errorf("expected empty address when PROMETHEUS_ADDRESS is unset, got %q", mEnv.address)
+				}
+				if mEnv.acquireClientRetryDelay != time.Hour {
+					t.Errorf("expected default acquire client retry interval (1h), got %v", mEnv.acquireClientRetryDelay)
+				}
+				if mEnv.evaluationInterval != 10*time.Minute {
+					t.Errorf("expected default evaluation interval (10m), got %v", mEnv.evaluationInterval)
 				}
 				return
 			}
@@ -114,27 +126,44 @@ func setupTestControllerWithInitialResources(t *testing.T, initialResources []st
 }
 
 func TestGracefulShutdownMonitoringRoutines(t *testing.T) {
-	// Deregister metrics at the end of the test
-	defer deregisterMetrics()
+	t.Run("with PROMETHEUS_ADDRESS set", func(t *testing.T) {
+		defer deregisterMetrics()
 
-	c := setupTestControllerWithInitialResources(t, []string{})
+		c := setupTestControllerWithInitialResources(t, []string{})
 
-	s, _ := getPromServer(false, []queryTestCase{})
-	defer s.Close()
+		s, _ := getPromServer(false, []queryTestCase{})
+		defer s.Close()
 
-	os.Setenv(EnvPrometheusAddress, s.URL)
-	defer os.Unsetenv(EnvPrometheusAddress)
+		os.Setenv(EnvPrometheusAddress, s.URL)
+		defer os.Unsetenv(EnvPrometheusAddress)
 
-	testCtx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
+		testCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
 
-	var wg sync.WaitGroup
-
-	wg.Go(func() {
-		c.startVersionCleanup(testCtx)
+		var wg sync.WaitGroup
+		wg.Go(func() {
+			c.startVersionCleanup(testCtx)
+		})
+		wg.Wait() // goroutines must exit when context is cancelled — or the test times out
 	})
 
-	wg.Wait() // check whether routines are closing - or test timeout
+	t.Run("without PROMETHEUS_ADDRESS set", func(t *testing.T) {
+		defer deregisterMetrics()
+
+		// Ensure the env var is not set.
+		os.Unsetenv(EnvPrometheusAddress)
+
+		c := setupTestControllerWithInitialResources(t, []string{})
+
+		testCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		var wg sync.WaitGroup
+		wg.Go(func() {
+			c.startVersionCleanup(testCtx)
+		})
+		wg.Wait() // goroutines must exit when context is cancelled — or the test times out
+	})
 }
 
 func TestVersionSelectionForCleanup(t *testing.T) {
@@ -368,6 +397,12 @@ func mockPromQueryHandler(testCases []queryTestCase, query string, w http.Respon
 	)
 }
 
+// getPromServer starts a mock Prometheus HTTP server.
+// When unavailable is true the /api/v1/status/runtimeinfo endpoint returns 503.
+// The second return value is a function that returns the set of query strings
+// that were received by the /api/v1/query endpoint; the third return value is a
+// function that returns the total number of /api/v1/status/runtimeinfo requests
+// that were received (useful for rate-limiting assertions).
 func getPromServer(unavailable bool, cases []queryTestCase) (*httptest.Server, func() map[string]bool) {
 	calledQueries := map[string]bool{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -390,46 +425,108 @@ func getPromServer(unavailable bool, cases []queryTestCase) (*httptest.Server, f
 	}
 }
 
-func Test_initializeVersionCleanupOrchestrator(t *testing.T) {
-	tests := []struct {
-		name              string
-		serverUnavailable bool
-	}{
-		{
-			name:              "initialize cleanup orchestrator and verify connection",
-			serverUnavailable: false,
-		},
-		{
-			name:              "ensure retry of cleanup orchestrator initialization",
-			serverUnavailable: true,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s, _ := getPromServer(tt.serverUnavailable, []queryTestCase{})
-			defer s.Close()
-			var o *cleanupOrchestrator
-			testCtx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-			go func() {
-				o = initializeVersionCleanupOrchestrator(testCtx, &monitoringEnv{address: s.URL, evaluationInterval: 2 * time.Minute, acquireClientRetryDelay: 30 * time.Second})
-				if o != nil {
-					cancel()
-				}
-			}()
-			<-testCtx.Done()
-			if tt.serverUnavailable {
-				if testCtx.Err() == nil || testCtx.Err() != context.DeadlineExceeded {
-					t.Error("expected to exceed test context deadline")
-				}
-			} else {
-				if o == nil {
-					t.Errorf("could not initialize prometheus client")
-				}
-				defer o.queue.ShutDown()
+// getPromServerWithCounter is like getPromServer but also returns an atomic
+// counter tracking how many times /api/v1/status/runtimeinfo was called.
+func getPromServerWithCounter(unavailable bool, cases []queryTestCase) (*httptest.Server, func() map[string]bool, *atomic.Int64) {
+	calledQueries := map[string]bool{}
+	var runtimeInfoHits atomic.Int64
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/status/runtimeinfo" {
+			runtimeInfoHits.Add(1)
+			mockPromRuntimeInfoHandler(unavailable, w)
+			return
+		}
+		if r.URL.Path == "/api/v1/query" {
+			q := r.FormValue("query")
+			if q != "" {
+				calledQueries[q] = false
 			}
+			mockPromQueryHandler(cases, q, w)
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	return server, func() map[string]bool { return calledQueries }, &runtimeInfoHits
+}
 
+func Test_initializeVersionCleanupOrchestrator(t *testing.T) {
+	t.Run("initialize cleanup orchestrator - server available", func(t *testing.T) {
+		s, _, hits := getPromServerWithCounter(false, []queryTestCase{})
+		defer s.Close()
+
+		o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+			address:                 s.URL,
+			evaluationInterval:      2 * time.Minute,
+			acquireClientRetryDelay: 30 * time.Second,
 		})
-	}
+
+		if o == nil {
+			t.Fatal("expected non-nil orchestrator")
+		}
+		defer o.queue.ShutDown()
+
+		// Provider should report the API as available on first probe.
+		api, ok := o.clientProvider.Get(context.TODO())
+		if !ok || api == nil {
+			t.Errorf("expected provider to report prometheus API as available")
+		}
+		if hits.Load() == 0 {
+			t.Errorf("expected at least one runtimeinfo probe to have been made")
+		}
+	})
+
+	t.Run("initialize cleanup orchestrator - server unavailable", func(t *testing.T) {
+		s, _, hits := getPromServerWithCounter(true, []queryTestCase{})
+		defer s.Close()
+
+		o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+			address:                 s.URL,
+			evaluationInterval:      2 * time.Minute,
+			acquireClientRetryDelay: 30 * time.Second,
+		})
+
+		if o == nil {
+			t.Fatal("expected non-nil orchestrator even when server is unavailable")
+		}
+		defer o.queue.ShutDown()
+
+		// Provider should immediately report unavailable (server returns 503).
+		api, ok := o.clientProvider.Get(context.TODO())
+		if ok || api != nil {
+			t.Errorf("expected provider to report prometheus API as unavailable")
+		}
+		if hits.Load() == 0 {
+			t.Errorf("expected at least one runtimeinfo probe to have been attempted")
+		}
+	})
+
+	t.Run("initialize cleanup orchestrator - empty address", func(t *testing.T) {
+		// Start a server but do NOT pass its URL to the orchestrator.
+		s, _, hits := getPromServerWithCounter(false, []queryTestCase{})
+		defer s.Close()
+
+		o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+			address:                 "",
+			evaluationInterval:      2 * time.Minute,
+			acquireClientRetryDelay: 30 * time.Second,
+		})
+
+		if o == nil {
+			t.Fatal("expected non-nil orchestrator when address is empty")
+		}
+		defer o.queue.ShutDown()
+
+		// Provider must always report unavailable when address is empty.
+		api, ok := o.clientProvider.Get(context.TODO())
+		if ok || api != nil {
+			t.Errorf("expected provider to report prometheus API as unavailable with empty address")
+		}
+
+		// The mock server must have received zero runtimeinfo hits.
+		if hits.Load() != 0 {
+			t.Errorf("expected zero runtimeinfo hits when address is empty, got %d", hits.Load())
+		}
+	})
 }
 
 func TestVersionCleanupEvaluation(t *testing.T) {
@@ -609,5 +706,186 @@ func TestVersionCleanupEvaluation(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+// TestVersionCleanupEvaluation_NoPrometheus_NoDeletionRules verifies that a
+// CAV whose workloads have NO deletionRules is deleted even when Prometheus is
+// unavailable (empty address → noopPromClientProvider).
+func TestVersionCleanupEvaluation_NoPrometheus_NoDeletionRules(t *testing.T) {
+	defer deregisterMetrics()
+
+	// v2 is the latest Ready version; v1 (no deletion rules) is outdated.
+	c := setupTestControllerWithInitialResources(t, []string{
+		"testdata/version-monitoring/ca-cleanup-enabled.yaml",
+		"testdata/version-monitoring/cav-v1-no-deletion-rules.yaml",
+		"testdata/version-monitoring/cav-v2-deletion-rules.yaml",
+		"testdata/version-monitoring/cat-provider-v2-ready.yaml",
+	})
+
+	o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+		address:                 "", // no Prometheus → noopPromClientProvider
+		evaluationInterval:      10 * time.Minute,
+		acquireClientRetryDelay: time.Hour,
+	})
+	defer o.queue.ShutDown()
+
+	item := NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}
+	o.queue.Add(item)
+	_ = c.processVersionCleanupQueueItem(context.TODO(), o)
+
+	// No requeues expected.
+	if o.queue.NumRequeues(item) != 0 {
+		t.Errorf("expected zero requeues for version without deletion rules, got %d", o.queue.NumRequeues(item))
+	}
+
+	// v1 must have been deleted.
+	_, err := c.crdClient.SmeV1alpha1().CAPApplicationVersions("default").Get(context.TODO(), "test-cap-01-cav-v1", v1.GetOptions{})
+	if err == nil || !errors.IsNotFound(err) {
+		t.Errorf("expected version test-cap-01-cav-v1 to be deleted when it has no deletion rules and Prometheus is unavailable")
+	}
+}
+
+// TestVersionCleanupEvaluation_NoPrometheus_WithDeletionRules verifies that a
+// CAV whose workloads DO have deletionRules is NOT deleted when Prometheus is
+// unavailable, and that no requeue storm occurs.
+func TestVersionCleanupEvaluation_NoPrometheus_WithDeletionRules(t *testing.T) {
+	defer deregisterMetrics()
+
+	c := setupTestControllerWithInitialResources(t, []string{
+		"testdata/version-monitoring/ca-cleanup-enabled.yaml",
+		"testdata/version-monitoring/cav-v1-deletion-rules.yaml",
+		"testdata/version-monitoring/cav-v2-deletion-rules.yaml",
+		"testdata/version-monitoring/cat-provider-v2-ready.yaml",
+	})
+
+	o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+		address:                 "",
+		evaluationInterval:      10 * time.Minute,
+		acquireClientRetryDelay: time.Hour,
+	})
+	defer o.queue.ShutDown()
+
+	item := NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}
+	o.queue.Add(item)
+	_ = c.processVersionCleanupQueueItem(context.TODO(), o)
+
+	// No requeues expected (skipped, not an error).
+	if o.queue.NumRequeues(item) != 0 {
+		t.Errorf("expected zero requeues when CAV has deletion rules but Prometheus is unavailable, got %d", o.queue.NumRequeues(item))
+	}
+
+	// v1 must NOT have been deleted.
+	_, err := c.crdClient.SmeV1alpha1().CAPApplicationVersions("default").Get(context.TODO(), "test-cap-01-cav-v1", v1.GetOptions{})
+	if err != nil {
+		t.Errorf("expected version test-cap-01-cav-v1 to still exist when deletion rules cannot be evaluated: %v", err)
+	}
+}
+
+// TestVersionCleanupEvaluation_PromUnreachable tests two evaluation cycles
+// against an unreachable Prometheus server:
+//   - a CAV WITH deletionRules must NOT be deleted
+//   - a CAV WITHOUT deletionRules MUST be deleted
+func TestVersionCleanupEvaluation_PromUnreachable(t *testing.T) {
+	s, _ := getPromServer(true, []queryTestCase{}) // server always returns 503
+	defer s.Close()
+
+	t.Run("with deletion rules - not deleted", func(t *testing.T) {
+		defer deregisterMetrics()
+
+		c := setupTestControllerWithInitialResources(t, []string{
+			"testdata/version-monitoring/ca-cleanup-enabled.yaml",
+			"testdata/version-monitoring/cav-v1-deletion-rules.yaml",
+			"testdata/version-monitoring/cav-v2-deletion-rules.yaml",
+			"testdata/version-monitoring/cat-provider-v2-ready.yaml",
+		})
+
+		o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+			address:                 s.URL,
+			evaluationInterval:      10 * time.Minute,
+			acquireClientRetryDelay: time.Millisecond, // short so the first probe is attempted
+		})
+		defer o.queue.ShutDown()
+
+		item := NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}
+		o.queue.Add(item)
+		_ = c.processVersionCleanupQueueItem(context.TODO(), o)
+
+		if o.queue.NumRequeues(item) != 0 {
+			t.Errorf("expected zero requeues for CAV with deletion rules when Prometheus is unreachable, got %d", o.queue.NumRequeues(item))
+		}
+
+		_, err := c.crdClient.SmeV1alpha1().CAPApplicationVersions("default").Get(context.TODO(), "test-cap-01-cav-v1", v1.GetOptions{})
+		if err != nil {
+			t.Errorf("expected version test-cap-01-cav-v1 to still exist: %v", err)
+		}
+	})
+
+	t.Run("without deletion rules - deleted", func(t *testing.T) {
+		defer deregisterMetrics()
+
+		c := setupTestControllerWithInitialResources(t, []string{
+			"testdata/version-monitoring/ca-cleanup-enabled.yaml",
+			"testdata/version-monitoring/cav-v1-no-deletion-rules.yaml",
+			"testdata/version-monitoring/cav-v2-deletion-rules.yaml",
+			"testdata/version-monitoring/cat-provider-v2-ready.yaml",
+		})
+
+		o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+			address:                 s.URL,
+			evaluationInterval:      10 * time.Minute,
+			acquireClientRetryDelay: time.Millisecond,
+		})
+		defer o.queue.ShutDown()
+
+		item := NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}
+		o.queue.Add(item)
+		_ = c.processVersionCleanupQueueItem(context.TODO(), o)
+
+		if o.queue.NumRequeues(item) != 0 {
+			t.Errorf("expected zero requeues for CAV without deletion rules, got %d", o.queue.NumRequeues(item))
+		}
+
+		_, err := c.crdClient.SmeV1alpha1().CAPApplicationVersions("default").Get(context.TODO(), "test-cap-01-cav-v1", v1.GetOptions{})
+		if err == nil || !errors.IsNotFound(err) {
+			t.Errorf("expected version test-cap-01-cav-v1 to be deleted when it has no deletion rules")
+		}
+	})
+}
+
+// TestVersionCleanupEvaluation_RuntimeInfoRateLimited verifies that the
+// cachedPromClientProvider issues at most one runtimeinfo probe per
+// acquireClientRetryDelay window. Two back-to-back Get() calls should only
+// result in a single HTTP hit on the mock server.
+func TestVersionCleanupEvaluation_RuntimeInfoRateLimited(t *testing.T) {
+	s, _, hits := getPromServerWithCounter(true, []queryTestCase{}) // server always returns 503
+	defer s.Close()
+
+	// Use a generous retry delay so that the second immediate call is still
+	// within the rate-limit window.
+	o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+		address:                 s.URL,
+		evaluationInterval:      10 * time.Minute,
+		acquireClientRetryDelay: 5 * time.Second,
+	})
+	defer o.queue.ShutDown()
+
+	ctx := context.TODO()
+
+	// First call: triggers a probe (lastProbeAt is zero).
+	api1, ok1 := o.clientProvider.Get(ctx)
+	if ok1 || api1 != nil {
+		t.Errorf("expected first Get() to report unavailable (server returns 503)")
+	}
+
+	// Second call: must be rate-limited; no additional HTTP request should be made.
+	api2, ok2 := o.clientProvider.Get(ctx)
+	if ok2 || api2 != nil {
+		t.Errorf("expected second Get() to report unavailable")
+	}
+
+	// Only one runtimeinfo probe must have hit the server.
+	if hits.Load() > 1 {
+		t.Errorf("expected at most 1 runtimeinfo probe, got %d", hits.Load())
 	}
 }
