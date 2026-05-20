@@ -18,7 +18,7 @@ The following environment variables are used to configure CAP Operator.
 - `DNS_MANAGER`: The external DNS manager to use. Possible values:
   - `gardener`: ["Gardener" external DNS manager](https://github.com/gardener/external-dns-management)
   - `kubernetes`: [External DNS management from Kubernetes](https://github.com/kubernetes-sigs/external-dns)
-- `PROMETHEUS_ADDRESS`: URL of the Prometheus server for executing PromQL queries, for example `http://prometheus-operated.monitoring.svc.cluster.local:9090`. If not set, the version monitoring function is not started.
+- `PROMETHEUS_ADDRESS`: URL of the Prometheus server for executing PromQL queries, for example `http://prometheus-operated.monitoring.svc.cluster.local:9090`. If not set, the controller still runs the version cleanup loop; however, only versions whose workloads have no `deletionRules` defined are eligible for cleanup — versions that have `deletionRules` are skipped until a Prometheus connection becomes available.
 - `PROM_ACQUIRE_CLIENT_RETRY_DELAY`: Time delay between retries when Prometheus client creation or connection check fails.
 - `METRICS_EVAL_INTERVAL`: Time interval between iterations where outdated versions are identified and queued for evaluation.
 - `MAX_CONCURRENT_RECONCILES_CAP_APPLICATION`: Maximum number of concurrent reconciles for `CAPApplication` (for example, `1`).

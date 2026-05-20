@@ -11,7 +11,7 @@ In a continuous delivery environment where new application versions are deployed
 
 ## Integration with Prometheus
 
-[Prometheus](https://prometheus.io/) is the industry standard for monitoring application metrics and provides a wide variety of tools for managing and reporting metrics. The CAP Operator controller can be connected to a Prometheus server by setting the `PROMETHEUS_ADDRESS` environment variable (see [Configuration](../../configuration)). The controller then queries application-related metrics based on the workload specification of `CAPApplicationVersion` resources. If no Prometheus address is supplied, the version monitoring function is not started.
+[Prometheus](https://prometheus.io/) is the industry standard for monitoring application metrics and provides a wide variety of tools for managing and reporting metrics. The CAP Operator controller can be connected to a Prometheus server by setting the `PROMETHEUS_ADDRESS` environment variable (see [Configuration](../../configuration)). The controller then queries application-related metrics based on the workload specification of `CAPApplicationVersion` resources. Prometheus is only required to evaluate workloads that declare `deletionRules`. When `PROMETHEUS_ADDRESS` is not set, or the configured server is unreachable, the cleanup loop still runs. Versions whose deployment workloads declare no `deletionRules` can still be cleaned up in that case. Versions that do declare `deletionRules` are skipped — they are neither deleted nor surfaced as errors — and will be re-evaluated on the next cycle once Prometheus becomes available again.
 
 ## Configure `CAPApplication`
 
@@ -147,4 +147,6 @@ At specified intervals (controlled by the controller environment variable `METRI
   - `status.currentCAPApplicationVersionInstance` — the tenant's current version.
   - `spec.version` — the version a tenant is upgrading to.
 
-Workloads from the identified versions are then evaluated against their `deletionRules`. Workloads without `deletionRules` are automatically eligible for cleanup. All deployment workloads of a version must satisfy the evaluation criteria for the version to be deleted.
+Workloads from the identified versions are then evaluated against their `deletionRules`. Workloads without `deletionRules` are automatically eligible for cleanup regardless of whether Prometheus is configured or reachable. All deployment workloads of a version must satisfy the evaluation criteria for the version to be deleted.
+
+When a workload declares `deletionRules` and the Prometheus client is currently unavailable — either because no `PROMETHEUS_ADDRESS` has been configured, or because the `Runtimeinfo` probe against the configured server is failing — that workload is treated as not eligible and the version is left untouched until the next evaluation cycle. Reachability is re-checked at most once per `PROM_ACQUIRE_CLIENT_RETRY_DELAY` interval, so a recovered Prometheus server will be detected and used on the next cycle after that delay elapses.

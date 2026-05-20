@@ -22,3 +22,6 @@ testbin/*
 
 # /tmp
 tmp/
+
+# coding agents
+.pi
