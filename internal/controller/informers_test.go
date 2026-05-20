@@ -33,6 +33,7 @@ func TestController_initializeInformers(t *testing.T) {
 	tests := []struct {
 		name            string
 		expectedResult  bool
+		ownerOnlyCheck  bool
 		invalidOwnerRef bool
 		res             int
 		itemName        string
@@ -55,6 +56,7 @@ func TestController_initializeInformers(t *testing.T) {
 		{
 			name:           "Test enqueueModifiedResource (ResourceCertificate) valid owner",
 			res:            ResourceCertificate,
+			ownerOnlyCheck: true,
 			expectedResult: true,
 			itemName:       "test-cert",
 			itemNamespace:  corev1.NamespaceDefault,
@@ -62,6 +64,7 @@ func TestController_initializeInformers(t *testing.T) {
 		{
 			name:            "Test enqueueModifiedResource (ResourceCertificate) invalid owner",
 			res:             ResourceCertificate,
+			ownerOnlyCheck:  true,
 			expectedResult:  false,
 			invalidOwnerRef: true,
 			itemName:        "test-cert",
@@ -114,7 +117,7 @@ func TestController_initializeInformers(t *testing.T) {
 			}
 
 			testC.initializeInformers()
-			var res any
+			var res, oldRes any
 			switch tt.res {
 			case ResourceCAPApplication:
 				res = createCaCRO(tt.itemName, false)
@@ -135,17 +138,22 @@ func TestController_initializeInformers(t *testing.T) {
 					cert.Annotations[AnnotationOwnerIdentifier] = tt.itemNamespace + "." + tt.itemName
 					cert.Labels[LabelOwnerIdentifierHash] = sha1Sum(tt.itemNamespace, tt.itemName)
 				}
-				res = cert
+				oldRes = cert
+				newCert := cert.DeepCopy()
+				newCert.SetResourceVersion("2")
+				res = newCert
 			case 999:
 				res = &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: tt.itemName}}
 			}
 			// Add/delete
-			testC.enqueueModifiedResource(tt.res, res, nil)
-			if expectedResult != tt.expectedResult {
-				t.Error("Unexpected result", expectedResult)
+			if !tt.ownerOnlyCheck {
+				testC.enqueueModifiedResource(tt.res, res, nil)
+				if expectedResult != tt.expectedResult {
+					t.Error("Unexpected result", expectedResult)
+				}
 			}
 			// Update
-			testC.enqueueModifiedResource(tt.res, res, res)
+			testC.enqueueModifiedResource(tt.res, res, oldRes)
 			if expectedResult != tt.expectedResult {
 				t.Error("Unexpected result", expectedResult)
 			}

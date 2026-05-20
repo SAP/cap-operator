@@ -7,6 +7,7 @@ package controller
 
 import (
 	"reflect"
+	"time"
 
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -106,7 +107,7 @@ func (c *Controller) getEventHandlerFuncsForResource(res int) cache.ResourceEven
 			c.enqueueModifiedResource(res, new, old)
 		},
 		DeleteFunc: func(old any) {
-			c.enqueueModifiedResource(res, old, nil)
+			c.enqueueModifiedResource(res, nil, old)
 		},
 	}
 }
@@ -183,6 +184,7 @@ func (c *Controller) registerGardenerDNSEntrytListeners() {
 
 func (c *Controller) enqueueModifiedResource(sourceKey int, new, old any) {
 	newObj, ok := getMetaObject(new)
+	// Skip deletes in general!
 	if !ok {
 		return
 	}
@@ -208,12 +210,16 @@ func (c *Controller) enqueueModifiedResource(sourceKey int, new, old any) {
 			}
 			klog.InfoS(queuing, "namespace", newObj.GetNamespace(), "name", newObj.GetName(), "kind", dependentKind)
 			q.Add(QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: newObj.GetName(), Namespace: newObj.GetNamespace()}})
+		}
+		// Only queue parent items on updates
+		if old == nil {
+			continue
 		} else if owner, ok := getOwnerByKind(newObj.GetOwnerReferences(), dependentKind); ok {
 			klog.InfoS(queuing, "namespace", newObj.GetNamespace(), "name", owner.Name, "kind", dependentKind)
-			q.Add(QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: owner.Name, Namespace: newObj.GetNamespace()}})
+			q.AddAfter(QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: owner.Name, Namespace: newObj.GetNamespace()}}, time.Second)
 		} else if owner, ok := getOwnerFromObjectMetadata(newObj, dependentKind); ok {
 			klog.InfoS(queuing, "namespace", owner.Namespace, "name", owner.Name, "kind", dependentKind)
-			q.Add(QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: owner.Name, Namespace: owner.Namespace}})
+			q.AddAfter(QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: owner.Name, Namespace: owner.Namespace}}, time.Second)
 		}
 	}
 }
