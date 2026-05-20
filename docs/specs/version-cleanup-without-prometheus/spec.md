@@ -1,18 +1,23 @@
 ---
 workspace: ../../..
 planning:
-  model: hai-claude/anthropic--claude-4.6-opus
+  model: hai-claude/anthropic--claude-4.7-opus
   reviewer_model: hai-gemini/gemini-2.5-pro
   max_rounds: 3
   timeout: 30m
+  image: alpine
 execution:
   model: hai-claude/anthropic--claude-4.6-sonnet
   timeout: 8m
   concurrency: 3
-  image: go
+  image: go-alpine
 correction:
   max_retries: 2
   max_waves: 2
+acceptance:
+  model: hai-claude/anthropic--claude-4.7-opus
+  image: go-alpine
+  timeout: 15m
 ---
 
 # Allow CAPApplicationVersion Cleanup Without a Prometheus Connection
@@ -324,14 +329,50 @@ code is updated. If the orchestrator's `api` field is renamed or
 replaced, update the tests' construction of `cleanupOrchestrator` to
 match — keep the same scenarios.
 
-## Acceptance / done
+## Acceptance
 
-- `go build ./...` succeeds.
-- `go test ./internal/controller/...` succeeds, including the new tests
-  above.
-- `go test ./...` succeeds.
-- `grep -n "if mEnv == nil" internal/controller/version-monitoring.go`
-  no longer returns the early-return inside `startVersionCleanup`.
-- The two doc files listed under "Documentation updates" are updated and
-  no longer claim that version monitoring is disabled when
-  `PROMETHEUS_ADDRESS` is unset.
+The acceptor will run the merged code in the `go-alpine` image and verify
+each of the following criteria. Any single failing criterion produces a
+rejection naming that criterion, so the re-planner can target the gap.
+
+1. **Build is green.** `go build ./...` exits 0 from the repo root.
+2. **Full test suite is green.** `go test ./...` exits 0 from the repo
+   root.
+3. **Controller tests are green and include the new coverage.**
+   `go test ./internal/controller/...` exits 0, and the test binary
+   reports tests covering at least:
+   - cleanup loop startup with `PROMETHEUS_ADDRESS` unset (graceful
+     shutdown);
+   - `parseMonitoringEnv()` returning a non-nil env when the address is
+     unset;
+   - eligibility-based deletion of a CAV with no `deletionRules` when no
+     Prometheus client is available;
+   - skipping (no deletion, no panic, no error-driven requeue storm) of a
+     CAV with `deletionRules` when no Prometheus client is available;
+   - rate-limited reachability probing (at most one `runtimeinfo` request
+     per `acquireClientRetryDelay` window across consecutive cycles).
+4. **Early-return is gone.** `internal/controller/version-monitoring.go`
+   no longer contains an `if mEnv == nil { return }` (or equivalent
+   early `return`) inside `startVersionCleanup`. The function always
+   reaches the goroutine-launching code path for any non-cancelled
+   context.
+5. **Annotation contract is unchanged.** A `grep` for
+   `AnnotationEnableCleanupMonitoring` over `internal/controller/`
+   shows the same accepted values (`"true"`, `"dry-run"`,
+   case-insensitive) — no new accepted values, no inverted defaults,
+   no removal of the existing filter in
+   `queueVersionsForCleanupEvaluation`.
+6. **API types and CRDs untouched.** `git diff` against the merge base
+   shows no changes under `pkg/apis/sme.sap.com/v1alpha1/`,
+   `pkg/client/`, or `crds/`.
+7. **Documentation reflects the new behaviour.**
+   - `website/content/en/docs/configuration/_index.md` no longer claims
+     that version monitoring is disabled when `PROMETHEUS_ADDRESS` is
+     unset; instead, it states that the cleanup loop still runs and
+     describes which versions are eligible without Prometheus.
+   - `website/content/en/docs/usage/version-monitoring.md` ("Integration
+     with Prometheus" and "Evaluating CAPApplicationVersion Resources
+     for Cleanup" sections) describes the new contract: cleanup runs
+     unconditionally, workloads without `deletionRules` are eligible
+     without Prometheus, workloads with `deletionRules` are skipped
+     until Prometheus is reachable.
