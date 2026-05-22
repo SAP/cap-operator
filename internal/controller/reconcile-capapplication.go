@@ -20,6 +20,7 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 )
 
 const (
@@ -361,18 +362,40 @@ func (c *Controller) getRelevantTenantsForCA(ca *v1alpha1.CAPApplication) ([]*v1
 	if ca.IsServicesOnly() {
 		return []*v1alpha1.CAPTenant{}, nil
 	}
-	tenantLabels := map[string]string{}
+	migratedTenantLabels := map[string]string{}
+	migratedTenants := []*v1alpha1.CAPTenant{}
 	if ca.Spec.ProviderSubaccountId != "" {
-		tenantLabels[LabelAppIdHash] = sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
-	} else {
-		tenantLabels[LabelBTPApplicationIdentifierHash] = sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName)
-	}
-	selector, err := labels.ValidatedSelectorFromSet(tenantLabels)
-	if err != nil {
-		return nil, err
+		migratedTenantLabels[LabelAppIdHash] = sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
+
+		migratedTenantsSelector, err := labels.ValidatedSelectorFromSet(migratedTenantLabels)
+		if err != nil {
+			return nil, err
+		}
+		migratedTenants, err = c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(ca.Namespace).List(migratedTenantsSelector)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	return c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().List(selector)
+	// TODO: Directly return above and delete this code in upcoming releases (once providerSubaccountId is made mandatory)
+	var err error
+	oldTenants := []*v1alpha1.CAPTenant{}
+	oldTenantLabels := map[string]string{}
+	if ca.Spec.GlobalAccountId != "" {
+		oldTenantLabels[LabelBTPApplicationIdentifierHash] = sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName)
+
+		oldTenantsSelector, err := labels.ValidatedSelectorFromSet(oldTenantLabels)
+		if err != nil {
+			return nil, err
+		}
+		noMigratedLabelReq, _ := labels.NewRequirement(LabelAppIdHash, selection.DoesNotExist, nil)
+		oldTenantsSelector.Add(*noMigratedLabelReq)
+
+		// Get old tenants - ones that aren't migrated and only have the old labels
+		oldTenants, err = c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(ca.Namespace).List(oldTenantsSelector)
+	}
+
+	return append(migratedTenants, oldTenants...), err
 }
 
 func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (bool, error) {
