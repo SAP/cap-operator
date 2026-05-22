@@ -25,11 +25,11 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Run trivy scanner
-        uses: aquasecurity/trivy-action@v0.35.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/sap/cap-operator/${{ matrix.workload }}:${{ inputs.version || 'latest' }}
           scanners: 'vuln'
-          version: 'v0.69.3'
+          version: 'v0.70.0'
           format: 'sarif'
           output: 'vuln-${{ matrix.workload }}.sarif'
 
