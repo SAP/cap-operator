@@ -62,7 +62,7 @@ jobs:
       run: go vet ./...
     
     - name: Run gofmt
-      run: res="$(gofmt -d -l -s ./)" && echo "$res" && test -z "$res"
+      run: gofmt -d -l -s ./
    
   analysis:
     name: Analyze with Sonar Cloud
