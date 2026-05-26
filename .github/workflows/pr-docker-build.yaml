@@ -10,6 +10,7 @@ env:
 jobs:
   build-on-label:
     if: (github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'build-pr-images')
+    environment: cap-op-internal
     strategy:
       matrix:
         workload: ["controller", "server", "web-hooks"]
