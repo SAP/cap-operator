@@ -454,7 +454,7 @@ func Test_initializeVersionCleanupOrchestrator(t *testing.T) {
 		s, _, hits := getPromServerWithCounter(false, []queryTestCase{})
 		defer s.Close()
 
-		o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+		o := initializeVersionCleanupOrchestrator(&monitoringEnv{
 			address:                 s.URL,
 			evaluationInterval:      2 * time.Minute,
 			acquireClientRetryDelay: 30 * time.Second,
@@ -479,7 +479,7 @@ func Test_initializeVersionCleanupOrchestrator(t *testing.T) {
 		s, _, hits := getPromServerWithCounter(true, []queryTestCase{})
 		defer s.Close()
 
-		o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+		o := initializeVersionCleanupOrchestrator(&monitoringEnv{
 			address:                 s.URL,
 			evaluationInterval:      2 * time.Minute,
 			acquireClientRetryDelay: 30 * time.Second,
@@ -505,7 +505,7 @@ func Test_initializeVersionCleanupOrchestrator(t *testing.T) {
 		s, _, hits := getPromServerWithCounter(false, []queryTestCase{})
 		defer s.Close()
 
-		o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+		o := initializeVersionCleanupOrchestrator(&monitoringEnv{
 			address:                 "",
 			evaluationInterval:      2 * time.Minute,
 			acquireClientRetryDelay: 30 * time.Second,
@@ -516,10 +516,9 @@ func Test_initializeVersionCleanupOrchestrator(t *testing.T) {
 		}
 		defer o.queue.ShutDown()
 
-		// Provider must always report unavailable when address is empty.
-		api, ok := o.clientProvider.Get(context.TODO())
-		if ok || api != nil {
-			t.Errorf("expected provider to report prometheus API as unavailable with empty address")
+		// When the address is empty the provider must be nil.
+		if o.clientProvider != nil {
+			t.Errorf("expected nil clientProvider when address is empty")
 		}
 
 		// The mock server must have received zero runtimeinfo hits.
@@ -656,7 +655,7 @@ func TestVersionCleanupEvaluation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			s, getActualQueries := getPromServer(false, tt.cases)
 			defer s.Close()
-			o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{address: s.URL, acquireClientRetryDelay: 1 * time.Minute})
+			o := initializeVersionCleanupOrchestrator(&monitoringEnv{address: s.URL, acquireClientRetryDelay: 1 * time.Minute})
 			defer o.queue.ShutDown()
 
 			// Deregister metrics at the end of the test
@@ -723,7 +722,7 @@ func TestVersionCleanupEvaluation_NoPrometheus_NoDeletionRules(t *testing.T) {
 		"testdata/version-monitoring/cat-provider-v2-ready.yaml",
 	})
 
-	o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+	o := initializeVersionCleanupOrchestrator(&monitoringEnv{
 		address:                 "", // no Prometheus → noopPromClientProvider
 		evaluationInterval:      10 * time.Minute,
 		acquireClientRetryDelay: time.Hour,
@@ -759,7 +758,7 @@ func TestVersionCleanupEvaluation_NoPrometheus_WithDeletionRules(t *testing.T) {
 		"testdata/version-monitoring/cat-provider-v2-ready.yaml",
 	})
 
-	o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+	o := initializeVersionCleanupOrchestrator(&monitoringEnv{
 		address:                 "",
 		evaluationInterval:      10 * time.Minute,
 		acquireClientRetryDelay: time.Hour,
@@ -800,7 +799,7 @@ func TestVersionCleanupEvaluation_PromUnreachable(t *testing.T) {
 			"testdata/version-monitoring/cat-provider-v2-ready.yaml",
 		})
 
-		o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+		o := initializeVersionCleanupOrchestrator(&monitoringEnv{
 			address:                 s.URL,
 			evaluationInterval:      10 * time.Minute,
 			acquireClientRetryDelay: time.Millisecond, // short so the first probe is attempted
@@ -831,7 +830,7 @@ func TestVersionCleanupEvaluation_PromUnreachable(t *testing.T) {
 			"testdata/version-monitoring/cat-provider-v2-ready.yaml",
 		})
 
-		o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+		o := initializeVersionCleanupOrchestrator(&monitoringEnv{
 			address:                 s.URL,
 			evaluationInterval:      10 * time.Minute,
 			acquireClientRetryDelay: time.Millisecond,
@@ -863,7 +862,7 @@ func TestVersionCleanupEvaluation_RuntimeInfoRateLimited(t *testing.T) {
 
 	// Use a generous retry delay so that the second immediate call is still
 	// within the rate-limit window.
-	o := initializeVersionCleanupOrchestrator(context.TODO(), &monitoringEnv{
+	o := initializeVersionCleanupOrchestrator(&monitoringEnv{
 		address:                 s.URL,
 		evaluationInterval:      10 * time.Minute,
 		acquireClientRetryDelay: 5 * time.Second,

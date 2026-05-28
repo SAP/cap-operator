@@ -43,19 +43,12 @@ const (
 
 // promClientProvider abstracts Prometheus API availability so that each
 // evaluation cycle can obtain the current API client without making a network
-// call on every iteration.
+// call on every iteration. A nil promClientProvider means no address is
+// configured; callers must guard with a nil check before calling Get.
 type promClientProvider interface {
 	// Get returns the current Prometheus API and true when available, or
-	// (nil, false) when the address is unset or the server is unreachable.
+	// (nil, false) when the server is unreachable.
 	Get(ctx context.Context) (promv1.API, bool)
-}
-
-// noopPromClientProvider is used when PROMETHEUS_ADDRESS is not set.
-// It always reports the client as unavailable.
-type noopPromClientProvider struct{}
-
-func (n *noopPromClientProvider) Get(_ context.Context) (promv1.API, bool) {
-	return nil, false
 }
 
 // cachedPromClientProvider holds a cached Prometheus API client and manages
@@ -115,11 +108,11 @@ func (p *cachedPromClientProvider) Get(ctx context.Context) (promv1.API, bool) {
 	return p.cached, true
 }
 
-// newPromClientProvider creates the appropriate promClientProvider based on
-// whether a Prometheus address is configured.
+// newPromClientProvider returns a cachedPromClientProvider when an address is
+// configured, or nil when PROMETHEUS_ADDRESS is unset.
 func newPromClientProvider(mEnv *monitoringEnv) promClientProvider {
 	if mEnv.address == "" {
-		return &noopPromClientProvider{}
+		return nil
 	}
 	return &cachedPromClientProvider{
 		address:    mEnv.address,
@@ -177,7 +170,7 @@ func (c *Controller) startVersionCleanup(ctx context.Context) {
 
 	restartSignal := make(chan bool, 1)
 	setup := func() context.CancelFunc {
-		o := initializeVersionCleanupOrchestrator(ctx, mEnv)
+		o := initializeVersionCleanupOrchestrator(mEnv)
 		child, cancelFn := context.WithCancel(ctx)
 		go func() {
 			<-child.Done()
@@ -215,7 +208,7 @@ func recoverVersionCleanupRoutine(restart chan<- bool) {
 // *cleanupOrchestrator. It sets up the work queue and the Prometheus client
 // provider but does NOT block on, or return nil because of, Prometheus
 // reachability.
-func initializeVersionCleanupOrchestrator(ctx context.Context, mEnv *monitoringEnv) *cleanupOrchestrator {
+func initializeVersionCleanupOrchestrator(mEnv *monitoringEnv) *cleanupOrchestrator {
 	return &cleanupOrchestrator{
 		clientProvider: newPromClientProvider(mEnv),
 		queue:          workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[NamespacedResourceKey]()),
@@ -335,8 +328,11 @@ func (c *Controller) processVersionCleanupQueueItem(ctx context.Context, orc *cl
 	}
 	defer orc.queue.Done(item)
 
-	// Obtain the current Prometheus API — may be nil if unavailable.
-	api, _ := orc.clientProvider.Get(ctx)
+	// Obtain the current Prometheus API — nil when address is unconfigured or server unreachable.
+	var api promv1.API
+	if orc.clientProvider != nil {
+		api, _ = orc.clientProvider.Get(ctx)
+	}
 
 	if c.evaluateVersionForCleanup(ctx, item, api) != nil {
 		orc.queue.AddRateLimited(item)
