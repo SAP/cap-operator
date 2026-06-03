@@ -5,11 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch Controller",
+            "name": "Launch CAP Operator Controller",
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/controller"
+            "program": "${workspaceFolder}/cmd/controller",
+            "env": {
+                "POD_NAMESPACE": "cap-operator-system"
+            }
         }
     ]
 }
