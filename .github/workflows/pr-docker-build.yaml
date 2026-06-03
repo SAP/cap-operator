@@ -17,7 +17,6 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: read
-      packages: write
     outputs:
       pr-number: ${{ github.event.pull_request.number }}
 
