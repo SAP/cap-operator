@@ -12,7 +12,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 
@@ -336,61 +335,6 @@ func TestInvalidRequests(t *testing.T) {
 	wh.Validate(recorder, request)
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatal("Error was not recorded correctly")
-	}
-}
-
-func TestSideCar(t *testing.T) {
-	wh := &WebhookHandler{
-		CrdClient: fakeCrdClient.NewSimpleClientset(),
-	}
-
-	tests := []struct {
-		sideCarEnv string
-	}{
-		{
-			sideCarEnv: "true",
-		},
-		{
-			sideCarEnv: "false",
-		},
-		{
-			sideCarEnv: "invalid",
-		},
-	}
-	for _, test := range tests {
-		t.Run("Testing SideCarEnv value "+test.sideCarEnv, func(t *testing.T) {
-			os.Setenv(SideCarEnv, test.sideCarEnv)
-
-			recorder := httptest.NewRecorder()
-
-			admissionReview := admissionv1.AdmissionReview{}
-			bytesRequest, err := json.Marshal(admissionReview)
-			if err != nil {
-				t.Fatal("marshal error")
-			}
-			request := httptest.NewRequest(http.MethodGet, "/validate", bytes.NewBuffer(bytesRequest))
-
-			wh.Validate(recorder, request)
-			file, err := os.ReadFile(os.TempDir() + RequestPath)
-			if err != nil {
-				t.Error("Side car file read error")
-			}
-			json.Unmarshal(file, &admissionReview)
-
-			if admissionReview.Request != nil || admissionReview.Response != nil {
-				t.Fatal("Invalid admission review with http error")
-			}
-
-			if test.sideCarEnv == "invalid" {
-				if recorder.Code != http.StatusInternalServerError {
-					t.Fatal("Error was not recorded correctly")
-				}
-			} else if recorder.Code != http.StatusBadRequest {
-				t.Fatal("Error was not recorded correctly")
-			}
-
-			os.Unsetenv(SideCarEnv)
-		})
 	}
 }
 

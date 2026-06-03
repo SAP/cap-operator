@@ -216,8 +216,6 @@ subscriptionServer:
       -----END CERTIFICATE-----
 
 webhook:
-  # -- Side car to mount admission review
-  sidecar: false
   # -- Replicas
   replicas: 1
   image:
@@ -266,6 +264,10 @@ webhook:
     port: 443
     # -- Target port
     targetPort: 1443
+  # -- Optionally specify list of additional volumes for the webhook pod(s)
+  volumes: []
+  # -- Optionally specify list of additional volumeMounts for the webhook container(s)
+  volumeMounts: []
   # -- Certificate manager which can be either `Default` or `CertManager`
   certificateManager: "Default"
   # -- Optionally specify the corresponding certificate configuration

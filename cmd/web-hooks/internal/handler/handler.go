@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"regexp"
 	"slices"
 	"strconv"
@@ -32,7 +31,6 @@ const (
 	LabelTenantType                      = "sme.sap.com/tenant-type"
 	LabelTenantId                        = "sme.sap.com/btp-tenant-id"
 	ProviderTenantType                   = "provider"
-	SideCarEnv                           = "WEBHOOK_SIDE_CAR"
 	AdmissionError                       = "admission error:"
 	InvalidResource                      = "invalid resource"
 	InvalidationMessage                  = "invalidated from webhook"
@@ -796,11 +794,6 @@ func (wh *WebhookHandler) Validate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// sidecar
-	if !enableSidecar(w, body) {
-		return
-	}
-
 	// create admission review from bytes
 	admissionReview := getAdmissionRequestFromBytes(w, body)
 	if admissionReview == nil {
@@ -836,24 +829,6 @@ func (wh *WebhookHandler) Validate(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Write(responseBytes)
 	}
-}
-
-func enableSidecar(w http.ResponseWriter, body []byte) bool {
-	// write request to volume mount - if side car is enabled
-	sidecarEnv := os.Getenv(SideCarEnv)
-
-	if sidecarEnv != "" {
-		if sidecarEnabled, err := strconv.ParseBool(sidecarEnv); err != nil {
-			httpError(w, http.StatusInternalServerError, fmt.Errorf("sidecar env read error: %w", err))
-			return false
-		} else if sidecarEnabled {
-			if err = os.WriteFile(os.TempDir()+RequestPath, body, 0644); err != nil {
-				httpError(w, http.StatusInternalServerError, fmt.Errorf("request object write error: %w", err))
-				return false
-			}
-		}
-	}
-	return true
 }
 
 func getAdmissionRequestFromBytes(w http.ResponseWriter, body []byte) *admissionv1.AdmissionReview {
