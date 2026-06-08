@@ -753,6 +753,50 @@ func TestTenantOperationDeprovisioningVersionError(t *testing.T) {
 	)
 }
 
+func TestProvisioningWithNoProviderInCA(t *testing.T) {
+	_ = reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-consumer-abcd"}},
+		TestData{
+			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-XXXX"},
+			description:  "Provisioning - CA has no provider section (nil) - provider env vars must be absent from job",
+			initialResources: []string{
+				"testdata/common/capapplication-no-provider.yaml",
+				"testdata/common/captenant-consumer-ready.yaml",
+				"testdata/common/capapplicationversion-v1.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/captenantoperation/ctop-no-provider.initial.yaml",
+			},
+			expectedResources: "testdata/captenantoperation/ctop-no-provider.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-consumer-abcd"}},
+			},
+		},
+	)
+}
+
+func TestProvisioningWithEmptyProviderInCA(t *testing.T) {
+	_ = reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-consumer-abcd"}},
+		TestData{
+			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-XXXX"},
+			description:  "Provisioning - CA has provider section with empty fields - provider env vars must be absent from job",
+			initialResources: []string{
+				"testdata/common/capapplication-empty-provider.yaml",
+				"testdata/common/captenant-consumer-ready.yaml",
+				"testdata/common/capapplicationversion-v1.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/captenantoperation/ctop-no-provider.initial.yaml",
+			},
+			expectedResources: "testdata/captenantoperation/ctop-no-provider.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-consumer-abcd"}},
+			},
+		},
+	)
+}
+
 func TestTenantOperationProvisioningVersionError(t *testing.T) {
 	err := reconcileTestItem(
 		context.TODO(), t,

@@ -410,9 +410,12 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 		appName:              relatedResources.CAPApplication.Spec.BTPAppName,
 		globalAccountId:      relatedResources.CAPApplication.Spec.GlobalAccountId,
 		providerSubaccountId: relatedResources.CAPApplication.Spec.ProviderSubaccountId,
-		providerTenantId:     relatedResources.CAPApplication.Spec.Provider.TenantId,
-		providerSubdomain:    relatedResources.CAPApplication.Spec.Provider.SubDomain,
 		tenantType:           relatedResources.CAPTenant.Labels[LabelTenantType],
+	}
+
+	if !relatedResources.CAPApplication.IsProviderEmpty() {
+		params.providerTenantId = relatedResources.CAPApplication.Spec.Provider.TenantId
+		params.providerSubdomain = relatedResources.CAPApplication.Spec.Provider.SubDomain
 	}
 
 	var job *batchv1.Job
@@ -631,12 +634,16 @@ func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation, step
 		{Name: EnvCAPOpTenantType, Value: params.tenantType},
 		{Name: EnvCAPOpAppName, Value: params.appName},
 		{Name: EnvCAPOpGlobalAccountId, Value: params.globalAccountId},
-		{Name: EnvCAPOpProviderTenantId, Value: params.providerTenantId},
-		{Name: EnvCAPOpProviderSubDomain, Value: params.providerSubdomain},
 	}
 
 	if params.providerSubaccountId != "" {
 		env = append(env, corev1.EnvVar{Name: EnvCAPOpProviderSubaccountId, Value: params.providerSubaccountId})
+	}
+	if params.providerTenantId != "" {
+		env = append(env, corev1.EnvVar{Name: EnvCAPOpProviderTenantId, Value: params.providerTenantId})
+	}
+	if params.providerSubdomain != "" {
+		env = append(env, corev1.EnvVar{Name: EnvCAPOpProviderSubDomain, Value: params.providerSubdomain})
 	}
 
 	if stepType == v1alpha1.JobTenantOperation {

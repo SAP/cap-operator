@@ -50,11 +50,14 @@ const (
 
 func createCaCRO(serviceOnlyScenario ...bool) *v1alpha1.CAPApplication {
 	provider := &v1alpha1.BTPTenantIdentification{}
+	isServicesOnly := false
 	if serviceOnlyScenario == nil || !serviceOnlyScenario[0] {
 		provider = &v1alpha1.BTPTenantIdentification{
 			SubDomain: subDomain,
 			TenantId:  tenantId,
 		}
+	} else {
+		isServicesOnly = serviceOnlyScenario[0]
 	}
 	return &v1alpha1.CAPApplication{
 		ObjectMeta: metav1.ObjectMeta{
@@ -111,7 +114,8 @@ func createCaCRO(serviceOnlyScenario ...bool) *v1alpha1.CAPApplication {
 			},
 		},
 		Status: v1alpha1.CAPApplicationStatus{
-			State: v1alpha1.CAPApplicationStateConsistent,
+			State:        v1alpha1.CAPApplicationStateConsistent,
+			ServicesOnly: &isServicesOnly,
 		},
 	}
 }
@@ -240,6 +244,16 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 						ConsumedBTPServices: []string{},
 						JobDefinition: &v1alpha1.JobDetails{
 							Type: v1alpha1.JobContent,
+							CommonDetails: v1alpha1.CommonDetails{
+								Image: "foo",
+							},
+						},
+					},
+					{
+						Name:                "tenant-op",
+						ConsumedBTPServices: []string{},
+						JobDefinition: &v1alpha1.JobDetails{
+							Type: v1alpha1.JobTenantOperation,
 							CommonDetails: v1alpha1.CommonDetails{
 								Image: "foo",
 							},
@@ -460,7 +474,7 @@ func TestCavAndCatValidity(t *testing.T) {
 
 			var errorMessage string
 			if test.operation == admissionv1.Delete && test.crdType == v1alpha1.CAPTenantKind {
-				errorMessage = fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s instead to delete all tenants", InvalidationMessage, admissionReview.Kind, catName, v1alpha1.CAPApplicationKind, Ca.Name, v1alpha1.CAPApplicationKind)
+				errorMessage = fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s or remove it's provider instead to delete this tenant", InvalidationMessage, v1alpha1.CAPTenantKind, catName, v1alpha1.CAPApplicationKind, Ca.Name, v1alpha1.CAPApplicationKind)
 				if admissionReview.Response.Allowed ||
 					admissionReview.Response.UID != uid ||
 					admissionReview.APIVersion != apiVersion ||
@@ -651,10 +665,6 @@ func TestCaInvalidity(t *testing.T) {
 	}{
 		{
 			operation: admissionv1.Update,
-			update:    providerUpdate,
-		},
-		{
-			operation: admissionv1.Update,
 			update:    domainsUpdate,
 		},
 		{
@@ -682,9 +692,7 @@ func TestCaInvalidity(t *testing.T) {
 			universalDeserializer.Decode(bytes, nil, &admissionReview)
 
 			var errorMessage string
-			if test.update == providerUpdate {
-				errorMessage = fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
-			} else if test.update == domainsUpdate || test.update == useDomains {
+			if test.update == domainsUpdate || test.update == useDomains {
 				errorMessage = fmt.Sprintf("%s %s domains are deprecated. Use domainRefs instead in: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
 			}
 
@@ -884,6 +892,16 @@ func TestCavInvalidity(t *testing.T) {
 								},
 							},
 						},
+						{
+							Name:                "tenant-op",
+							ConsumedBTPServices: []string{},
+							JobDefinition: &v1alpha1.JobDetails{
+								Type: v1alpha1.JobTenantOperation,
+								CommonDetails: v1alpha1.CommonDetails{
+									Image: "foo",
+								},
+							},
+						},
 					},
 				},
 			}
@@ -956,17 +974,7 @@ func TestCavInvalidity(t *testing.T) {
 					},
 				})
 			} else if test.tenantOperationSequenceInvalid == true {
-				// add workload of type custom tenant operation and tenant operation
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
-					Name:                "tenant-operation",
-					ConsumedBTPServices: []string{},
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobTenantOperation,
-						CommonDetails: v1alpha1.CommonDetails{
-							Image: "foo",
-						},
-					},
-				})
+				// add workload of type custom tenant operation
 				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
 					Name:                "custom-tenant-operation",
 					ConsumedBTPServices: []string{},
@@ -990,39 +998,18 @@ func TestCavInvalidity(t *testing.T) {
 					},
 				}
 			} else if test.invalidWorkloadInTenantOpSeq == true {
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
-					Name:                "tenant-operation",
-					ConsumedBTPServices: []string{},
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobTenantOperation,
-						CommonDetails: v1alpha1.CommonDetails{
-							Image: "foo",
-						},
-					},
-				})
-
 				crd.Spec.TenantOperations = &v1alpha1.TenantOperations{
 					Provisioning: []v1alpha1.TenantOperationWorkloadReference{
-						{WorkloadName: "tenant-operation"}, {WorkloadName: "custom-tenant-operation"},
+						{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 					},
 					Deprovisioning: []v1alpha1.TenantOperationWorkloadReference{
-						{WorkloadName: "tenant-operation"},
+						{WorkloadName: "tenant-op"},
 					},
 					Upgrade: []v1alpha1.TenantOperationWorkloadReference{
-						{WorkloadName: "tenant-operation"}, {WorkloadName: "custom-tenant-operation"},
+						{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 					},
 				}
 			} else if test.missingTenantOpInSeqProvisioning == true || test.missingTenantOpInSeqUpgrade == true || test.missingTenantOpInSeqDeprovisioning == true {
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
-					Name:                "tenant-operation",
-					ConsumedBTPServices: []string{},
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobTenantOperation,
-						CommonDetails: v1alpha1.CommonDetails{
-							Image: "foo",
-						},
-					},
-				})
 				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
 					Name:                "custom-tenant-operation",
 					ConsumedBTPServices: []string{},
@@ -1040,19 +1027,19 @@ func TestCavInvalidity(t *testing.T) {
 							{WorkloadName: "custom-tenant-operation"},
 						},
 						Deprovisioning: []v1alpha1.TenantOperationWorkloadReference{
-							{WorkloadName: "tenant-operation"}, {WorkloadName: "custom-tenant-operation"},
+							{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 						},
 						Upgrade: []v1alpha1.TenantOperationWorkloadReference{
-							{WorkloadName: "tenant-operation"}, {WorkloadName: "custom-tenant-operation"},
+							{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 						},
 					}
 				} else if test.missingTenantOpInSeqUpgrade == true {
 					crd.Spec.TenantOperations = &v1alpha1.TenantOperations{
 						Provisioning: []v1alpha1.TenantOperationWorkloadReference{
-							{WorkloadName: "tenant-operation"}, {WorkloadName: "custom-tenant-operation"},
+							{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 						},
 						Deprovisioning: []v1alpha1.TenantOperationWorkloadReference{
-							{WorkloadName: "tenant-operation"}, {WorkloadName: "custom-tenant-operation"},
+							{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 						},
 						Upgrade: []v1alpha1.TenantOperationWorkloadReference{
 							{WorkloadName: "custom-tenant-operation"},
@@ -1061,13 +1048,13 @@ func TestCavInvalidity(t *testing.T) {
 				} else if test.missingTenantOpInSeqDeprovisioning == true {
 					crd.Spec.TenantOperations = &v1alpha1.TenantOperations{
 						Provisioning: []v1alpha1.TenantOperationWorkloadReference{
-							{WorkloadName: "tenant-operation"}, {WorkloadName: "custom-tenant-operation"},
+							{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 						},
 						Deprovisioning: []v1alpha1.TenantOperationWorkloadReference{
 							{WorkloadName: "custom-tenant-operation"},
 						},
 						Upgrade: []v1alpha1.TenantOperationWorkloadReference{
-							{WorkloadName: "tenant-operation"}, {WorkloadName: "custom-tenant-operation"},
+							{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 						},
 					}
 				}
@@ -1154,7 +1141,7 @@ func TestCavInvalidity(t *testing.T) {
 			} else if test.customTenantOpWithoutSequence == true {
 				errorMessage = fmt.Sprintf("%s %s - If a jobDefinition of type CustomTenantOperation is part of the workloads, then spec.tenantOperations must be specified", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.tenantOperationSequenceInvalid == true {
-				errorMessage = fmt.Sprintf("%s %s workload tenant operation tenant-operation is not specified in spec.tenantOperations", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s workload tenant operation tenant-op is not specified in spec.tenantOperations", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.invalidWorkloadInTenantOpSeq == true {
 				errorMessage = fmt.Sprintf("%s %s custom-tenant-operation specified in spec.tenantOperations is not a valid workload of type TenantOperation or CustomTenantOperation", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
 			} else if test.missingTenantOpInSeqProvisioning == true {
@@ -1449,7 +1436,7 @@ func TestCavInvalidityServiceScenario(t *testing.T) {
 }
 
 func TestCavPDBScenario(t *testing.T) {
-	Ca := createCaCRO(true)
+	Ca := createCaCRO()
 	wh := &WebhookHandler{
 		CrdClient: fakeCrdClient.NewSimpleClientset(Ca),
 	}
@@ -1521,6 +1508,16 @@ func TestCavPDBScenario(t *testing.T) {
 							ConsumedBTPServices: []string{},
 							JobDefinition: &v1alpha1.JobDetails{
 								Type: v1alpha1.JobContent,
+								CommonDetails: v1alpha1.CommonDetails{
+									Image: "foo",
+								},
+							},
+						},
+						{
+							Name:                "tenant-op",
+							ConsumedBTPServices: []string{},
+							JobDefinition: &v1alpha1.JobDetails{
+								Type: v1alpha1.JobTenantOperation,
 								CommonDetails: v1alpha1.CommonDetails{
 									Image: "foo",
 								},
@@ -1852,6 +1849,57 @@ func TestDomainInvalidity(t *testing.T) {
 			if test.duplicateClusterDomain || test.duplicateDomain {
 				if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
 					t.Fatal("validation response error")
+				}
+			}
+		})
+	}
+}
+
+func TestProviderTenantDeletionWithCAProvider(t *testing.T) {
+	tests := []struct {
+		name            string
+		caProviderEmpty bool
+		expectAllowed   bool
+	}{
+		{
+			name:            "deletion blocked when CA spec has provider section",
+			caProviderEmpty: false,
+			expectAllowed:   false,
+		},
+		{
+			name:            "deletion allowed when CA spec has no provider section",
+			caProviderEmpty: true,
+			expectAllowed:   true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			Ca := createCaCRO(test.caProviderEmpty)
+			wh := &WebhookHandler{
+				CrdClient: fakeCrdClient.NewSimpleClientset(Ca),
+			}
+
+			request, recorder := getHttpRequest(admissionv1.Delete, v1alpha1.CAPTenantKind, catName, noUpdate, t)
+			wh.Validate(recorder, request)
+
+			admissionReview := admissionv1.AdmissionReview{}
+			bytes, err := io.ReadAll(recorder.Body)
+			if err != nil {
+				t.Fatal("io read error")
+			}
+			universalDeserializer.Decode(bytes, nil, &admissionReview)
+
+			if test.expectAllowed {
+				if !admissionReview.Response.Allowed || admissionReview.Response.UID != uid || admissionReview.Response.Result != nil {
+					t.Fatal("expected deletion to be allowed but it was denied")
+				}
+			} else {
+				expectedMessage := fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s or remove it's provider instead to delete this tenant",
+					InvalidationMessage, v1alpha1.CAPTenantKind, catName, v1alpha1.CAPApplicationKind, Ca.Name, v1alpha1.CAPApplicationKind)
+				if admissionReview.Response.Allowed || admissionReview.Response.UID != uid || admissionReview.Response.Result.Message != expectedMessage {
+					t.Fatalf("expected deletion to be denied with message %q but got allowed=%v message=%q",
+						expectedMessage, admissionReview.Response.Allowed, admissionReview.Response.Result.Message)
 				}
 			}
 		})

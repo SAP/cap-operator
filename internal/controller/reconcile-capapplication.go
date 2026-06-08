@@ -142,7 +142,7 @@ func (c *Controller) verifyApplicationConsistent(ca *v1alpha1.CAPApplication) {
 		// No tenants for services only scenario
 		if !ca.IsServicesOnly() {
 			// Update additional condition `AllTenantsReady` to True
-			ca.SetStatusCondition(string(v1alpha1.ConditionTypeAllTenantsReady), metav1.ConditionTrue, "ProviderTenantReady", "")
+			ca.SetStatusCondition(string(v1alpha1.ConditionTypeAllTenantsReady), metav1.ConditionTrue, string(v1alpha1.ConditionTypeAllTenantsReady), "")
 		}
 	}
 }
@@ -399,8 +399,8 @@ func (c *Controller) getRelevantTenantsForCA(ca *v1alpha1.CAPApplication) ([]*v1
 }
 
 func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (bool, error) {
-	// No tenants for services only scenario
-	if ca.IsServicesOnly() {
+	// No tenants for services only scenario or if Provider is explicitly set to empty
+	if ca.IsServicesOnly() || ca.IsProviderEmpty() {
 		return false, nil
 	}
 	providerTenantName := strings.Join([]string{ca.Name, TenantTypeProvider}, "-")

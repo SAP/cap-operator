@@ -37,6 +37,7 @@ const (
 	ValidationMessage                    = "validated from webhook"
 	RequestPath                          = "/request"
 	DeploymentWorkloadCountErr           = "%s %s there should always be one workload deployment definition of type %s. Currently, there are %d workloads of type %s"
+	TenantOpMissingErr                   = "%s %s there should always be one job workload of type TenantOperation. Currently, there are none."
 	TenantOpJobWorkloadCountErr          = "%s %s there should not be any job workload of type %s or %s defined for service only applications."
 	ServiceExposureWorkloadNameErr       = "%s %s workload name %s mentioned as part of routes in service exposure with subDomain %s is not a valid workload."
 	ServiceExposurePortErr               = "%s %s port %d mentioned as part of routes for workload %s in service exposure with subDomain %s is not a valid port in the workload."
@@ -201,11 +202,22 @@ func getWorkloadTypeCount(workloads []v1alpha1.WorkloadDetails) map[string]int {
 	return workloadTypeCount
 }
 
+func IsServicesOnly(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) bool {
+	// When CA isn't marked as ServicesOnly yet (reconcile hasn't fully completed) --> Determine ServicesOnly looking into tenant job workloads
+	if ca.Status.ServicesOnly == nil {
+		return !slices.ContainsFunc(cav.Spec.Workloads, func(wd v1alpha1.WorkloadDetails) bool {
+			return wd.JobDefinition != nil && wd.JobDefinition.Type != v1alpha1.JobContent
+		}) && ca.IsProviderEmpty()
+	}
+
+	return ca.IsServicesOnly()
+}
+
 func checkWorkloadTypeCount(ca *v1alpha1.CAPApplication, cavObjNew *v1alpha1.CAPApplicationVersion) validateResource {
 
 	workloadTypeCount := getWorkloadTypeCount(cavObjNew.Spec.Workloads)
 
-	if !ca.IsProviderEmpty() {
+	if !IsServicesOnly(ca, cavObjNew) {
 		// tenant dependent scenario
 		if workloadTypeCount[string(v1alpha1.DeploymentCAP)] != 1 {
 			return validateResource{
@@ -218,6 +230,13 @@ func checkWorkloadTypeCount(ca *v1alpha1.CAPApplication, cavObjNew *v1alpha1.CAP
 			return validateResource{
 				allowed: false,
 				message: fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.DeploymentRouter, workloadTypeCount[string(v1alpha1.DeploymentRouter)], v1alpha1.DeploymentRouter),
+			}
+		}
+
+		if workloadTypeCount[string(v1alpha1.JobTenantOperation)] == 0 {
+			return validateResource{
+				allowed: false,
+				message: fmt.Sprintf(TenantOpMissingErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind),
 			}
 		}
 	} else {
@@ -600,10 +619,10 @@ func (wh *WebhookHandler) checkCaIsConsistent(catObjOld v1alpha1.CAPTenant) vali
 
 	ca, err := wh.CrdClient.SmeV1alpha1().CAPApplications(catObjOld.GetNamespace()).Get(context.TODO(), catObjOld.Spec.CAPApplicationInstance, metav1.GetOptions{})
 
-	if ca != nil && err == nil && ca.Status.State == v1alpha1.CAPApplicationStateConsistent && catObjOld.GetLabels()[LabelTenantType] == ProviderTenantType && catObjOld.Status.State == v1alpha1.CAPTenantStateReady {
+	if ca != nil && err == nil && !ca.IsProviderEmpty() && ca.Status.State == v1alpha1.CAPApplicationStateConsistent && catObjOld.GetLabels()[LabelTenantType] == ProviderTenantType && catObjOld.Status.State == v1alpha1.CAPTenantStateReady {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s instead to delete all tenants", InvalidationMessage, v1alpha1.CAPTenantKind, catObjOld.Name, v1alpha1.CAPApplicationKind, ca.Name, v1alpha1.CAPApplicationKind),
+			message: fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s or remove it's provider instead to delete this tenant", InvalidationMessage, v1alpha1.CAPTenantKind, catObjOld.Name, v1alpha1.CAPApplicationKind, ca.Name, v1alpha1.CAPApplicationKind),
 		}
 	}
 	return validAdmissionReviewObj()
@@ -749,14 +768,6 @@ func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissio
 		// Note: Object is nil for "DELETE" operation
 		if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &caObjNew, v1alpha1.CAPApplicationKind); !validatedResource.allowed {
 			return validatedResource
-		}
-	}
-
-	// check: update on .Spec.Provider
-	if admissionReview.Request.Operation == admissionv1.Update && !cmp.Equal(caObjNew.Spec.Provider, caObjOld.Spec.Provider) {
-		return validateResource{
-			allowed: false,
-			message: fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.GetNamespace(), caObjNew.GetName()),
 		}
 	}
 
