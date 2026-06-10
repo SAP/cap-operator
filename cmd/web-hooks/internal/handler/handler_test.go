@@ -1905,3 +1905,394 @@ func TestProviderTenantDeletionWithCAProvider(t *testing.T) {
 		})
 	}
 }
+
+// TestCavMissingTenantOperation covers the TenantOpMissingErr branch in checkWorkloadTypeCount,
+// triggered when a tenant-dependent CAPApplicationVersion has no JobTenantOperation workload.
+func TestCavMissingTenantOperation(t *testing.T) {
+	Ca := createCaCRO()
+	wh := &WebhookHandler{
+		CrdClient: fakeCrdClient.NewSimpleClientset(Ca),
+	}
+
+	admissionReview, err := createAdmissionRequest(admissionv1.Create, v1alpha1.CAPApplicationVersionKind, caName, noUpdate)
+	if err != nil {
+		t.Fatal("admission review error")
+	}
+
+	crd := &v1alpha1.CAPApplicationVersion{
+		TypeMeta: metav1.TypeMeta{
+			Kind: v1alpha1.CAPApplicationVersionKind,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cavName,
+			Namespace: metav1.NamespaceDefault,
+		},
+		Spec: v1alpha1.CAPApplicationVersionSpec{
+			CAPApplicationInstance: caName,
+			Workloads: []v1alpha1.WorkloadDetails{
+				{
+					Name: "cap-backend",
+					DeploymentDefinition: &v1alpha1.DeploymentDetails{
+						Type:          v1alpha1.DeploymentCAP,
+						CommonDetails: v1alpha1.CommonDetails{Image: "foo"},
+					},
+				},
+				{
+					Name: "cap-router",
+					DeploymentDefinition: &v1alpha1.DeploymentDetails{
+						Type:          v1alpha1.DeploymentRouter,
+						CommonDetails: v1alpha1.CommonDetails{Image: "foo"},
+					},
+				},
+				// no TenantOperation job workload defined
+			},
+		},
+	}
+
+	rawBytes, _ := json.Marshal(crd)
+	admissionReview.Request.Object.Raw = rawBytes
+	bytesRequest, _ := json.Marshal(admissionReview)
+	request := httptest.NewRequest(http.MethodGet, "/validate", bytes.NewBuffer(bytesRequest))
+	recorder := httptest.NewRecorder()
+
+	wh.Validate(recorder, request)
+
+	resp := admissionv1.AdmissionReview{}
+	bodyBytes, _ := io.ReadAll(recorder.Body)
+	universalDeserializer.Decode(bodyBytes, nil, &resp)
+
+	expected := fmt.Sprintf(TenantOpMissingErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+	if resp.Response.Allowed || resp.Response.Result.Message != expected {
+		t.Fatalf("expected denied with %q, got allowed=%v message=%q", expected, resp.Response.Allowed, resp.Response.Result.Message)
+	}
+}
+
+// TestCtoutDeleteAllowed covers the early-return for delete in validateCAPTenantOutput.
+func TestCtoutDeleteAllowed(t *testing.T) {
+	wh := &WebhookHandler{
+		CrdClient: fakeCrdClient.NewSimpleClientset(),
+	}
+
+	admissionReview, err := createAdmissionRequest(admissionv1.Delete, v1alpha1.CAPTenantOutputKind, "some-ctout", noUpdate)
+	if err != nil {
+		t.Fatal("admission review error")
+	}
+	// For Delete, OldObject is set by createAdmissionRequest's switch only for known kinds; build payload manually
+	ctout := &v1alpha1.CAPTenantOutput{
+		TypeMeta:   metav1.TypeMeta{Kind: v1alpha1.CAPTenantOutputKind},
+		ObjectMeta: metav1.ObjectMeta{Name: "some-ctout", Namespace: metav1.NamespaceDefault},
+	}
+	rawBytes, _ := json.Marshal(ctout)
+	admissionReview.Request.OldObject.Raw = rawBytes
+
+	bytesRequest, _ := json.Marshal(admissionReview)
+	request := httptest.NewRequest(http.MethodGet, "/validate", bytes.NewBuffer(bytesRequest))
+	recorder := httptest.NewRecorder()
+
+	wh.Validate(recorder, request)
+
+	resp := admissionv1.AdmissionReview{}
+	bodyBytes, _ := io.ReadAll(recorder.Body)
+	universalDeserializer.Decode(bodyBytes, nil, &resp)
+
+	if !resp.Response.Allowed || resp.Response.UID != uid {
+		t.Fatalf("expected delete to be allowed; got allowed=%v", resp.Response.Allowed)
+	}
+}
+
+// TestValidateBodyReadError covers the body io.ReadAll error path in Validate.
+func TestValidateBodyReadError(t *testing.T) {
+	wh := &WebhookHandler{
+		CrdClient: fakeCrdClient.NewSimpleClientset(),
+	}
+	req := httptest.NewRequest(http.MethodPost, "/validate", &testReader{})
+	w := httptest.NewRecorder()
+	wh.Validate(w, req)
+	if w.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500 InternalServerError, got %d", w.Code)
+	}
+}
+
+// TestValidateEmptyAdmissionRequest covers the "empty request" branch in getAdmissionRequestFromBytes.
+func TestValidateEmptyAdmissionRequest(t *testing.T) {
+	wh := &WebhookHandler{
+		CrdClient: fakeCrdClient.NewSimpleClientset(),
+	}
+	// Encode a typed AdmissionReview with non-nil Request, then strip the request to force the nil-check.
+	body := []byte(`{"kind":"AdmissionReview","apiVersion":"admission.k8s.io/v1"}`)
+	req := httptest.NewRequest(http.MethodPost, "/validate", bytes.NewBuffer(body))
+	w := httptest.NewRecorder()
+	wh.Validate(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 BadRequest, got %d", w.Code)
+	}
+}
+
+// TestIsServicesOnlyWithNilStatus exercises the nil Status.ServicesOnly branch in IsServicesOnly,
+// where the result is derived from the workloads instead.
+func TestIsServicesOnlyWithNilStatus(t *testing.T) {
+	tests := []struct {
+		name         string
+		hasProvider  bool
+		workloads    []v1alpha1.WorkloadDetails
+		expectedSvcs bool
+	}{
+		{
+			name:        "no provider, no tenant-op job -> services only",
+			hasProvider: false,
+			workloads: []v1alpha1.WorkloadDetails{
+				{
+					Name: "svc",
+					DeploymentDefinition: &v1alpha1.DeploymentDetails{
+						Type: v1alpha1.DeploymentService,
+					},
+				},
+				{
+					Name: "content",
+					JobDefinition: &v1alpha1.JobDetails{
+						Type: v1alpha1.JobContent,
+					},
+				},
+			},
+			expectedSvcs: true,
+		},
+		{
+			name:        "has tenant-op job -> not services only",
+			hasProvider: false,
+			workloads: []v1alpha1.WorkloadDetails{
+				{
+					Name: "tenant-op",
+					JobDefinition: &v1alpha1.JobDetails{
+						Type: v1alpha1.JobTenantOperation,
+					},
+				},
+			},
+			expectedSvcs: false,
+		},
+		{
+			name:        "has provider -> not services only",
+			hasProvider: true,
+			workloads: []v1alpha1.WorkloadDetails{
+				{
+					Name: "content",
+					JobDefinition: &v1alpha1.JobDetails{
+						Type: v1alpha1.JobContent,
+					},
+				},
+			},
+			expectedSvcs: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ca := &v1alpha1.CAPApplication{
+				Spec: v1alpha1.CAPApplicationSpec{},
+				// Status.ServicesOnly explicitly nil
+			}
+			if test.hasProvider {
+				ca.Spec.Provider = &v1alpha1.BTPTenantIdentification{SubDomain: subDomain, TenantId: tenantId}
+			}
+			cav := &v1alpha1.CAPApplicationVersion{
+				Spec: v1alpha1.CAPApplicationVersionSpec{Workloads: test.workloads},
+			}
+			if got := IsServicesOnly(ca, cav); got != test.expectedSvcs {
+				t.Fatalf("IsServicesOnly: expected %v, got %v", test.expectedSvcs, got)
+			}
+		})
+	}
+}
+
+// TestValidateMalformedObject covers unmarshalRawObj error branches via Object.Raw payloads
+// that are valid JSON on the wire but fail to unmarshal into the typed resource.
+func TestValidateMalformedObject(t *testing.T) {
+	wh := &WebhookHandler{
+		CrdClient: fakeCrdClient.NewSimpleClientset(),
+	}
+
+	// A JSON string is a valid JSON value (so RawExtension keeps it), but unmarshalling
+	// it into any of our typed struct targets fails — exercising the error path.
+	const badPayload = `"not-an-object"`
+
+	tests := []struct {
+		name      string
+		kind      string
+		operation admissionv1.Operation
+		objField  string // "object" or "oldObject"
+	}{
+		{name: "CAPApplication create malformed", kind: v1alpha1.CAPApplicationKind, operation: admissionv1.Create, objField: "object"},
+		{name: "CAPApplication update malformed old", kind: v1alpha1.CAPApplicationKind, operation: admissionv1.Update, objField: "oldObject"},
+		{name: "CAPApplicationVersion create malformed", kind: v1alpha1.CAPApplicationVersionKind, operation: admissionv1.Create, objField: "object"},
+		{name: "CAPApplicationVersion update malformed old", kind: v1alpha1.CAPApplicationVersionKind, operation: admissionv1.Update, objField: "oldObject"},
+		{name: "CAPTenant create malformed", kind: v1alpha1.CAPTenantKind, operation: admissionv1.Create, objField: "object"},
+		{name: "CAPTenant update malformed old", kind: v1alpha1.CAPTenantKind, operation: admissionv1.Update, objField: "oldObject"},
+		{name: "CAPTenantOutput create malformed", kind: v1alpha1.CAPTenantOutputKind, operation: admissionv1.Create, objField: "object"},
+		{name: "ClusterDomain create malformed", kind: v1alpha1.ClusterDomainKind, operation: admissionv1.Create, objField: "object"},
+		{name: "Domain create malformed", kind: v1alpha1.DomainKind, operation: admissionv1.Create, objField: "object"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Build the body manually so the bad payload survives in object.raw / oldObject.raw.
+			// For Update we always need both object and oldObject (the validators read both before
+			// reaching the spec-change check) — the non-targeted side is a valid empty object.
+			objectRaw := `{}`
+			oldObjectRaw := `{}`
+			if test.objField == "object" {
+				objectRaw = badPayload
+			} else {
+				oldObjectRaw = badPayload
+			}
+
+			body := fmt.Sprintf(`{
+				"kind":"AdmissionReview",
+				"apiVersion":"admission.k8s.io/v1",
+				"request":{
+					"uid":%q,
+					"kind":{"kind":%q},
+					"operation":%q,
+					"object":%s,
+					"oldObject":%s
+				}
+			}`, uid, test.kind, string(test.operation), objectRaw, oldObjectRaw)
+
+			req := httptest.NewRequest(http.MethodPost, "/validate", bytes.NewBufferString(body))
+			w := httptest.NewRecorder()
+			wh.Validate(w, req)
+			if w.Code != http.StatusInternalServerError {
+				t.Fatalf("expected 500 InternalServerError, got %d", w.Code)
+			}
+		})
+	}
+}
+
+// TestValidateTenantOperationsWithExplicitSpecTenantOperations covers a successful TenantOperations validation
+// (only TenantOperation job + explicit spec.tenantOperations referencing it), exercising
+// the success returns of validateWorkloadsinTenantOperations and validateTenantOperations.
+func TestValidateTenantOperationsWithExplicitSpecTenantOperations(t *testing.T) {
+	Ca := createCaCRO()
+	wh := &WebhookHandler{
+		CrdClient: fakeCrdClient.NewSimpleClientset(Ca),
+	}
+
+	cav := &v1alpha1.CAPApplicationVersion{
+		TypeMeta: metav1.TypeMeta{Kind: v1alpha1.CAPApplicationVersionKind},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cavName,
+			Namespace: metav1.NamespaceDefault,
+		},
+		Spec: v1alpha1.CAPApplicationVersionSpec{
+			CAPApplicationInstance: caName,
+			Workloads: []v1alpha1.WorkloadDetails{
+				{
+					Name: "cap-backend",
+					DeploymentDefinition: &v1alpha1.DeploymentDetails{
+						Type:          v1alpha1.DeploymentCAP,
+						CommonDetails: v1alpha1.CommonDetails{Image: "foo"},
+						Ports: []v1alpha1.Ports{
+							{Name: "p1", RouterDestinationName: "p1-dest", Port: 4004},
+						},
+					},
+				},
+				{
+					Name: "cap-router",
+					DeploymentDefinition: &v1alpha1.DeploymentDetails{
+						Type:          v1alpha1.DeploymentRouter,
+						CommonDetails: v1alpha1.CommonDetails{Image: "foo"},
+					},
+				},
+				{
+					Name: "tenant-op",
+					JobDefinition: &v1alpha1.JobDetails{
+						Type:          v1alpha1.JobTenantOperation,
+						CommonDetails: v1alpha1.CommonDetails{Image: "foo"},
+					},
+				},
+			},
+			TenantOperations: &v1alpha1.TenantOperations{
+				Provisioning:   []v1alpha1.TenantOperationWorkloadReference{{WorkloadName: "tenant-op"}},
+				Deprovisioning: []v1alpha1.TenantOperationWorkloadReference{{WorkloadName: "tenant-op"}},
+				Upgrade:        []v1alpha1.TenantOperationWorkloadReference{{WorkloadName: "tenant-op"}},
+			},
+		},
+	}
+
+	admissionReview, err := createAdmissionRequest(admissionv1.Create, v1alpha1.CAPApplicationVersionKind, caName, noUpdate)
+	if err != nil {
+		t.Fatal("admission review error")
+	}
+	rawBytes, _ := json.Marshal(cav)
+	admissionReview.Request.Object.Raw = rawBytes
+	bytesRequest, _ := json.Marshal(admissionReview)
+
+	req := httptest.NewRequest(http.MethodPost, "/validate", bytes.NewBuffer(bytesRequest))
+	recorder := httptest.NewRecorder()
+	wh.Validate(recorder, req)
+
+	resp := admissionv1.AdmissionReview{}
+	bodyBytes, _ := io.ReadAll(recorder.Body)
+	universalDeserializer.Decode(bodyBytes, nil, &resp)
+
+	if !resp.Response.Allowed {
+		t.Fatalf("expected allowed=true, got allowed=%v message=%q", resp.Response.Allowed, resp.Response.Result.Message)
+	}
+}
+
+// TestClusterDomainAndDomainNonCreateUpdateOps covers the early-return path
+// of validateClusterDomain and validateDomain on operations other than Create/Update.
+func TestClusterDomainAndDomainNonCreateUpdateOps(t *testing.T) {
+	wh := &WebhookHandler{
+		CrdClient: fakeCrdClient.NewSimpleClientset(),
+	}
+
+	tests := []struct {
+		kind      string
+		operation admissionv1.Operation
+	}{
+		{kind: v1alpha1.ClusterDomainKind, operation: admissionv1.Delete},
+		{kind: v1alpha1.ClusterDomainKind, operation: admissionv1.Connect},
+		{kind: v1alpha1.DomainKind, operation: admissionv1.Delete},
+		{kind: v1alpha1.DomainKind, operation: admissionv1.Connect},
+	}
+
+	for _, test := range tests {
+		t.Run(string(test.kind)+"_"+string(test.operation), func(t *testing.T) {
+			body := fmt.Sprintf(`{
+				"kind":"AdmissionReview",
+				"apiVersion":"admission.k8s.io/v1",
+				"request":{
+					"uid":%q,
+					"kind":{"kind":%q},
+					"operation":%q,
+					"object":{},
+					"oldObject":{}
+				}
+			}`, uid, test.kind, string(test.operation))
+
+			req := httptest.NewRequest(http.MethodPost, "/validate", bytes.NewBufferString(body))
+			w := httptest.NewRecorder()
+			wh.Validate(w, req)
+
+			resp := admissionv1.AdmissionReview{}
+			bodyBytes, _ := io.ReadAll(w.Body)
+			universalDeserializer.Decode(bodyBytes, nil, &resp)
+			if !resp.Response.Allowed {
+				t.Fatalf("expected allowed=true for %s/%s, got %v", test.kind, test.operation, resp.Response.Allowed)
+			}
+		})
+	}
+}
+
+// TestValidateMalformedAdmissionReview covers the decode-error branch of
+// getAdmissionRequestFromBytes (body that isn't a valid AdmissionReview).
+func TestValidateMalformedAdmissionReview(t *testing.T) {
+	wh := &WebhookHandler{
+		CrdClient: fakeCrdClient.NewSimpleClientset(),
+	}
+	req := httptest.NewRequest(http.MethodPost, "/validate", bytes.NewBufferString("not-a-json-document"))
+	w := httptest.NewRecorder()
+	wh.Validate(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 BadRequest, got %d", w.Code)
+	}
+}
