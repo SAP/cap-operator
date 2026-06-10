@@ -191,6 +191,11 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 		util.LogError(err, ErrorOccurred, TenantProvisioning, ca, nil)
 		return &Result{Tenant: nil, Message: err.Error()}
 	}
+	if ca.IsServicesOnly() {
+		err := errors.New("no multi-tenant capapplication found")
+		util.LogError(err, "CAPApplication invalid", TenantProvisioning, ca, nil)
+		return &Result{Tenant: nil, Message: err.Error()}
+	}
 
 	saasData, smsData, err = s.authorizationCheck(reqInfo.headerDetails, ca, reqInfo.subscriptionType, TenantProvisioning)
 	if err != nil {
@@ -1220,6 +1225,11 @@ func (s *SubscriptionHandler) getDependencies(req *http.Request, subscriptionTyp
 	ca, err := s.checkCAPApp("", providersubaccountId, appName)
 	if err != nil {
 		util.LogError(err, "CAPApplication not found for providerSubaccountId and appName", GetDependencies, nil, nil, "providerSubaccountId", providersubaccountId, "btpAppName", appName)
+		return nil, err
+	}
+	if ca.IsServicesOnly() {
+		err := errors.New("no multi-tenant capapplication found")
+		util.LogError(err, "CAPApplication invalid", GetDependencies, nil, nil, "providerSubaccountId", providersubaccountId, "btpAppName", appName)
 		return nil, err
 	}
 

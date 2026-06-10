@@ -1,0 +1,117 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPTenantOperation
+metadata:
+  name: test-cap-01-consumer-abcd
+  namespace: default
+  generation: 1
+  finalizers:
+    - sme.sap.com/captenantoperation
+  annotations:
+    sme.sap.com/owner-identifier: default.test-cap-01-consumer
+    sme.sap.com/subscription-context-secret: test-cap-01-consumer-gen
+  labels:
+    sme.sap.com/tenant-operation-type: provisioning
+    sme.sap.com/owner-generation: "2"
+    sme.sap.com/owner-identifier-hash: a9df2080f99fd77b1b2c7e4cee1e1bff69498511
+    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/cav-version: "5.6.7"
+    sme.sap.com/tenant-type: consumer
+    sme.sap.com/subscription-guid: 12abcde3-4f56-7f89-0edc-09876b54321a
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPTenant
+      name: test-cap-01-consumer
+spec:
+  tenantId: tenant-id-for-consumer
+  subDomain: my-consumer
+  operation: provisioning
+  capApplicationVersionInstance: test-cap-01-cav-v1
+  steps:
+    - name: mtx
+      type: TenantOperation
+status:
+  state: Processing
+  observedGeneration: 1
+  conditions:
+    - type: Ready
+      status: "False"
+      observedGeneration: 1
+      reason: StepInitiated
+      message: "step 1/1 : job default.test-cap-01-consumer-mtx-gen created"
+  currentStep: 1
+  activeJob: "test-cap-01-consumer-mtx-gen"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  annotations:
+    sme.sap.com/owner-identifier: default.test-cap-01-consumer-abcd
+  labels:
+    sme.sap.com/tenant-operation-step: "1"
+    sme.sap.com/tenant-operation-type: provisioning
+    sme.sap.com/owner-generation: "1"
+    sme.sap.com/owner-identifier-hash: 3fe2297df0595c1560e06432d1680d96bffafc2b
+    app: test-cap-01
+    sme.sap.com/category: "Workload"
+    sme.sap.com/workload-name: "mtx"
+    sme.sap.com/workload-type: "TenantOperation"
+  generateName: test-cap-01-consumer-mtx-
+  name: test-cap-01-consumer-mtx-gen
+  namespace: default
+  ownerReferences:
+    - apiVersion: sme.sap.com/v1alpha1
+      blockOwnerDeletion: true
+      controller: true
+      kind: CAPTenantOperation
+      name: test-cap-01-consumer-abcd
+spec:
+  template:
+    metadata:
+      annotations:
+        sme.sap.com/owner-identifier: default.test-cap-01-consumer-abcd
+      labels:
+        sme.sap.com/tenant-operation-step: "1"
+        sme.sap.com/tenant-operation-type: provisioning
+        sme.sap.com/owner-generation: "1"
+        sme.sap.com/owner-identifier-hash: 3fe2297df0595c1560e06432d1680d96bffafc2b
+        app: test-cap-01
+        sme.sap.com/category: "Workload"
+        sme.sap.com/workload-name: "mtx"
+        sme.sap.com/workload-type: "TenantOperation"
+    spec:
+      containers:
+        - env:
+            - name: CAPOP_APP_VERSION
+              value: 5.6.7
+            - name: CAPOP_TENANT_ID
+              value: tenant-id-for-consumer
+            - name: CAPOP_TENANT_OPERATION
+              value: provisioning
+            - name: CAPOP_TENANT_SUBDOMAIN
+              value: my-consumer
+            - name: CAPOP_TENANT_TYPE
+              value: consumer
+            - name: CAPOP_APP_NAME
+              value: test-cap-01
+            - name: CAPOP_GLOBAL_ACCOUNT_ID
+              value: btp-glo-acc-id
+            - name: CAPOP_SUBSCRIPTION_PAYLOAD
+              valueFrom:
+                secretKeyRef:
+                  name: test-cap-01-consumer-gen
+                  key: subscriptionContext
+            - name: CAPOP_TENANT_MTXS_OPERATION
+              value: subscribe
+          envFrom:
+            - secretRef:
+                name: test-cap-01-consumer-abcd-mtx-gen
+                optional: true
+          command: ["node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx"]
+          args: ["$(CAPOP_TENANT_MTXS_OPERATION)", "tenant-id-for-consumer", "--body", "$(CAPOP_SUBSCRIPTION_PAYLOAD)"]
+          image: docker.image.repo/srv/server:latest
+          name: mtx
+      imagePullSecrets:
+        - name: regcred
+      restartPolicy: Never

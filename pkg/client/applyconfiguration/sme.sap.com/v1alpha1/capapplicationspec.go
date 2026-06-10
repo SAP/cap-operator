@@ -23,7 +23,8 @@ type CAPApplicationSpecApplyConfiguration struct {
 	ProviderSubaccountId *string `json:"providerSubaccountId,omitempty"`
 	// Short name for the application (BTP XSAPPNAME)
 	BTPAppName *string `json:"btpAppName,omitempty"`
-	// Provider subaccount where application services are created
+	// Deprecated: Provider subaccount where application services are created
+	// Will be removed, consider automating this via BTP / subscription instead!
 	Provider *BTPTenantIdentificationApplyConfiguration `json:"provider,omitempty"`
 	// SAP BTP Services consumed by the application
 	BTP *BTPApplyConfiguration `json:"btp,omitempty"`
