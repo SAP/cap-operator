@@ -433,22 +433,24 @@ func TestCAPTenantWithUpgradeErrorSameVersionMTXRequestRemoved(t *testing.T) {
 }
 
 func TestCAPTenantUpgradeWithoutTenantOperationWorkloadInVersion(t *testing.T) {
-	reconcileTestItem(
+	err := reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
 		TestData{
 			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-2136"},
-			description:  "captenant start upgrade deriving TenantOperation workload from CAP workload",
+			description:  "captenant start upgrade with no TenantOperation job workload in CAV",
 			initialResources: []string{
 				"testdata/common/capapplication.yaml",
 				"testdata/common/capapplicationversion-v1.yaml",
 				"testdata/common/capapplicationversion-v2-no-mtx-workload.yaml",
 				"testdata/captenant/cat-07.initial.yaml",
 			},
-			expectedResources: "testdata/captenant/cat-27.expected.yaml",
-			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPTenant: {{Namespace: "default", Name: "test-cap-01-provider"}}},
+			expectError: true,
 		},
 	)
+	if err.Error() != "could not find workload of type TenantOperation in CAPApplicationVersion default.test-cap-01-cav-v2" {
+		t.Errorf("unexpected error: %s", err.Error())
+	}
 }
 
 func TestCAPTenantStartProvisioningWithMultipleOperationSteps(t *testing.T) {

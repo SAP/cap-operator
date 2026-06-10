@@ -466,12 +466,9 @@ func deriveStepsForTenantOperation(cav *v1alpha1.CAPApplicationVersion, opType v
 	defaultSteps := func() {
 		// if there are no specified steps, add only one step of type TenantOperation
 		workload := getRelevantJob(v1alpha1.JobTenantOperation, cav)
-		if workload == nil { // fallback to CAP workload
-			workload = getRelevantDeployment(v1alpha1.DeploymentCAP, cav)
-		}
 		if workload == nil {
 			// cannot proceed further without an identified workload
-			err = fmt.Errorf("could not find workload of type %s or %s in %s %s.%s", v1alpha1.JobTenantOperation, v1alpha1.DeploymentCAP, v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name)
+			err = fmt.Errorf("could not find workload of type %s in %s %s.%s", v1alpha1.JobTenantOperation, v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name)
 		} else {
 			steps = []v1alpha1.CAPTenantOperationStep{{Name: workload.Name, Type: v1alpha1.JobTenantOperation}}
 		}

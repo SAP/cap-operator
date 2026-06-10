@@ -138,13 +138,13 @@ func TestPrepareCAPTenantOperationUpgrade(t *testing.T) {
 	)
 }
 
-func TestUpgradeOperationDeriveFromCAPWorkload(t *testing.T) {
-	_ = reconcileTestItem(
+func TestUpgradeOperationMissingTenantOperationWorkload(t *testing.T) {
+	err := reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
 		TestData{
 			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-2136"},
-			description:  "prepared captenantoperation - tenant operation step deriving from cap workload",
+			description:  "prepared captenantoperation - tenant operation step with missing TenantOperation job workload in CAV",
 			initialResources: []string{
 				"testdata/common/capapplication.yaml",
 				"testdata/common/captenant-provider-ready.yaml",
@@ -152,12 +152,12 @@ func TestUpgradeOperationDeriveFromCAPWorkload(t *testing.T) {
 				"testdata/common/credential-secrets.yaml",
 				"testdata/captenantoperation/ctop-06.initial.yaml",
 			},
-			expectedResources: "testdata/captenantoperation/ctop-06.expected.yaml",
-			expectedRequeue: map[int][]NamespacedResourceKey{
-				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
-			},
+			expectError: true,
 		},
 	)
+	if err.Error() != "workload cap-backend in CAPApplicationVersion default.test-cap-01-cav-v2 has no job definition" {
+		t.Errorf("unexpected error: %s", err.Error())
+	}
 }
 
 func TestUpgradeOperationMultipleStepsInitiateFirstStep(t *testing.T) {

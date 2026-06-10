@@ -45,7 +45,7 @@ spec:
   tenantId: aa2bae55d7b5-1279-456564-a7b0-aa2bae55d7b5
   operation: provisioning # <-- valid values are provisioning, deprovisioning and upgrade
   steps:
-    - name: cap-backend # <-- derived from workload of type CAP (used when no TenantOperation workload is specified)
+    - name: tenant-operation # <-- derived from the workload of type TenantOperation defined in the CAPApplicationVersion
       type: TenantOperation
 ```
 

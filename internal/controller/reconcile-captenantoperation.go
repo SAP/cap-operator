@@ -30,31 +30,6 @@ type UpgradePayload struct {
 	AutoUnDeploy bool     `json:"autoUndeploy"`
 }
 
-type tentantOperationWorkload struct {
-	initContainers            []corev1.Container
-	image                     string
-	imagePullPolicy           corev1.PullPolicy
-	command                   []string
-	args                      []string
-	env                       []corev1.EnvVar
-	volumeMounts              []corev1.VolumeMount
-	volumes                   []corev1.Volume
-	serviceAccountName        string
-	resources                 corev1.ResourceRequirements
-	securityContext           *corev1.SecurityContext
-	podSecurityContext        *corev1.PodSecurityContext
-	affinity                  *corev1.Affinity
-	nodeSelector              map[string]string
-	nodeName                  string
-	priorityClassName         string
-	topologySpreadConstraints []corev1.TopologySpreadConstraint
-	tolerations               []corev1.Toleration
-	backoffLimit              *int32
-	ttlSecondsAfterFinished   *int32
-	activeDeadlineSeconds     *int64
-	restartPolicy             corev1.RestartPolicy
-}
-
 const (
 	CAPTenantOperationEventInvalidReference = "InvalidReference"
 )
@@ -399,6 +374,9 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 	if workload == nil {
 		return nil, fmt.Errorf("could not find workload %s in %s %s.%s", step.Name, v1alpha1.CAPApplicationVersionKind, relatedResources.CAPApplicationVersion.Namespace, relatedResources.CAPApplicationVersion.Name)
 	}
+	if workload.JobDefinition == nil {
+		return nil, fmt.Errorf("workload %s in %s %s.%s has no job definition", step.Name, v1alpha1.CAPApplicationVersionKind, relatedResources.CAPApplicationVersion.Namespace, relatedResources.CAPApplicationVersion.Name)
+	}
 
 	// create VCAP secret from consumed BTP services
 	consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), relatedResources.CAPApplication.Spec.BTP.Services)
@@ -473,8 +451,6 @@ type jobCreateParams struct {
 }
 
 func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {
-	derivedWorkload := deriveWorkloadForTenantOperation(workload, params.labels)
-
 	// create job for tenant operation (provisioning / upgrade / deprovisioning)
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -485,28 +461,28 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(ctop, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantOperationKind))},
 		},
 		Spec: batchv1.JobSpec{
-			BackoffLimit:            derivedWorkload.backoffLimit,
-			TTLSecondsAfterFinished: derivedWorkload.ttlSecondsAfterFinished,
-			ActiveDeadlineSeconds:   derivedWorkload.activeDeadlineSeconds,
+			BackoffLimit:            workload.JobDefinition.BackoffLimit,
+			TTLSecondsAfterFinished: workload.JobDefinition.TTLSecondsAfterFinished,
+			ActiveDeadlineSeconds:   workload.JobDefinition.ActiveDeadlineSeconds,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels:      params.labels,
 					Annotations: params.annotations,
 				},
 				Spec: corev1.PodSpec{
-					RestartPolicy:             getRestartPolicy(derivedWorkload.restartPolicy, true),
+					RestartPolicy:             getRestartPolicy(workload.JobDefinition.RestartPolicy, true),
 					ImagePullSecrets:          params.imagePullSecrets,
-					Containers:                getContainers(ctop, derivedWorkload, workload, params),
-					InitContainers:            *updateInitContainers(derivedWorkload.initContainers, getCTOPEnv(params, ctop, v1alpha1.JobTenantOperation), params.vcapSecretName),
-					Volumes:                   derivedWorkload.volumes,
-					ServiceAccountName:        derivedWorkload.serviceAccountName,
-					SecurityContext:           derivedWorkload.podSecurityContext,
-					NodeSelector:              derivedWorkload.nodeSelector,
-					NodeName:                  derivedWorkload.nodeName,
-					PriorityClassName:         derivedWorkload.priorityClassName,
-					Affinity:                  derivedWorkload.affinity,
-					TopologySpreadConstraints: derivedWorkload.topologySpreadConstraints,
-					Tolerations:               derivedWorkload.tolerations,
+					Containers:                getContainers(ctop, workload, params),
+					InitContainers:            *updateInitContainers(workload.JobDefinition.InitContainers, getCTOPEnv(params, ctop, v1alpha1.JobTenantOperation), params.vcapSecretName),
+					Volumes:                   workload.JobDefinition.Volumes,
+					ServiceAccountName:        workload.JobDefinition.ServiceAccountName,
+					SecurityContext:           workload.JobDefinition.PodSecurityContext,
+					NodeSelector:              workload.JobDefinition.NodeSelector,
+					NodeName:                  workload.JobDefinition.NodeName,
+					PriorityClassName:         workload.JobDefinition.PriorityClassName,
+					Affinity:                  workload.JobDefinition.Affinity,
+					TopologySpreadConstraints: getTopologySpreadConstraints(workload.JobDefinition.TopologySpreadConstraints, params.labels, false),
+					Tolerations:               workload.JobDefinition.Tolerations,
 				},
 			},
 		},
@@ -516,21 +492,21 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 	return c.kubeClient.BatchV1().Jobs(ctop.Namespace).Create(ctx, job, metav1.CreateOptions{})
 }
 
-func getContainers(ctop *v1alpha1.CAPTenantOperation, derivedWorkload tentantOperationWorkload, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) []corev1.Container {
+func getContainers(ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) []corev1.Container {
 	container := &corev1.Container{
 		Name:            workload.Name,
-		Image:           derivedWorkload.image,
-		ImagePullPolicy: derivedWorkload.imagePullPolicy,
-		Env:             append(getCTOPEnv(params, ctop, v1alpha1.JobTenantOperation), derivedWorkload.env...),
+		Image:           workload.JobDefinition.Image,
+		ImagePullPolicy: workload.JobDefinition.ImagePullPolicy,
+		Env:             append(getCTOPEnv(params, ctop, v1alpha1.JobTenantOperation), workload.JobDefinition.Env...),
 		EnvFrom:         getEnvFrom(params.vcapSecretName),
-		VolumeMounts:    derivedWorkload.volumeMounts,
-		Resources:       derivedWorkload.resources,
-		SecurityContext: derivedWorkload.securityContext,
+		VolumeMounts:    workload.JobDefinition.VolumeMounts,
+		Resources:       workload.JobDefinition.Resources,
+		SecurityContext: workload.JobDefinition.SecurityContext,
 	}
 
-	if derivedWorkload.command != nil {
-		container.Command = derivedWorkload.command
-		container.Args = derivedWorkload.args
+	if workload.JobDefinition.Command != nil {
+		container.Command = workload.JobDefinition.Command
+		container.Args = workload.JobDefinition.Args
 	} else {
 		container.Command = []string{"node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx"} // Use entrypoint for mtxs as the command
 		container.Args = []string{`$(` + EnvCAPOpTenantMtxsOperation + `)`, ctop.Spec.TenantId}
@@ -540,60 +516,6 @@ func getContainers(ctop *v1alpha1.CAPTenantOperation, derivedWorkload tentantOpe
 	}
 
 	return append([]corev1.Container{}, *container)
-}
-
-func deriveWorkloadForTenantOperation(workload *v1alpha1.WorkloadDetails, labels map[string]string) tentantOperationWorkload {
-	result := tentantOperationWorkload{}
-	if workload.JobDefinition == nil {
-		// this must be a reference to CAP workload
-		result.initContainers = workload.DeploymentDefinition.InitContainers
-		result.image = workload.DeploymentDefinition.Image
-		result.imagePullPolicy = workload.DeploymentDefinition.ImagePullPolicy
-		result.env = workload.DeploymentDefinition.Env
-		result.volumeMounts = workload.DeploymentDefinition.VolumeMounts
-		result.volumes = workload.DeploymentDefinition.Volumes
-		result.serviceAccountName = workload.DeploymentDefinition.ServiceAccountName
-		result.resources = workload.DeploymentDefinition.Resources
-		result.backoffLimit = &backoffLimitValue
-		result.ttlSecondsAfterFinished = &tTLSecondsAfterFinishedValue
-		result.securityContext = workload.DeploymentDefinition.SecurityContext
-		result.podSecurityContext = workload.DeploymentDefinition.PodSecurityContext
-		result.affinity = workload.DeploymentDefinition.Affinity
-		result.nodeSelector = workload.DeploymentDefinition.NodeSelector
-		result.nodeName = workload.DeploymentDefinition.NodeName
-		result.priorityClassName = workload.DeploymentDefinition.PriorityClassName
-		result.topologySpreadConstraints = getTopologySpreadConstraints(workload.DeploymentDefinition.TopologySpreadConstraints, labels, false)
-		result.tolerations = workload.DeploymentDefinition.Tolerations
-	} else {
-		// use job definition
-		result.initContainers = workload.JobDefinition.InitContainers
-		result.image = workload.JobDefinition.Image
-		result.imagePullPolicy = workload.JobDefinition.ImagePullPolicy
-		result.command = workload.JobDefinition.Command
-		result.args = workload.JobDefinition.Args
-		result.env = workload.JobDefinition.Env
-		result.volumeMounts = workload.JobDefinition.VolumeMounts
-		result.volumes = workload.JobDefinition.Volumes
-		result.serviceAccountName = workload.JobDefinition.ServiceAccountName
-		result.resources = workload.JobDefinition.Resources
-		result.securityContext = workload.JobDefinition.SecurityContext
-		result.podSecurityContext = workload.JobDefinition.PodSecurityContext
-		if workload.JobDefinition.BackoffLimit != nil {
-			result.backoffLimit = workload.JobDefinition.BackoffLimit
-		}
-		if workload.JobDefinition.TTLSecondsAfterFinished != nil {
-			result.ttlSecondsAfterFinished = workload.JobDefinition.TTLSecondsAfterFinished
-		}
-		result.activeDeadlineSeconds = workload.JobDefinition.ActiveDeadlineSeconds
-		result.restartPolicy = workload.JobDefinition.RestartPolicy
-		result.affinity = workload.JobDefinition.Affinity
-		result.nodeSelector = workload.JobDefinition.NodeSelector
-		result.nodeName = workload.JobDefinition.NodeName
-		result.priorityClassName = workload.JobDefinition.PriorityClassName
-		result.topologySpreadConstraints = getTopologySpreadConstraints(workload.JobDefinition.TopologySpreadConstraints, labels, false)
-		result.tolerations = workload.JobDefinition.Tolerations
-	}
-	return result
 }
 
 func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {
