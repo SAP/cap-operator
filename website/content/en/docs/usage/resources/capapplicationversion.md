@@ -139,7 +139,7 @@ workloads:
 Workloads with a `jobDefinition` represent a job that executes at a particular point in the lifecycle of the application or tenant. The following values are allowed for `type` in such workloads:
 
 - `Content`: A content deployer job that deploys SAP BTP service-specific content from the application version. This job runs as soon as a new `CAPApplicationVersion` resource is created in the cluster. Multiple workloads of this type may be defined, and the order in which they run can be specified via `ContentJobs`.
-- `TenantOperation`: A job executed during provisioning, upgrade, or deprovisioning of a tenant (`CAPTenant`). These jobs are controlled by the operator and use the `cds/mtxs` APIs to perform HDI content deployment by default. If a workload of type `TenantOperation` is not provided in the `CAPApplicationVersion`, the workload with `deploymentDefinition` of type `CAP` is used to determine the `jobDefinition` (`image`, `env`, etc.). If `cds/mtxs` APIs are used, `command` can be specified to trigger tenant operations with a custom command.
+- `TenantOperation`: A job executed during provisioning, upgrade, or deprovisioning of a tenant (`CAPTenant`). These jobs are controlled by the operator and use the `cds/mtxs` APIs to perform HDI content deployment by default. **A workload of type `TenantOperation` must always be defined in the `CAPApplicationVersion` for multi-tenant applications.** If `cds/mtxs` APIs are used, `command` can be specified to trigger tenant operations with a custom command.
 - `CustomTenantOperation`: An optional job that runs before or after the `TenantOperation`, allowing the application to perform tenant-specific tasks (for example, creating test data).
 
 ### Sequencing tenant operations
@@ -174,7 +174,8 @@ In the example above, for each tenant operation, the valid jobs (steps) and thei
 
 > NOTE:
 >
-> - `tenantOperations` is only required if `CustomTenantOperations` are used. If not specified, each operation consists only of the `TenantOperation` step (the first one found in `workloads`).
+> - `tenantOperations` is only required if `CustomTenantOperation`s are used. If not specified, each operation consists only of the `TenantOperation` step (the first one found in `workloads`).
+> - A workload of type `TenantOperation` must always be present in the `CAPApplicationVersion`. The previous behaviour of falling back to the `CAP` deployment workload when no `TenantOperation` job was defined is no longer supported.
 > - The `tenantOperations` sequencing applies only to tenants provisioned (or deprovisioned) on this `CAPApplicationVersion` and to tenants being upgraded to it.
 
 ### Sequencing content jobs
