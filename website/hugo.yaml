@@ -129,11 +129,10 @@ params:
         icon: "fa-brands fa-github"
         desc: "Development takes place here!"
 
-# Add docsy as hugo module
 module:
   hugoVersion:
     extended: true
     min: 0.162.0
-  imports:
-    - path: github.com/google/docsy
-      disable: false
+# Use docsy as the hugo theme via node_modules dir
+theme: docsy
+themesDir: node_modules

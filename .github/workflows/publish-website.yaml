@@ -31,14 +31,10 @@ jobs:
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v6
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: 'website/go.mod'
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v3
         with:
-          hugo-version: "0.162.1"
+          hugo-version: "0.163.0"
           extended: true
       - name: Setup Node
         uses: actions/setup-node@v6

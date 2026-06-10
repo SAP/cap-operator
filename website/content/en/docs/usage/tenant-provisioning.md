@@ -13,11 +13,11 @@ In CAP Operator, a valid tenant for an application is represented by the `CAPTen
 apiVersion: sme.sap.com/v1alpha1
 kind: CAPTenant
 metadata:
-  name: cap-app-01-provider
+  name: cap-app-01-consumer
   namespace: cap-app-01
 spec:
   capApplicationInstance: cap-app-01 # <-- reference to the CAPApplication
-  subDomain: app-provider
+  subDomain: app-consumer
   tenantId: aa2bae55d7b5-1279-456564-a7b0-aa2bae55d7b5
   version: "1.0.0" # <-- expected version of the application
   versionUpgradeStrategy: always # <-- always / never
@@ -37,11 +37,11 @@ The controller, observing the new `CAPTenant`, initiates the provisioning proces
 apiVersion: sme.sap.com/v1alpha1
 kind: CAPTenantOperation
 metadata:
-  name: cap-app-01-provider-sgz8b
+  name: cap-app-01-consumer-sgz8b
   namespace: cap-app-01
 spec:
   capApplicationVersionInstance: cav-cap-app-01-1 # <-- latest CAPApplicationVersion in Ready state
-  subDomain: app-provider
+  subDomain: app-consumer
   tenantId: aa2bae55d7b5-1279-456564-a7b0-aa2bae55d7b5
   operation: provisioning # <-- valid values are provisioning, deprovisioning and upgrade
   steps:

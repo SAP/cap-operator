@@ -70,7 +70,7 @@ Use `@sap/approuter` version `14.x.x` or higher.
 
 ### CAP Operator resources cannot be deleted
 
-All custom resources (CRs) created by CAP Operator are protected with `finalizers` to ensure proper cleanup. For example, when deleting a `CAPApplication`, all existing tenants are automatically deprovisioned to avoid inconsistencies. Once deprovisioning completes, the corresponding CRs are removed automatically. The provider `CAPTenant` resource cannot be deleted before the associated `CAPApplication` is deleted.
+All custom resources (CRs) created by CAP Operator are protected with `finalizers` to ensure proper cleanup. For example, when deleting a `CAPApplication`, all existing tenants are automatically deprovisioned to avoid inconsistencies. Once deprovisioning completes, the corresponding CRs are removed automatically. The provider `CAPTenant` resource cannot be deleted before the associated `CAPApplication` is deleted or the `provider` section is deleted from the `CAPApplication` specification.
 
 > **Important**: CAP Operator requires the Secrets from service instances and bindings to exist for the entire lifecycle of the application. Removing service instances, bindings, or their Secrets from the cluster while CAP application CRs still exist will leave orphaned resources (and potentially orphaned database data), and recovery from such inconsistent states may not be possible.
 >

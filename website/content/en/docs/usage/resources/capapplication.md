@@ -49,17 +49,16 @@ spec:
   - kind: ClusterDomain
     name: common-external-domain
   providerSubaccountId: 7a49218f-c750-4e1f-a248-7f1cefa13010
-  provider: # <-- provider tenant details
-    subDomain: cap-app-provider
-    tenantId: 7a49218f-c750-4e1f-a248-7f1cefa13010
 ```
 
 The `btp.services` array specifies all SAP BTP service instances and their corresponding Kubernetes Secrets (containing credentials) required by the application. These service instances are assumed to exist in the provider subaccount. You can use operators such as [cf-service-operator](https://sap.github.io/cf-service-operator/docs/) or [sap-btp-service-operator](https://github.com/SAP/sap-btp-service-operator) to declaratively create these service instances and their credentials as Kubernetes resources.
 
-The `provider` section specifies the provider subaccount linked to this application. The `providerSubaccountId` identifies the provider subaccount. The combination of `providerSubaccountId` and `btpAppName` (equivalent to `XSAPPNAME`) must be unique, as it is used in various SAP BTP service and application constructs.
+The `providerSubaccountId` identifies the provider subaccount linked to the application. The combination of `providerSubaccountId` and `btpAppName` (equivalent to `XSAPPNAME`) must be unique, as it is used in various SAP BTP service and application constructs.
+
+The `provider` section is deprecated and may be completely ommited as of version `0.31.0` even for multi-tenant applications, this also skips the creation of a provider tenant.
 
 The `domainRefs` section references one or more `Domain` or `ClusterDomain` resources.
 
 > NOTE: While the same secondary domain can technically be shared across applications using `ClusterDomain`, tenant subdomains must be unique across all applications sharing that domain.
 
-> NOTE: The `provider` section is omitted for [services-only applications](../../service-exposure/#deploying-services-only-applications).
+> NOTE: The `provider` section must always be omitted for [services-only applications](../../service-exposure/#deploying-services-only-applications).

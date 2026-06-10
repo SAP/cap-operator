@@ -93,9 +93,6 @@ spec:
   - kind: ClusterDomain
     name: common-external-domain # <-- reference to ClusterDomain resource in the cluster
   providerSubaccountId: provider-subaccount-id
-  provider:
-    subDomain: cap-app-01-provider
-    tenantId: e55d7b5-279-48be-a7b0-aa2bae55d7b5
 ```
 
 The `CAPApplicationVersion` describes the components of an application version, including the container images to use and the services consumed by each component. It must be created in the same namespace as the `CAPApplication` and must reference it. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
@@ -149,6 +146,13 @@ spec:
         type: Content
         image: app.some.repo.example.com/approuter/content:0.0.1
         backoffLimit: 1
+    - name: tenant-op
+      consumedBTPServices:
+        - app-uaa
+      jobDefinition:
+        type: Content
+        image: app.some.repo.example.com/srv/mtxs:0.0.1
+        backoffLimit: 1
 ```
 
 > NOTE: The example above shows a minimal `CAPApplicationVersion`. For a complete configuration with explanations, see [here](../resources/capapplicationversion).
@@ -163,7 +167,7 @@ The CAP Operator controller reacts to these objects and creates additional resou
 
 > The content deployer deploys content or configuration to SAP BTP services before they are consumed.
 
-Once these resources are available, the `CAPApplicationVersion` status changes to `Ready`. **The controller then automatically creates a `CAPTenant` object for the provider subaccount tenant.** See [tenant subscription](../tenant-provisioning) for details on how the `CAPTenant` resource is reconciled.
+Once these resources are available, the `CAPApplicationVersion` status changes to `Ready`. **The controller reconciles tenants once subscriptions are triggered for the application.** See [tenant subscription](../tenant-provisioning) for details on how the `CAPTenant` resource is reconciled.
 
 > The `CAPApplicationVersion` resource is immutable — its spec must not be modified after deployment. This is enforced by webhooks, which we recommend keeping active (the default).
 
