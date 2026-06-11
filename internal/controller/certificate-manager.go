@@ -305,7 +305,7 @@ func (o *ManagedCertificateInfo) getCertManagerCertificateSpec() certManagerv1.C
 	return certManagerv1.CertificateSpec{
 		DNSNames:   []string{"*." + o.Domain},
 		SecretName: o.CredentialName,
-		IssuerRef: certManagermetav1.ObjectReference{
+		IssuerRef: certManagermetav1.IssuerReference{
 			// TODO: make this configurable
 			Kind: certManagerv1.ClusterIssuerKind,
 			Name: "cluster-ca",

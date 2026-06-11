@@ -160,6 +160,7 @@ func (c *Controller) checkNewCavAndTenantReconcile(ctx context.Context, ca *v1al
 	// Get all relevant tenants
 	tenants, err := c.getRelevantTenantsForCA(ca)
 	if err != nil || len(tenants) == 0 {
+		ca.SetStatusCondition(string(v1alpha1.ConditionTypeAllTenantsReady), readyCondition, readyReason, "")
 		return nil, err
 	}
 	checkDone := false

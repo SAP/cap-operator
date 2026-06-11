@@ -75,11 +75,6 @@ const (
 	SecretSuffix          = "secret"
 )
 
-var (
-	backoffLimitValue            int32 = 2
-	tTLSecondsAfterFinishedValue int32 = 300
-)
-
 const TenantTypeProvider = "provider"
 
 const (
