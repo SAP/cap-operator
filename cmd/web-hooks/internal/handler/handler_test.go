@@ -39,6 +39,8 @@ type updateType int
 const (
 	noUpdate updateType = iota
 	providerUpdate
+	providerAdd
+	providerRemove
 	appInstanceUpdate
 	registrySecretsUpdate
 	consumedBTPServicesUpdate
@@ -188,12 +190,21 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 		rawBytes, err = json.Marshal(crd)
 		rawBytesOld = rawBytes
 		if operation == admissionv1.Update && err == nil {
-			crdOld := crd
-			if change == providerUpdate {
+			crdOld := crd.DeepCopy()
+			switch change {
+			case providerUpdate:
 				crdOld.Spec.Provider.SubDomain = crdOld.Spec.Provider.SubDomain + "modified"
 				crdOld.Spec.Provider.TenantId = crdOld.Spec.Provider.TenantId + "modified"
 				rawBytesOld, err = json.Marshal(crdOld)
-			} else if change == domainsUpdate {
+			case providerAdd:
+				// new object has provider, old object has no provider
+				crdOld.Spec.Provider = nil
+				rawBytesOld, err = json.Marshal(crdOld)
+			case providerRemove:
+				// new object has no provider, old object has provider
+				crd.Spec.Provider = nil
+				rawBytes, err = json.Marshal(crd)
+			case domainsUpdate:
 				crd.Spec.DomainRefs = []v1alpha1.DomainRef{}
 				crd.Spec.Domains = v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}}
 				rawBytes, err = json.Marshal(crd)
@@ -474,7 +485,7 @@ func TestCavAndCatValidity(t *testing.T) {
 
 			var errorMessage string
 			if test.operation == admissionv1.Delete && test.crdType == v1alpha1.CAPTenantKind {
-				errorMessage = fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s or remove it's provider instead to delete this tenant", InvalidationMessage, v1alpha1.CAPTenantKind, catName, v1alpha1.CAPApplicationKind, Ca.Name, v1alpha1.CAPApplicationKind)
+				errorMessage = fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s or remove it's provider section instead to delete this tenant", InvalidationMessage, v1alpha1.CAPTenantKind, catName, v1alpha1.CAPApplicationKind, Ca.Name, v1alpha1.CAPApplicationKind)
 				if admissionReview.Response.Allowed ||
 					admissionReview.Response.UID != uid ||
 					admissionReview.APIVersion != apiVersion ||
@@ -658,10 +669,51 @@ func TestCaValidity(t *testing.T) {
 	}
 }
 
+func TestCaProviderUpdateValidity(t *testing.T) {
+	tests := []struct {
+		name   string
+		update updateType
+	}{
+		{
+			name:   "adding provider is allowed",
+			update: providerAdd,
+		},
+		{
+			name:   "removing provider is allowed",
+			update: providerRemove,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			wh := &WebhookHandler{
+				CrdClient: fakeCrdClient.NewSimpleClientset(),
+			}
+			request, recorder := getHttpRequest(admissionv1.Update, v1alpha1.CAPApplicationKind, caName, test.update, t)
+
+			wh.Validate(recorder, request)
+
+			admissionReview := admissionv1.AdmissionReview{}
+			bytes, err := io.ReadAll(recorder.Body)
+			if err != nil {
+				t.Fatal("io read error")
+			}
+			universalDeserializer.Decode(bytes, nil, &admissionReview)
+
+			if !admissionReview.Response.Allowed ||
+				admissionReview.Response.UID != uid ||
+				admissionReview.APIVersion != apiVersion ||
+				admissionReview.Response.Result != nil {
+				t.Fatal("validation response error")
+			}
+		})
+	}
+}
+
 func TestCaInvalidity(t *testing.T) {
 	tests := []struct {
-		operation admissionv1.Operation
-		update    updateType
+		operation    admissionv1.Operation
+		update       updateType
+		errorMessage string
 	}{
 		{
 			operation: admissionv1.Update,
@@ -670,6 +722,11 @@ func TestCaInvalidity(t *testing.T) {
 		{
 			operation: admissionv1.Create,
 			update:    useDomains,
+		},
+		{
+			operation:    admissionv1.Update,
+			update:       providerUpdate,
+			errorMessage: fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, metav1.NamespaceDefault, caName),
 		},
 	}
 	for _, test := range tests {
@@ -694,6 +751,8 @@ func TestCaInvalidity(t *testing.T) {
 			var errorMessage string
 			if test.update == domainsUpdate || test.update == useDomains {
 				errorMessage = fmt.Sprintf("%s %s domains are deprecated. Use domainRefs instead in: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
+			} else if test.errorMessage != "" {
+				errorMessage = test.errorMessage
 			}
 
 			if admissionReview.Response.Allowed ||
@@ -1895,7 +1954,7 @@ func TestProviderTenantDeletionWithCAProvider(t *testing.T) {
 					t.Fatal("expected deletion to be allowed but it was denied")
 				}
 			} else {
-				expectedMessage := fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s or remove it's provider instead to delete this tenant",
+				expectedMessage := fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s or remove it's provider section instead to delete this tenant",
 					InvalidationMessage, v1alpha1.CAPTenantKind, catName, v1alpha1.CAPApplicationKind, Ca.Name, v1alpha1.CAPApplicationKind)
 				if admissionReview.Response.Allowed || admissionReview.Response.UID != uid || admissionReview.Response.Result.Message != expectedMessage {
 					t.Fatalf("expected deletion to be denied with message %q but got allowed=%v message=%q",

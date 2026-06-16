@@ -579,7 +579,7 @@ func (wh *WebhookHandler) checkCaIsConsistent(catObjOld v1alpha1.CAPTenant) vali
 	if ca != nil && err == nil && !ca.IsProviderEmpty() && ca.Status.State == v1alpha1.CAPApplicationStateConsistent && catObjOld.GetLabels()[LabelTenantType] == ProviderTenantType && catObjOld.Status.State == v1alpha1.CAPTenantStateReady {
 		return validateResource{
 			allowed: false,
-			message: fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s or remove it's provider instead to delete this tenant", InvalidationMessage, v1alpha1.CAPTenantKind, catObjOld.Name, v1alpha1.CAPApplicationKind, ca.Name, v1alpha1.CAPApplicationKind),
+			message: fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s or remove it's provider section instead to delete this tenant", InvalidationMessage, v1alpha1.CAPTenantKind, catObjOld.Name, v1alpha1.CAPApplicationKind, ca.Name, v1alpha1.CAPApplicationKind),
 		}
 	}
 	return validAdmissionReviewObj()
@@ -724,6 +724,14 @@ func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissio
 		// Note: Object is nil for "DELETE" operation
 		if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &caObjNew, v1alpha1.CAPApplicationKind); !validatedResource.allowed {
 			return validatedResource
+		}
+	}
+
+	// check: update on .Spec.Provider - adding or removing is allowed, but changing existing value is not
+	if admissionReview.Request.Operation == admissionv1.Update && !caObjOld.IsProviderEmpty() && !caObjNew.IsProviderEmpty() && !cmp.Equal(caObjNew.Spec.Provider, caObjOld.Spec.Provider) {
+		return validateResource{
+			allowed: false,
+			message: fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.GetNamespace(), caObjNew.GetName()),
 		}
 	}
 
