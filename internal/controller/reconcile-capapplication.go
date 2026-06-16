@@ -536,6 +536,9 @@ func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alp
 		var tenantFound bool
 		util.LogInfo("Deleting dependent tenants", string(Deleting), ca, nil)
 		if tenantFound, err = c.deleteTenants(ctx, ca); tenantFound || err != nil {
+			if tenantFound {
+				return NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 10*time.Second), nil
+			}
 			util.LogError(err, "Could not delete dependent tenant", string(Deleting), ca, nil)
 			return nil, err
 		}
