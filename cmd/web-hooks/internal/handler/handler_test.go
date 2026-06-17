@@ -755,7 +755,10 @@ func TestCaInvalidity(t *testing.T) {
 			}
 			universalDeserializer.Decode(bytes, nil, &admissionReview)
 
-			errorMessage := fmt.Sprintf("%s %s domains are deprecated. Use domainRefs instead in: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
+			var errorMessage string
+			if test.update == domainsUpdate || test.update == useDomains {
+				errorMessage = fmt.Sprintf("%s %s domains are deprecated. Use domainRefs instead in: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
+			}
 
 			if admissionReview.Response.Allowed ||
 				admissionReview.Response.UID != uid ||
