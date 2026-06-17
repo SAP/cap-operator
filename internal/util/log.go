@@ -25,7 +25,7 @@ const (
 	DependentKind = "dependentKind"
 )
 
-const LabelBTPApplicationIdentifierHash = "sme.sap.com/btp-app-identifier-hash"
+const LabelAppIdHash = "sme.sap.com/app-identifier-hash"
 
 func GetLogger() logr.Logger {
 	logger, _ := zap.NewProduction()
@@ -58,7 +58,7 @@ func extractEntityMeta(entity any, isRoot bool, skipLabel bool) map[string]strin
 			Kind:      kind,
 		}
 		if !skipLabel {
-			args[LabelBTPApplicationIdentifierHash] = objectMeta.GetLabels()[LabelBTPApplicationIdentifierHash]
+			args[LabelAppIdHash] = objectMeta.GetLabels()[LabelAppIdHash]
 		}
 	} else {
 		args = map[string]string{
@@ -83,9 +83,9 @@ func logArgs(step string, entity any, child any, inArgs ...any) []any {
 	skipLabel := false
 	args = append(args, Step, step)
 
-	// Some Root entities don't have LabelBTPApplicationIdentifierHash but this is set via the args instead!
+	// Some Root entities don't have "sme.sap.com/app-identifier-hash" but this is set via the args instead!
 	for _, arg := range inArgs {
-		if arg == LabelBTPApplicationIdentifierHash {
+		if arg == LabelAppIdHash {
 			skipLabel = true
 			break
 		}
