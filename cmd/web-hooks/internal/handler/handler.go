@@ -727,8 +727,8 @@ func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissio
 		}
 	}
 
-	// check: update on .Spec.Provider - adding or removing is allowed, but changing existing value is not
-	if admissionReview.Request.Operation == admissionv1.Update && !caObjOld.IsProviderEmpty() && !caObjNew.IsProviderEmpty() && !cmp.Equal(caObjNew.Spec.Provider, caObjOld.Spec.Provider) {
+	// check: update on .Spec.Provider - removing is allowed, but adding or changing existing value is not (deprecated)
+	if admissionReview.Request.Operation == admissionv1.Update && !caObjNew.IsProviderEmpty() && !cmp.Equal(caObjNew.Spec.Provider, caObjOld.Spec.Provider) {
 		return validateResource{
 			allowed: false,
 			message: fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.GetNamespace(), caObjNew.GetName()),

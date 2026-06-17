@@ -671,16 +671,24 @@ func TestCaValidity(t *testing.T) {
 
 func TestCaProviderUpdateValidity(t *testing.T) {
 	tests := []struct {
-		name   string
-		update updateType
+		name    string
+		update  updateType
+		allowed bool
 	}{
 		{
-			name:   "adding provider is allowed",
-			update: providerAdd,
+			name:    "adding provider is not allowed (deprecated)",
+			update:  providerAdd,
+			allowed: false,
 		},
 		{
-			name:   "removing provider is allowed",
-			update: providerRemove,
+			name:    "removing provider is allowed",
+			update:  providerRemove,
+			allowed: true,
+		},
+		{
+			name:    "changing existing provider is not allowed",
+			update:  providerUpdate,
+			allowed: false,
 		},
 	}
 	for _, test := range tests {
@@ -699,11 +707,16 @@ func TestCaProviderUpdateValidity(t *testing.T) {
 			}
 			universalDeserializer.Decode(bytes, nil, &admissionReview)
 
-			if !admissionReview.Response.Allowed ||
+			if admissionReview.Response.Allowed != test.allowed ||
 				admissionReview.Response.UID != uid ||
-				admissionReview.APIVersion != apiVersion ||
-				admissionReview.Response.Result != nil {
+				admissionReview.APIVersion != apiVersion {
 				t.Fatal("validation response error")
+			}
+			if !test.allowed {
+				expectedMessage := fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, metav1.NamespaceDefault, caName)
+				if admissionReview.Response.Result.Message != expectedMessage {
+					t.Fatal("unexpected error message: ", admissionReview.Response.Result.Message)
+				}
 			}
 		})
 	}
@@ -711,9 +724,8 @@ func TestCaProviderUpdateValidity(t *testing.T) {
 
 func TestCaInvalidity(t *testing.T) {
 	tests := []struct {
-		operation    admissionv1.Operation
-		update       updateType
-		errorMessage string
+		operation admissionv1.Operation
+		update    updateType
 	}{
 		{
 			operation: admissionv1.Update,
@@ -722,11 +734,6 @@ func TestCaInvalidity(t *testing.T) {
 		{
 			operation: admissionv1.Create,
 			update:    useDomains,
-		},
-		{
-			operation:    admissionv1.Update,
-			update:       providerUpdate,
-			errorMessage: fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, metav1.NamespaceDefault, caName),
 		},
 	}
 	for _, test := range tests {
@@ -748,12 +755,7 @@ func TestCaInvalidity(t *testing.T) {
 			}
 			universalDeserializer.Decode(bytes, nil, &admissionReview)
 
-			var errorMessage string
-			if test.update == domainsUpdate || test.update == useDomains {
-				errorMessage = fmt.Sprintf("%s %s domains are deprecated. Use domainRefs instead in: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
-			} else if test.errorMessage != "" {
-				errorMessage = test.errorMessage
-			}
+			errorMessage := fmt.Sprintf("%s %s domains are deprecated. Use domainRefs instead in: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
 
 			if admissionReview.Response.Allowed ||
 				admissionReview.Response.UID != uid ||
