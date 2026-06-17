@@ -24,8 +24,8 @@ github.com/fxamacker/cbor/v2 v2.9.2 h1:X4Ksno9+x3cz0TZv69ec1hxP/+tymuR8PXQJyDwfh
 github.com/fxamacker/cbor/v2 v2.9.2/go.mod h1:vM4b+DJCtHn+zz7h3FFp/hDAI9WNWCsZj23V5ytsSxQ=
 github.com/gardener/cert-management v0.24.1 h1:i26hhw1O1rFUOoD5rKha8WJ1t+q9kC882SUgsUGtrYg=
 github.com/gardener/cert-management v0.24.1/go.mod h1:attE0qxRrnxri93sqz5jmv9FKY81Azr3tF+symM8lMk=
-github.com/gardener/external-dns-management v0.43.0 h1:Q79JCzZFFBh0u3aeEujzRe7HMWlN6oXlQ/TtuFpKVrQ=
-github.com/gardener/external-dns-management v0.43.0/go.mod h1:tWrCw5CXYcfxXV9fDJMWhTGKRODpxXFOcQe7vvWFn00=
+github.com/gardener/external-dns-management v0.44.0 h1:AnGrt/EfImOjMEmJDwE67P5kX2yl2bIsGENFmcgGVys=
+github.com/gardener/external-dns-management v0.44.0/go.mod h1:tIS4/4m0qYn5EdeoKXq+mQkL9d9iHmrpy6WVW2r0iTI=
 github.com/gardener/gardener/pkg/apis v1.144.1 h1:T6btvkERhtN9XdrkFVH7GrAeTq7uY78HHzwW/t846sg=
 github.com/gardener/gardener/pkg/apis v1.144.1/go.mod h1:we6hJ8r80nL1rkXzVnOQwey4q77pQXHN3pvoBgeak8g=
 github.com/go-logr/logr v1.4.3 h1:CjnDlHq8ikf6E492q6eKboGOC0T8CDaOvkHCIg8idEI=
@@ -132,12 +132,12 @@ github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.91.0 h
 github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.91.0/go.mod h1:Gfzi4500QCMnptFIQc8YdDi8YZ4QA0vs22LROWZ3+YU=
 github.com/prometheus-operator/prometheus-operator/pkg/client v0.91.0 h1:WnKN4vTCEkqh4fVQ4q8XWJTXGUS3IPeEgLANVNWy4fk=
 github.com/prometheus-operator/prometheus-operator/pkg/client v0.91.0/go.mod h1:3Eg4UduoEYZ+51J2QudVxhi4OAkmhob8/hOFb3L4Q/s=
-github.com/prometheus/client_golang v1.23.3-0.20260518105423-c9d5bc4c50a9 h1:rneH9T2i7VvR/2yKvhQ8bkmFEdJ6yuP/2UC8Wx71vIM=
-github.com/prometheus/client_golang v1.23.3-0.20260518105423-c9d5bc4c50a9/go.mod h1:QRA+KSZEtitKV4dtGtD9gCh8T2Gy4gifR1dqcT1MMss=
+github.com/prometheus/client_golang v1.23.3-0.20260602051030-3537b20ac86b h1:QNV54DNcRqdeECNdEXiOqTmI75w2rlZtOq5rt8RKhVo=
+github.com/prometheus/client_golang v1.23.3-0.20260602051030-3537b20ac86b/go.mod h1:kPaff19KETV3GKIZJehgPmlA2Di3jNeWdgKA9RpObuU=
 github.com/prometheus/client_model v0.6.2 h1:oBsgwpGs7iVziMvrGhE53c/GrLUsZdHnqNwqPLxwZyk=
 github.com/prometheus/client_model v0.6.2/go.mod h1:y3m2F6Gdpfy6Ut/GBsUqTWZqCUvMVzSfMLjcu6wAwpE=
-github.com/prometheus/common v0.68.1 h1:omjRRl4QP4komogpXuhfeOiisQg7xdy8VM1UY+pStaY=
-github.com/prometheus/common v0.68.1/go.mod h1:ZzL3f6u94qUxh9p+tJTrF+FvBS1XXbbRAZCQkytAL0Y=
+github.com/prometheus/common v0.69.0 h1:OA85nJQS/T/MaYh/Q2CcgDKSGWqNIgrBDvDH85CuiNk=
+github.com/prometheus/common v0.69.0/go.mod h1:ZzL3f6u94qUxh9p+tJTrF+FvBS1XXbbRAZCQkytAL0Y=
 github.com/prometheus/procfs v0.20.1 h1:XwbrGOIplXW/AU3YhIhLODXMJYyC1isLFfYCsTEycfc=
 github.com/prometheus/procfs v0.20.1/go.mod h1:o9EMBZGRyvDrSPH1RqdxhojkuXstoe4UlK79eF5TGGo=
 github.com/rogpeppe/go-internal v1.14.1 h1:UQB4HGPB6osV0SQTLymcB4TgvyWu6ZyliaW0tI/otEQ=

@@ -7,7 +7,7 @@ require (
 	github.com/MicahParks/keyfunc/v3 v3.8.0
 	github.com/cert-manager/cert-manager v1.20.2
 	github.com/gardener/cert-management v0.24.1
-	github.com/gardener/external-dns-management v0.43.0
+	github.com/gardener/external-dns-management v0.44.0
 	github.com/go-logr/logr v1.4.3
 	github.com/go-logr/zapr v1.3.0
 	github.com/go-task/slim-sprig/v3 v3.0.0
@@ -17,8 +17,8 @@ require (
 	github.com/lestrrat-go/jwx/v3 v3.1.1
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.91.0
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.91.0
-	github.com/prometheus/client_golang v1.23.3-0.20260518105423-c9d5bc4c50a9
-	github.com/prometheus/common v0.68.1
+	github.com/prometheus/client_golang v1.23.3-0.20260602051030-3537b20ac86b
+	github.com/prometheus/common v0.69.0
 	go.uber.org/zap v1.28.0
 	golang.org/x/mod v0.37.0
 	golang.org/x/sync v0.21.0
