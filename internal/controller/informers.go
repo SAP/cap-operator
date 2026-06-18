@@ -6,12 +6,15 @@ SPDX-License-Identifier: Apache-2.0
 package controller
 
 import (
+	"context"
 	"reflect"
 	"time"
 
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/informers"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
@@ -80,7 +83,6 @@ func (c *Controller) initializeInformers() {
 	c.registerDomainListeners()
 	c.registerClusterDomainListeners()
 	c.registerJobListeners()
-	c.registerSecretListeners()
 	c.registerGatewayListeners()
 	c.registerVirtualServiceListeners()
 	c.registerDestinationRuleListeners()
@@ -100,10 +102,6 @@ func (c *Controller) initializeInformers() {
 }
 
 func (c *Controller) getEventHandlerFuncsForResource(res int) cache.ResourceEventHandlerFuncs {
-	_, ok := QueueMapping[res]
-	if !ok {
-		return cache.ResourceEventHandlerFuncs{}
-	}
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(new any) {
 			c.enqueueModifiedResource(res, new, nil)
@@ -162,11 +160,6 @@ func (c *Controller) registerDestinationRuleListeners() {
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceDestinationRule))
 }
 
-func (c *Controller) registerSecretListeners() {
-	c.kubeInformerFactory.Core().V1().Secrets().Informer().
-		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceSecret))
-}
-
 func (c *Controller) registerGatewayListeners() {
 	c.istioInformerFactory.Networking().V1().Gateways().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceGateway))
@@ -185,6 +178,56 @@ func (c *Controller) registerCertManagerCertificateListeners() {
 func (c *Controller) registerGardenerDNSEntrytListeners() {
 	c.gardenerDNSInformerFactory.Dns().V1alpha1().DNSEntries().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceDNSEntry))
+}
+
+// Creates and Start a namespace-scoped secret informer for the namespace if one does not already exist.
+func (c *Controller) ensureSecretInformerForNamespace(namespace string, ctx context.Context) {
+	c.nsSecretInformersMu.Lock()
+	defer c.nsSecretInformersMu.Unlock()
+
+	if c.nsSecretInformers == nil {
+		c.nsSecretInformers = map[string]informers.SharedInformerFactory{}
+	}
+
+	if _, exists := c.nsSecretInformers[namespace]; exists {
+		return
+	}
+
+	factory := informers.NewSharedInformerFactoryWithOptions(
+		c.kubeClient,
+		30*time.Minute,
+		informers.WithNamespace(namespace),
+	)
+
+	// Register
+	factory.Core().V1().Secrets().Informer().AddEventHandler(c.secretEventHandlers())
+
+	factory.Start(ctx.Done())
+	factory.WaitForCacheSync(ctx.Done())
+
+	c.nsSecretInformers[namespace] = factory
+	klog.InfoS("started namespace-scoped secret informer", "namespace", namespace)
+}
+
+// returns the secret lister for the given namespace.
+func (c *Controller) secretListerForNamespace(namespace string) corev1listers.SecretNamespaceLister {
+	c.nsSecretInformersMu.RLock()
+	var factory informers.SharedInformerFactory
+	if c.nsSecretInformers != nil {
+		factory = c.nsSecretInformers[namespace]
+	}
+	c.nsSecretInformersMu.RUnlock()
+
+	if factory != nil {
+		return factory.Core().V1().Secrets().Lister().Secrets(namespace)
+	}
+	return c.kubeInformerFactory.Core().V1().Secrets().Lister().Secrets(namespace)
+}
+
+func (c *Controller) secretEventHandlers() cache.ResourceEventHandlerFuncs {
+	// Ignore notifications for objects for now --> we primarily only want to list these secrets for now.
+	// This could be implemented to used to add potentional handlers for Credential Rotation based rollouts
+	return cache.ResourceEventHandlerFuncs{}
 }
 
 func (c *Controller) enqueueModifiedResource(sourceKey int, new, old any) {

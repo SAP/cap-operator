@@ -45,6 +45,9 @@ func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem
 	}
 	ca := cached.DeepCopy()
 
+	// ensure a namespace-scoped secret informer is running for this CA's namespace
+	c.ensureSecretInformerForNamespace(ca.Namespace, ctx)
+
 	// prepare annotations, labels, finalizers
 	if c.prepareCAPApplication(ca) {
 		if err = c.updateCAPApplication(ctx, ca); err == nil {
