@@ -20,7 +20,7 @@ import (
 type CAPTenantOutputApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:",inline"`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	// CAPTenantOutputData spec
+	// CAPTenantOutput spec
 	Spec *CAPTenantOutputSpecApplyConfiguration `json:"spec,omitempty"`
 }
 

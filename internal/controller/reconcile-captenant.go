@@ -423,7 +423,7 @@ func (c *Controller) createCAPTenantOperation(ctx context.Context, cat *v1alpha1
 		return nil, err
 	}
 
-	// Cleanup all cap tenant ourputs for this tenant
+	// Cleanup all cap tenant outputs for this tenant
 	err = c.cleanUpTenantOutputs(ctx, cat)
 	if err != nil {
 		return nil, err
@@ -497,12 +497,12 @@ func deriveStepsForTenantOperation(cav *v1alpha1.CAPApplicationVersion, opType v
 	}
 
 	steps = []v1alpha1.CAPTenantOperationStep{}
-	addedTenantOprJob := false
+	addedTenantOperationJob := false
 	for _, entry := range ops {
 		workload := getWorkloadByName(entry.WorkloadName, cav)
 		switch workload.JobDefinition.Type {
 		case v1alpha1.JobTenantOperation:
-			addedTenantOprJob = true
+			addedTenantOperationJob = true
 			fallthrough
 		case v1alpha1.JobCustomTenantOperation:
 			// continuing the tenant operation on failure is not possible for tenant operation jobs
@@ -512,7 +512,7 @@ func deriveStepsForTenantOperation(cav *v1alpha1.CAPApplicationVersion, opType v
 			continue // ignore all other types (even if specified)
 		}
 	}
-	if !addedTenantOprJob { // ensure step of type TenantOperation is added
+	if !addedTenantOperationJob { // ensure step of type TenantOperation is added
 		return nil, fmt.Errorf("specified steps for operation %s does not contain a step of type %s", opType, v1alpha1.JobTenantOperation)
 	}
 	return

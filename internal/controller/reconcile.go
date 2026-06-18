@@ -55,8 +55,8 @@ const (
 	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
 	AnnotationGlobalAccountId           = "sme.sap.com/global-account-id"
 	AnnotationEnableCleanupMonitoring   = "sme.sap.com/enable-cleanup-monitoring"
-	AnnotationVSRouteRequestHeaderSet   = "sme.sap.com/vs-route-request-header-set"  // used to set the header for the vs route request
-	AnnotationVSRouteResponseHeaderSet  = "sme.sap.com/vs-route-response-header-set" // used to set the header for the vs route response
+	AnnotationVSRouteRequestHeaderSet   = "sme.sap.com/vs-route-request-header-set"  // configures headers on incoming requests for Istio VirtualService route handling
+	AnnotationVSRouteResponseHeaderSet  = "sme.sap.com/vs-route-response-header-set" // configures headers on outgoing responses for Istio VirtualService route handling
 	AnnotationLogoutEndpoint            = "sme.sap.com/logout-endpoint"
 	AnnotationEnableVersionAffinity     = "sme.sap.com/enable-version-affinity"
 	FinalizerCAPApplication             = "sme.sap.com/capapplication"
@@ -347,11 +347,7 @@ func (c *Controller) checkServicesOnly(ca *v1alpha1.CAPApplication, cav *v1alpha
 	// Check if the CAP Application is already marked with ServicesOnly from a previous version only once the Status is set!
 	if ca.Status.ServicesOnly != nil {
 		if ca.IsServicesOnly() != servicesOnly {
-			serviceErrorPrefix := "without"
-			if servicesOnly {
-				serviceErrorPrefix = "with"
-			}
-			return fmt.Errorf("creating a new version %s only service workloads is not allowed. The CAP Application %s.%s is already marked with ServicesOnly %v from a previous version", serviceErrorPrefix, ca.Namespace, ca.Name, !servicesOnly)
+			return fmt.Errorf("cannot create a new version with different service workload configuration. The CAP Application %s.%s is already marked with ServicesOnly=%v from a previous version", ca.Namespace, ca.Name, !servicesOnly)
 		}
 	}
 
