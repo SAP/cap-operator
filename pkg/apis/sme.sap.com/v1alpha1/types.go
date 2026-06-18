@@ -745,7 +745,7 @@ const (
 type CAPTenantOutput struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
-	// CAPTenantOutputData spec
+	// CAPTenantOutput spec
 	Spec CAPTenantOutputSpec `json:"spec"`
 }
 
