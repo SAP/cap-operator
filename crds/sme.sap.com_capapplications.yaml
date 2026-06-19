@@ -120,6 +120,8 @@ spec:
                 type: object
               providerSubaccountId:
                 type: string
+              rolloutOnCredentialUpdate:
+                type: boolean
             required:
             - btp
             - btpAppName

@@ -28,6 +28,8 @@ type CAPApplicationSpecApplyConfiguration struct {
 	Provider *BTPTenantIdentificationApplyConfiguration `json:"provider,omitempty"`
 	// SAP BTP Services consumed by the application
 	BTP *BTPApplyConfiguration `json:"btp,omitempty"`
+	// Rollout on Credentials Update may be used to rollout deployments when dependant service credentials are updated
+	RolloutOnCredentialUpdate *bool `json:"rolloutOnCredentialUpdate,omitempty"`
 }
 
 // CAPApplicationSpecApplyConfiguration constructs a declarative configuration of the CAPApplicationSpec type for use with
@@ -94,5 +96,13 @@ func (b *CAPApplicationSpecApplyConfiguration) WithProvider(value *BTPTenantIden
 // If called multiple times, the BTP field is set to the value of the last call.
 func (b *CAPApplicationSpecApplyConfiguration) WithBTP(value *BTPApplyConfiguration) *CAPApplicationSpecApplyConfiguration {
 	b.BTP = value
+	return b
+}
+
+// WithRolloutOnCredentialUpdate sets the RolloutOnCredentialUpdate field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the RolloutOnCredentialUpdate field is set to the value of the last call.
+func (b *CAPApplicationSpecApplyConfiguration) WithRolloutOnCredentialUpdate(value bool) *CAPApplicationSpecApplyConfiguration {
+	b.RolloutOnCredentialUpdate = &value
 	return b
 }

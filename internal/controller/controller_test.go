@@ -99,6 +99,8 @@ func TestController_processQueue(t *testing.T) {
 				eventRecorder:               events.NewFakeRecorder(10),
 			}
 
+			testC.rolloutManager = newRolloutManager(testC)
+
 			// Create a background context that gets cancelled once the test run completes
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()

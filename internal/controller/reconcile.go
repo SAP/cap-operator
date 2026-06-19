@@ -406,22 +406,29 @@ func generateVCAPEnv(ns string, serviceInfos []v1alpha1.ServiceInfo, kubeInforme
 	return json.Marshal(envVCAPServices)
 }
 
-func (c Controller) createVCAPSecret(namePrefix string, ns string, ownerRef metav1.OwnerReference, serviceInfos []v1alpha1.ServiceInfo) (string, error) {
+func (c *Controller) createVCAPSecret(namePrefix string, ns string, ownerRef metav1.OwnerReference, serviceInfos []v1alpha1.ServiceInfo) (string, error) {
 	// Generate VCAP_SERVICES env. variable
 	vcapEnv, err := generateVCAPEnv(ns, serviceInfos, c.kubeInformerFactory)
 	if err != nil {
 		return "", err
 	}
 
+	return c.createSecretFromVCAPEnv(ns, ownerRef, namePrefix, vcapEnv, false)
+}
+
+func (c *Controller) createSecretFromVCAPEnv(ns string, ownerRef metav1.OwnerReference, namePrefix string, vcapEnv []byte, skipExistingCheck bool) (string, error) {
 	secretLabels := map[string]string{
 		LabelSecretOwnerHash: sha1Sum(ns, ownerRef.Name, namePrefix),
 	}
 
-	secretList, err := c.kubeInformerFactory.Core().V1().Secrets().Lister().Secrets(ns).List(labels.SelectorFromSet(secretLabels))
-	if err != nil { // Some error occurred
-		return "", err
-	} else if len(secretList) > 0 { // Existing secret present
-		return secretList[0].Name, nil
+	// During rolloutOnCredentialUpdate the existing secret check may be skipped
+	if !skipExistingCheck {
+		secretList, err := c.kubeInformerFactory.Core().V1().Secrets().Lister().Secrets(ns).List(labels.SelectorFromSet(secretLabels))
+		if err != nil { // Some error occurred
+			return "", err
+		} else if len(secretList) > 0 { // Existing secret present
+			return secretList[0].Name, nil
+		}
 	}
 
 	// Nothing Found -->

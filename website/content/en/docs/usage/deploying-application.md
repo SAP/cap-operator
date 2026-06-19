@@ -172,3 +172,5 @@ Once these resources are available, the `CAPApplicationVersion` status changes t
 > The `CAPApplicationVersion` resource is immutable — its spec must not be modified after deployment. This is enforced by webhooks, which we recommend keeping active (the default).
 
 > NOTE: Follow the recommended [security measures](../security) to safeguard exposed workloads.
+
+> NOTE: If SAP BTP service credentials are rotated after deployment, CAP Operator can automatically restart affected workloads. See [Rollout on Credential Update](../rollout-on-credential-update) to learn how to enable this.

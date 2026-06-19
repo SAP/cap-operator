@@ -55,6 +55,7 @@ type Controller struct {
 	queues                       map[int]workqueue.TypedRateLimitingInterface[QueueItem]
 	eventBroadcaster             events.EventBroadcaster
 	eventRecorder                events.EventRecorder
+	rolloutManager               *rolloutManager
 }
 
 var (
@@ -138,6 +139,7 @@ func NewController(client kubernetes.Interface, crdClient versioned.Interface, i
 		eventBroadcaster:             eventBroadcaster,
 		eventRecorder:                recorder,
 	}
+	c.rolloutManager = newRolloutManager(c)
 	return c
 }
 
@@ -231,6 +233,11 @@ func (c *Controller) Start(ctx context.Context) {
 	// start version cleanup routines
 	wg.Go(func() {
 		c.startVersionCleanup(qCxt)
+	})
+
+	// start rollout manager
+	wg.Go(func() {
+		c.rolloutManager.Start(qCxt)
 	})
 
 	// wait for workers
