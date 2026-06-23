@@ -22,7 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/informers"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog/v2"
 )
 
@@ -286,11 +286,11 @@ func (c *Controller) getCachedCAPApplicationVersions(ca *v1alpha1.CAPApplication
 
 func (c *Controller) checkSecretsExist(serviceInfos []v1alpha1.ServiceInfo, namespace string) error {
 	var err error
-	secretLister := c.kubeInformerFactory.Core().V1().Secrets().Lister()
+	secretLister := c.secretListerForNamespace(namespace)
 
 	for _, service := range serviceInfos {
 		secretName := service.Secret
-		if _, err = secretLister.Secrets(namespace).Get(secretName); err != nil {
+		if _, err = secretLister.Get(secretName); err != nil {
 			break
 		}
 	}
@@ -300,11 +300,11 @@ func (c *Controller) checkSecretsExist(serviceInfos []v1alpha1.ServiceInfo, name
 func (c *Controller) checkAndPreserveSecrets(serviceInfos []v1alpha1.ServiceInfo, namespace string) error {
 	var err error
 	var secret *corev1.Secret
-	secretLister := c.kubeInformerFactory.Core().V1().Secrets().Lister()
+	secretLister := c.secretListerForNamespace(namespace)
 
 	for _, service := range serviceInfos {
 		secretName := service.Secret
-		if secret, err = secretLister.Secrets(namespace).Get(secretName); err != nil {
+		if secret, err = secretLister.Get(secretName); err != nil {
 			break
 		}
 		// Add finalizer to preserve Secret from being deleted accidentally
@@ -320,12 +320,12 @@ func (c *Controller) checkAndPreserveSecrets(serviceInfos []v1alpha1.ServiceInfo
 func (c *Controller) cleanupPreservedSecrets(serviceInfos []v1alpha1.ServiceInfo, namespace string) error {
 	var err error
 	var secret *corev1.Secret
-	secretLister := c.kubeInformerFactory.Core().V1().Secrets().Lister()
+	secretLister := c.secretListerForNamespace(namespace)
 
 	for _, service := range serviceInfos {
 		secretName := service.Secret
 		// Check if a secret exists
-		if secret, err = secretLister.Secrets(namespace).Get(secretName); err != nil && !k8sErrors.IsNotFound(err) {
+		if secret, err = secretLister.Get(secretName); err != nil && !k8sErrors.IsNotFound(err) {
 			break
 		}
 		// Remove finalizer from preserved Secret (if one exists) to allow it to be cleaned up if needed
@@ -386,10 +386,10 @@ func getConsumedServiceInfos(consumedServicesMap map[string]string, serviceInfos
 	return consumedServiceInfo
 }
 
-func generateVCAPEnv(ns string, serviceInfos []v1alpha1.ServiceInfo, kubeInformerFactory informers.SharedInformerFactory) ([]byte, error) {
+func generateVCAPEnv(ns string, serviceInfos []v1alpha1.ServiceInfo, secretLister corev1listers.SecretNamespaceLister) ([]byte, error) {
 	envVCAPServices := map[string][]map[string]any{}
 	for _, serviceInfo := range serviceInfos {
-		entry, err := util.CreateVCAPEntryFromSecret(&serviceInfo, ns, nil, kubeInformerFactory)
+		entry, err := util.CreateVCAPEntryFromSecret(&serviceInfo, ns, nil, secretLister)
 		if err != nil {
 			return nil, err
 		}
@@ -406,9 +406,10 @@ func generateVCAPEnv(ns string, serviceInfos []v1alpha1.ServiceInfo, kubeInforme
 	return json.Marshal(envVCAPServices)
 }
 
-func (c Controller) createVCAPSecret(namePrefix string, ns string, ownerRef metav1.OwnerReference, serviceInfos []v1alpha1.ServiceInfo) (string, error) {
+func (c *Controller) createVCAPSecret(namePrefix string, ns string, ownerRef metav1.OwnerReference, serviceInfos []v1alpha1.ServiceInfo) (string, error) {
 	// Generate VCAP_SERVICES env. variable
-	vcapEnv, err := generateVCAPEnv(ns, serviceInfos, c.kubeInformerFactory)
+	secretsLister := c.secretListerForNamespace(ns)
+	vcapEnv, err := generateVCAPEnv(ns, serviceInfos, secretsLister)
 	if err != nil {
 		return "", err
 	}
@@ -417,7 +418,7 @@ func (c Controller) createVCAPSecret(namePrefix string, ns string, ownerRef meta
 		LabelSecretOwnerHash: sha1Sum(ns, ownerRef.Name, namePrefix),
 	}
 
-	secretList, err := c.kubeInformerFactory.Core().V1().Secrets().Lister().Secrets(ns).List(labels.SelectorFromSet(secretLabels))
+	secretList, err := secretsLister.List(labels.SelectorFromSet(secretLabels))
 	if err != nil { // Some error occurred
 		return "", err
 	} else if len(secretList) > 0 { // Existing secret present

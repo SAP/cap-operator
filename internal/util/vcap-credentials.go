@@ -13,8 +13,8 @@ import (
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	corev1listers "k8s.io/client-go/listers/core/v1"
 )
 
 // See Kubernetes-Service-Bindings/doc
@@ -83,11 +83,11 @@ func ReadServiceCredentialsFromSecret[T any](serviceInfo *v1alpha1.ServiceInfo, 
 	return ParseJSON[T](serviceCredInfo)
 }
 
-func CreateVCAPEntryFromSecret(serviceInfo *v1alpha1.ServiceInfo, ns string, kubeClient kubernetes.Interface, kubeInformerFactory informers.SharedInformerFactory) (entry map[string]any, err error) {
+func CreateVCAPEntryFromSecret(serviceInfo *v1alpha1.ServiceInfo, ns string, kubeClient kubernetes.Interface, secretsLister corev1listers.SecretNamespaceLister) (entry map[string]any, err error) {
 	var secret *corev1.Secret
 	// Get secret
-	if kubeInformerFactory != nil {
-		secret, err = kubeInformerFactory.Core().V1().Secrets().Lister().Secrets(ns).Get(serviceInfo.Secret)
+	if secretsLister != nil {
+		secret, err = secretsLister.Get(serviceInfo.Secret)
 	} else {
 		secret, err = kubeClient.CoreV1().Secrets(ns).Get(context.TODO(), serviceInfo.Secret, metav1.GetOptions{})
 	}

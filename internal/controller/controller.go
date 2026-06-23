@@ -52,9 +52,12 @@ type Controller struct {
 	gardenerCertInformerFactory  gardenerCertInformers.SharedInformerFactory
 	certManagerInformerFactory   certManagerInformers.SharedInformerFactory
 	gardenerDNSInformerFactory   gardenerDNSInformers.SharedInformerFactory
-	queues                       map[int]workqueue.TypedRateLimitingInterface[QueueItem]
-	eventBroadcaster             events.EventBroadcaster
-	eventRecorder                events.EventRecorder
+	// per-namespace secret informers
+	nsSecretInformers   map[string]informers.SharedInformerFactory
+	nsSecretInformersMu sync.RWMutex
+	queues              map[int]workqueue.TypedRateLimitingInterface[QueueItem]
+	eventBroadcaster    events.EventBroadcaster
+	eventRecorder       events.EventRecorder
 }
 
 var (
@@ -134,6 +137,7 @@ func NewController(client kubernetes.Interface, crdClient versioned.Interface, i
 		gardenerCertInformerFactory:  gardenerCertInformerFactory,
 		certManagerInformerFactory:   certManagerInformerFactory,
 		gardenerDNSInformerFactory:   gardenerDNSInformerFactory,
+		nsSecretInformers:            map[string]informers.SharedInformerFactory{},
 		queues:                       queues,
 		eventBroadcaster:             eventBroadcaster,
 		eventRecorder:                recorder,

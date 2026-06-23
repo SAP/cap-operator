@@ -165,7 +165,7 @@ func testCreateVCAPEntryFromSecret(t *testing.T) {
 	for i := range cases {
 		t.Run(cases[i].name, func(t *testing.T) {
 			config := &cases[i]
-			entry, err := CreateVCAPEntryFromSecret(config.serviceInfo, config.namespace, c, kubeInformerFactory)
+			entry, err := CreateVCAPEntryFromSecret(config.serviceInfo, config.namespace, c, kubeInformerFactory.Core().V1().Secrets().Lister().Secrets(config.namespace))
 			if err != nil {
 				if !config.expectError {
 					t.Errorf("unexpected error in test case: %s", config.name)
