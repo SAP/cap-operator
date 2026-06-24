@@ -12,6 +12,7 @@ import (
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 )
@@ -164,7 +165,7 @@ func (c *Controller) registerDestinationRuleListeners() {
 
 func (c *Controller) registerSecretListeners() {
 	c.kubeInformerFactory.Core().V1().Secrets().Informer().
-		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceSecret))
+		AddEventHandler(c.getSecretEventHandlerFuncs())
 }
 
 func (c *Controller) registerGatewayListeners() {
@@ -185,6 +186,30 @@ func (c *Controller) registerCertManagerCertificateListeners() {
 func (c *Controller) registerGardenerDNSEntrytListeners() {
 	c.gardenerDNSInformerFactory.Dns().V1alpha1().DNSEntries().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceDNSEntry))
+}
+
+func (c *Controller) getSecretEventHandlerFuncs() cache.ResourceEventHandlerFuncs {
+	return cache.ResourceEventHandlerFuncs{
+		UpdateFunc: func(oldObj, newObj any) {
+			new, newOk := getMetaObject(newObj)
+			old, oldOk := getMetaObject(oldObj)
+			if !newOk || !oldOk || old.GetResourceVersion() == new.GetResourceVersion() {
+				return // no relevant changes
+			}
+			secretNS := new.GetNamespace()
+			cas, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister().CAPApplications(secretNS).List(labels.Everything())
+			if err != nil {
+				klog.ErrorS(err, "error retrieving applications", "informers", "rollout-manager")
+			}
+
+			for _, ca := range cas {
+				if ca.Spec.RolloutOnCredentialUpdate {
+					c.rolloutManager.Enqueue(secretNS, new.GetName())
+					break // one enqueue per namespace per secret is enough
+				}
+			}
+		},
+	}
 }
 
 func (c *Controller) enqueueModifiedResource(sourceKey int, new, old any) {

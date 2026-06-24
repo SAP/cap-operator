@@ -62,3 +62,5 @@ The `domainRefs` section references one or more `Domain` or `ClusterDomain` reso
 > NOTE: While the same secondary domain can technically be shared across applications using `ClusterDomain`, tenant subdomains must be unique across all applications sharing that domain.
 
 > NOTE: The `provider` section must always be omitted for [services-only applications](../../service-exposure/#deploying-services-only-applications).
+
+The optional `rolloutOnCredentialUpdate` field enables automatic rolling restarts of affected Deployments when the referenced BTP service credential Secrets are updated. See [Rollout on Credential Update](../../rollout-on-credential-update) for details.
