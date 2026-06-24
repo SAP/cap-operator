@@ -27,3 +27,6 @@ The following environment variables are used to configure CAP Operator.
 - `MAX_CONCURRENT_RECONCILES_CAP_TENANT_OPERATION`: Maximum number of concurrent reconciles for `CAPTenantOperation` (for example, `10`).
 - `MAX_CONCURRENT_RECONCILES_DOMAIN`: Maximum number of concurrent reconciles for `Domain` (for example, `1`).
 - `MAX_CONCURRENT_RECONCILES_CLUSTER_DOMAIN`: Maximum number of concurrent reconciles for `ClusterDomain` (for example, `1`).
+- `CLIENT_QPS`: Maximum queries per second for the Kubernetes client-side rate limiter (for example, `25`). Defaults to `25`.
+- `CLIENT_BURST`: Maximum burst size for the Kubernetes client-side rate limiter (for example, `50`). Defaults to `50`.
+- `ROLLOUT_DELAY`: Delay window used to batch credential-rotation work triggered by BTP service secret changes. Accepts Go duration strings (for example, `30m`, `2h`). Defaults to `1h`. Values below `30s` are clamped to `30s`.

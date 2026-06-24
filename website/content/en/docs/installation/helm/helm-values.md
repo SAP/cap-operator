@@ -1,7 +1,7 @@
 ---
 title: "Helm Values"
 linkTitle: "Helm Values"
-weight: 10
+weight: 20
 type: "docs"
 tags: ["setup"]
 description: >

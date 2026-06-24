@@ -32,33 +32,3 @@ Create a namespace and install the Helm chart in that namespace by specifying th
     domain: cap-operator.<CLUSTER-DOMAIN>
   ```
 
-## Optional steps
-
-- ### Enable Service Monitors for metrics
-
-  To enable monitoring via [metrics](../../usage/operator-metrics) emitted by CAP Operator components, set the following value:
-  ```yaml
-  monitoring:
-    enabled: true # <-- enables creation of service monitors for metrics emitted by CAP Operator components
-  ```
-  To enable detailed operational metrics for the controller:
-  ```yaml
-  controller:
-      detailedOperationalMetrics: true
-  ```
-- ### Set up Prometheus integration for _Version Monitoring_
-
-  To use the [Version Monitoring](../../usage/version-monitoring/) feature, provide a [Prometheus](https://prometheus.io/) server URL to the CAP Operator. When installing with the Helm chart, specify the following values:
-  ```yaml
-  controller:
-    versionMonitoring:
-      prometheusAddress: "http://prometheus-operated.monitoring.svc.cluster.local:9090" # <-- example of a Prometheus server running inside the same cluster
-      promClientAcquireRetryDelay: "2h"
-      metricsEvaluationInterval: "30m" # <-- interval at which version metrics are evaluated
-  ```
-  On startup, the controller attempts to connect to the Prometheus server and fetch [runtime information](https://prometheus.io/docs/prometheus/latest/querying/api/#runtime-information) to verify the connection. If the connection fails, the controller retries after the delay specified in `controller.versionMonitoring.promClientAcquireRetryDelay`. See default values [here](./helm-values).
-
-  {{% alert title="Note" color="info" %}}
-  - When connecting the controller to a Prometheus server running inside the cluster, ensure that the `NetworkPolicy` resources required for connecting to the service in the Prometheus namespace are also created.
-  - If the Prometheus service is configured to use TLS, mount the relevant CA root certificates as volumes on the controller.
-  {{% /alert %}}

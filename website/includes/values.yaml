@@ -103,6 +103,13 @@ controller:
     metricsEvaluationInterval: "1h"
     # -- The duration (example 10m) to wait before retrying to acquire Prometheus client and verify connection, after a failed attempt
     promClientAcquireRetryDelay: "1h"
+  clientRateLimiting:
+    # -- The maximum queries per second from the controller client to the kubernetes API server (e.g. "20")
+    qps: ""
+    # -- The maximum burst for throttle (e.g. "30")
+    burst: ""
+  # -- The delay (example 1h) to wait before rolling out version workloads on credential update
+  rolloutDelay: ""
 
 subscriptionServer:
   # -- Replicas
