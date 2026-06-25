@@ -35,6 +35,10 @@ import (
 const (
 	LeaseLockName                    = "capoperator-lease-lock"
 	MaxConcurrentReconcilesEnvPrefix = "MAX_CONCURRENT_RECONCILES_"
+	ClientQPSEnv                     = "CLIENT_QPS"
+	ClientBurstEnv                   = "CLIENT_BURST"
+	defaultClientQPS                 = 25
+	defaultClientBurst               = 50
 )
 
 func main() {
@@ -45,9 +49,8 @@ func main() {
 	}
 
 	// Configure client side rate limiting settings
-	// @TODO: make this configurable
-	config.QPS = 20
-	config.Burst = 30
+	config.QPS = float32(getEnvInt(ClientQPSEnv, defaultClientQPS))
+	config.Burst = getEnvInt(ClientBurstEnv, defaultClientBurst)
 
 	leaseLockNamespace := util.GetNamespace()
 	leaseLockId := uuid.New().String()
@@ -159,19 +162,16 @@ func main() {
 	})
 }
 
-func getDefaultConcurrencyConfig() map[int]int {
-	// inline function to get concurrency config for each resource kind from environment variables or use defaults
-	getConcurrencyConfigForResource := func(resourceEnvSuffix string, defaultVal int) int {
-		reconcileEnv := MaxConcurrentReconcilesEnvPrefix + resourceEnvSuffix
-		if val := os.Getenv(reconcileEnv); val != "" {
-			if intVal, err := strconv.Atoi(val); err == nil {
-				return intVal
-			}
+func getEnvInt(key string, defaultVal int) int {
+	if val := os.Getenv(key); val != "" {
+		if intVal, err := strconv.Atoi(val); err == nil {
+			return intVal
 		}
-		return defaultVal
 	}
+	return defaultVal
+}
 
-	// Configure default concurrency for each resource kind, can be overridden by environment variables
+func getDefaultConcurrencyConfig() map[int]int {
 	concurrencyConfig := make(map[int]int)
 
 	for resourceKey, resourceEnvSuffix := range controller.ResourceEnvSuffixMap {
@@ -179,8 +179,7 @@ func getDefaultConcurrencyConfig() map[int]int {
 		if !ok {
 			defaultReconcileForResource = controller.DefaultReconcile
 		}
-		concurrencyValue := max(getConcurrencyConfigForResource(resourceEnvSuffix, defaultReconcileForResource), 1)
-		concurrencyConfig[resourceKey] = concurrencyValue
+		concurrencyConfig[resourceKey] = max(getEnvInt(MaxConcurrentReconcilesEnvPrefix+resourceEnvSuffix, defaultReconcileForResource), 1)
 	}
 	return concurrencyConfig
 }
