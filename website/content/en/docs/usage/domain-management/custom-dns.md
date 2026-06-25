@@ -1,6 +1,6 @@
 ---
-title: "A Guide to Flexible DNS Configuration"
-linkTitle: "Flexible DNS"
+title: "Custom DNS Templates"
+linkTitle: "Custom DNS"
 weight: 20
 type: "docs"
 tags: ["domains"]
@@ -8,34 +8,55 @@ description: >
   How to configure Custom DNS mode for `Domain` or `ClusterDomain`
 ---
 
-## Overview
-Custom DNS mode lets you use Go templates to generate DNS entries dynamically, providing precise control over complex DNS configurations. Specify your desired setup in the `dnsTemplates` field.
+When `dnsMode` is set to `Custom`, the operator creates DNS entries according to the `dnsTemplates` field instead of the fixed patterns used by `Wildcard` and `Subdomain` modes. This lets you generate multiple DNS records per domain, map subdomains to external names, or combine wildcard and per-subdomain entries in one resource.
 
-You can use functions from the [Slim Sprig library](https://go-task.github.io/slim-sprig/) in your templates.
+{{% alert color="info" title="Prerequisite" %}}
+DNS entry creation requires the Gardener external-dns-management controller. When using the Kubernetes DNS manager, `dnsMode` is ignored and no DNS entries are created regardless of the mode chosen.
+{{% /alert %}}
 
-### What Is Custom DNS Mode?
-Custom DNS mode uses [Go templates](https://pkg.go.dev/text/template) to generate DNS entries. Specify your configuration in the `dnsTemplates` field.
+## Templates
 
-#### Available Variables in DNS Templates
-- **{{.domain}}**: The value of `spec.domain`.
-- **{{.dnsTarget}}**: The effective ingress target, specified by `spec.dnsTarget` or derived from `spec.istioIngressSelector`.
-- **{{.subDomain}}**: The subdomain of a `CAPTenant` or a tenant-agnostic workload.
+Each entry in `dnsTemplates` produces one or more DNS records. Up to 10 templates are allowed per resource. The `name` and `target` fields are rendered using [Go templates](https://pkg.go.dev/text/template). A template has two fields:
 
+| Field | Description |
+|---|---|
+| `name` | DNS name for the record — rendered as a Go template |
+| `target` | DNS target (hostname or IP) — rendered as a Go template |
 
-### DNS Record Behavior
+### Available variables
 
-- Each template typically produces one DNS record.
-- If the name contains `{{.subDomain}}`, a DNS record is created for each valid subdomain from tenants or service exposures.
-- `{{.subDomain}}` may appear in the target only if it also appears in the name.
+The following variables are available in both `name` and `target`:
 
+| Variable | Value |
+|---|---|
+| `{{.domain}}` | The value of `spec.domain` |
+| `{{.dnsTarget}}` | The effective ingress target: `spec.dnsTarget`, or `DNS_TARGET` env var, or the load balancer service annotation on the Istio Ingress Gateway |
+| `{{.subDomain}}` | A subdomain collected from referencing applications — see [Subdomain expansion](#subdomain-expansion) |
 
-### Example Configuration
-The following example configures Custom DNS mode for a `Domain` resource:
+Functions from the [Slim Sprig library](https://go-task.github.io/slim-sprig/) are available in all templates.
 
+### Subdomain expansion
+
+When `{{.subDomain}}` appears in a template's `name`, the operator expands that template once for each subdomain observed across all `CAPApplication` resources that reference the domain. A template whose `name` does not contain `{{.subDomain}}` is rendered exactly once.
+
+Subdomains are collected from two sources and tracked in `CAPApplication.status.observedSubdomains`:
+
+- `CAPTenant.spec.subDomain` — each tenant's subdomain
+- `CAPApplicationVersion.spec.serviceExposures[].subDomain` — subdomains declared in version service exposures
+
+`{{.subDomain}}` may also be used in `target`, but only when `name` also contains `{{.subDomain}}`.
+
+{{% alert color="warning" title="Subdomain conflicts" %}}
+If the same subdomain appears in two different `CAPApplication` resources that both reference the same domain, that subdomain is skipped for the second application and a `SubdomainAlreadyInUse` warning event is raised on it.
+{{% /alert %}}
+
+## Example
+
+The following configuration combines a wildcard record with per-subdomain records on the primary domain, and a CNAME chain that maps each subdomain on an external domain to the corresponding subdomain on the primary domain:
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
-kind: Domain
+kind: Domain                 # also applies to ClusterDomain
 metadata:
   namespace: cap-app-01
   name: cap-app-01-primary
@@ -54,4 +75,12 @@ spec:
     target: '{{ .subDomain }}.{{ .domain }}'
 ```
 
-This configuration applies to both `Domain` and `ClusterDomain` resources.
+For an application with subdomains `tenant-a` and `tenant-b`, this produces five DNS records:
+
+| DNS name | Target |
+|---|---|
+| `*.my.cluster.shoot.url.k8s.example.com` | `<ingress target>` |
+| `tenant-a.my.cluster.shoot.url.k8s.example.com` | `<ingress target>` |
+| `tenant-b.my.cluster.shoot.url.k8s.example.com` | `<ingress target>` |
+| `tenant-a.myapp.com` | `tenant-a.my.cluster.shoot.url.k8s.example.com` |
+| `tenant-b.myapp.com` | `tenant-b.my.cluster.shoot.url.k8s.example.com` |

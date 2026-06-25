@@ -8,7 +8,7 @@ description: >
   How to configure the `Domain` resource
 ---
 
-Here's an example of a fully configured `Domain` resource:
+A `Domain` resource is namespace-scoped. All sub-resources — Gateway, DNSEntry, and (with Gardener certificate manager) the Certificate — are created in the same namespace as the `Domain`.
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -21,12 +21,43 @@ spec:
   ingressSelector:
     app: istio-ingressgateway
     istio: ingressgateway
-  tlsMode: Simple        # Simple (default) or  Mutual or OptionalMutual
-  dnsMode: Wildcard      # Custom or Wildcard or Subdomain or None (default)
-  dnsTarget: public-ingress.cluster.domain # Optional
-
+  tlsMode: Simple       # Simple (default), Mutual, or OptionalMutual
+  dnsMode: Wildcard     # None (default), Wildcard, Subdomain, or Custom
+  dnsTarget: public-ingress.cluster.domain  # Optional
+  certConfig:           # Optional; only relevant when tlsMode is Mutual or OptionalMutual
+    additionalCACertificate: |
+      -----BEGIN CERTIFICATE-----
+      ...
+      -----END CERTIFICATE-----
 ```
 
-- The `dnsTarget` field is optional. If specified, it is used; otherwise, the target is derived from the Istio Ingress Gateway via `ingressSelector`.
-- The `Gateway` and `DNSEntry` are created in the same namespace as the `Domain` resource, while `Certificate` resources are created in the namespace where the Istio Ingress Gateway is present.
-- When X509 client authentication is enforced on the Istio Gateway by setting `tlsMode` to `Mutual` or `OptionalMutual`, additional CA certificates are needed by Istio for verifying client certificates. These can be specified in the `certConfig.additionalCACertificate` field.
+### Fields
+
+**`domain`** — the DNS domain name. The TLS certificate is issued for the wildcard `*.domain`.
+
+**`ingressSelector`** — label selector used to locate the Istio Ingress Gateway pods. The operator discovers the gateway's namespace and load balancer service from these pods, and applies the selector to the Istio `Gateway` resource.
+
+**`tlsMode`** — TLS mode for the Istio Gateway:
+- `Simple` (default) — server-side TLS only.
+- `Mutual` — mutual TLS; client certificate required.
+- `OptionalMutual` — mutual TLS; client certificate optional.
+
+**`dnsMode`** — controls DNS entry creation (Gardener external-dns-management only; ignored otherwise):
+- `None` (default) — no DNS entries created.
+- `Wildcard` — creates a single `*.domain` entry pointing to `dnsTarget`.
+- `Subdomain` — creates `<subdomain>.domain` entries for each subdomain observed across referencing applications.
+- `Custom` — creates entries defined by `dnsTemplates`; each template has a `name` and `target` field rendered as Go templates. Available variables: `{{.domain}}`, `{{.dnsTarget}}`, `{{.subDomain}}`. See [Custom DNS Templates](../domain-management/custom-dns) for details.
+
+**`dnsTarget`** *(optional)* — the load balancer hostname or IP address to use as the DNS target. Resolved in order: explicit `dnsTarget` field → `DNS_TARGET` environment variable → load balancer service annotation on the Istio Ingress Gateway service.
+
+**`certConfig.additionalCACertificate`** *(optional)* — PEM-encoded CA certificate Istio uses to verify client certificates when `tlsMode` is `Mutual` or `OptionalMutual`. See [Configuring Additional CA Certificates](../domain-management/additional-ca) for details.
+
+### Created resources
+
+Sub-resources are mainly created in the `Domain` namespace:
+
+- Istio `Gateway` — always created.
+- `DNSEntry` — Gardener DNS manager only.
+- `Certificate` (Gardener cert-manager) — the certificate's `secretRef` points to the Istio Ingress Gateway namespace, which supports cross-namespace secret references.
+- `Certificate` (cert-manager) — created in the Istio Ingress Gateway namespace; cert-manager does not support cross-namespace secret references.
+- CA certificate `Secret` — created in the Istio Ingress Gateway namespace; only when `certConfig.additionalCACertificate` is set.
