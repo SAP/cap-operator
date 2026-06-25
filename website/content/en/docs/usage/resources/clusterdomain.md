@@ -8,7 +8,7 @@ description: >
   How to configure the `ClusterDomain` resource
 ---
 
-Here's an example of a fully configured `ClusterDomain` resource:
+A `ClusterDomain` resource is cluster-scoped and intended for domains shared across multiple applications or namespaces. All sub-resources — Gateway, DNSEntry, and (with Gardener certificate manager) the Certificate — are created in the namespace where CAP Operator is installed.
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
@@ -20,45 +20,43 @@ spec:
   ingressSelector:
     app: istio-ingressgateway
     istio: ingressgateway
-  tlsMode: Mutual        # Simple (default) or  Mutual
-  dnsMode: Subdomain     # Custom or Wildcard or Subdomain or None (default)
-  dnsTarget: public-ingress.cluster.domain # Optional
-  certConfig: # Optional
+  tlsMode: Simple       # Simple (default), Mutual, or OptionalMutual
+  dnsMode: Subdomain    # None (default), Wildcard, Subdomain, or Custom
+  dnsTarget: public-ingress.cluster.domain  # Optional
+  certConfig:           # Optional; only relevant when tlsMode is Mutual or OptionalMutual
     additionalCACertificate: |
       -----BEGIN CERTIFICATE-----
-      MIIFZjCCA06gAwIBAgIQGHcPvmUGa79M6pM42bGFYjANBgkqhkiG9w0BAQsFADBN
-      MQswCQYDVQQGEwJERTERMA8GA1UEBwwIV2FsbGRvcmYxDzANBgNVBAoMBlNBUCBT
-      RTEaMBgGA1UEAwwRU0FQIENsb3VkIFJvb3QgQ0EwHhcNMTkwMjEzMTExOTM2WhcN
-      MzkwMjEzMTEyNjMyWjBNMQswCQYDVQQGEwJERTERMA8GA1UEBwwIV2FsbGRvcmYx
-      DzANBgNVBAoMBlNBUCBTRTEaMBgGA1UEAwwRU0FQIENsb3VkIFJvb3QgQ0EwggIi
-      MA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQChbHLXJoe/zFag6fB3IcN3d3HT
-      Y14nSkEZIuUzYs7B96GFxQi0T/2s971JFiLfB4KaCG+UcG3dLXf1H/wewq8ahArh
-      FTsu4UR71ePUQiYlk/G68EFSy2zWYAJliXJS5k0DFMIWHD1lbSjCF3gPVJSUKf+v
-      HmWD5e9vcuiPBlSCaEnSeimYRhg0ITmi3RJ4Wu7H0Xp7tDd5z4HUKuyi9XRinfvG
-      kPALiBaX01QRC51cixmo0rhVe7qsNh7WDnLNBZeA0kkxNhLKDl8J6fQHKDdDEzmZ
-      KhK5KxL5p5YIZWZ8eEdNRoYRMXR0PxmHvRanzRvSVlXSbfqxaKlORfJJ1ah1bRNt
-      o0ngAQchTghsrRuf3Qh/2Kn29IuBy4bjKR9CdNLxGrClvX/q26rUUlz6A3lbXbwJ
-      EHSRnendRfEiia+xfZD+NG2oZW0IdTXSqkCbnBnign+uxGH5ECjuLEtvtUx6i9Ae
-      xAvK2FqIuud+AchqiZBKzmQAhUjKUoACzNP2Bx2zgJOeB0BqGvf6aldG0n2hYxJF
-      8Xssc8TBlwvAqtiubP/UxJJPs+IHqU+zjm7KdP6dM2sbE+J9O3n8DzOP0SDyEmWU
-      UCwnmoPOQlq1z6fH9ghcp9bDdbh6adXM8I+SUYUcfvupOzBU7rWHxDCXld/24tpI
-      FA7FRzHwKXqMSjwtBQIDAQABo0IwQDAOBgNVHQ8BAf8EBAMCAQYwDwYDVR0TAQH/
-      BAUwAwEB/zAdBgNVHQ4EFgQUHLxmKw7KjUufjZNxqQ/KZ0ZpEyIwDQYJKoZIhvcN
-      AQELBQADggIBABdSKQsh3EfVoqplSIx6X43y2Pp+kHZLtEsRWMzgO5LhYy2/Fvel
-      eRBw/XEiB5iKuEGhxHz/Gqe0gZixw3SsHB1Q464EbGT4tPQ2UiMhiiDho9hVe6tX
-      qX1FhrhycAD1xHIxMxQP/buX9s9arFZauZrpw/Jj4tGp7aEj4hypWpO9tzjdBthy
-      5vXSviU8L2HyiQpVND/Rp+dNJmVYTiFLuULRY28QbikgFO2xp9s4RNkDBnbDeTrT
-      CKWcVsmlZLPJJQZm0n2p8CvoeAsKzIULT9YSbEEBwmeqRlmbUaoT/rUGoobSFcrP
-      jrBg66y5hA2w7S3tDH0GjMpRu16b2u0hYQocUDuMlyhrkhsO+Qtqkz1ubwHCJ8PA
-      RJw6zYl9VeBtgI5F69AEJdkAgYfvPw5DJipgVuQDSv7ezi6ZcI75939ENGjSyLVy
-      4SuP99G7DuItG008T8AYFUHAM2h/yskVyvoZ8+gZx54TC9aY9gPIKyX++4bHv5BC
-      qbEdU46N05R+AIBW2KvWozQkjhSQCbzcp6DHXLoZINI6y0WOImzXrvLUSIm4CBaj
-      6MTXInIkmitdURnmpxTxLva5Kbng/u20u5ylIQKqpcD8HWX97lLVbmbnPkbpKxo+
-      LvHPhNDM3rMsLu06agF4JTbO8ANYtWQTx0PVrZKJu+8fcIaUp7MVBIVZ
+      ...
       -----END CERTIFICATE-----
 ```
 
-- The `dnsTarget` field is optional. If specified, it is used; otherwise, the target is derived from the Istio Ingress Gateway via `ingressSelector`.
-- The `Gateway` and `DNSEntry` are created in the namespace where CAP Operator is installed, while `Certificate` resources are created in the namespace where the Istio Ingress Gateway is present.
-- When X509 client authentication is enforced on the Istio Gateway by setting `tlsMode` to `Mutual` or `OptionalMutual`, additional CA certificates are needed by Istio for verifying client certificates. These can be specified in the `certConfig.additionalCACertificate` field.
+### Fields
 
+**`domain`** — the DNS domain name. The TLS certificate is issued for the wildcard `*.domain`.
+
+**`ingressSelector`** — label selector used to locate the Istio Ingress Gateway pods. The operator discovers the gateway's namespace and load balancer service from these pods, and applies the selector to the Istio `Gateway` resource.
+
+**`tlsMode`** — TLS mode for the Istio Gateway:
+- `Simple` (default) — server-side TLS only.
+- `Mutual` — mutual TLS; client certificate required.
+- `OptionalMutual` — mutual TLS; client certificate optional.
+
+**`dnsMode`** — controls DNS entry creation (Gardener external-dns-management only; ignored otherwise):
+- `None` (default) — no DNS entries created.
+- `Wildcard` — creates a single `*.domain` entry pointing to `dnsTarget`.
+- `Subdomain` — creates `<subdomain>.domain` entries for each subdomain observed across referencing applications.
+- `Custom` — creates entries defined by `dnsTemplates`; each template has a `name` and `target` field rendered as Go templates. Available variables: `{{.domain}}`, `{{.dnsTarget}}`, `{{.subDomain}}`. See [Custom DNS Templates](../domain-management/custom-dns) for details.
+
+**`dnsTarget`** *(optional)* — the load balancer hostname or IP address to use as the DNS target. Resolved in order: explicit `dnsTarget` field → `DNS_TARGET` environment variable → load balancer service annotation on the Istio Ingress Gateway service.
+
+**`certConfig.additionalCACertificate`** *(optional)* — PEM-encoded CA certificate Istio uses to verify client certificates when `tlsMode` is `Mutual` or `OptionalMutual`. See [Configuring Additional CA Certificates](../domain-management/additional-ca) for details.
+
+### Created resources
+
+Sub-resources are mainly created in the CAP Operator namespace:
+
+- Istio `Gateway` — always created.
+- `DNSEntry` — Gardener DNS manager only.
+- `Certificate` (Gardener cert-manager) — the certificate's `secretRef` points to the Istio Ingress Gateway namespace, which supports cross-namespace secret references.
+- `Certificate` (cert-manager) — created in the Istio Ingress Gateway namespace; cert-manager does not support cross-namespace secret references.
+- CA certificate `Secret` — created in the Istio Ingress Gateway namespace; only when `certConfig.additionalCACertificate` is set.

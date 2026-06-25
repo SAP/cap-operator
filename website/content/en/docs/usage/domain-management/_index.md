@@ -1,7 +1,7 @@
 ---
 title: "Domain Management"
 linkTitle: "Domain Management"
-weight: 50
+weight: 25
 type: "docs"
 tags: ["domains"]
 description: >
@@ -9,50 +9,12 @@ description: >
 sidebar_root_for: self
 ---
 
-CAP Operator introduced an update to domain management: the deprecated `domains` section in `CAPApplication` resources has been replaced by the more flexible `domainRefs`. This allows you to reference [`Domain`](../resources/domain) or [`ClusterDomain`](../resources/clusterdomain) resources, providing greater control over networking behavior, including TLS handling, ingress routing, and DNS setup.
+CAP Operator manages networking for CAP applications through [`Domain`](../resources/domain) and [`ClusterDomain`](../resources/clusterdomain) resources. These resources control TLS handling, ingress routing, and DNS setup for your application's domains. A `CAPApplication` references them via `domainRefs`.
 
-## Update Your Application Manifests
+## Domain Resources
 
-If your CAP applications still use the deprecated `domains` section, migrate to the `domainRefs` format by defining `Domain` or `ClusterDomain` resources explicitly.
+Use a `Domain` resource for a domain that belongs to a specific application namespace. The operator creates the `Gateway` and `DNSEntry` in that namespace. The `Certificate` placement depends on the certificate manager in use — see the [`Domain` resource reference](../resources/domain) for details.
 
-*Using the deprecated `domains` section:*
-```yaml
-apiVersion: sme.sap.com/v1alpha1
-kind: CAPApplication
-metadata:
-  name: cap-app-01
-  namespace: cap-app-01
-spec:
-  ...
-  domains:
-    istioIngressGatewayLabels:
-    - name: app
-      value: istio-ingressgateway
-    - name: istio
-      value: ingressgateway
-    primary: my.cluster.shoot.url.k8s.example.com
-    secondary:
-      - my.example.com
-  ...
-```
-
-*Using `domainRefs`:*
-```yaml
-apiVersion: sme.sap.com/v1alpha1
-kind: CAPApplication
-metadata:
-  name: cap-app-01
-  namespace: cap-app-01
-spec:
-  ...
-  domainRefs:
-  - kind: Domain
-    name: cap-app-01-primary     # Refers to a namespaced Domain resource
-  - kind: ClusterDomain
-    name: common-external-domain # Refers to a shared ClusterDomain resource
-  ...
-```
-*Define the referenced domain resources:*
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
 kind: Domain
@@ -64,9 +26,16 @@ spec:
   ingressSelector:
     app: istio-ingressgateway
     istio: ingressgateway
-  tlsMode: Simple
-  dnsMode: Wildcard
+  tlsMode: Simple    # Simple (default), Mutual, or OptionalMutual
+  dnsMode: Wildcard  # None (default), Wildcard, Subdomain, or Custom
 ```
+
+The `dnsTarget` field is optional. If omitted, the target is derived from the Istio Ingress Gateway selected by `ingressSelector`.
+
+## ClusterDomain Resources
+
+Use a `ClusterDomain` resource for a domain shared across multiple applications or namespaces. The operator creates the `Gateway` and `DNSEntry` in the CAP Operator installation namespace. The `Certificate` placement depends on the certificate manager in use — see the [`ClusterDomain` resource reference](../resources/clusterdomain) for details.
+
 ```yaml
 apiVersion: sme.sap.com/v1alpha1
 kind: ClusterDomain
@@ -77,50 +46,97 @@ spec:
   ingressSelector:
     app: istio-ingressgateway
     istio: ingressgateway
-  tlsMode: Simple
-  dnsMode: Subdomain
+  tlsMode: Simple      # Simple (default) or Mutual
+  dnsMode: Subdomain   # None (default), Wildcard, Subdomain, or Custom
 ```
 
-## Migration Support
+When X509 client authentication is required (`tlsMode: Mutual` or `OptionalMutual`), provide additional CA certificates for Istio to verify client certificates via `certConfig.additionalCACertificate`.
 
-### Automatic Migration During Upgrade
+## Referencing Domains in CAPApplication
 
-{{% alert color="warning" title="Note" %}}
-The automatic migration routine described below was available from [v0.15.0](https://github.com/SAP/cap-operator/releases/tag/v0.15.0) through [v0.25.0](https://github.com/SAP/cap-operator/releases/tag/v0.25.0) and has been removed as of v0.26.0. If you need this migration, first upgrade to v0.25.0 (or lower), allow the migration to complete, and then upgrade to the latest release.
-{{% /alert %}}
+Once your `Domain` and `ClusterDomain` resources are defined, reference them in the `CAPApplication` spec using `domainRefs`:
+
+```yaml
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPApplication
+metadata:
+  name: cap-app-01
+  namespace: cap-app-01
+spec:
+  domainRefs:
+  - kind: Domain
+    name: cap-app-01-primary     # Namespaced Domain resource
+  - kind: ClusterDomain
+    name: common-external-domain # Shared ClusterDomain resource
+```
+
+The first entry in `domainRefs` is treated as the primary domain. You can mix `Domain` and `ClusterDomain` references in the same application.
+
+---
+
+## Migration
 
 <details>
-<summary>Details (v0.15.0 – v0.25.0)</summary>
+<summary>Migrating from the deprecated <code>domains</code> section</summary>
 
-Upgrading to CAP Operator version v0.15.0 through v0.25.0 triggers an automatic migration routine that:
+<br>
 
-- Scans existing `CAPApplication` resources.
-- Removes network-related resources (Gateways, DNSEntries, Certificates) linked to the deprecated `domains`.
-- Creates equivalent `Domain` or `ClusterDomain` resources.
-- Updates `CAPApplication` resources to use `domainRefs`.
+### Update Your Application Manifests
+Earlier versions of CAP Operator used an inline `domains` section directly in `CAPApplication`. This section is deprecated and no longer supported. If you are still using it, migrate to `domainRefs` as described below.
 
-</details>
+#### Before: deprecated `domains` section
+```yaml
+apiVersion: sme.sap.com/v1alpha1
+kind: CAPApplication
+metadata:
+  name: cap-app-01
+  namespace: cap-app-01
+spec:
+  domains:
+    istioIngressGatewayLabels:
+    - name: app
+      value: istio-ingressgateway
+    - name: istio
+      value: ingressgateway
+    primary: my.cluster.shoot.url.k8s.example.com
+    secondary:
+      - my.example.com
+```
+
+#### After: `domainRefs` with explicit resources
+Create the `Domain` and `ClusterDomain` resources manually (see sections above), then update your `CAPApplication` to use `domainRefs`.
+
+<br>
 
 ### Mutation Webhook
-
-A mutation webhook ensures consistency by converting `CAPApplication` resources that still use the deprecated `domains` section into `Domain` or `ClusterDomain` resources and populating `domainRefs`.
+A mutation webhook ensures consistency: if a `CAPApplication` is submitted with a `domains` section, the webhook converts it to `Domain`/`ClusterDomain` resources and populates `domainRefs` automatically.
 
 {{% alert color="warning" title="Warning" %}}
 The webhook rejects updates that reintroduce the deprecated `domains` section. If you add or modify the `domains` section in your manifest, the webhook rejects the change and provides an error message instructing you to use `domainRefs` instead.
 {{% /alert %}}
 
+### Automatic Migration (v0.15.0 – v0.25.0)
+{{% alert color="warning" title="Note" %}}
+The automatic migration routine was available from [v0.15.0](https://github.com/SAP/cap-operator/releases/tag/v0.15.0) through [v0.25.0](https://github.com/SAP/cap-operator/releases/tag/v0.25.0) and has been removed as of v0.26.0. If you need this migration, first upgrade to v0.25.0 (or lower), allow the migration to complete, and then upgrade to the latest release.
+{{% /alert %}}
 
-## Post-Migration Steps
+Upgrading to CAP Operator v0.15.0 through v0.25.0 triggered an automatic migration routine that:
+- Scanned existing `CAPApplication` resources.
+- Removed network-related resources (Gateways, DNSEntries, Certificates) linked to the deprecated `domains`.
+- Created equivalent `Domain` or `ClusterDomain` resources.
+- Updated `CAPApplication` resources to use `domainRefs`.
 
-### Verify Migrated Resources
+<br>
 
-After upgrading, verify your `CAPApplication` resources to confirm that `domainRefs` have been populated:
-
+### Verify Migration
+After migrating, confirm the resources are in the expected state:
 ```bash
 kubectl get capapplication -n <your-app-namespace> <your-ca-name> -o yaml
 ```
 
 Ensure that:
-- The `domains` section is removed.
-- The `domainRefs` entries exist.
-- The corresponding `Domain` or `ClusterDomain` resources are present.
+- The `domains` section is absent.
+- The `domainRefs` entries are present.
+- The corresponding `Domain` or `ClusterDomain` resources exist in the cluster.
+
+</details>
