@@ -3,37 +3,36 @@ title: "What's New"
 linkTitle: "What's New"
 weight: 20
 description: >
-  Discover new features added to CAP Operator
+  Discover the latest features and improvements in CAP Operator
 ---
 
-### New updates
+### Recent updates
 
 {{% cardpane %}}
-  {{% card header="Q4 2025" %}}
+  {{% card header="Rollout on Credential Update" %}}
+  CAP Operator now triggers a rollout of relevant workloads when credentials (service bindings) are updated. Learn more about [Rollout on Credential Update](../usage/rollout-on-credential-update).
+  {{% /card %}}
+  {{% card header="Omit Provider" %}}
+  As of version 0.31.0, the provider section in `CAPApplication` is deprecated and can be omitted entirely, even for multi-tenant applications. Omitting it also skips the creation of a provider tenant.
+  {{% /card %}}
+  {{% card header="Subscription - getDependencies" %}}
+  The subscription server now supports the `getDependencies` callback, enabling CAP applications to return dependencies during tenant subscription. Learn more about [getDependencies support](../usage/tenant-provisioning/#get-dependencies).
+  {{% /card %}}
+{{% /cardpane %}}
+
+
+### Previous updates
+
+{{% cardpane %}}
+  {{% card header="Service Exposure" %}}
   CAP Operator now allows any deployment workload to be exposed as a service. Learn more about [Service Exposure](../usage/service-exposure).
   {{% /card %}}
-  {{% card header="Q2 2025" %}}
+  {{% card header="Domain Management" %}}
   CAP Operator now includes enhanced domain management features. Learn more about [Domain Management](../usage/domain-management).
   {{% /card %}}
-  {{% card header="Q1 2025" %}}
+  {{% card header="Services-Only Applications" %}}
   CAP Operator now supports `Services Only` applications that are tenant-agnostic. Learn more about [Services-Only Applications](../usage/service-exposure/#deploying-services-only-applications).
   {{% /card %}}
 {{% /cardpane %}}
 
 
-### Former updates
-
-{{% cardpane %}}
-  {{% card header="Q4 2024" %}}
-  CAP Operator now emits Prometheus metrics for the [Controller](../concepts/operator-components/controller/) and [Subscription Server](../concepts/operator-components/subscription-server/) components. Learn more about [metrics](../usage/operator-metrics).
-  {{% /card %}}
-  {{% card header="Q3 2024" %}}
-  Define monitoring configuration on version workloads to automatically clean up outdated versions based on usage. Learn more about [Version Monitoring](../usage/version-monitoring).
-  {{% /card %}}
-  {{% card header="Q3 2024" %}}
-  The new `CAPTenantOutput` custom resource can be used to record subscription-related data from tenant operations. [Learn more](../usage/resources/captenantoutput).
-  {{% /card %}}
-  {{% card header="Q2 2024" %}}
-  `CAPApplicationVersion` now supports configuration of `initContainers`, `volumes`, `serviceAccountName`, and [scheduling-related configurations](https://kubernetes.io/docs/concepts/scheduling-eviction/) on workloads.
-  {{% /card %}}
-{{% /cardpane %}}
