@@ -340,7 +340,7 @@ func addDomainReferencesToReconcileResult(refs []v1alpha1.DomainRef, result *Rec
 }
 
 func (c *Controller) validateSecrets(ca *v1alpha1.CAPApplication) (bool, error) {
-	err := c.checkAndPreserveSecrets(ca.Spec.BTP.Services, ca.Namespace)
+	err := c.checkSecretsExist(ca.Spec.BTP.Services, ca.Namespace)
 
 	if err == nil {
 		return false, nil
@@ -542,11 +542,6 @@ func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alp
 			util.LogError(err, "Could not delete dependent tenant", string(Deleting), ca, nil)
 			return nil, err
 		}
-	}
-
-	util.LogInfo("Cleaning up secrets", string(Deleting), ca, nil)
-	if err = c.cleanupPreservedSecrets(ca.Spec.BTP.Services, ca.Namespace); err != nil && !k8sErrors.IsNotFound(err) {
-		return nil, err
 	}
 
 	// delete CAPApplication

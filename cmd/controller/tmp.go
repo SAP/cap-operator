@@ -24,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 )
 
@@ -200,7 +201,7 @@ func needsMigration(ca *v1alpha1.CAPApplication, appIdHash string) bool {
 	return false
 }
 
-func migrateApps(migrationDone chan bool, crdClient versioned.Interface) {
+func migrateAppsAndSecrets(migrationDone chan bool, crdClient versioned.Interface, kubeClient kubernetes.Interface) {
 	// Always set the channel to true in the end
 	defer func() {
 		migrationDone <- true
@@ -234,5 +235,43 @@ func migrateApps(migrationDone chan bool, crdClient versioned.Interface) {
 		migrateCAPApplicationVersions(crdClient, ca, appIdHash, appId)
 		migrateCAPTenants(crdClient, ca, appIdHash, appId)
 		migrateCAPTenantOperations(crdClient, ca, appIdHash, appId)
+		// Remove secrets that were preserved by the finalizer in the past.
+		cleanupSecrets(ca.Namespace, kubeClient)
 	}
+}
+
+func cleanupSecrets(ns string, kubeClient kubernetes.Interface) {
+	secrets, err := kubeClient.CoreV1().Secrets(ns).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.ErrorS(err, "Failed to list secrets", "namespace", ns)
+		return
+	}
+	for _, secret := range secrets.Items {
+		// Remove finalizer from previously preserved Secret (if one exists) to allow it to be cleaned up if needed
+		if removeFinalizer(&secret.Finalizers, controller.FinalizerCAPApplication) {
+			if _, err = kubeClient.CoreV1().Secrets(ns).Update(context.TODO(), &secret, metav1.UpdateOptions{}); err != nil {
+				klog.ErrorS(err, "Failed to update secret", "name", secret.Name, "namespace", ns)
+				continue
+			}
+			klog.InfoS("Removed finalizer from secret", "name", secret.Name, "namespace", ns)
+		}
+	}
+}
+
+func removeFinalizer(finalizers *[]string, finalizerType string) bool {
+	finalizerExists := false
+	adjusted := make([]string, 0)
+	for _, f := range *finalizers {
+		if f != finalizerType {
+			adjusted = append(adjusted, f)
+		} else {
+			finalizerExists = true
+		}
+	}
+
+	if finalizerExists {
+		*finalizers = adjusted
+		return true
+	}
+	return false
 }

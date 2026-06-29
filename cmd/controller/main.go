@@ -140,7 +140,7 @@ func main() {
 				klog.InfoS("check & update of DestinationRules done")
 
 				migrateApp := make(chan bool, 1)
-				go migrateApps(migrateApp, crdClient)
+				go migrateAppsAndSecrets(migrateApp, crdClient, coreClient)
 				<-migrateApp
 				klog.InfoS("migration of app Id done")
 
