@@ -1,0 +1,680 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 30 1300 660" role="img"
+     aria-label="CAP Operator deployment workflow — animated 7-step sequence">
+  <title>CAP Operator deployment workflow</title>
+  <desc>Animated diagram showing the seven major automation steps performed
+        by the CAP Operator during application deployment:
+        1) Istio Gateway created; 2) DNS + TLS provisioned via Gardener;
+        3) Content Deployment jobs push UIs and destinations into SAP BTP;
+        4) Approuter, CAP Server and other Deployments rolled out; 5) Tenant
+        Operation job runs (provisioning / upgrade / deprovisioning);
+        6) Virtual Service created last, exposing tenant routes;
+        7) Scheduled Routines run continuously — rollout on credential
+        rotation and version cleanup driven by Prometheus.</desc>
+
+  <defs>
+    <!-- Marker that inherits its color from the referencing edge via context-stroke -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/>
+    </marker>
+
+    <!-- Cloud shape used for CAP Operator and 'internet' -->
+    <symbol id="cloud" viewBox="0 0 40 24">
+      <path d="M10 20 Q2 20 2 14 Q2 8 8 8 Q10 2 16 2 Q22 2 24 6
+               Q30 4 34 8 Q40 10 38 16 Q40 20 34 20 Z"
+            fill="#FFFFFF" stroke="#5B90B8" stroke-width="1.4"/>
+    </symbol>
+
+    <!-- Cylinder for HDI containers — teal fill to stay distinct from
+         the amber step-highlight color used in the animation. -->
+    <symbol id="cyl" viewBox="0 0 40 26">
+      <ellipse cx="20" cy="4"  rx="18" ry="3.5" fill="#5DA9B6" stroke="#265E6B"/>
+      <path d="M2 4 V22 Q2 26 20 26 Q38 26 38 22 V4"
+            fill="#5DA9B6" stroke="#265E6B"/>
+      <ellipse cx="20" cy="4"  rx="18" ry="3.5" fill="none" stroke="#265E6B"/>
+    </symbol>
+  </defs>
+
+  <!-- Style block placed OUTSIDE <defs> so it is honored by all
+       SVG renderers, including <img src="…"> in every browser.
+       Some engines skip stylesheets declared inside <defs>. -->
+  <style><![CDATA[
+      /* NOTE: animation durations are inlined (no 16s) because
+         several Chromium/Edge builds fail to substitute CSS custom
+         properties inside the `animation` shorthand when the SVG is
+         opened standalone (XML mode) — leaving every element static. */
+
+      text {
+        font-family: 'Segoe UI', Roboto, system-ui, Arial, sans-serif;
+        fill: #1A2E4A;
+        font-size: 12px;
+        dominant-baseline: middle;
+        text-anchor: middle;
+      }
+      text.left { text-anchor: start; }
+      text.small { font-size: 10.5px; fill: #4A6480; }
+      text.tiny  { font-size: 9.5px;  fill: #4A6480; }
+      text.title { font-size: 15px; font-weight: 700; fill: #0A2540; }
+      text.sub   { font-size: 12.5px; font-weight: 600; fill: #0A2540; }
+      text.hero  { font-size: 17px; font-weight: 700; fill: #0A2540; }
+
+      .region {
+        fill: #F5F8FB; stroke: #4A6B85; stroke-width: 1.4;
+      }
+      .region-dashed {
+        fill: none; stroke: #6B8AA5; stroke-width: 1.2;
+        stroke-dasharray: 4 3;
+      }
+      .container {
+        fill: #FFFFFF; stroke: #7CA2C0; stroke-width: 1.2;
+      }
+      .container-tint {
+        fill: #EAF3FB; stroke: #5B90B8; stroke-width: 1.2;
+      }
+
+      /* Static nodes (services, ovals) */
+      .node       { fill: #D9EAF7; stroke: #5B90B8; stroke-width: 1.4; }
+      .node-oval  { fill: #1F8ACB; stroke: #0A5A93; stroke-width: 1.4; }
+      .node-btp   { fill: #B8E4C4; stroke: #308552; stroke-width: 1.3; }
+      .node-hana  { fill: #5DA9B6; stroke: #265E6B; stroke-width: 1.3; }
+      .oval-text  { fill: #FFFFFF; font-weight: 600; font-size: 11.5px; }
+
+      /* Numbered-step nodes: light blue by default, animated per step */
+      .step { fill: #EEF5FC; stroke: #7CA2C0; stroke-width: 1.5; }
+      .step-label   { fill: #0A2540; font-weight: 600; font-size: 12.5px; }
+      .step-sublabel{ fill: #4A6480; font-size: 10.5px; }
+
+      /* Edges (idle look) */
+      .edge {
+        fill: none; stroke: #B7C3CE; stroke-width: 1.3;
+        marker-end: url(#arrow);
+      }
+      .edge.dashed { stroke-dasharray: 5 4; }
+
+      /* Numbered badges */
+      .badge      { fill: #D9EAF7; stroke: #5B90B8; stroke-width: 1.4; }
+      .badge-num  { fill: #0A2540; font-weight: 700; font-size: 12px; }
+
+      /* Legend rows */
+      .legend-bg { fill: #FFFFFF; stroke: #D6DEE7; stroke-width: 1; }
+      .legend-text { text-anchor: start; font-size: 11.5px; fill: #223B5B; }
+
+      /* ---------- Per-step "active" animations ----------
+         Cycle: 16s. 7 steps; each lights up for ~2s in sequence.
+         Percentages: step N occupies [(N-1)*14.286, N*14.286]. */
+
+      .s1 { animation: on1 16s infinite; }
+      .s2 { animation: on2 16s infinite; }
+      .s3 { animation: on3 16s infinite; }
+      .s4 { animation: on4 16s infinite; }
+      .s5 { animation: on5 16s infinite; }
+      .s6 { animation: on6 16s infinite; }
+      .s7 { animation: on7 16s infinite; }
+
+      .e1 { animation: eOn1 16s infinite; }
+      .e2 { animation: eOn2 16s infinite; }
+      .e3 { animation: eOn3 16s infinite; }
+      .e4 { animation: eOn4 16s infinite; }
+      .e5 { animation: eOn5 16s infinite; }
+      .e6 { animation: eOn6 16s infinite; }
+      .e7 { animation: eOn7 16s infinite; }
+
+      .b1 { animation: bOn1 16s infinite; }
+      .b2 { animation: bOn2 16s infinite; }
+      .b3 { animation: bOn3 16s infinite; }
+      .b4 { animation: bOn4 16s infinite; }
+      .b5 { animation: bOn5 16s infinite; }
+      .b6 { animation: bOn6 16s infinite; }
+      .b7 { animation: bOn7 16s infinite; }
+
+      .lg1 { animation: lgOn1 16s infinite; }
+      .lg2 { animation: lgOn2 16s infinite; }
+      .lg3 { animation: lgOn3 16s infinite; }
+      .lg4 { animation: lgOn4 16s infinite; }
+      .lg5 { animation: lgOn5 16s infinite; }
+      .lg6 { animation: lgOn6 16s infinite; }
+      .lg7 { animation: lgOn7 16s infinite; }
+
+      /* Step-node keyframes: fill/stroke pulse, retimed for 7 steps.
+         (No `filter` animation — many engines snap from `none` to a
+         filter-function value instead of interpolating, which reads
+         as "nothing happens". Fill + stroke + stroke-width is enough.) */
+      @keyframes on1 {
+        0%,     12.29% { fill:#FFF3D6; stroke:#F0AB00; stroke-width:2.8; }
+        14.29%, 100%   { fill:#EEF5FC; stroke:#7CA2C0; stroke-width:1.5; }
+      }
+      @keyframes on2 {
+        0%,     14.29% { fill:#EEF5FC; stroke:#7CA2C0; stroke-width:1.5; }
+        15.29%, 26.57% { fill:#FFF3D6; stroke:#F0AB00; stroke-width:2.8; }
+        28.57%, 100%   { fill:#EEF5FC; stroke:#7CA2C0; stroke-width:1.5; }
+      }
+      @keyframes on3 {
+        0%,     28.57% { fill:#EEF5FC; stroke:#7CA2C0; stroke-width:1.5; }
+        29.57%, 40.86% { fill:#FFF3D6; stroke:#F0AB00; stroke-width:2.8; }
+        42.86%, 100%   { fill:#EEF5FC; stroke:#7CA2C0; stroke-width:1.5; }
+      }
+      @keyframes on4 {
+        0%,     42.86% { fill:#EEF5FC; stroke:#7CA2C0; stroke-width:1.5; }
+        43.86%, 55.14% { fill:#FFF3D6; stroke:#F0AB00; stroke-width:2.8; }
+        57.14%, 100%   { fill:#EEF5FC; stroke:#7CA2C0; stroke-width:1.5; }
+      }
+      @keyframes on5 {
+        0%,     57.14% { fill:#EEF5FC; stroke:#7CA2C0; stroke-width:1.5; }
+        58.14%, 69.43% { fill:#FFF3D6; stroke:#F0AB00; stroke-width:2.8; }
+        71.43%, 100%   { fill:#EEF5FC; stroke:#7CA2C0; stroke-width:1.5; }
+      }
+      @keyframes on6 {
+        0%,     71.43% { fill:#EEF5FC; stroke:#7CA2C0; stroke-width:1.5; }
+        72.43%, 83.71% { fill:#FFF3D6; stroke:#F0AB00; stroke-width:2.8; }
+        85.71%, 100%   { fill:#EEF5FC; stroke:#7CA2C0; stroke-width:1.5; }
+      }
+      @keyframes on7 {
+        0%,     85.71% { fill:#EEF5FC; stroke:#7CA2C0; stroke-width:1.5; }
+        86.71%, 98%    { fill:#FFF3D6; stroke:#F0AB00; stroke-width:2.8; }
+        100%           { fill:#EEF5FC; stroke:#7CA2C0; stroke-width:1.5; }
+      }
+
+      /* Edge keyframes: color + dashoffset flow, retimed for 7 steps */
+      @keyframes eOn1 {
+        0%             { stroke:#B7C3CE; stroke-width:1.3; stroke-dashoffset:0; }
+        0.1%           { stroke:#F0AB00; stroke-width:2.4; }
+        12.29%         { stroke:#F0AB00; stroke-width:2.4; stroke-dashoffset:-140; }
+        14.29%, 100%   { stroke:#B7C3CE; stroke-width:1.3; stroke-dashoffset:0; }
+      }
+      @keyframes eOn2 {
+        0%,     14.29% { stroke:#B7C3CE; stroke-width:1.3; stroke-dashoffset:0; }
+        15.29%         { stroke:#F0AB00; stroke-width:2.4; stroke-dashoffset:0; }
+        26.57%         { stroke:#F0AB00; stroke-width:2.4; stroke-dashoffset:-140; }
+        28.57%, 100%   { stroke:#B7C3CE; stroke-width:1.3; stroke-dashoffset:0; }
+      }
+      @keyframes eOn3 {
+        0%,     28.57% { stroke:#B7C3CE; stroke-width:1.3; stroke-dashoffset:0; }
+        29.57%         { stroke:#F0AB00; stroke-width:2.4; stroke-dashoffset:0; }
+        40.86%         { stroke:#F0AB00; stroke-width:2.4; stroke-dashoffset:-140; }
+        42.86%, 100%   { stroke:#B7C3CE; stroke-width:1.3; stroke-dashoffset:0; }
+      }
+      @keyframes eOn4 {
+        0%,     42.86% { stroke:#B7C3CE; stroke-width:1.3; stroke-dashoffset:0; }
+        43.86%         { stroke:#F0AB00; stroke-width:2.4; stroke-dashoffset:0; }
+        55.14%         { stroke:#F0AB00; stroke-width:2.4; stroke-dashoffset:-160; }
+        57.14%, 100%   { stroke:#B7C3CE; stroke-width:1.3; stroke-dashoffset:0; }
+      }
+      @keyframes eOn5 {
+        0%,     57.14% { stroke:#B7C3CE; stroke-width:1.3; stroke-dashoffset:0; }
+        58.14%         { stroke:#F0AB00; stroke-width:2.4; stroke-dashoffset:0; }
+        69.43%         { stroke:#F0AB00; stroke-width:2.4; stroke-dashoffset:-160; }
+        71.43%, 100%   { stroke:#B7C3CE; stroke-width:1.3; stroke-dashoffset:0; }
+      }
+      @keyframes eOn6 {
+        0%,     71.43% { stroke:#B7C3CE; stroke-width:1.3; stroke-dashoffset:0; }
+        72.43%         { stroke:#F0AB00; stroke-width:2.4; stroke-dashoffset:0; }
+        83.71%         { stroke:#F0AB00; stroke-width:2.4; stroke-dashoffset:-160; }
+        85.71%, 100%   { stroke:#B7C3CE; stroke-width:1.3; stroke-dashoffset:0; }
+      }
+      @keyframes eOn7 {
+        0%,     85.71% { stroke:#B7C3CE; stroke-width:1.3; stroke-dashoffset:0; }
+        86.71%         { stroke:#F0AB00; stroke-width:2.4; stroke-dashoffset:0; }
+        98%            { stroke:#F0AB00; stroke-width:2.4; stroke-dashoffset:-80; }
+        100%           { stroke:#B7C3CE; stroke-width:1.3; stroke-dashoffset:0; }
+      }
+
+      /* Badges: bump fill on active, retimed for 7 steps */
+      @keyframes bOn1 {
+        0%,     12.29% { fill:#F0AB00; stroke:#8A6100; }
+        14.29%, 100%   { fill:#D9EAF7; stroke:#5B90B8; }
+      }
+      @keyframes bOn2 {
+        0%,     14.29% { fill:#D9EAF7; stroke:#5B90B8; }
+        15.29%, 26.57% { fill:#F0AB00; stroke:#8A6100; }
+        28.57%, 100%   { fill:#D9EAF7; stroke:#5B90B8; }
+      }
+      @keyframes bOn3 {
+        0%,     28.57% { fill:#D9EAF7; stroke:#5B90B8; }
+        29.57%, 40.86% { fill:#F0AB00; stroke:#8A6100; }
+        42.86%, 100%   { fill:#D9EAF7; stroke:#5B90B8; }
+      }
+      @keyframes bOn4 {
+        0%,     42.86% { fill:#D9EAF7; stroke:#5B90B8; }
+        43.86%, 55.14% { fill:#F0AB00; stroke:#8A6100; }
+        57.14%, 100%   { fill:#D9EAF7; stroke:#5B90B8; }
+      }
+      @keyframes bOn5 {
+        0%,     57.14% { fill:#D9EAF7; stroke:#5B90B8; }
+        58.14%, 69.43% { fill:#F0AB00; stroke:#8A6100; }
+        71.43%, 100%   { fill:#D9EAF7; stroke:#5B90B8; }
+      }
+      @keyframes bOn6 {
+        0%,     71.43% { fill:#D9EAF7; stroke:#5B90B8; }
+        72.43%, 83.71% { fill:#F0AB00; stroke:#8A6100; }
+        85.71%, 100%   { fill:#D9EAF7; stroke:#5B90B8; }
+      }
+      @keyframes bOn7 {
+        0%,     85.71% { fill:#D9EAF7; stroke:#5B90B8; }
+        86.71%, 98%    { fill:#F0AB00; stroke:#8A6100; }
+        100%           { fill:#D9EAF7; stroke:#5B90B8; }
+      }
+
+      /* Legend rows: background tint highlights the currently active step */
+      @keyframes lgOn1 {
+        0%,     12.29% { fill:#FFF3D6; stroke:#F0AB00; }
+        14.29%, 100%   { fill:#FFFFFF; stroke:#D6DEE7; }
+      }
+      @keyframes lgOn2 {
+        0%,     14.29% { fill:#FFFFFF; stroke:#D6DEE7; }
+        15.29%, 26.57% { fill:#FFF3D6; stroke:#F0AB00; }
+        28.57%, 100%   { fill:#FFFFFF; stroke:#D6DEE7; }
+      }
+      @keyframes lgOn3 {
+        0%,     28.57% { fill:#FFFFFF; stroke:#D6DEE7; }
+        29.57%, 40.86% { fill:#FFF3D6; stroke:#F0AB00; }
+        42.86%, 100%   { fill:#FFFFFF; stroke:#D6DEE7; }
+      }
+      @keyframes lgOn4 {
+        0%,     42.86% { fill:#FFFFFF; stroke:#D6DEE7; }
+        43.86%, 55.14% { fill:#FFF3D6; stroke:#F0AB00; }
+        57.14%, 100%   { fill:#FFFFFF; stroke:#D6DEE7; }
+      }
+      @keyframes lgOn5 {
+        0%,     57.14% { fill:#FFFFFF; stroke:#D6DEE7; }
+        58.14%, 69.43% { fill:#FFF3D6; stroke:#F0AB00; }
+        71.43%, 100%   { fill:#FFFFFF; stroke:#D6DEE7; }
+      }
+      @keyframes lgOn6 {
+        0%,     71.43% { fill:#FFFFFF; stroke:#D6DEE7; }
+        72.43%, 83.71% { fill:#FFF3D6; stroke:#F0AB00; }
+        85.71%, 100%   { fill:#FFFFFF; stroke:#D6DEE7; }
+      }
+      @keyframes lgOn7 {
+        0%,     85.71% { fill:#FFFFFF; stroke:#D6DEE7; }
+        86.71%, 98%    { fill:#FFF3D6; stroke:#F0AB00; }
+        100%           { fill:#FFFFFF; stroke:#D6DEE7; }
+      }
+
+      /* Note: no `@media (prefers-reduced-motion: reduce)` killswitch.
+         Enterprise Windows profiles ship with "Show animations in
+         Windows" turned off by default, which makes Edge report
+         prefers-reduced-motion: reduce for every SVG — including
+         standalone views — silently disabling every animation below. */
+    ]]></style>
+
+  <!-- Fixed white background: guarantees legible content when the SVG is
+       embedded on a dark or themed page background. Covers the viewBox. -->
+  <rect x="0" y="30" width="1300" height="660" fill="#FFFFFF"/>
+
+  <!-- ============================================================
+       CLUSTER REGION
+       ============================================================ -->
+  <g id="cluster-region">
+    <rect class="region" x="18" y="40" rx="8" ry="8" width="740" height="620"/>
+    <text class="title left" x="34" y="60">project “Gardener” Cluster</text>
+
+    <!-- CAP Operator header block -->
+    <g id="cap-operator">
+      <rect class="container-tint" x="42" y="78" rx="10" ry="10" width="694" height="135"/>
+      <use href="#cloud" x="52" y="85" width="30" height="18"/>
+      <text class="sub left" x="88" y="97">CAP Operator</text>
+
+      <!-- CAP Application inner box (shrunk so the Domain resource sits
+           next to it inside the same CAP Operator container) -->
+      <rect class="container" x="60" y="112" rx="8" ry="8" width="520" height="94"/>
+      <text class="sub left" x="72" y="128">CAP Application</text>
+
+      <!-- Two ovals inside CAP Application: Versions ↔ Tenants -->
+      <ellipse class="node-oval" cx="200" cy="170" rx="92" ry="22"/>
+      <text class="oval-text" x="200" y="171">CAP Application Versions</text>
+
+      <ellipse class="node-oval" cx="470" cy="170" rx="70" ry="22"/>
+      <text class="oval-text" x="470" y="171">CAP Tenants</text>
+
+      <path class="edge" d="M295,170 L397,170"/>
+
+      <!-- Domain / ClusterDomain resource — sits OUTSIDE the CAP Application
+           inner box, on its right. CAPApplication references it via domainRefs,
+           shown as an arrow pointing INTO the CAP Application. -->
+      <ellipse class="node-oval" cx="668" cy="170" rx="60" ry="26"
+               fill="#8B5FBF" stroke="#4E2E7A"/>
+      <text class="oval-text" x="668" y="167" style="font-size:10px">Domain /</text>
+      <text class="oval-text" x="668" y="180" style="font-size:10px">ClusterDomain</text>
+
+      <!-- Reference arrow: Domain (left edge x=608) → CAP Application (right edge x=580).
+           Drawn right-to-left; arrowhead lands on the CAP Application box border. -->
+      <path class="edge"
+            d="M608,170 L582,170"
+            style="stroke:#4E2E7A; stroke-width:1.6"/>
+    </g>
+
+    <!-- ======= CAP App Version stack ======= -->
+    <g id="cav-stack">
+      <!-- Two "back" shadows for stack effect -->
+      <rect class="container" x="62" y="238" rx="8" ry="8" width="440" height="200"
+            fill="#DEEBF5" opacity="0.55"/>
+      <rect class="container" x="56" y="232" rx="8" ry="8" width="440" height="200"
+            fill="#DEEBF5" opacity="0.8"/>
+      <!-- Foreground version -->
+      <rect class="container-tint" x="50" y="226" rx="8" ry="8" width="440" height="200"/>
+      <text class="sub left" x="62" y="243">Version n</text>
+      <text class="small left" x="182" y="243">(new versions layer on top)</text>
+
+      <!-- 2x2 grid of workload nodes -->
+      <!-- Step 4 (top-left): Approuter — rolled out with the CAP Server -->
+      <rect class="step s4" x="66" y="258" rx="7" ry="7" width="192" height="70"/>
+      <text class="step-label" x="162" y="284">Exposed workloads</text>
+      <text class="step-sublabel" x="162" y="302">Deployment (e.g. Approuter)</text>
+
+      <!-- Step 5 (top-right): Tenant Operation -->
+      <rect class="step s5" x="280" y="258" rx="7" ry="7" width="200" height="70"/>
+      <text class="step-label" x="380" y="284">Tenant Operation</text>
+      <text class="step-sublabel" x="380" y="302">Job — provision / upgrade / deprovision</text>
+
+      <!-- Step 4 (bottom-left): CAP Server — rolled out with the Approuter -->
+      <rect class="step s4" x="66" y="345" rx="7" ry="7" width="192" height="70"/>
+      <text class="step-label" x="162" y="371">Other workloads</text>
+      <text class="step-sublabel" x="162" y="389">Deployment (e.g. CAP, Service..)</text>
+
+      <!-- Step 3 (bottom-right): Content Deployment (runs first) -->
+      <rect class="step s3" x="280" y="345" rx="7" ry="7" width="200" height="70"/>
+      <text class="step-label" x="380" y="371">Content Deployer</text>
+      <text class="step-sublabel" x="380" y="389">Job — Fiori UI, Destinations, Auth</text>
+
+      <!-- Numbered badges on each workload -->
+      <g>
+        <circle class="badge b4" cx="82" cy="272" r="12"/>
+        <text class="badge-num" x="82" y="272">4</text>
+
+        <circle class="badge b5" cx="296" cy="272" r="12"/>
+        <text class="badge-num" x="296" y="272">5</text>
+
+        <circle class="badge b4" cx="82" cy="359" r="12"/>
+        <text class="badge-num" x="82" y="359">4</text>
+
+        <circle class="badge b3" cx="296" cy="359" r="12"/>
+        <text class="badge-num" x="296" y="359">3</text>
+      </g>
+    </g>
+
+    <!-- ======= Step 7: Scheduled Routines (Credential Rotation / Version Cleanup) =======
+         Runs continuously — not part of the one-shot rollout — so it sits
+         to the RIGHT of the CAV1 stack. Two distinct routines shown as
+         bullets. -->
+    <g id="monitoring">
+      <rect class="step s7" x="540" y="290" rx="7" ry="7" width="192" height="90"/>
+      <circle class="badge b7" cx="554" cy="304" r="11"/>
+      <text class="badge-num" x="554" y="304">7</text>
+      <text class="step-label left" x="572" y="308" style="font-size:12px">Scheduled Routines</text>
+
+      <!-- Two subroutines as bulleted list. Bullet glyphs are drawn
+           separately (SVG has no CSS list-style-type via <text>). -->
+      <text class="step-sublabel left" x="554" y="332">•</text>
+      <text class="step-sublabel left" x="565" y="332">rollout on credential rotation</text>
+
+      <text class="step-sublabel left" x="554" y="352">•</text>
+      <text class="step-sublabel left" x="565" y="352">version cleanup (Prometheus)</text>
+    </g>
+
+    <!-- ======= Domain / ClusterDomain wrapper =======
+         Positioned near the bottom-right of the cluster region, shifted
+         up a bit more for extra clearance from the cluster's lower edge.
+         Drawn BEFORE its children so it sits behind. -->
+    <g id="domain-wrapper">
+      <rect class="container-tint" x="50" y="454" rx="8" ry="8" width="299" height="180"
+            fill="#F0E6FA" stroke="#8B5FBF" stroke-width="1.4"
+            stroke-dasharray="6 4" opacity="0.85"/>
+      <text class="sub left" x="60" y="467"
+            style="fill:#4E2E7A; font-size:10.5px">Domain / ClusterDomain</text>
+    </g>
+
+    <!-- ======= Istio =======
+         Shifted -12y further along with the Domain wrapper. -->
+    <g id="istio">
+      <rect class="container" x="58" y="476" rx="8" ry="8" width="139" height="153"/>
+      <text class="sub left" x="68" y="491" style="font-size:10.5px">Istio</text>
+
+      <!-- Step 1: Gateway -->
+      <rect class="step s1" x="67" y="499" rx="7" ry="7" width="121" height="54"/>
+      <circle class="badge b1" cx="80" cy="512" r="10"/>
+      <text class="badge-num" x="80" y="512" style="font-size:11px">1</text>
+      <text class="step-label" x="136" y="521" style="font-size:10.5px">Istio Gateway</text>
+      <text class="step-sublabel" x="136" y="536" style="font-size:9.5px">ingress entry</text>
+
+      <!-- Step 6: Virtual Service — created last, after tenant onboarding, to expose routes -->
+      <rect class="step s6" x="67" y="561" rx="7" ry="7" width="121" height="54"/>
+      <circle class="badge b6" cx="80" cy="574" r="10"/>
+      <text class="badge-num" x="80" y="574" style="font-size:11px">6</text>
+      <text class="step-label" x="140" y="583" style="font-size:10.5px">Virtual Service</text>
+      <text class="step-sublabel" x="136" y="598" style="font-size:9.5px">routes → Approuter</text>
+    </g>
+
+    <!-- ======= Gardener Services ======= -->
+    <g id="gardener-svc">
+      <rect class="container" x="206" y="476" rx="8" ry="8" width="139" height="153"/>
+      <text class="sub left" x="216" y="491" style="font-size:10.5px">“Gardener” Services</text>
+
+      <!-- Step 2a: DNS record -->
+      <rect class="step s2" x="215" y="499" rx="7" ry="7" width="121" height="54"/>
+      <circle class="badge b2" cx="228" cy="512" r="10"/>
+      <text class="badge-num" x="228" y="512" style="font-size:11px">2</text>
+      <text class="step-label" x="283" y="521" style="font-size:10.5px">DNS Record</text>
+      <text class="step-sublabel" x="283" y="536" style="font-size:9.5px">wildcard / subdomain</text>
+
+      <!-- Step 2b: Certificate -->
+      <rect class="step s2" x="215" y="561" rx="7" ry="7" width="121" height="54"/>
+      <circle class="badge b2" cx="228" cy="574" r="10"/>
+      <text class="badge-num" x="228" y="574" style="font-size:11px">2</text>
+      <text class="step-label" x="287" y="583" style="font-size:10.5px">TLS Certificate</text>
+      <text class="step-sublabel" x="283" y="598" style="font-size:9.5px">simple / mutual</text>
+    </g>
+
+    <!-- ======= SAP BTP Service Operator =======
+         Shrunk 15% in width (from the left) and 15% in height (from
+         the bottom); inner grid re-flowed to fit the smaller container. -->
+    <g id="btp-op">
+      <rect class="container" x="429" y="452" rx="8" ry="8" width="311" height="167"/>
+      <text class="sub left" x="440" y="470" style="font-size:11.5px">SAP BTP Service Operator</text>
+
+      <rect class="node" x="440" y="486" rx="6" ry="6" width="88" height="48"/>
+      <text x="484" y="510" style="font-size:10.5px">Destination</text>
+
+      <rect class="node" x="540" y="486" rx="6" ry="6" width="88" height="48"/>
+      <text x="584" y="504" style="font-size:10.5px">HTML5</text>
+      <text x="584" y="518" style="font-size:10.5px">App Repo</text>
+
+      <rect class="node" x="640" y="486" rx="6" ry="6" width="88" height="48"/>
+      <text x="684" y="504" style="font-size:10.5px">Service</text>
+      <text x="684" y="518" style="font-size:10.5px">Manager</text>
+
+      <rect class="node" x="440" y="546" rx="6" ry="6" width="88" height="48"/>
+      <text x="484" y="564" style="font-size:10.5px">SaaS</text>
+      <text x="484" y="578" style="font-size:10.5px">Provisioning</text>
+
+      <rect class="node" x="540" y="546" rx="6" ry="6" width="88" height="48"/>
+      <text x="584" y="562" style="font-size:9.5px">SAP Build</text>
+      <text x="584" y="574" style="font-size:9.5px">Work Zone</text>
+
+      <rect class="node" x="640" y="546" rx="6" ry="6" width="88" height="48"/>
+      <text x="684" y="564" style="font-size:10.5px">XSUAA / IAS</text>
+      <text x="684" y="578" style="font-size:9.5px">identity</text>
+    </g>
+  </g>
+
+  <!-- ============================================================
+       SAP BTP REGION
+       ============================================================ -->
+  <g id="btp-region">
+    <rect class="region" x="774" y="40" rx="8" ry="8" width="210" height="620"/>
+    <text class="hero" x="879" y="66">SAP Business</text>
+    <text class="hero" x="879" y="86">Technology Platform</text>
+
+    <!-- Global Account -->
+    <rect class="container" x="788" y="108" rx="6" ry="6" width="182" height="34"/>
+    <text class="sub" x="879" y="126">Global Account</text>
+
+    <!-- Subaccount -->
+    <rect class="container-tint" x="788" y="150" rx="8" ry="8" width="182" height="190"/>
+    <text class="sub" x="879" y="168">Subaccount</text>
+
+    <ellipse class="node-btp" cx="879" cy="220" rx="76" ry="24"/>
+    <text class="oval-text" x="879" y="221">Services</text>
+
+    <text class="tiny" x="879" y="256">tenant subscriptions,</text>
+    <text class="tiny" x="879" y="270">roles, entitlements</text>
+
+    <ellipse class="node-btp" cx="879" cy="305" rx="60" ry="18"/>
+    <text class="oval-text" x="879" y="306" style="font-size:11px">Destinations</text>
+
+    <!-- HANA Cloud -->
+    <rect class="container-tint" x="788" y="360" rx="8" ry="8" width="182" height="200"/>
+    <text class="sub" x="879" y="378">SAP HANA Cloud</text>
+
+    <use href="#cyl" x="838" y="405" width="82" height="52"/>
+    <text class="sub" x="879" y="480">HDI Containers</text>
+    <text class="tiny" x="879" y="498">provider &amp; tenant</text>
+    <text class="tiny" x="879" y="512">schemas</text>
+  </g>
+
+  <!-- ============================================================
+       EDGES / FLOWS
+       ============================================================ -->
+  <g id="edges">
+    <!-- Step 1: CAP Operator provisions the Istio Gateway.
+         Drawn from the left edge of the CAP Operator block, down the left
+         margin between the outer cluster border (x=18) and the CAV1 stack
+         (x=50), landing on the left edge of the Istio Gateway box
+         (at y=526, the box's vertical center). -->
+    <path class="edge dashed e1"
+          d="M42,146 L30,146 L30,526 L67,526"/>
+
+    <!-- Step 2: Certificate + DNS ← ingress gateway attachment (Gateway
+         box right edge x=188, DNS/TLS boxes start at x=215).
+         Y midpoints: DNS row y=526, TLS row y=588. -->
+    <path class="edge dashed e2" d="M215,526 L190,526"/>
+    <path class="edge dashed e2" d="M215,588 L190,588"/>
+
+    <!-- Step 3: Content Deployer → BTP Service Operator (single arrow —
+         the Content Deployer publishes content into MULTIPLE service
+         operators via one logical push, so a single arrow to the whole
+         block reads more accurately than two). Lands roughly at the top
+         center of the shrunk BTP block. -->
+    <path class="edge dashed e3"
+          d="M380,417 C420,432 500,442 560,452"/>
+
+    <!-- Step 4: CAP Server → HANA Cloud (Approuter+CAP Server rolled out;
+         Approuter itself needs no separate arrow). Routed just below the
+         CAV1 stack and ABOVE the Domain wrapper (y≈428). -->
+    <path class="edge dashed e4"
+          d="M162,415 C162,428 500,430 758,428 C810,428 830,430 838,432"/>
+
+    <!-- Step 5a: Tenant Operation → HANA Cloud.
+         Routed ABOVE the Scheduled Routines pill (which sits at y=290-380)
+         to avoid crossing through it. -->
+    <path class="edge dashed e5"
+          d="M480,285 C640,270 760,270 838,428"/>
+    <!-- Step 5b: Tenant Operation → Subaccount Services -->
+    <path class="edge dashed e5"
+          d="M480,270 C620,262 720,232 803,222"/>
+
+    <!-- Step 6a: Gateway → Virtual Service (VS is created last, after tenants).
+         Gateway box bottom y=553, VS box top y=561. Vertical arrow. -->
+    <path class="edge e6" d="M128,553 L128,561"/>
+    <!-- Step 6b: Virtual Service → Approuter — exits VS from the LEFT
+         edge (x=67, y=588 center) and runs straight up the corridor
+         at x=38, then right into the Approuter's left edge. -->
+    <path class="edge dashed e6"
+          d="M67,588 L38,588 L38,293 L64,293"/>
+
+    <!-- Step 7: Operator monitoring → CAV1 stack (points onto the whole
+         version stack, since credential rotation & cleanup act at that
+         granularity). Now with a longer visible run thanks to the pill
+         being pulled to the right. -->
+    <path class="edge dashed e7" d="M540,335 L494,335"/>
+  </g>
+
+  <!-- ============================================================
+       LEGEND (7 rows)
+       ============================================================ -->
+  <g id="legend" transform="translate(1000, 46)">
+    <!-- Row 1 — Istio Gateway -->
+    <g transform="translate(0, 0)">
+      <rect class="legend-bg lg1" x="0" y="0" rx="6" ry="6" width="290" height="78"/>
+      <circle class="badge b1" cx="22" cy="39" r="15"/>
+      <text class="badge-num" x="22" y="39" style="font-size:14px">1</text>
+      <text class="legend-text" x="46" y="22">
+        <tspan x="46" dy="0" style="font-weight:700;fill:#0A2540">Istio Gateway</tspan>
+        <tspan x="46" dy="15">created by CAP Operator as the</tspan>
+        <tspan x="46" dy="14">cluster's ingress entry point.</tspan>
+      </text>
+    </g>
+
+    <!-- Row 2 — DNS &amp; TLS -->
+    <g transform="translate(0, 86)">
+      <rect class="legend-bg lg2" x="0" y="0" rx="6" ry="6" width="290" height="78"/>
+      <circle class="badge b2" cx="22" cy="39" r="15"/>
+      <text class="badge-num" x="22" y="39" style="font-size:14px">2</text>
+      <text class="legend-text" x="46" y="22">
+        <tspan x="46" dy="0" style="font-weight:700;fill:#0A2540">DNS &amp; TLS provisioned</tspan>
+        <tspan x="46" dy="15">wildcard / subdomain DNS entries</tspan>
+        <tspan x="46" dy="14">and certificates (Gardener).</tspan>
+      </text>
+    </g>
+
+    <!-- Row 3 — Content Deployment -->
+    <g transform="translate(0, 172)">
+      <rect class="legend-bg lg3" x="0" y="0" rx="6" ry="6" width="290" height="78"/>
+      <circle class="badge b3" cx="22" cy="39" r="15"/>
+      <text class="badge-num" x="22" y="39" style="font-size:14px">3</text>
+      <text class="legend-text" x="46" y="22">
+        <tspan x="46" dy="0" style="font-weight:700;fill:#0A2540">Content Deployment Jobs</tspan>
+        <tspan x="46" dy="15">run first — push Fiori UI, dests</tspan>
+        <tspan x="46" dy="14">and auth config into SAP BTP.</tspan>
+      </text>
+    </g>
+
+    <!-- Row 4 — Approuter &amp; CAP Server -->
+    <g transform="translate(0, 258)">
+      <rect class="legend-bg lg4" x="0" y="0" rx="6" ry="6" width="290" height="78"/>
+      <circle class="badge b4" cx="22" cy="39" r="15"/>
+      <text class="badge-num" x="22" y="39" style="font-size:14px">4</text>
+      <text class="legend-text" x="46" y="22">
+        <tspan x="46" dy="0" style="font-weight:700;fill:#0A2540">Approuter, CAP Server &amp; Other workloads</tspan>
+        <tspan x="46" dy="15">rolled out together, with credentials to</tspan>
+        <tspan x="46" dy="14">SAP BTP services and per workload config(s).</tspan>
+      </text>
+    </g>
+
+    <!-- Row 5 — Tenant Operation -->
+    <g transform="translate(0, 344)">
+      <rect class="legend-bg lg5" x="0" y="0" rx="6" ry="6" width="290" height="78"/>
+      <circle class="badge b5" cx="22" cy="39" r="15"/>
+      <text class="badge-num" x="22" y="39" style="font-size:14px">5</text>
+      <text class="legend-text" x="46" y="22">
+        <tspan x="46" dy="0" style="font-weight:700;fill:#0A2540">Tenant Operation Job</tspan>
+        <tspan x="46" dy="15">runs for provisioning, upgrade</tspan>
+        <tspan x="46" dy="14">or deprovisioning of a tenant.</tspan>
+      </text>
+    </g>
+
+    <!-- Row 6 — Virtual Service (last of the one-shot rollout) -->
+    <g transform="translate(0, 430)">
+      <rect class="legend-bg lg6" x="0" y="0" rx="6" ry="6" width="290" height="78"/>
+      <circle class="badge b6" cx="22" cy="39" r="15"/>
+      <text class="badge-num" x="22" y="39" style="font-size:14px">6</text>
+      <text class="legend-text" x="46" y="22">
+        <tspan x="46" dy="0" style="font-weight:700;fill:#0A2540">Virtual Service</tspan>
+        <tspan x="46" dy="15">created last, routing Gateway</tspan>
+        <tspan x="46" dy="14">traffic to the Approuter.</tspan>
+      </text>
+    </g>
+
+    <!-- Row 7 — Scheduled Routines (continuous) -->
+    <g transform="translate(0, 516)">
+      <rect class="legend-bg lg7" x="0" y="0" rx="6" ry="6" width="290" height="78"/>
+      <circle class="badge b7" cx="22" cy="39" r="15"/>
+      <text class="badge-num" x="22" y="39" style="font-size:14px">7</text>
+      <text class="legend-text" x="46" y="22">
+        <tspan x="46" dy="0" style="font-weight:700;fill:#0A2540">Scheduled Routines</tspan>
+        <tspan x="46" dy="15">• rollout on credential rotation</tspan>
+        <tspan x="46" dy="14">• version cleanup (Prometheus)</tspan>
+      </text>
+    </g>
+  </g>
+</svg>
