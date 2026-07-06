@@ -28,7 +28,7 @@ type CAPApplicationSpecApplyConfiguration struct {
 	Provider *BTPTenantIdentificationApplyConfiguration `json:"provider,omitempty"`
 	// SAP BTP Services consumed by the application
 	BTP *BTPApplyConfiguration `json:"btp,omitempty"`
-	// Rollout on Credentials Update may be used to rollout deployments when dependant service credentials are updated
+	// Rollout on Credentials Update may be used to rollout deployments when dependent service credentials are updated
 	RolloutOnCredentialUpdate *bool `json:"rolloutOnCredentialUpdate,omitempty"`
 }
 
