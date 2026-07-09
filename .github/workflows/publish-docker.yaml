@@ -21,14 +21,14 @@ defaults:
 jobs:
   publish-docker:
     name: Publish Docker image
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: write # needed for SBOM upload
       packages: write
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
 
     - name: Setup Docker Buildx
       uses: docker/setup-buildx-action@v4
