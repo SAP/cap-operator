@@ -1,7 +1,7 @@
 # [CAP Operator](https://sap.github.io/cap-operator/)
 [![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/SAP/cap-operator)](https://github.com/SAP/cap-operator/blob/main/go.mod#L3)
 [![Go Reference](https://pkg.go.dev/badge/github.com/sap/cap-operator.svg)](https://pkg.go.dev/github.com/sap/cap-operator)
-[![Go Report Card](https://goreportcard.com/badge/github.com/sap/cap-operator)](https://goreportcard.com/report/github.com/sap/cap-operator)
+[![Go (Vet)](https://github.com/SAP/cap-operator/actions/workflows/build.yml/badge.svg)](https://github.com/SAP/cap-operator/actions/workflows/build.yml)
 [![Sonar Coverage](https://sonarcloud.io/api/project_badges/measure?project=SAP_cap-operator&metric=coverage)](https://sonarcloud.io/summary/overall?id=SAP_cap-operator)
 [![CodeQL](https://github.com/SAP/cap-operator/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/SAP/cap-operator/actions/workflows/github-code-scanning/codeql)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/7803/badge)](https://www.bestpractices.dev/projects/7803)
