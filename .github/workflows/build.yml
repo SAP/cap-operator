@@ -1,4 +1,4 @@
-name: Go (Build & Unit test)
+name: Go (Build / Vet / Test)
 
 on:
   push:
