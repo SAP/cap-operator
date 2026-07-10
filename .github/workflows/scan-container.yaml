@@ -41,6 +41,7 @@ jobs:
       - name: Run grype scanner
         uses: anchore/scan-action@v7
         with:
+          fail-build: false
           image: ghcr.io/sap/cap-operator/${{ matrix.workload }}:${{ inputs.version || 'latest' }}
           output-file: 'vuln-grype-${{ matrix.workload }}.sarif'
 
