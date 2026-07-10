@@ -23,8 +23,8 @@ A Kubernetes operator for managing the lifecycle of multi-tenant CAP application
 <a style="text-decoration:auto" href="https://pkg.go.dev/github.com/sap/cap-operator">
 	<img src="https://pkg.go.dev/badge/github.com/sap/cap-operator.svg" alt="Go Reference">
 </a>
-<a style="text-decoration:auto" href="https://goreportcard.com/report/github.com/sap/cap-operator">
-	<img src="https://goreportcard.com/badge/github.com/sap/cap-operator" alt="Go Report Card">
+<a style="text-decoration:auto" href="https://github.com/SAP/cap-operator/actions/workflows/build.yml">
+	<img src="https://github.com/SAP/cap-operator/actions/workflows/build.yml/badge.svg" alt="Go vet/fmt">
 </a>
 <a style="text-decoration:auto" href="https://sonarcloud.io/summary/overall?id=SAP_cap-operator">
 	<img src="https://sonarcloud.io/api/project_badges/measure?project=SAP_cap-operator&metric=coverage" alt="Sonar Coverage">
