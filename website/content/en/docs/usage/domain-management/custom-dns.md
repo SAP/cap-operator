@@ -1,9 +1,9 @@
 ---
 title: "Custom DNS Templates"
 linkTitle: "Custom DNS"
-weight: 20
+weight: 10
 type: "docs"
-tags: ["domains"]
+tags: ["domains", "dns"]
 description: >
   How to configure Custom DNS mode for `Domain` or `ClusterDomain`
 ---

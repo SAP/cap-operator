@@ -2056,6 +2056,47 @@ string
 <p>Used to specify additional CA certificate that may be used for verifying client certificates in Mutual TLS mode</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>certManager</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CertManager">
+CertManager
+</a>
+</em>
+</td>
+<td>
+<p>CertManager specific configuration for the certificate to be created for the domain</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CertManager">CertManager
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CertConfig">CertConfig</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>issuerRef</code><br/>
+<em>
+github.com/cert-manager/cert-manager/pkg/apis/meta/v1.IssuerReference
+</em>
+</td>
+<td>
+<p>Issuer configuration for the certificate</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.CommonDetails">CommonDetails
@@ -4017,5 +4058,5 @@ If not specified, CAP Operator will not attempt to create a ServiceMonitor for t
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>937a1ca</code>.
+on git commit <code>908e7b6</code>.
 </em></p>
