@@ -1,0 +1,30 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: Domain
+metadata:
+  name: test-cap-01-primary
+  namespace: default
+  annotations:
+    sme.sap.com/cert-manager-common-name: app-domain.test.local
+  finalizers:
+  - sme.sap.com/domain
+  labels:
+    sme.sap.com/domain-host-hash: d8b11ae7b1f04e357f32290b81db58c247dac748
+spec:
+  dnsMode: Wildcard
+  domain: app-domain.test.local
+  ingressSelector:
+    app: istio-ingressgateway
+    istio: ingressgateway
+  tlsMode: Simple
+  certConfig:
+    certManager:
+      issuerRef:
+        kind: Issuer
+        name: my-custom-issuer
+status:
+  conditions:
+  - message: Processing domain resources
+    reason: Processing
+    status: "False"
+    type: Ready
+  state: Processing

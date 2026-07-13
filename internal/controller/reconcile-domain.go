@@ -463,6 +463,19 @@ func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Co
 		OwnerGeneration:     dom.GetMetadata().Generation,
 	}
 
+	// CertManager specific configuration
+	if h.managerType == certManagerCertManagerIO {
+		// Check if CertManager configuration is provided in the domain spec and set it in the ManagedCertificateInfo
+		if dom.GetSpec().CertConfig != nil && dom.GetSpec().CertConfig.CertManager != nil {
+			info.CertManagerConfig = &certManagerConfig{
+				IssuerRef: dom.GetSpec().CertConfig.CertManager.IssuerRef,
+			}
+		} else {
+			info.CertManagerConfig = defaultCertManagerConfig
+		}
+		info.CertManagerConfig.CommonName = dom.GetMetadata().Annotations[AnnotationCertManagerCommonName]
+	}
+
 	return credentialName, h.handleCertificate(ctx, info)
 }
 

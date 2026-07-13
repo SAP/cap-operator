@@ -25,6 +25,18 @@ const (
 	gardenerCredentialSuffix    = "gardener"
 )
 
+type certManagerConfig struct {
+	CommonName string
+	IssuerRef  certManagermetav1.IssuerReference
+}
+
+var defaultCertManagerConfig = &certManagerConfig{
+	IssuerRef: certManagermetav1.IssuerReference{
+		Kind: certManagerv1.ClusterIssuerKind,
+		Name: "cluster-ca",
+	},
+}
+
 type CertificateManager struct {
 	c           *Controller
 	managerType string
@@ -285,9 +297,13 @@ type ManagedCertificateInfo struct {
 	CredentialNamespace string
 	OwnerId             string
 	OwnerGeneration     int64
+	CertManagerConfig   *certManagerConfig
 }
 
 func (o *ManagedCertificateInfo) Hash() string {
+	if o.CertManagerConfig != nil {
+		return sha256Sum(o.Domain, o.CredentialName, o.CredentialNamespace, o.CertManagerConfig.CommonName, o.CertManagerConfig.IssuerRef.Kind, o.CertManagerConfig.IssuerRef.Name, o.CertManagerConfig.IssuerRef.Group)
+	}
 	return sha256Sum(o.Domain, o.CredentialName, o.CredentialNamespace)
 }
 
@@ -305,11 +321,8 @@ func (o *ManagedCertificateInfo) getCertManagerCertificateSpec() certManagerv1.C
 	return certManagerv1.CertificateSpec{
 		DNSNames:   []string{"*." + o.Domain},
 		SecretName: o.CredentialName,
-		IssuerRef: certManagermetav1.IssuerReference{
-			// TODO: make this configurable
-			Kind: certManagerv1.ClusterIssuerKind,
-			Name: "cluster-ca",
-		},
+		CommonName: o.CertManagerConfig.CommonName,
+		IssuerRef:  o.CertManagerConfig.IssuerRef,
 	}
 }
 

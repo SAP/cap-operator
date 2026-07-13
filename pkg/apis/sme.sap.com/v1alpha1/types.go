@@ -6,6 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
+	certManagermetav1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	autoscalingv2 "k8s.io/api/autoscaling/v2"
 	corev1 "k8s.io/api/core/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -826,6 +827,13 @@ type DNSTemplate struct {
 type CertConfig struct {
 	// Used to specify additional CA certificate that may be used for verifying client certificates in Mutual TLS mode
 	AdditionalCACertificate string `json:"additionalCACertificate,omitempty"`
+	// CertManager specific configuration for the certificate to be created for the domain
+	CertManager *CertManager `json:"certManager,omitempty"`
+}
+
+type CertManager struct {
+	// Issuer configuration for the certificate
+	IssuerRef certManagermetav1.IssuerReference `json:"issuerRef"`
 }
 
 // +kubebuilder:validation:Enum=Simple;Mutual;OptionalMutual

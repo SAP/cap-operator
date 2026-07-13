@@ -151,6 +151,66 @@ func TestDomain_ProcessingWithIngressCertManager(t *testing.T) {
 	os.Setenv(certManagerEnv, "")
 }
 
+func TestDomain_ProcessingWithIngressCertManagerCustomIssuerRef(t *testing.T) {
+	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress - certManager certificate created with custom IssuerRef from spec.certConfig.certManager",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-certManager-customIssuerRef.yaml",
+			},
+			expectedResources: "testdata/domain/domain-processing-observedDom-certManager-customIssuerRef-gateway.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+
+	os.Setenv(certManagerEnv, "")
+}
+
+func TestDomain_ProcessingWithIngressCertManagerCommonName(t *testing.T) {
+	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress - certManager certificate created with commonName from annotation",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-certManager-commonName.yaml",
+			},
+			expectedResources: "testdata/domain/domain-processing-observedDom-certManager-commonName-gateway.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+
+	os.Setenv(certManagerEnv, "")
+}
+
+func TestDomain_ProcessingWithIngressCertManagerCustomIssuerRefAndCommonName(t *testing.T) {
+	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Processing with ingress - certManager certificate created with custom IssuerRef and commonName",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing-certManager-customIssuerRef-commonName.yaml",
+			},
+			expectedResources: "testdata/domain/domain-processing-observedDom-certManager-customIssuerRef-commonName-gateway.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+
+	os.Setenv(certManagerEnv, "")
+}
+
 func TestDomain_ProcessingWithIngressCertManagerWithAdditionalCACertificate(t *testing.T) {
 	os.Setenv(certManagerEnv, certManagerCertManagerIO)
 
@@ -484,6 +544,28 @@ func TestDomain_RemoveAdditionalCACertificateDeleteError(t *testing.T) {
 	if err.Error() != "failed to reconcile additional ca certificate secret for Domain.default.test-cap-01-primary: failed to delete stale ca certificate secret default--test-cap-01-primary-gardener-cacert for Domain.default.test-cap-01-primary: mocked api error (secrets./v1)" {
 		t.Error("Wrong error message")
 	}
+}
+
+func TestDomain_UpdateCertManagerConfig(t *testing.T) {
+	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "CertManager config added to domain - existing certificate updated with new IssuerRef and hash",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-certManager-config-update.yaml",
+				"testdata/domain/primary-certManager-ready.yaml",
+				"testdata/domain/primary-gateway-cert-manager.yaml",
+			},
+			expectedResources: "testdata/domain/domain-certManager-config-update.expected.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+		},
+	)
+
+	os.Setenv(certManagerEnv, "")
 }
 
 func TestDomain_UpdatedomainWithCertManager(t *testing.T) {

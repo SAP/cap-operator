@@ -42,6 +42,22 @@ spec:
                 properties:
                   additionalCACertificate:
                     type: string
+                  certManager:
+                    properties:
+                      issuerRef:
+                        properties:
+                          group:
+                            type: string
+                          kind:
+                            type: string
+                          name:
+                            type: string
+                        required:
+                        - name
+                        type: object
+                    required:
+                    - issuerRef
+                    type: object
                 type: object
               dnsMode:
                 default: None

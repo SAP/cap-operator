@@ -12,6 +12,8 @@ package v1alpha1
 type CertConfigApplyConfiguration struct {
 	// Used to specify additional CA certificate that may be used for verifying client certificates in Mutual TLS mode
 	AdditionalCACertificate *string `json:"additionalCACertificate,omitempty"`
+	// CertManager specific configuration for the certificate to be created for the domain
+	CertManager *CertManagerApplyConfiguration `json:"certManager,omitempty"`
 }
 
 // CertConfigApplyConfiguration constructs a declarative configuration of the CertConfig type for use with
@@ -25,5 +27,13 @@ func CertConfig() *CertConfigApplyConfiguration {
 // If called multiple times, the AdditionalCACertificate field is set to the value of the last call.
 func (b *CertConfigApplyConfiguration) WithAdditionalCACertificate(value string) *CertConfigApplyConfiguration {
 	b.AdditionalCACertificate = &value
+	return b
+}
+
+// WithCertManager sets the CertManager field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the CertManager field is set to the value of the last call.
+func (b *CertConfigApplyConfiguration) WithCertManager(value *CertManagerApplyConfiguration) *CertConfigApplyConfiguration {
+	b.CertManager = value
 	return b
 }

@@ -59,6 +59,7 @@ const (
 	AnnotationVSRouteResponseHeaderSet  = "sme.sap.com/vs-route-response-header-set" // configures headers on outgoing responses for Istio VirtualService route handling
 	AnnotationLogoutEndpoint            = "sme.sap.com/logout-endpoint"
 	AnnotationEnableVersionAffinity     = "sme.sap.com/enable-version-affinity"
+	AnnotationCertManagerCommonName     = "sme.sap.com/cert-manager-common-name"
 	FinalizerCAPApplication             = "sme.sap.com/capapplication"
 	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
 	FinalizerCAPTenant                  = "sme.sap.com/captenant"

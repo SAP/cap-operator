@@ -63,7 +63,7 @@ kind: Certificate
 metadata:
   annotations:
     sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
-    sme.sap.com/resource-hash: 1e0784231c871a291abfa30b8ca1241306c997a011944be7c0222822f3c2934b
+    sme.sap.com/resource-hash: 21cf4ec97a585a650a269260840c672026984f62651361d5e9cec8439cd53c38
   finalizers:
   - sme.sap.com/domain
   labels:
