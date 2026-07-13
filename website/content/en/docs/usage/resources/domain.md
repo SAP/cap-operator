@@ -52,6 +52,8 @@ spec:
 
 **`certConfig.additionalCACertificate`** *(optional)* — PEM-encoded CA certificate Istio uses to verify client certificates when `tlsMode` is `Mutual` or `OptionalMutual`. See [Configuring Additional CA Certificates](../domain-management/additional-ca) for details.
 
+**`certConfig.certManager.issuerRef`** *(optional, cert-manager only)* — overrides the cert-manager issuer used to sign the TLS certificate. Defaults to a `ClusterIssuer` named `cluster-ca`. See [Configuring cert-manager Certificates](../domain-management/cert-manager-config) for details.
+
 ### Created resources
 
 Sub-resources are mainly created in the `Domain` namespace:

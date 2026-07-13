@@ -1,7 +1,7 @@
 ---
 title: "Configuring Additional CA Certificates"
 linkTitle: "CA Certificates"
-weight: 30
+weight: 20
 type: "docs"
 tags: ["domains"]
 description: >
