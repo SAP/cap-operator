@@ -19,7 +19,7 @@ require (
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.92.1
 	github.com/prometheus-operator/prometheus-operator/pkg/client v0.92.1
 	github.com/prometheus/client_golang v1.23.3-0.20260702112354-832cec72badf
-	github.com/prometheus/common v0.69.0
+	github.com/prometheus/common v0.70.0
 	go.uber.org/zap v1.28.0
 	golang.org/x/mod v0.38.0
 	golang.org/x/sync v0.22.0
