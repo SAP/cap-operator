@@ -3,6 +3,8 @@ kind: Domain
 metadata:
   name: test-cap-01-primary
   namespace: default
+  annotations:
+    sme.sap.com/cert-manager-common-name: app-domain.test.local
   finalizers:
   - sme.sap.com/domain
   labels:
@@ -15,7 +17,10 @@ spec:
     istio: ingressgateway
   tlsMode: Simple
   certConfig:
-    additionalCACertificate: dummy-cert-content
+    certManager:
+      issuerRef:
+        kind: Issuer
+        name: my-custom-issuer
 status:
   conditions:
   - message: Processing domain resources
@@ -65,7 +70,7 @@ kind: Certificate
 metadata:
   annotations:
     sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
-    sme.sap.com/resource-hash: 21cf4ec97a585a650a269260840c672026984f62651361d5e9cec8439cd53c38
+    sme.sap.com/resource-hash: 007844702285ec8e29069b3f1945f45a9649d15cdc50e2f0cb7215ff25be3d0c
   finalizers:
   - sme.sap.com/domain
   labels:
@@ -77,21 +82,7 @@ spec:
   dnsNames:
   - '*.app-domain.test.local'
   secretName: default--test-cap-01-primary-cert-manager
+  commonName: app-domain.test.local
   issuerRef:
-    kind: ClusterIssuer
-    name: cluster-ca
----
-apiVersion: v1
-data:
-  ca.crt: ZHVtbXktY2VydC1jb250ZW50
-kind: Secret
-type: Opaque
-metadata:
-  annotations:
-    sme.sap.com/owner-identifier: Domain.default.test-cap-01-primary
-    sme.sap.com/resource-hash: 17dbb07bb8073332c456941cad2fa6e09dda752d6d1ed2fd6a71d26d948ad206
-  labels:
-    sme.sap.com/owner-generation: "0"
-    sme.sap.com/owner-identifier-hash: f3b9e769089130d9d80dc05b68fb1564beb8cccc
-  name: default--test-cap-01-primary-cert-manager-cacert
-  namespace: istio-system
+    kind: Issuer
+    name: my-custom-issuer

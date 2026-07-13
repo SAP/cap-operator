@@ -59,6 +59,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha1.CAPTenantStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CertConfig"):
 		return &smesapcomv1alpha1.CertConfigApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CertManager"):
+		return &smesapcomv1alpha1.CertManagerApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ClusterDomain"):
 		return &smesapcomv1alpha1.ClusterDomainApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CommonDetails"):
