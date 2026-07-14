@@ -459,7 +459,7 @@ func TestDomain_UpdateAdditionalCACertificateGetError(t *testing.T) {
 		context.TODO(), t,
 		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
 		TestData{
-			description: "Domain update - Additional CA Certificate update failed; exisiting secret get returned error",
+			description: "Domain update - Additional CA Certificate update failed; existing secret get returned error",
 			initialResources: []string{
 				"testdata/domain/istio-ingress.yaml",
 				"testdata/domain/domain-additionalCaCertificate-update.yaml",
@@ -483,7 +483,7 @@ func TestDomain_UpdateAdditionalCACertificateUpdateError(t *testing.T) {
 		context.TODO(), t,
 		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
 		TestData{
-			description: "Domain update - Additional CA Certificate update failed as exisiting secret update returned error",
+			description: "Domain update - Additional CA Certificate update failed as existing secret update returned error",
 			initialResources: []string{
 				"testdata/domain/istio-ingress.yaml",
 				"testdata/domain/domain-additionalCaCertificate-update.yaml",
@@ -715,7 +715,7 @@ func TestDomain_SubdomainWithCAService(t *testing.T) {
 	)
 }
 
-func TestDomain_SubdomainWithCATenanat(t *testing.T) {
+func TestDomain_SubdomainWithCAPTenant(t *testing.T) {
 	reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
