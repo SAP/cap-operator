@@ -63,11 +63,12 @@ func (h *CertificateManager) handleCertificate(ctx context.Context, info *Manage
 		consistent   bool
 	)
 	for i, cert := range certs {
-		selectedCert = cert
 		consistent = cert.GetAnnotations()[AnnotationResourceHash] == hash
 
-		if !consistent && len(certs)-1 < i || (h.managerType == certManagerCertManagerIO && (cert.GetNamespace() != info.CredentialNamespace)) {
+		if !consistent && i < len(certs)-1 || (h.managerType == certManagerCertManagerIO && (cert.GetNamespace() != info.CredentialNamespace)) {
 			certsForDeletion = append(certsForDeletion, cert)
+		} else {
+			selectedCert = cert
 		}
 	}
 
@@ -230,7 +231,7 @@ func (h *CertificateManager) CreateCertificate(ctx context.Context, info *Manage
 	}
 
 	// Gardener certificates are created in the namespace of the domain (or for clusterdomain in the operator namespace), as it supports creating TLS secrets in other namespaces (e.g. istio ingress namespace).
-	// Cert-Manager certificates do not support this out of the box and hene we create these in the istio ingress namespace, and use the same name we pre-determine for credentials certificates.
+	// Cert-Manager certificates do not support this out of the box and hence we create these in the istio ingress namespace, and use the same name we pre-determine for credentials certificates.
 	h.updateCertificateMetadata(&mo, info)
 	switch h.managerType {
 	case certManagerCertManagerIO:

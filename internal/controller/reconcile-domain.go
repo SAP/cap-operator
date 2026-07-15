@@ -149,7 +149,7 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 		}
 	}()
 
-	// process the domain realted resources
+	// process the domain related resources
 	if result, err = processDomainEntity(ctx, c, dom, subResourceNamespace); err != nil || result != nil {
 		return
 	}
