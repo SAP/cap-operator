@@ -30,4 +30,4 @@ spec:
 - Keep old credentials valid for **at least 24 hours** after issuing new ones — do not revoke until all pods have restarted with the new credentials.
 - The batching window is configurable via the `ROLLOUT_DELAY` env var on the controller deployment (minimum `30s`).
 
-See `website/content/en/docs/usage/rollout-on-credential-update.md`.
+See `website/content/en/docs/usage/rollout-on-credential-update.md` | [Rollout on credential update](https://sap.github.io/cap-operator/docs/usage/rollout-on-credential-update/).

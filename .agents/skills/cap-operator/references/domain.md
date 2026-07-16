@@ -36,7 +36,7 @@ spec:
   ingressSelector:
     app: istio-ingressgateway
     istio: ingressgateway
-  tlsMode: Simple     # Simple (default) | Mutual
+  tlsMode: Simple     # Simple (default) | Mutual | OptionalMutual
   dnsMode: Subdomain  # None (default) | Wildcard | Subdomain | Custom
 ```
 
@@ -46,9 +46,9 @@ spec:
 |---|---|
 | `Simple` | Standard one-way TLS (default) |
 | `Mutual` | mTLS required — clients must present a certificate |
-| `OptionalMutual` | mTLS optional (`Domain` only — not supported on `ClusterDomain`) |
+| `OptionalMutual` | mTLS optional — client certificate is accepted if provided |
 
-When `tlsMode` is `Mutual` or `OptionalMutual`, provide additional CA certificates via `certConfig.additionalCACertificate`. See `website/content/en/docs/usage/domain-management/additional-ca.md`.
+When `tlsMode` is `Mutual` or `OptionalMutual`, provide additional CA certificates via `certConfig.additionalCACertificate`. See `website/content/en/docs/usage/domain-management/additional-ca.md` | [Additional CA certificates](https://sap.github.io/cap-operator/docs/usage/domain-management/additional-ca/).
 
 ## DNS modes
 
@@ -57,7 +57,7 @@ When `tlsMode` is `Mutual` or `OptionalMutual`, provide additional CA certificat
 | `None` | No DNS entry created (default) |
 | `Wildcard` | Single wildcard DNS entry (`*.<domain>`) |
 | `Subdomain` | Per-tenant subdomain DNS entries |
-| `Custom` | Template-based DNS entry — see `website/content/en/docs/usage/domain-management/custom-dns.md` |
+| `Custom` | Template-based DNS entry — see `website/content/en/docs/usage/domain-management/custom-dns.md` \| [Custom DNS](https://sap.github.io/cap-operator/docs/usage/domain-management/custom-dns/) |
 
 ## Referencing domains in CAPApplication
 
@@ -82,4 +82,4 @@ A mutation webhook will reject any attempt to reintroduce the `domains` section.
 1. Upgrade to v0.25.0 first — this runs the automatic `domains` → `domainRefs` migration.
 2. Then upgrade to the latest release.
 
-See `website/content/en/docs/usage/domain-management/_index.md`.
+See `website/content/en/docs/usage/domain-management/_index.md` | [Domain management](https://sap.github.io/cap-operator/docs/usage/domain-management/).
