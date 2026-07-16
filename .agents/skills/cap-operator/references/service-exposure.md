@@ -59,3 +59,5 @@ For a domain `my.example.com` this produces:
 | `app.my.example.com` | `app:5000` |
 
 **Important:** Order routes most-specific-first within a `subDomain` to avoid routing conflicts (e.g. `/api/v2` before `/api`).
+
+See `website/content/en/docs/usage/service-exposure.md` | [Service exposure](https://sap.github.io/cap-operator/docs/usage/service-exposure/).

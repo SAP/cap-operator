@@ -155,3 +155,5 @@ The `getDependencies` endpoint is exposed automatically at:
 ```
 GET /dependencies/{providerSubaccountId}/{appName}/
 ```
+
+See `website/content/en/docs/usage/deploying-application.md` | [Deploying an application](https://sap.github.io/cap-operator/docs/usage/deploying-application/).

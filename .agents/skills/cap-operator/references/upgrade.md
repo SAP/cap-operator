@@ -60,3 +60,5 @@ Defines execution order for `Content` workload jobs when a `CAPApplicationVersio
 ## Version Affinity (experimental)
 
 Add annotation `sme.sap.com/enable-version-affinity: "true"` to `CAPApplication` to keep users on their current version until logout. Set `sme.sap.com/logout-endpoint: "<path>"` on `CAPApplicationVersion` for a custom logout path (no leading slash).
+
+See `website/content/en/docs/usage/version-upgrade.md` | [Version upgrade](https://sap.github.io/cap-operator/docs/usage/version-upgrade/).

@@ -14,24 +14,27 @@ allowed-tools: Bash(kubectl:*)
 
 Manages the lifecycle of multi-tenant SAP Cloud Application Programming Model (CAP) applications on Kubernetes via the CAP Operator controller.
 
-Full docs: `website/content/en/docs/` | API reference: `website/content/en/docs/reference/` | Website: https://sap.github.io/cap-operator
+**Response rule:** Always include a link to the relevant page on https://sap.github.io/cap-operator/docs/ when answering any question. Match the topic to the most specific page available (resource reference, usage guide, troubleshooting, configuration, etc.).
+
+Full docs & API reference: `website/content/en/docs/` | https://sap.github.io/cap-operator/docs/
 
 ## Custom Resources
 
 | Resource | Scope | Purpose |
 |---|---|---|
-| `CAPApplication` | Namespaced | High-level app: BTP services, domain refs, provider subaccount |
-| `CAPApplicationVersion` | Namespaced | Immutable version: images, workloads, tenant operation steps |
-| `CAPTenant` | Namespaced | A subscribed consumer tenant — controller-managed only |
-| `CAPTenantOperation` | Namespaced | Orchestrates provisioning/upgrade/deprovisioning — auto-created |
-| `Domain` | Namespaced | Istio Gateway + TLS + DNS for one application |
-| `ClusterDomain` | Cluster | Shared domain config across applications |
+| [`CAPApplication`](https://sap.github.io/cap-operator/docs/usage/resources/capapplication/) | Namespaced | High-level app: BTP services, domain refs, provider subaccount |
+| [`CAPApplicationVersion`](https://sap.github.io/cap-operator/docs/usage/resources/capapplicationversion/) | Namespaced | Immutable version: images, workloads, tenant operation steps |
+| [`CAPTenant`](https://sap.github.io/cap-operator/docs/usage/resources/captenant/) | Namespaced | A subscribed consumer tenant — controller-managed only |
+| [`CAPTenantOperation`](https://sap.github.io/cap-operator/docs/usage/resources/captenantoperation/) | Namespaced | Orchestrates provisioning/upgrade/deprovisioning — auto-created |
+| [`Domain`](https://sap.github.io/cap-operator/docs/usage/resources/domain/) | Namespaced | Istio Gateway + TLS + DNS for one application |
+| [`ClusterDomain`](https://sap.github.io/cap-operator/docs/usage/resources/clusterdomain/) | Cluster | Shared domain config across applications |
 
 **Critical rules:**
 - `CAPApplicationVersion` is **immutable** after creation. To upgrade, create a new resource with a higher semantic version.
 - `CAPTenant` must **never** be created or deleted manually — managed by the subscription server only.
 - `CAPTenantOperation` is auto-created by the controller — do not create or delete manually.
 - Never remove finalizers from CAP Operator resources manually.
+- `CAPApplication.spec.provider` is **deprecated**. It previously caused the controller to auto-create a provider `CAPTenant`, but that behavior has been removed. All tenants (including the provider) must now be subscribed to explicitly. If `kubectl get captenant -n <namespace>` returns empty, this is expected for apps with no active subscriptions.
 
 ## Common Operations
 
@@ -62,7 +65,7 @@ kubectl get domain,clusterdomain -A
 
 ### Domain management
 - `Domain` — namespace-scoped, one application. `ClusterDomain` — cluster-scoped, shared.
-- TLS modes: `Simple` (default), `Mutual`, `OptionalMutual` (Domain only)
+- TLS modes: `Simple` (default), `Mutual`, `OptionalMutual`
 - DNS modes: `None` (default), `Wildcard`, `Subdomain`, `Custom`
 - First entry in `domainRefs` is the primary domain.
 - `domains` inline section in `CAPApplication` was removed in v0.26.0; use `domainRefs` instead.
@@ -81,6 +84,8 @@ See [credential rotation reference](references/credential-rotation.md).
 
 ### Version cleanup (monitoring-based)
 Enable with annotation `sme.sap.com/enable-cleanup-monitoring: "true"` on `CAPApplication`. Configure `deletionRules.expression` (PromQL) on a workload's `monitoring` section; when the expression evaluates to `true` the version is eligible for deletion.
+
+See [Version monitoring](https://sap.github.io/cap-operator/docs/usage/version-monitoring/) (`website/content/en/docs/usage/version-monitoring.md`).
 
 ## Key Annotations
 
@@ -101,7 +106,7 @@ Enable with annotation `sme.sap.com/enable-cleanup-monitoring: "true"` on `CAPAp
 | Approuter can't reach CAP backend | Missing `routerDestinationName` | Add `routerDestinationName` to the CAP workload port definition |
 | Credentials not injected | Service not in `consumedBTPServices` | Verify service name matches `CAPApplication.spec.btp.services[].name` |
 
-More: `website/content/en/docs/troubleshoot/_index.md`
+More: `website/content/en/docs/troubleshoot/_index.md` | https://sap.github.io/cap-operator/docs/troubleshoot/
 
 ## Controller Configuration
 
@@ -116,4 +121,4 @@ Tuned via env vars on the controller deployment. Key variables:
 | `MAX_CONCURRENT_RECONCILES_CAP_TENANT` | CAPTenant reconciliation concurrency |
 | `MAX_CONCURRENT_RECONCILES_CAP_TENANT_OPERATION` | CAPTenantOperation reconciliation concurrency |
 
-Full list: `website/content/en/docs/configuration/_index.md`
+Full list: `website/content/en/docs/configuration/_index.md` | https://sap.github.io/cap-operator/docs/configuration/
