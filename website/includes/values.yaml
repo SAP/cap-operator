@@ -187,6 +187,8 @@ subscriptionServer:
       issuerKind: ""
       # -- Issuer name
       issuerName: ""
+      # -- Optionally specify the common name (at most 64 characters). Not needed in most scenarios.
+      commonName: ""
     # -- Optionally specify additional CA Certificate
     # @default -- this will contain the "SAP Cloud Root CA" certificate by default
     additionalCACertificate: |
