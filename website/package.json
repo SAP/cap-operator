@@ -1,7 +1,7 @@
 {
   "name": "website",
   "devDependencies": {
-    "autoprefixer": "^10.5.3",
+    "autoprefixer": "^10.5.4",
     "docsy": "github:google/docsy#semver:v0.15.0",
     "hugo-extended": "^0.164.0",
     "postcss-cli": "^11.0.1"
