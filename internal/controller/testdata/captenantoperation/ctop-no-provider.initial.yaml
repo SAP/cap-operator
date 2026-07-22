@@ -9,6 +9,7 @@ metadata:
   annotations:
     sme.sap.com/owner-identifier: default.test-cap-01-consumer
     sme.sap.com/subscription-context-secret: test-cap-01-consumer-gen
+    sme.sap.com/subscription-guid: 12abcde3-4f56-7f89-0edc-09876b54321a
   labels:
     sme.sap.com/tenant-operation-type: provisioning
     sme.sap.com/owner-generation: "2"

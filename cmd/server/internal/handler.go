@@ -45,7 +45,7 @@ const (
 	LabelAppIdHash                    = "sme.sap.com/app-identifier-hash"
 	LabelTenantId                     = "sme.sap.com/btp-tenant-id"
 	LabelTenantType                   = "sme.sap.com/tenant-type"
-	LabelSubscriptionGUID             = "sme.sap.com/subscription-guid"
+	MetadataSubscriptionGUID          = "sme.sap.com/subscription-guid"
 )
 
 const (
@@ -262,8 +262,8 @@ func (s *SubscriptionHandler) createTenant(reqInfo *RequestInfo, ca *v1alpha1.CA
 			GenerateName: ca.Name + "-consumer-",
 			Namespace:    ca.Namespace,
 			Labels: map[string]string{
-				LabelTenantId:         reqInfo.payload.tenantId,
-				LabelSubscriptionGUID: subscriptionGUID,
+				LabelTenantId:            reqInfo.payload.tenantId,
+				MetadataSubscriptionGUID: subscriptionGUID,
 			},
 		},
 		StringData: map[string]string{
@@ -283,11 +283,12 @@ func (s *SubscriptionHandler) createTenant(reqInfo *RequestInfo, ca *v1alpha1.CA
 			Namespace:    ca.Namespace,
 			Annotations: map[string]string{
 				AnnotationSubscriptionContextSecret: secret.Name, // Store the secret name in the tenant annotation
+				MetadataSubscriptionGUID:            subscriptionGUID,
 			},
 			Labels: map[string]string{
-				LabelTenantId:         reqInfo.payload.tenantId,
-				LabelSubscriptionGUID: subscriptionGUID,
-				LabelTenantType:       "consumer", // Default tenant type for consumer tenants
+				LabelTenantId:            reqInfo.payload.tenantId,
+				MetadataSubscriptionGUID: subscriptionGUID,
+				LabelTenantType:          "consumer", // Default tenant type for consumer tenants
 			},
 		},
 		Spec: v1alpha1.CAPTenantSpec{
@@ -312,8 +313,9 @@ func (s *SubscriptionHandler) updateTenant(reqInfo *RequestInfo, ca *v1alpha1.CA
 	updated := false
 
 	// Update the tenant labels if needed
-	if tenant.Labels[LabelSubscriptionGUID] != reqInfo.payload.subscriptionGUID {
-		tenant.Labels[LabelSubscriptionGUID] = reqInfo.payload.subscriptionGUID
+	if tenant.Labels[MetadataSubscriptionGUID] != reqInfo.payload.subscriptionGUID {
+		tenant.Labels[MetadataSubscriptionGUID] = reqInfo.payload.subscriptionGUID
+		tenant.Annotations[MetadataSubscriptionGUID] = reqInfo.payload.subscriptionGUID
 		util.LogInfo("Updating tenant subscriptionGUID label", TenantProvisioning, tenant, nil)
 		if _, err := s.Clientset.SmeV1alpha1().CAPTenants(ca.Namespace).Update(context.TODO(), tenant, metav1.UpdateOptions{}); err != nil {
 			util.LogError(err, "Error updating tenant labels", TenantProvisioning, tenant, nil)
@@ -333,8 +335,8 @@ func (s *SubscriptionHandler) updateTenant(reqInfo *RequestInfo, ca *v1alpha1.CA
 		return updated, err
 	}
 
-	if secret.Labels[LabelSubscriptionGUID] != reqInfo.payload.subscriptionGUID {
-		secret.Labels[LabelSubscriptionGUID] = reqInfo.payload.subscriptionGUID
+	if secret.Labels[MetadataSubscriptionGUID] != reqInfo.payload.subscriptionGUID {
+		secret.Labels[MetadataSubscriptionGUID] = reqInfo.payload.subscriptionGUID
 		jsonReqByte, _ := json.Marshal(reqInfo.payload.raw)
 		secret.StringData = map[string]string{
 			"subscriptionContext": string(jsonReqByte),
@@ -451,8 +453,8 @@ func (s *SubscriptionHandler) getTenantByAppIdentifier(globalAccountGUID, provid
 
 func (s *SubscriptionHandler) getTenantBySubscriptionGUID(subscriptionGUID, tenantId, step string) *Result {
 	labelsMap := map[string]string{
-		LabelSubscriptionGUID: subscriptionGUID,
-		LabelTenantId:         tenantId,
+		MetadataSubscriptionGUID: subscriptionGUID,
+		LabelTenantId:            tenantId,
 	}
 	return s.getTenantByLabels(labelsMap, metav1.NamespaceAll, step, "getTenantBySubscriptionGUID")
 }
