@@ -211,8 +211,8 @@ func createTenantSubscriptionContextSecret(subscriptionContext string) runtime.O
 			Name:      subscriptionContextSecretName,
 			Namespace: v1.NamespaceDefault,
 			Labels: map[string]string{
-				LabelTenantId:         tenantId,
-				LabelSubscriptionGUID: subscriptionGUID,
+				LabelTenantId:            tenantId,
+				MetadataSubscriptionGUID: subscriptionGUID,
 			},
 		},
 		StringData: map[string]string{
@@ -308,7 +308,8 @@ func createCAT(ready bool, withGlobalTenantId ...bool) *v1alpha1.CAPTenant {
 		},
 	}
 	if withGlobalTenantId != nil && withGlobalTenantId[0] {
-		cat.ObjectMeta.Labels[LabelSubscriptionGUID] = subscriptionGUID
+		cat.ObjectMeta.Labels[MetadataSubscriptionGUID] = subscriptionGUID
+		cat.ObjectMeta.Annotations[MetadataSubscriptionGUID] = subscriptionGUID
 	}
 	if ready {
 		cat.Status = v1alpha1.CAPTenantStatus{

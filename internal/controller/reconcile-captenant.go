@@ -8,7 +8,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/sap/cap-operator/internal/util"
@@ -715,29 +714,41 @@ func (*Controller) enforceTenantResourceOwnership(objMeta *metav1.ObjectMeta, ty
 		return false, fmt.Errorf("invalid owner reference found for %s %s.%s", typeMeta.Kind, objMeta.Namespace, objMeta.Name)
 	}
 
-	// set labels, but do not set update to true (set based on owner reference or spec changes)
-	if objMeta.Labels == nil {
-		objMeta.Labels = map[string]string{}
-	}
-	objMeta.Labels[LabelOwnerIdentifierHash] = sha1Sum(cat.Namespace, cat.Name)
-	objMeta.Labels[LabelOwnerGeneration] = strconv.FormatInt(cat.Generation, 10)
-	if objMeta.Annotations == nil {
-		objMeta.Annotations = map[string]string{}
-	}
-	objMeta.Annotations[AnnotationOwnerIdentifier] = cat.Namespace + "." + cat.Name
-
-	// Check if subscriptionGUID metadata is present, if not set update to true
-	subscriptionGUID := cat.Labels[LabelSubscriptionGUID]
-	if objMeta.Labels[LabelSubscriptionGUID] != subscriptionGUID {
-		objMeta.Labels[LabelSubscriptionGUID] = subscriptionGUID
-		update = true
-	}
-	// Check if tenantType metadata is present, if not set update to true
-	tenantType := cat.Labels[LabelTenantType]
-	if objMeta.Labels[LabelTenantType] != tenantType {
-		objMeta.Labels[LabelTenantType] = tenantType
+	if addCommonTenantLabels(objMeta, cat) {
 		update = true
 	}
 
 	return update, nil
+}
+
+func addCommonTenantLabels(objMeta *metav1.ObjectMeta, cat *v1alpha1.CAPTenant) (updated bool) {
+	appMetadata := appMetadataIdentifiers{
+		ownerInfo: &ownerInfo{
+			ownerNamespace:  cat.Namespace,
+			ownerName:       cat.Name,
+			ownerGeneration: cat.Generation,
+		},
+	}
+	if updateLabelAnnotationMetadata(objMeta, &appMetadata) {
+		updated = true
+	}
+
+	// Check if subscriptionGUID metadata is present, if not set update to true
+	subscriptionGUID := cat.Labels[MetadataSubscriptionGUID]
+	if objMeta.Labels[MetadataSubscriptionGUID] != subscriptionGUID {
+		objMeta.Labels[MetadataSubscriptionGUID] = subscriptionGUID
+		updated = true
+	}
+	if objMeta.Annotations[MetadataSubscriptionGUID] != subscriptionGUID {
+		objMeta.Annotations[MetadataSubscriptionGUID] = subscriptionGUID
+		updated = true
+	}
+
+	// Check if tenantType metadata is present, if not set update to true
+	tenantType := cat.Labels[LabelTenantType]
+	if objMeta.Labels[LabelTenantType] != tenantType {
+		objMeta.Labels[LabelTenantType] = tenantType
+		updated = true
+	}
+	return updated
 }

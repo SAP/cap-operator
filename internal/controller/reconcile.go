@@ -43,7 +43,6 @@ const (
 	LabelDisableKarydia                 = "x4.sap.com/disable-karydia"
 	LabelExposedWorkload                = "sme.sap.com/exposed-workload"
 	LabelDNSNameHash                    = "sme.sap.com/dns-name-hash"
-	LabelSubscriptionGUID               = "sme.sap.com/subscription-guid"
 	LabelSecretOwnerHash                = "sme.sap.com/secret-owner-hash"
 	AnnotationOwnerIdentifier           = "sme.sap.com/owner-identifier"
 	AnnotationBTPApplicationIdentifier  = "sme.sap.com/btp-app-identifier"
@@ -60,6 +59,7 @@ const (
 	AnnotationLogoutEndpoint            = "sme.sap.com/logout-endpoint"
 	AnnotationEnableVersionAffinity     = "sme.sap.com/enable-version-affinity"
 	AnnotationCertManagerCommonName     = "sme.sap.com/cert-manager-common-name"
+	MetadataSubscriptionGUID            = "sme.sap.com/subscription-guid" // used as both Label and Annotation for CAPTenant related resources
 	FinalizerCAPApplication             = "sme.sap.com/capapplication"
 	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
 	FinalizerCAPTenant                  = "sme.sap.com/captenant"

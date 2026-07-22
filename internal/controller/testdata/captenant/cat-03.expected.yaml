@@ -48,6 +48,7 @@ metadata:
     - sme.sap.com/captenantoperation
   annotations:
     sme.sap.com/owner-identifier: default.test-cap-01-consumer
+    sme.sap.com/subscription-guid: 12abcde3-4f56-7f89-0edc-09876b54321a
   labels:
     sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
     sme.sap.com/cav-version: 5.6.7
