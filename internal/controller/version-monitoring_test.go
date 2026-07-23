@@ -12,7 +12,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -42,16 +41,13 @@ func TestMonitoringEnv(t *testing.T) {
 	for _, tt := range tests {
 		t.Run("test monitoring env", func(t *testing.T) {
 			if tt.add != nil {
-				os.Setenv(EnvPrometheusAddress, *tt.add)
-				defer os.Unsetenv(EnvPrometheusAddress)
+				t.Setenv(EnvPrometheusAddress, *tt.add)
 			}
 			if tt.acqRetryInt != nil {
-				os.Setenv(EnvPrometheusAcquireClientRetryDelay, *tt.acqRetryInt)
-				defer os.Unsetenv(EnvPrometheusAcquireClientRetryDelay)
+				t.Setenv(EnvPrometheusAcquireClientRetryDelay, *tt.acqRetryInt)
 			}
 			if tt.evalInt != nil {
-				os.Setenv(EnvMetricsEvaluationInterval, *tt.evalInt)
-				defer os.Unsetenv(EnvMetricsEvaluationInterval)
+				t.Setenv(EnvMetricsEvaluationInterval, *tt.evalInt)
 			}
 
 			mEnv := parseMonitoringEnv()
@@ -134,8 +130,7 @@ func TestGracefulShutdownMonitoringRoutines(t *testing.T) {
 		s, _ := getPromServer(false, []queryTestCase{})
 		defer s.Close()
 
-		os.Setenv(EnvPrometheusAddress, s.URL)
-		defer os.Unsetenv(EnvPrometheusAddress)
+		t.Setenv(EnvPrometheusAddress, s.URL)
 
 		testCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
@@ -149,9 +144,6 @@ func TestGracefulShutdownMonitoringRoutines(t *testing.T) {
 
 	t.Run("without PROMETHEUS_ADDRESS set", func(t *testing.T) {
 		defer deregisterMetrics()
-
-		// Ensure the env var is not set.
-		os.Unsetenv(EnvPrometheusAddress)
 
 		c := setupTestControllerWithInitialResources(t, []string{})
 

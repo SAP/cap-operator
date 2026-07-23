@@ -7,7 +7,6 @@ package controller
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -143,8 +142,6 @@ func TestGetRolloutDelay_DefaultWhenUnset(t *testing.T) {
 }
 
 func TestGetRolloutDelay_DefaultWhenEnvVarNotPresent(t *testing.T) {
-	os.Unsetenv(EnvRolloutDelay)
-	t.Cleanup(func() { os.Unsetenv(EnvRolloutDelay) })
 	if got := getRolloutDelay(); got != defaultRolloutDelay {
 		t.Errorf("expected default %v when env var absent, got %v", defaultRolloutDelay, got)
 	}

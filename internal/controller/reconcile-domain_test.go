@@ -7,7 +7,6 @@ package controller
 
 import (
 	"context"
-	"os"
 	"testing"
 )
 
@@ -132,7 +131,7 @@ func TestDomain_ProcessingWithIngressWithAdditionalCACertificateCreateFailed(t *
 }
 
 func TestDomain_ProcessingWithIngressCertManager(t *testing.T) {
-	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+	t.Setenv(certManagerEnv, certManagerCertManagerIO)
 
 	reconcileTestItem(
 		context.TODO(), t,
@@ -148,11 +147,11 @@ func TestDomain_ProcessingWithIngressCertManager(t *testing.T) {
 		},
 	)
 
-	os.Setenv(certManagerEnv, "")
+	t.Setenv(certManagerEnv, "")
 }
 
 func TestDomain_ProcessingWithIngressCertManagerCustomIssuerRef(t *testing.T) {
-	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+	t.Setenv(certManagerEnv, certManagerCertManagerIO)
 
 	reconcileTestItem(
 		context.TODO(), t,
@@ -168,11 +167,11 @@ func TestDomain_ProcessingWithIngressCertManagerCustomIssuerRef(t *testing.T) {
 		},
 	)
 
-	os.Setenv(certManagerEnv, "")
+	t.Setenv(certManagerEnv, "")
 }
 
 func TestDomain_ProcessingWithIngressCertManagerCommonName(t *testing.T) {
-	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+	t.Setenv(certManagerEnv, certManagerCertManagerIO)
 
 	reconcileTestItem(
 		context.TODO(), t,
@@ -188,11 +187,11 @@ func TestDomain_ProcessingWithIngressCertManagerCommonName(t *testing.T) {
 		},
 	)
 
-	os.Setenv(certManagerEnv, "")
+	t.Setenv(certManagerEnv, "")
 }
 
 func TestDomain_ProcessingWithIngressCertManagerCustomIssuerRefAndCommonName(t *testing.T) {
-	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+	t.Setenv(certManagerEnv, certManagerCertManagerIO)
 
 	reconcileTestItem(
 		context.TODO(), t,
@@ -208,11 +207,11 @@ func TestDomain_ProcessingWithIngressCertManagerCustomIssuerRefAndCommonName(t *
 		},
 	)
 
-	os.Setenv(certManagerEnv, "")
+	t.Setenv(certManagerEnv, "")
 }
 
 func TestDomain_ProcessingWithIngressCertManagerWithAdditionalCACertificate(t *testing.T) {
-	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+	t.Setenv(certManagerEnv, certManagerCertManagerIO)
 
 	reconcileTestItem(
 		context.TODO(), t,
@@ -228,7 +227,7 @@ func TestDomain_ProcessingWithIngressCertManagerWithAdditionalCACertificate(t *t
 		},
 	)
 
-	os.Setenv(certManagerEnv, "")
+	t.Setenv(certManagerEnv, "")
 }
 
 func TestDomain_ProcessingWithIngressCertGateway(t *testing.T) {
@@ -303,7 +302,7 @@ func TestDomain_Ready(t *testing.T) {
 }
 
 func TestDomain_ReadyWithCertManager(t *testing.T) {
-	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+	t.Setenv(certManagerEnv, certManagerCertManagerIO)
 
 	reconcileTestItem(
 		context.TODO(), t,
@@ -321,7 +320,7 @@ func TestDomain_ReadyWithCertManager(t *testing.T) {
 		},
 	)
 
-	os.Setenv(certManagerEnv, "")
+	t.Setenv(certManagerEnv, "")
 }
 
 func TestDomain_DnsError(t *testing.T) {
@@ -371,7 +370,7 @@ func TestDomain_CertificateError(t *testing.T) {
 }
 
 func TestDomain_CertManagerError(t *testing.T) {
-	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+	t.Setenv(certManagerEnv, certManagerCertManagerIO)
 
 	err := reconcileTestItem(
 		context.TODO(), t,
@@ -394,7 +393,7 @@ func TestDomain_CertManagerError(t *testing.T) {
 		t.Error("Wrong error message")
 	}
 
-	os.Setenv(certManagerEnv, "")
+	t.Setenv(certManagerEnv, "")
 }
 
 func TestDomain_UpdateDomain(t *testing.T) {
@@ -547,7 +546,7 @@ func TestDomain_RemoveAdditionalCACertificateDeleteError(t *testing.T) {
 }
 
 func TestDomain_UpdateCertManagerConfig(t *testing.T) {
-	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+	t.Setenv(certManagerEnv, certManagerCertManagerIO)
 
 	reconcileTestItem(
 		context.TODO(), t,
@@ -565,11 +564,11 @@ func TestDomain_UpdateCertManagerConfig(t *testing.T) {
 		},
 	)
 
-	os.Setenv(certManagerEnv, "")
+	t.Setenv(certManagerEnv, "")
 }
 
 func TestDomain_UpdateDomainWithCertManager(t *testing.T) {
-	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+	t.Setenv(certManagerEnv, certManagerCertManagerIO)
 
 	reconcileTestItem(
 		context.TODO(), t,
@@ -588,7 +587,7 @@ func TestDomain_UpdateDomainWithCertManager(t *testing.T) {
 		},
 	)
 
-	os.Setenv(certManagerEnv, "")
+	t.Setenv(certManagerEnv, "")
 }
 
 func TestDomain_DeletionTimestampSet(t *testing.T) {
@@ -663,7 +662,7 @@ func TestDomain_DeletingWithCertSecretDeleteError(t *testing.T) {
 }
 
 func TestDomain_DeletingWithCertManager(t *testing.T) {
-	os.Setenv(certManagerEnv, certManagerCertManagerIO)
+	t.Setenv(certManagerEnv, certManagerCertManagerIO)
 
 	reconcileTestItem(
 		context.TODO(), t,
@@ -679,7 +678,7 @@ func TestDomain_DeletingWithCertManager(t *testing.T) {
 		},
 	)
 
-	os.Setenv(certManagerEnv, "")
+	t.Setenv(certManagerEnv, "")
 }
 
 func TestDomain_DuplicateDomains(t *testing.T) {
