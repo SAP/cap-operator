@@ -1101,7 +1101,7 @@ func ProcessRequest(req *http.Request, subscriptionType subscriptionType) (*Requ
 			appName = rootApp["appName"].(string)
 			subscriptionDomain = getSubscriptionDomain(rootApp)
 		case http.MethodDelete:
-			// get paramater from URL
+			// get parameter from URL
 			subscriptionGUID = req.URL.Query().Get("subscriptionGUID")
 			if subscriptionGUID == "" {
 				return nil, fmt.Errorf("subscriptionGUID is missing in the request URL")
@@ -1297,8 +1297,8 @@ func (s *SubscriptionHandler) HandleSMSGetDependenciesRequest(w http.ResponseWri
 	s.handleGetDependenciesRequest(w, req, SMS)
 }
 
-func NewSubscriptionHandler(clientset versioned.Interface, kubeClienset kubernetes.Interface) *SubscriptionHandler {
-	return &SubscriptionHandler{Clientset: clientset, KubeClientset: kubeClienset, httpClientGenerator: &httpClientGeneratorImpl{}}
+func NewSubscriptionHandler(clientset versioned.Interface, kubeClientset kubernetes.Interface) *SubscriptionHandler {
+	return &SubscriptionHandler{Clientset: clientset, KubeClientset: kubeClientset, httpClientGenerator: &httpClientGeneratorImpl{}}
 }
 
 // Returns an sha1 checksum for a given source string
