@@ -179,14 +179,14 @@ func migrateCAPTenantOperations(crdClient versioned.Interface, ca v1alpha1.CAPAp
 		LabelSelector: btpAppIdHashSelector(ca),
 	})
 	if err != nil {
-		klog.ErrorS(err, "Failed to list CAPTenants", "capApplication", ca.Name, "namespace", ca.Namespace)
+		klog.ErrorS(err, "Failed to list CAPTenantOperations", "capApplication", ca.Name, "namespace", ca.Namespace)
 		return
 	}
 	for _, ctop := range ctops.Items {
 		ctopCopy := ctop.DeepCopy()
 		migrateAppIdLabels(&ctopCopy.ObjectMeta, appIdHash, appId)
 		if _, err := crdClient.SmeV1alpha1().CAPTenantOperations(ctop.Namespace).Update(context.TODO(), ctopCopy, metav1.UpdateOptions{}); err != nil {
-			klog.ErrorS(err, "Failed to update CAPTenant", "name", ctop.Name, "namespace", ctop.Namespace)
+			klog.ErrorS(err, "Failed to update CAPTenantOperation", "name", ctop.Name, "namespace", ctop.Namespace)
 		}
 	}
 }
@@ -237,6 +237,8 @@ func migrateAppsAndSecrets(migrationDone chan bool, crdClient versioned.Interfac
 		migrateCAPTenantOperations(crdClient, ca, appIdHash, appId)
 		// Remove secrets that were preserved by the finalizer in the past.
 		cleanupSecrets(ca.Namespace, kubeClient)
+		// annotate all tenants with subscription-guid based on the existing label, if not already set
+		annotateAllTenants(crdClient)
 	}
 }
 
@@ -274,4 +276,30 @@ func removeFinalizer(finalizers *[]string, finalizerType string) bool {
 		return true
 	}
 	return false
+}
+
+func annotateAllTenants(crdClient versioned.Interface) {
+	count := 0
+	// Get all CAPTenants and check if they have the new subscription-guid annotation set, if not set it based on the existing label
+	tenants, err := crdClient.SmeV1alpha1().CAPTenants(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		klog.ErrorS(err, "Failed to list CAPTenants")
+		return
+	}
+	for _, tenant := range tenants.Items {
+		subscriptionGUID, ok := tenant.Labels[controller.MetadataSubscriptionGUID]
+		if !ok || subscriptionGUID == "" {
+			klog.InfoS("CAPTenant is missing subscription-guid label", "name", tenant.Name, "namespace", tenant.Namespace)
+			continue
+		}
+		if tenant.Annotations[controller.MetadataSubscriptionGUID] != subscriptionGUID {
+			tenant.Annotations[controller.MetadataSubscriptionGUID] = subscriptionGUID
+			if _, err := crdClient.SmeV1alpha1().CAPTenants(tenant.Namespace).Update(context.TODO(), &tenant, metav1.UpdateOptions{}); err != nil {
+				klog.ErrorS(err, "Failed to update CAPTenant annotation", "name", tenant.Name, "namespace", tenant.Namespace)
+				continue
+			}
+			count++
+		}
+	}
+	klog.InfoS("Annotated CAPTenants with subscription-guid", "count", count)
 }
