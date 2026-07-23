@@ -7,7 +7,6 @@ package controller
 
 import (
 	"context"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -366,10 +365,6 @@ func getTestController(resources testResources) *Controller {
 }
 
 func TestMain(m *testing.M) {
-	os.Setenv(certManagerEnv, "gardener")
-	os.Setenv(dnsManagerEnv, "gardener")
-	defer os.Setenv(certManagerEnv, "")
-	defer os.Setenv(dnsManagerEnv, "")
 	m.Run()
 }
 

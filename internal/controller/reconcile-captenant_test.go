@@ -7,7 +7,6 @@ package controller
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
@@ -286,8 +285,7 @@ func TestCAPTenantUpgradeOperationCompleted(t *testing.T) {
 }
 
 func TestCAPTenantUpgradeOperationCompletedPreviousVersionsLimited(t *testing.T) {
-	os.Setenv(v1alpha1.EnvMaxTenantVersionHistory, "3")
-	defer os.Unsetenv(v1alpha1.EnvMaxTenantVersionHistory)
+	t.Setenv(v1alpha1.EnvMaxTenantVersionHistory, "3")
 	reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
