@@ -397,7 +397,7 @@ func TestDomain_CertManagerError(t *testing.T) {
 	os.Setenv(certManagerEnv, "")
 }
 
-func TestDomain_Updatedomain(t *testing.T) {
+func TestDomain_UpdateDomain(t *testing.T) {
 	reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
@@ -449,7 +449,7 @@ func TestDomain_UpdateAdditionalCACertificateNoHashChange(t *testing.T) {
 				"testdata/domain/primary-dns-ready.yaml",
 				"testdata/domain/additional-caCertificate-secret.yaml",
 			},
-			expectedResources: "testdata/domain/domain-ready-additiionCACertificate.yaml",
+			expectedResources: "testdata/domain/domain-ready-additionCACertificate.yaml",
 		},
 	)
 }
@@ -568,7 +568,7 @@ func TestDomain_UpdateCertManagerConfig(t *testing.T) {
 	os.Setenv(certManagerEnv, "")
 }
 
-func TestDomain_UpdatedomainWithCertManager(t *testing.T) {
+func TestDomain_UpdateDomainWithCertManager(t *testing.T) {
 	os.Setenv(certManagerEnv, certManagerCertManagerIO)
 
 	reconcileTestItem(

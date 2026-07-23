@@ -307,7 +307,7 @@ func isTenantOperationConditionFailed(ctop *v1alpha1.CAPTenantOperation) bool {
 }
 
 func (c *Controller) handleTenantOperationsForCAPTenant(ctx context.Context, cat *v1alpha1.CAPTenant) (*ReconcileResult, error) {
-	ops, err := c.getCAPTenantOperationsByType(ctx, cat, CAPTenantOperationTypeSelectorAll)
+	ops, err := c.getCAPTenantOperationsByType(cat, CAPTenantOperationTypeSelectorAll)
 	if err != nil {
 		return nil, err
 	}
@@ -531,7 +531,7 @@ func (c *Controller) triggerTenantOperation(ctx context.Context, cat *v1alpha1.C
 	return targetInfo.handler(ctx, c, cat, targetInfo.target, ctop)
 }
 
-func (c *Controller) getCAPTenantOperationsByType(ctx context.Context, cat *v1alpha1.CAPTenant, operationTypeSelector CAPTenantOperationTypeSelector) (*IdentifiedCAPTenantOperations, error) {
+func (c *Controller) getCAPTenantOperationsByType(cat *v1alpha1.CAPTenant, operationTypeSelector CAPTenantOperationTypeSelector) (*IdentifiedCAPTenantOperations, error) {
 	labelsMap := map[string]string{
 		LabelOwnerIdentifierHash: sha1Sum(cat.Namespace, cat.Name),
 	}
