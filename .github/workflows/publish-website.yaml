@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - website/**
+      - .agents/**
       - .github/workflows/publish-website.yaml
   workflow_dispatch:
 
@@ -40,6 +41,11 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "lts/*"
+      - name: Package .agent folder
+        run: |
+          mkdir -p website/static
+          tar -czf website/static/agents.tar.gz -C .agents .
+
       - name: Update dependencies
         run: |
           cd website
