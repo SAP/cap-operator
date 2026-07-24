@@ -62,3 +62,19 @@ type DomainListerExpansion interface{}
 // DomainNamespaceListerExpansion allows custom methods to be added to
 // DomainNamespaceLister.
 type DomainNamespaceListerExpansion interface{}
+
+// SubscriptionListerExpansion allows custom methods to be added to
+// SubscriptionLister.
+type SubscriptionListerExpansion interface{}
+
+// SubscriptionNamespaceListerExpansion allows custom methods to be added to
+// SubscriptionNamespaceLister.
+type SubscriptionNamespaceListerExpansion interface{}
+
+// SubscriptionProviderListerExpansion allows custom methods to be added to
+// SubscriptionProviderLister.
+type SubscriptionProviderListerExpansion interface{}
+
+// SubscriptionProviderNamespaceListerExpansion allows custom methods to be added to
+// SubscriptionProviderNamespaceLister.
+type SubscriptionProviderNamespaceListerExpansion interface{}

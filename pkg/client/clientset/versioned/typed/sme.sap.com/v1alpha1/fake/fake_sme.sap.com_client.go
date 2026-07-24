@@ -45,6 +45,14 @@ func (c *FakeSmeV1alpha1) Domains(namespace string) v1alpha1.DomainInterface {
 	return newFakeDomains(c, namespace)
 }
 
+func (c *FakeSmeV1alpha1) Subscriptions(namespace string) v1alpha1.SubscriptionInterface {
+	return newFakeSubscriptions(c, namespace)
+}
+
+func (c *FakeSmeV1alpha1) SubscriptionProviders(namespace string) v1alpha1.SubscriptionProviderInterface {
+	return newFakeSubscriptionProviders(c, namespace)
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeSmeV1alpha1) RESTClient() rest.Interface {
