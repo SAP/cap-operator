@@ -51,7 +51,7 @@ type appMetadataIdentifiers struct {
 
 func getOwnerByKind(owners []metav1.OwnerReference, kind string) (*metav1.OwnerReference, bool) {
 	for _, o := range owners {
-		if o.APIVersion == v1alpha1.SchemeGroupVersion.String() && o.Kind == kind && *o.Controller {
+		if o.APIVersion == v1alpha1.SchemeGroupVersion.String() && o.Kind == kind {
 			return &o, true
 		}
 	}
