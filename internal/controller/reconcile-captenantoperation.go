@@ -417,6 +417,16 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 		params.providerSubdomain = relatedResources.CAPApplication.Spec.Provider.SubDomain
 	}
 
+	// For provisioning, resolve the subscription request payload to be passed to the tenant operation job
+	if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
+		payload, err := c.getSubscriptionRequestPayload(ctop)
+		if err != nil {
+			util.LogError(err, "Failed to resolve subscription request payload", string(Processing), ctop, nil, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation)
+			return nil, err
+		}
+		params.subscriptionPayload = payload
+	}
+
 	var job *batchv1.Job
 	if ctop.Spec.Steps[*ctop.Status.CurrentStep-1].Type == v1alpha1.JobTenantOperation {
 		job, err = c.createTenantOperationJob(ctx, ctop, workload, params)
@@ -449,6 +459,7 @@ type jobCreateParams struct {
 	providerTenantId     string
 	providerSubdomain    string
 	tenantType           string
+	subscriptionPayload  string
 }
 
 func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {
@@ -630,7 +641,13 @@ func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation, step
 		switch ctop.Spec.Operation {
 		case v1alpha1.CAPTenantOperationTypeProvisioning:
 			operation = "subscribe"
-			env = append(env, corev1.EnvVar{Name: EnvCAPOpSubscriptionPayload, ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: ctop.Annotations[AnnotationSubscriptionContextSecret]}, Key: SubscriptionContext}}})
+			// Prefer the subscription request payload resolved from the Subscription resource.
+			// Fall back to the (deprecated) subscription context secret for provider tenants which have no Subscription.
+			if params.subscriptionPayload != "" {
+				env = append(env, corev1.EnvVar{Name: EnvCAPOpSubscriptionPayload, Value: params.subscriptionPayload})
+			} else if ctop.Annotations[AnnotationSubscriptionContextSecret] != "" {
+				env = append(env, corev1.EnvVar{Name: EnvCAPOpSubscriptionPayload, ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: ctop.Annotations[AnnotationSubscriptionContextSecret]}, Key: SubscriptionContext}}})
+			}
 		case v1alpha1.CAPTenantOperationTypeUpgrade:
 			operation = "upgrade"
 		default: // deprovisioning
@@ -640,6 +657,34 @@ func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation, step
 	}
 
 	return env
+}
+
+// getSubscriptionRequestPayload resolves the subscription request payload for a tenant operation by locating the
+// Subscription resource that owns the tenant (identified via the subscription-guid label) and returning its
+// SubscriptionRequestPayload from the spec. Returns an empty string (no error) when no Subscription is found,
+// allowing the caller to fall back to the (deprecated) subscription context secret.
+func (c *Controller) getSubscriptionRequestPayload(ctop *v1alpha1.CAPTenantOperation) (string, error) {
+	subscriptionGUID := ctop.Labels[MetadataSubscriptionGUID]
+	if subscriptionGUID == "" {
+		return "", nil
+	}
+
+	selector, err := labels.ValidatedSelectorFromSet(map[string]string{
+		MetadataSubscriptionGUID: subscriptionGUID,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	subscriptions, err := c.crdInformerFactory.Sme().V1alpha1().Subscriptions().Lister().Subscriptions(ctop.Namespace).List(selector)
+	if err != nil {
+		return "", err
+	}
+	if len(subscriptions) == 0 {
+		return "", nil
+	}
+	// Assume only one Subscription matches the subscriptionGUID
+	return subscriptions[0].Spec.SubscriptionRequestPayload, nil
 }
 
 // Collect tenant operation metrics based on the status of the tenant operation

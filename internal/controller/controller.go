@@ -87,6 +87,8 @@ func NewController(client kubernetes.Interface, crdClient versioned.Interface, i
 		ResourceCAPTenantOperation:    workqueue.NewTypedRateLimitingQueueWithConfig(customRateLimiter(), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPTenantOperation]}),
 		ResourceDomain:                workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceDomain]}),
 		ResourceClusterDomain:         workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceClusterDomain]}),
+		ResourceSubscriptionProvider:  workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceSubscriptionProvider]}),
+		ResourceSubscription:          workqueue.NewTypedRateLimitingQueueWithConfig(customRateLimiter(), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceSubscription]}),
 	}
 
 	// Use 30mins as the default Resync interval for kube / proprietary  resources
@@ -310,6 +312,10 @@ func (c *Controller) processQueueItem(ctx context.Context, key, workerId int) er
 		result, err = c.reconcileDomain(ctx, item, attempts)
 	case ResourceClusterDomain:
 		result, err = c.reconcileClusterDomain(ctx, item, attempts)
+	case ResourceSubscriptionProvider:
+		result, err = c.reconcileSubscriptionProvider(ctx, item, attempts)
+	case ResourceSubscription:
+		result, err = c.reconcileSubscription(ctx, item, attempts)
 	default:
 		err = errors.New("unidentified queue item")
 		skipItem = true

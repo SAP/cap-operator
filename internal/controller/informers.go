@@ -24,6 +24,8 @@ const (
 	ResourceCAPTenantOperation
 	ResourceDomain
 	ResourceClusterDomain
+	ResourceSubscriptionProvider
+	ResourceSubscription
 	ResourceSecret
 	ResourceJob
 	ResourceGateway
@@ -36,6 +38,7 @@ const (
 const queuing = "queuing resource for reconciliation"
 
 const defaultDependantDelay = 3 * time.Second
+const defaultResourceDelay = 15 * time.Second
 
 var (
 	KindMap = map[int]string{
@@ -45,6 +48,8 @@ var (
 		ResourceCAPTenantOperation:    v1alpha1.CAPTenantOperationKind,
 		ResourceDomain:                v1alpha1.DomainKind,
 		ResourceClusterDomain:         v1alpha1.ClusterDomainKind,
+		ResourceSubscriptionProvider:  v1alpha1.SubscriptionProviderKind,
+		ResourceSubscription:          v1alpha1.SubscriptionKind,
 	}
 )
 
@@ -56,10 +61,12 @@ type NamespacedResourceKey struct {
 var QueueMapping map[int]map[int]string = map[int]map[int]string{
 	ResourceCAPApplication:        {ResourceCAPApplication: v1alpha1.CAPApplicationKind},
 	ResourceCAPApplicationVersion: {ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind, ResourceCAPApplication: v1alpha1.CAPApplicationKind},
-	ResourceCAPTenant:             {ResourceCAPTenant: v1alpha1.CAPTenantKind, ResourceCAPApplication: v1alpha1.CAPApplicationKind},
+	ResourceCAPTenant:             {ResourceCAPTenant: v1alpha1.CAPTenantKind, ResourceCAPApplication: v1alpha1.CAPApplicationKind, ResourceSubscription: v1alpha1.SubscriptionKind},
 	ResourceCAPTenantOperation:    {ResourceCAPTenantOperation: v1alpha1.CAPTenantOperationKind, ResourceCAPTenant: v1alpha1.CAPTenantKind},
 	ResourceDomain:                {ResourceDomain: v1alpha1.DomainKind},
 	ResourceClusterDomain:         {ResourceClusterDomain: v1alpha1.ClusterDomainKind},
+	ResourceSubscriptionProvider:  {ResourceSubscriptionProvider: v1alpha1.SubscriptionProviderKind},
+	ResourceSubscription:          {ResourceSubscription: v1alpha1.SubscriptionKind},
 	ResourceJob:                   {ResourceCAPTenantOperation: v1alpha1.CAPTenantOperationKind, ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
 	ResourceGateway:               {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
 	ResourceCertificate:           {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
@@ -80,23 +87,28 @@ func (c *Controller) initializeInformers() {
 	c.registerCAPTenantOperationListeners()
 	c.registerDomainListeners()
 	c.registerClusterDomainListeners()
+	c.registerSubscriptionProviderListeners()
+	c.registerSubscriptionListeners()
 	c.registerJobListeners()
 	c.registerSecretListeners()
 	c.registerGatewayListeners()
 	c.registerVirtualServiceListeners()
 	c.registerDestinationRuleListeners()
+
 	switch certificateManager() {
 	case certManagerGardener:
 		c.registerGardenerCertificateListeners()
 	case certManagerCertManagerIO:
 		c.registerCertManagerCertificateListeners()
 	}
+
 	switch dnsManager() {
 	case dnsManagerGardener:
 		c.registerGardenerDNSEntrytListeners()
 	case dnsManagerKubernetes:
 		// no activity needed on our side so far
 	}
+
 	klog.InfoS("informers initialized")
 }
 
@@ -146,6 +158,16 @@ func (c *Controller) registerClusterDomainListeners() {
 func (c *Controller) registerDomainListeners() {
 	c.crdInformerFactory.Sme().V1alpha1().Domains().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceDomain))
+}
+
+func (c *Controller) registerSubscriptionProviderListeners() {
+	c.crdInformerFactory.Sme().V1alpha1().SubscriptionProviders().Informer().
+		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceSubscriptionProvider))
+}
+
+func (c *Controller) registerSubscriptionListeners() {
+	c.crdInformerFactory.Sme().V1alpha1().Subscriptions().Informer().
+		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceSubscription))
 }
 
 func (c *Controller) registerJobListeners() {
