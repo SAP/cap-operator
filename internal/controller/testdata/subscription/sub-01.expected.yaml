@@ -1,0 +1,30 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: Subscription
+metadata:
+  name: test-sub-01
+  namespace: default
+  uid: aaaa-bbbb-dddd-0001
+  generation: 1
+  finalizers:
+    - sme.sap.com/subscription
+  labels:
+    sme.sap.com/app-identifier-hash: 8de67d2d3734797789af01ba68df94b31dda0357
+    sme.sap.com/btp-tenant-id: test-tenant-01
+    sme.sap.com/subscription-guid: test-guid-01
+spec:
+  appName: test-cap-01
+  providerSubaccountId: pro-subacc-id
+  tenantId: test-tenant-01
+  subdomain: test-subdomain
+  subscriptionGuid: test-guid-01
+  subscriptionDomain: ""
+  subscriptionRequestPayload: ""
+status:
+  conditions:
+    - reason: Processing
+      message: Processing subscription
+      observedGeneration: 1
+      status: "False"
+      type: Ready
+  observedGeneration: 1
+  state: Processing

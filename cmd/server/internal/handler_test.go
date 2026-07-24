@@ -40,16 +40,18 @@ type httpTestClientGenerator struct {
 func (facade *httpTestClientGenerator) NewHTTPClient() *http.Client { return facade.client }
 
 const (
-	caName                        = "ca-test-controller"
-	catName                       = caName + "-provider"
-	appName                       = "some-app-name"
-	globalAccountId               = "cap-app-global"
-	providerSubaccountId          = "012012012-1234-1234-123456012345"
-	subDomain                     = "foo"
-	tenantId                      = "012012012-1234-1234-123456"
-	subscriptionGUID              = "012301234-2345-6789-ABCDEF"
-	subscriptionContextSecretName = catName + "-context"
+	providerName         = "ca-test-controller"
+	subName              = providerName + "-subscription"
+	appName              = "some-app-name"
+	globalAccountId      = "cap-app-global"
+	providerSubaccountId = "012012012-1234-1234-123456012345"
+	subDomain            = "foo"
+	tenantId             = "012012012-1234-1234-123456"
+	subscriptionGUID     = "012301234-2345-6789-ABCDEF"
 )
+
+// dependenciesJSON is the precomputed dependency payload published by the controller to SubscriptionProvider.Status.Dependencies
+const dependenciesJSON = `[{"xsappname":"saasappname!b15"},{"xsappname":"smappname!b15"},{"appId":"destappname!b15","appName":"destination"},{"xsappname":"rtappname!b15"}]`
 
 func setup(client *http.Client, secrets []runtime.Object, objects ...runtime.Object) *SubscriptionHandler {
 	subHandler := NewSubscriptionHandler(fake.NewSimpleClientset(objects...), k8sfake.NewSimpleClientset(secrets...))
@@ -80,23 +82,6 @@ func createSecrets() []runtime.Object {
 		},
 	}, &corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      "test-xsuaa-sec2",
-			Namespace: v1.NamespaceDefault,
-		},
-		Type: corev1.SecretTypeOpaque,
-		Data: map[string][]byte{
-			"credentials": []byte(`{
-				"uaadomain": "auth2.service.local",
-				"xsappname": "appname!b21",
-				"trustedclientidsuffix": "|appname!b21",
-				"verificationkey": "",
-				"sburl": "internal.auth2.service.local",
-				"url": "https://app2-domain.auth2.service.local",
-				"credential-type": "instance-secret"
-			}`),
-		},
-	}, &corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
 			Name:      "test-saas-sec",
 			Namespace: v1.NamespaceDefault,
 		},
@@ -112,63 +97,6 @@ func createSecrets() []runtime.Object {
 				"url": "https://app-domain.auth.service.local",
 				"saasregistryenabled": true,
 				"uaa": {"xsappname": "saasappname!b15" },
-				"credential-type": "instance-secret"
-			}`),
-		},
-	}, &corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      "test-dest-sec",
-			Namespace: v1.NamespaceDefault,
-		},
-		Type: corev1.SecretTypeOpaque,
-		Data: map[string][]byte{
-			"credentials": []byte(`{
-				"saas_registry_url": "https://sm.service.local",
-				"clientid": "clientid",
-				"clientsecret": "clientsecret",
-				"uaadomain": "auth.service.local",
-				"sburl": "internal.auth.service.local",
-				"url": "https://app-domain.auth.service.local",
-				"saasregistryenabled": true,
-				"uaa": {"xsappname": "destappname!b15" },
-				"credential-type": "instance-secret"
-			}`),
-		},
-	}, &corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      "test-html-rt-sec",
-			Namespace: v1.NamespaceDefault,
-		},
-		Type: corev1.SecretTypeOpaque,
-		Data: map[string][]byte{
-			"credentials": []byte(`{
-				"saas_registry_url": "https://sm.service.local",
-				"clientid": "clientid",
-				"clientsecret": "clientsecret",
-				"uaadomain": "auth.service.local",
-				"sburl": "internal.auth.service.local",
-				"url": "https://app-domain.auth.service.local",
-				"saasregistryenabled": true,
-				"uaa": {"xsappname": "rtappname!b15" },
-				"credential-type": "instance-secret"
-			}`),
-		},
-	}, &corev1.Secret{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      "test-sm-sec",
-			Namespace: v1.NamespaceDefault,
-		},
-		Type: corev1.SecretTypeOpaque,
-		Data: map[string][]byte{
-			"credentials": []byte(`{
-				"saas_registry_url": "https://sm.service.local",
-				"clientid": "clientid",
-				"clientsecret": "clientsecret",
-				"uaadomain": "auth.service.local",
-				"sburl": "internal.auth.service.local",
-				"url": "https://app-domain.auth.service.local",
-				"saasregistryenabled": true,
-				"xsappname": "smappname!b15",
 				"credential-type": "instance-secret"
 			}`),
 		},
@@ -205,160 +133,61 @@ func createSmsSecret() []runtime.Object {
 	return secs
 }
 
-func createTenantSubscriptionContextSecret(subscriptionContext string) runtime.Object {
-	return &corev1.Secret{
+// createSubscriptionProvider builds the SubscriptionProvider fixture that the handler now resolves for auth + dependencies.
+func createSubscriptionProvider(subType subscriptionType) *v1alpha1.SubscriptionProvider {
+	info := v1alpha1.SubscriptionInfo{}
+	if subType == SMS {
+		info.Type = "subscription-manager"
+		info.SubscriptionSecret = "test-sms-sec"
+	} else {
+		info.Type = "saas-registry"
+		info.SubscriptionSecret = "test-saas-sec"
+		info.AuthSecret = "test-xsuaa-sec"
+	}
+	return &v1alpha1.SubscriptionProvider{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      subscriptionContextSecretName,
+			Name:      providerName,
 			Namespace: v1.NamespaceDefault,
 			Labels: map[string]string{
+				LabelAppIdHash: sha1Sum(providerSubaccountId, appName),
+			},
+		},
+		Spec: v1alpha1.SubscriptionProviderSpec{
+			AppName:              appName,
+			ProviderSubaccountID: providerSubaccountId,
+			SubscriptionInfo:     info,
+		},
+		Status: v1alpha1.SubscriptionProviderStatus{
+			State:        v1alpha1.SubscriptionProviderStateReady,
+			Dependencies: dependenciesJSON,
+		},
+	}
+}
+
+// createSubscription builds an existing Subscription fixture correlated to the provider via app-identifier + tenant labels.
+func createSubscription(state v1alpha1.SubscriptionState, guid string) *v1alpha1.Subscription {
+	sub := &v1alpha1.Subscription{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      subName,
+			Namespace: v1.NamespaceDefault,
+			Labels: map[string]string{
+				LabelAppIdHash:           sha1Sum(providerSubaccountId, appName),
 				LabelTenantId:            tenantId,
-				MetadataSubscriptionGUID: subscriptionGUID,
+				MetadataSubscriptionGUID: guid,
 			},
 		},
-		StringData: map[string]string{
-			"subscriptionContext": subscriptionContext,
-		},
-	}
-}
-
-func createCA() *v1alpha1.CAPApplication {
-	return &v1alpha1.CAPApplication{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      caName,
-			Namespace: v1.NamespaceDefault,
-			Labels: map[string]string{
-				LabelAppIdHash: sha1Sum(providerSubaccountId, appName),
-			},
-		},
-		Spec: v1alpha1.CAPApplicationSpec{
+		Spec: v1alpha1.SubscriptionSpec{
+			AppName:              appName,
 			ProviderSubaccountId: providerSubaccountId,
-			BTPAppName:           appName,
-			Provider: &v1alpha1.BTPTenantIdentification{
-				SubDomain: subDomain,
-				TenantId:  tenantId,
-			},
-			BTP: v1alpha1.BTP{
-				Services: []v1alpha1.ServiceInfo{
-					{
-						Class:  "xsuaa",
-						Name:   "test-xsuaa",
-						Secret: "test-xsuaa-sec",
-					},
-					{
-						Class:  "xsuaa",
-						Name:   "test-xsuaa2",
-						Secret: "test-xsuaa-sec2",
-					},
-					{
-						Class:  "saas-registry",
-						Name:   "test-saas",
-						Secret: "test-saas-sec",
-					},
-					{
-						Class:  "service-manager",
-						Name:   "test-sm",
-						Secret: "test-sm-sec",
-					},
-					{
-						Class:  "destination",
-						Name:   "test-dest",
-						Secret: "test-dest-sec",
-					},
-					{
-						Class:  "html5-apps-repo",
-						Name:   "test-html-host",
-						Secret: "test-html-host-sec",
-					},
-					{
-						Class:  "html5-apps-repo",
-						Name:   "test-html-rt",
-						Secret: "test-html-rt-sec",
-					},
-					{
-						Class:  "subscription-manager",
-						Name:   "test-sms",
-						Secret: "test-sms-sec",
-					},
-				},
-			},
+			TenantId:             tenantId,
+			Subdomain:            subDomain,
+			SubscriptionGuid:     guid,
 		},
 	}
-}
-
-func createCAT(ready bool, withProviderSubaccountId ...bool) *v1alpha1.CAPTenant {
-	cat := &v1alpha1.CAPTenant{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      catName,
-			Namespace: v1.NamespaceDefault,
-			Labels: map[string]string{
-				LabelAppIdHash: sha1Sum(providerSubaccountId, appName),
-				LabelTenantId:  tenantId,
-			},
-			Annotations: map[string]string{
-				AnnotationSubscriptionContextSecret: subscriptionContextSecretName,
-			},
-		},
-		Spec: v1alpha1.CAPTenantSpec{
-			CAPApplicationInstance: caName,
-			BTPTenantIdentification: v1alpha1.BTPTenantIdentification{
-				SubDomain: subDomain,
-				TenantId:  tenantId,
-			},
-		},
+	if state != "" {
+		sub.Status.State = state
 	}
-	if withProviderSubaccountId != nil && withProviderSubaccountId[0] {
-		cat.ObjectMeta.Labels[MetadataSubscriptionGUID] = subscriptionGUID
-		cat.ObjectMeta.Annotations[MetadataSubscriptionGUID] = subscriptionGUID
-	}
-	if ready {
-		cat.Status = v1alpha1.CAPTenantStatus{
-			State:                                v1alpha1.CAPTenantStateReady,
-			CurrentCAPApplicationVersionInstance: "cap-version",
-			GenericStatus: v1alpha1.GenericStatus{
-				Conditions: []v1.Condition{{
-					Type:   string(v1alpha1.ConditionTypeReady),
-					Status: "True",
-					Reason: "TenantReady",
-				}},
-			},
-		}
-	}
-	return cat
-}
-
-func createDomain() *v1alpha1.Domain {
-	return &v1alpha1.Domain{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      "primary-domain",
-			Namespace: v1.NamespaceDefault,
-		},
-		Spec: v1alpha1.DomainSpec{
-			Domain: "auth.service.local",
-			IngressSelector: map[string]string{
-				"istio": "ingressgateway",
-				"app":   "istio-ingressgateway",
-			},
-			TLSMode:   v1alpha1.TlsModeSimple,
-			DNSTarget: "in.service.local",
-		},
-	}
-}
-
-func createClusterDomain() *v1alpha1.ClusterDomain {
-	return &v1alpha1.ClusterDomain{
-		ObjectMeta: v1.ObjectMeta{
-			Name: "external-domain",
-		},
-		Spec: v1alpha1.DomainSpec{
-			Domain: "external.service.sap",
-			IngressSelector: map[string]string{
-				"istio": "ingressgateway",
-				"app":   "istio-ingressgateway",
-			},
-			TLSMode:   v1alpha1.TlsModeSimple,
-			DNSTarget: "in.service.sap",
-		},
-	}
+	return sub
 }
 
 func TestMain(m *testing.M) {
@@ -382,7 +211,7 @@ func Test_IncorrectMethod(t *testing.T) {
 		t.Error("Unexpected error in expected response: ", res.Body)
 	}
 
-	if resType.Tenant != nil && resType.Message != InvalidRequestMethod {
+	if resType.Subscription != nil && resType.Message != InvalidRequestMethod {
 		t.Error("Response: ", res.Body, " does not match expected result: ", InvalidRequestMethod)
 	}
 
@@ -396,15 +225,10 @@ func Test_provisioning(t *testing.T) {
 		createCROs            bool
 		withAdditionalData    bool
 		invalidAdditionalData bool
-		withSecretKey         bool
-		existingTenant        bool
+		existingSubscription  bool
 		existingTenantOutput  bool
 		expectedStatusCode    int
 		expectedResponse      Result
-		existingDomain        bool
-		existingClusterDomain bool
-		invalidDomain         bool
-		invalidClusterDomain  bool
 	}{
 		{
 			name:               "Invalid Provisioning Request",
@@ -412,7 +236,7 @@ func Test_provisioning(t *testing.T) {
 			body:               "",
 			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse: Result{
-				Message: "EOF", //TODO
+				Message: "EOF",
 			},
 		},
 		{
@@ -421,7 +245,7 @@ func Test_provisioning(t *testing.T) {
 			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			expectedStatusCode: http.StatusNotAcceptable,
 			expectedResponse: Result{
-				Message: "the server could not find the requested resource (get capapplications.sme.sap.com)", //TODO
+				Message: ResourceNotFound,
 			},
 		},
 		{
@@ -431,11 +255,11 @@ func Test_provisioning(t *testing.T) {
 			createCROs:         true,
 			expectedStatusCode: http.StatusNotAcceptable,
 			expectedResponse: Result{
-				Message: "", //TODO
+				Message: ResourceNotFound,
 			},
 		},
 		{
-			name:               "Provisioning Request valid (without domains)",
+			name:               "Provisioning Request valid",
 			method:             http.MethodPut,
 			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:         true,
@@ -445,173 +269,64 @@ func Test_provisioning(t *testing.T) {
 			},
 		},
 		{
-			name:               "Provisioning Request valid (invalid domain)",
-			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
-			createCROs:         true,
-			invalidDomain:      true,
-			expectedStatusCode: http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceCreated,
-			},
-		},
-		{
-			name:                 "Provisioning Request valid (invalid clusterdomains)",
-			method:               http.MethodPut,
-			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `","subscriptionParams":""}`,
-			createCROs:           true,
-			invalidClusterDomain: true,
-			expectedStatusCode:   http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceCreated,
-			},
-		},
-		{
-			name:               "Provisioning Request valid (with domain)",
-			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
-			createCROs:         true,
-			existingDomain:     true,
-			expectedStatusCode: http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceCreated,
-			},
-		},
-		{
-			name:                  "Provisioning Request valid (with Cluster domain)",
-			method:                http.MethodPut,
-			body:                  `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
-			createCROs:            true,
-			existingClusterDomain: true,
-			expectedStatusCode:    http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceCreated,
-			},
-		},
-		{
-			name:               "Provisioning Request valid with additional data and existing tenant",
-			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
-			createCROs:         true,
-			withAdditionalData: true,
-			existingTenant:     true,
-			expectedStatusCode: http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceCreated,
-			},
-		},
-		{
-			name:                 "Provisioning Request valid with additional data and existing tenant and existing tenant output",
+			name:                 "Provisioning Request valid with additional data and existing subscription",
 			method:               http.MethodPut,
 			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:           true,
 			withAdditionalData:   true,
-			existingTenant:       true,
-			existingTenantOutput: true,
+			existingSubscription: true,
 			expectedStatusCode:   http.StatusAccepted,
 			expectedResponse: Result{
-				Message: ResourceCreated,
+				Message: ResourceUpdated,
 			},
 		},
 		{
-			name:                  "Provisioning Request valid with invalid additional data and existing tenant",
+			name:                 "Provisioning Request valid with additional data and existing subscription and existing tenant output",
+			method:               http.MethodPut,
+			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			createCROs:           true,
+			withAdditionalData:   true,
+			existingSubscription: true,
+			existingTenantOutput: true,
+			expectedStatusCode:   http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceUpdated,
+			},
+		},
+		{
+			name:                  "Provisioning Request valid with invalid additional data and existing subscription",
 			method:                http.MethodPut,
 			body:                  `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			createCROs:            true,
 			withAdditionalData:    true,
 			invalidAdditionalData: true,
-			existingTenant:        true,
+			existingSubscription:  true,
 			expectedStatusCode:    http.StatusAccepted,
 			expectedResponse: Result{
-				Message: ResourceCreated,
-			},
-		},
-		{
-			name:               "Provisioning Request with existing tenant",
-			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
-			createCROs:         true,
-			existingTenant:     true,
-			expectedStatusCode: http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceFound,
-			},
-		},
-		{
-			name:               "Provisioning with subscriptionDomain in payload matching Domain",
-			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `","subscriptionParams":{"subscriptionDomain":"auth.service.local"}}`,
-			createCROs:         true,
-			existingDomain:     true,
-			expectedStatusCode: http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceCreated,
-			},
-		},
-		{
-			name:               "Provisioning with subscriptionDomain in payload not matching any domain",
-			method:             http.MethodPut,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `","subscriptionParams":{"subscriptionDomain":"unknown.domain.com"}}`,
-			createCROs:         true,
-			existingDomain:     true,
-			expectedStatusCode: http.StatusNotAcceptable,
-			expectedResponse: Result{
-				Message: "Error constructing subscription URL: domain unknown.domain.com not found in Domains or ClusterDomains",
-			},
-		},
-		{
-			name:           "Provisioning with empty subscriptionParams (no subscriptionDomain)",
-			method:         http.MethodPut,
-			body:           `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `","subscriptionParams":{}}`,
-			createCROs:     true,
-			existingDomain: true,
-
-			expectedStatusCode: http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceCreated,
+				Message: ResourceUpdated,
 			},
 		},
 	}
 
 	for _, testData := range tests {
 		t.Run(testData.name, func(t *testing.T) {
-			var ca *v1alpha1.CAPApplication
-			var cat *v1alpha1.CAPTenant
-			var ctout *v1alpha1.CAPTenantOutput
 			runtimeObjs := []runtime.Object{}
-			if testData.existingDomain {
-				runtimeObjs = append(runtimeObjs, createDomain())
-			} else if testData.existingClusterDomain {
-				runtimeObjs = append(runtimeObjs, createClusterDomain())
-			}
 			if testData.createCROs {
-				ca = createCA()
+				subPro := createSubscriptionProvider(SaaS)
 				if testData.withAdditionalData {
 					if !testData.invalidAdditionalData {
-						ca.Annotations = map[string]string{AnnotationSaaSAdditionalOutput: "{\"foo\":\"bar\"}"}
+						subPro.Annotations = map[string]string{AnnotationSaaSAdditionalOutput: "{\"foo\":\"bar\"}"}
 					} else {
-						ca.Annotations = map[string]string{AnnotationSaaSAdditionalOutput: "{foo\":\"bar\"}"} //invalid json
+						subPro.Annotations = map[string]string{AnnotationSaaSAdditionalOutput: "{foo\":\"bar\"}"} //invalid json
 					}
 				}
-				// Update the CA with the correct domainRefs if needed
-				if testData.existingDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "Domain", Name: "primary-domain"}}
-				} else if testData.existingClusterDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "ClusterDomain", Name: "external-domain"}}
-				} else if testData.invalidDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "Domain", Name: "foo"}}
-				} else if testData.invalidClusterDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "ClusterDomain", Name: "foo"}}
-				}
-				runtimeObjs = append(runtimeObjs, ca)
+				runtimeObjs = append(runtimeObjs, subPro)
 			}
-			if testData.existingTenant {
-				cat = createCAT(testData.withAdditionalData, true)
-				runtimeObjs = append(runtimeObjs, cat)
+			if testData.existingSubscription {
+				runtimeObjs = append(runtimeObjs, createSubscription("", subscriptionGUID))
 			}
 			if testData.existingTenantOutput {
-				ctout = &v1alpha1.CAPTenantOutput{ObjectMeta: v1.ObjectMeta{Name: catName, Namespace: v1.NamespaceDefault, Labels: map[string]string{LabelTenantId: tenantId}}, Spec: v1alpha1.CAPTenantOutputSpec{SubscriptionCallbackData: "{\"foo3\":\"bar3\"}"}}
-				runtimeObjs = append(runtimeObjs, ctout)
+				runtimeObjs = append(runtimeObjs, &v1alpha1.CAPTenantOutput{ObjectMeta: v1.ObjectMeta{Name: subName, Namespace: v1.NamespaceDefault, Labels: map[string]string{LabelTenantId: tenantId}}, Spec: v1alpha1.CAPTenantOutputSpec{SubscriptionCallbackData: "{\"foo3\":\"bar3\"}"}})
 			}
 
 			client, tokenString, err := SetupValidTokenAndIssuerForSubscriptionTests("appname!b14")
@@ -619,11 +334,7 @@ func Test_provisioning(t *testing.T) {
 				t.Fatal(err.Error())
 			}
 
-			secrets := createSecrets()
-			if testData.existingTenant {
-				secrets = append(secrets, createTenantSubscriptionContextSecret(testData.body))
-			}
-			subHandler := setup(client, secrets, runtimeObjs...)
+			subHandler := setup(client, createSecrets(), runtimeObjs...)
 
 			res := httptest.NewRecorder()
 			req := httptest.NewRequest(testData.method, RequestPath, strings.NewReader(testData.body))
@@ -641,7 +352,7 @@ func Test_provisioning(t *testing.T) {
 				t.Error("Unexpected error in expected response: ", res.Body)
 			}
 
-			if resType.Tenant != testData.expectedResponse.Tenant && resType.Message != testData.expectedResponse.Message {
+			if resType.Subscription != testData.expectedResponse.Subscription && resType.Message != testData.expectedResponse.Message {
 				t.Error("Response: ", res.Body, " does not match expected result: ", testData.expectedResponse)
 			}
 		})
@@ -656,15 +367,10 @@ func Test_sms_provisioning(t *testing.T) {
 		createCROs            bool
 		withAdditionalData    bool
 		invalidAdditionalData bool
-		withSecretKey         bool
-		existingTenant        bool
+		existingSubscription  bool
 		existingTenantOutput  bool
 		expectedStatusCode    int
 		expectedResponse      Result
-		existingDomain        bool
-		existingClusterDomain bool
-		invalidDomain         bool
-		invalidClusterDomain  bool
 	}{
 		{
 			name:               "Invalid Provisioning Request",
@@ -672,7 +378,7 @@ func Test_sms_provisioning(t *testing.T) {
 			body:               "",
 			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse: Result{
-				Message: "EOF", //TODO
+				Message: "EOF",
 			},
 		},
 		{
@@ -681,7 +387,7 @@ func Test_sms_provisioning(t *testing.T) {
 			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
 			expectedStatusCode: http.StatusNotAcceptable,
 			expectedResponse: Result{
-				Message: "the server could not find the requested resource (get capapplications.sme.sap.com)", //TODO
+				Message: ResourceNotFound,
 			},
 		},
 		{
@@ -691,11 +397,11 @@ func Test_sms_provisioning(t *testing.T) {
 			createCROs:         true,
 			expectedStatusCode: http.StatusNotAcceptable,
 			expectedResponse: Result{
-				Message: "", //TODO
+				Message: ResourceNotFound,
 			},
 		},
 		{
-			name:               "Provisioning Request valid (without domains)",
+			name:               "Provisioning Request valid",
 			method:             http.MethodPut,
 			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
 			createCROs:         true,
@@ -705,126 +411,27 @@ func Test_sms_provisioning(t *testing.T) {
 			},
 		},
 		{
-			name:               "Provisioning Request valid (invalid domain)",
-			method:             http.MethodPut,
-			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
-			createCROs:         true,
-			invalidDomain:      true,
-			expectedStatusCode: http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceCreated,
-			},
-		},
-		{
-			name:                 "Provisioning Request valid (invalid clusterdomains)",
-			method:               http.MethodPut,
-			body:                 `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
-			createCROs:           true,
-			invalidClusterDomain: true,
-			expectedStatusCode:   http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceCreated,
-			},
-		},
-		{
-			name:               "Provisioning Request valid (with domain)",
-			method:             http.MethodPut,
-			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
-			createCROs:         true,
-			existingDomain:     true,
-			expectedStatusCode: http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceCreated,
-			},
-		},
-		{
-			name:                  "Provisioning Request valid (with Cluster domain)",
-			method:                http.MethodPut,
-			body:                  `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
-			createCROs:            true,
-			existingClusterDomain: true,
-			expectedStatusCode:    http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceCreated,
-			},
-		},
-		{
-			name:               "Provisioning Request valid with additional data and existing tenant",
-			method:             http.MethodPut,
-			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
-			createCROs:         true,
-			withAdditionalData: true,
-			existingTenant:     true,
-			expectedStatusCode: http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceCreated,
-			},
-		},
-		{
-			name:                 "Provisioning Request valid with additional data and existing tenant and existing tenant output",
+			name:                 "Provisioning Request valid with additional data and existing subscription",
 			method:               http.MethodPut,
 			body:                 `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
 			createCROs:           true,
 			withAdditionalData:   true,
-			existingTenant:       true,
-			existingTenantOutput: true,
+			existingSubscription: true,
 			expectedStatusCode:   http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceCreated,
-			},
-		},
-		{
-			name:                  "Provisioning Request valid with invalid additional data and existing tenant",
-			method:                http.MethodPut,
-			body:                  `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
-			createCROs:            true,
-			withAdditionalData:    true,
-			invalidAdditionalData: true,
-			existingTenant:        true,
-			expectedStatusCode:    http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceCreated,
-			},
-		},
-		{
-			name:               "Provisioning Request with existing tenant",
-			method:             http.MethodPut,
-			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
-			createCROs:         true,
-			existingTenant:     true,
-			expectedStatusCode: http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceFound,
-			},
-		},
-		{
-			name:               "Provisioning Request with existing tenant but different subscriptionGUID (If provisioning fails due to callback issue, the tenant exists and in BTP provisioned failed; retriggering sends a new subscriptionGUID in the payload)",
-			method:             http.MethodPut,
-			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + "update" + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
-			createCROs:         true,
-			existingTenant:     true,
-			expectedStatusCode: http.StatusAccepted,
 			expectedResponse: Result{
 				Message: ResourceUpdated,
 			},
 		},
 		{
-			name:               "SMS provisioning with subscriptionDomain in payload matching Domain",
-			method:             http.MethodPut,
-			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `","subscriptionParams":{"subscriptionDomain":"auth.service.local"}},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
-			createCROs:         true,
-			existingDomain:     true,
-			expectedStatusCode: http.StatusAccepted,
-			expectedResponse:   Result{Message: ResourceCreated},
-		},
-		{
-			name:               "SMS provisioning with subscriptionDomain in payload not matching any domain",
-			method:             http.MethodPut,
-			body:               `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `","subscriptionParams":{"subscriptionDomain":"unknown.domain.com"}},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
-			createCROs:         true,
-			existingDomain:     true,
-			expectedStatusCode: http.StatusNotAcceptable,
-			expectedResponse:   Result{Message: "Error constructing subscription URL: domain unknown.domain.com not found in Domains or ClusterDomains"},
+			name:                 "Provisioning Request with existing subscription but different subscriptionGUID",
+			method:               http.MethodPut,
+			body:                 `{"rootApplication":{"appName":"` + appName + `","providerSubaccountId":"` + providerSubaccountId + `","commercialAppName":"` + appName + `"},"subscriber":{"subscriptionGUID":"` + subscriptionGUID + "update" + `","app_tid":"` + tenantId + `","globalAccountId":"` + globalAccountId + `","subaccountSubdomain":"` + subDomain + `"}}`,
+			createCROs:           true,
+			existingSubscription: true,
+			expectedStatusCode:   http.StatusAccepted,
+			expectedResponse: Result{
+				Message: ResourceUpdated,
+			},
 		},
 	}
 
@@ -835,55 +442,27 @@ func Test_sms_provisioning(t *testing.T) {
 
 	for _, testData := range tests {
 		t.Run(testData.name, func(t *testing.T) {
-			var ca *v1alpha1.CAPApplication
-			var cat *v1alpha1.CAPTenant
-			var ctout *v1alpha1.CAPTenantOutput
 			runtimeObjs := []runtime.Object{}
-			if testData.existingDomain {
-				runtimeObjs = append(runtimeObjs, createDomain())
-			} else if testData.existingClusterDomain {
-				runtimeObjs = append(runtimeObjs, createClusterDomain())
-			}
 			if testData.createCROs {
-				ca = createCA()
+				subPro := createSubscriptionProvider(SMS)
 				if testData.withAdditionalData {
 					if !testData.invalidAdditionalData {
-						ca.Annotations = map[string]string{AnnotationSaaSAdditionalOutput: "{\"foo\":\"bar\"}"}
+						subPro.Annotations = map[string]string{AnnotationSaaSAdditionalOutput: "{\"foo\":\"bar\"}"}
 					} else {
-						ca.Annotations = map[string]string{AnnotationSaaSAdditionalOutput: "{foo\":\"bar\"}"} //invalid json
+						subPro.Annotations = map[string]string{AnnotationSaaSAdditionalOutput: "{foo\":\"bar\"}"} //invalid json
 					}
 				}
-				// Update the CA with the correct domainRefs if needed
-				if testData.existingDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "Domain", Name: "primary-domain"}}
-				} else if testData.existingClusterDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "ClusterDomain", Name: "external-domain"}}
-				} else if testData.invalidDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "Domain", Name: "foo"}}
-				} else if testData.invalidClusterDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "ClusterDomain", Name: "foo"}}
-				}
-				runtimeObjs = append(runtimeObjs, ca)
+				runtimeObjs = append(runtimeObjs, subPro)
 			}
-			if testData.existingTenant {
-				cat = createCAT(testData.withAdditionalData, true)
-				runtimeObjs = append(runtimeObjs, cat)
+			if testData.existingSubscription {
+				runtimeObjs = append(runtimeObjs, createSubscription("", subscriptionGUID))
 			}
 			if testData.existingTenantOutput {
-				ctout = &v1alpha1.CAPTenantOutput{ObjectMeta: v1.ObjectMeta{Name: catName, Namespace: v1.NamespaceDefault, Labels: map[string]string{LabelTenantId: tenantId}}, Spec: v1alpha1.CAPTenantOutputSpec{SubscriptionCallbackData: "{\"foo3\":\"bar3\"}"}}
-				runtimeObjs = append(runtimeObjs, ctout)
-			}
-
-			client, _, err := SetupValidTokenAndIssuerForSubscriptionTests("appname!b14")
-			if err != nil {
-				t.Fatal(err.Error())
+				runtimeObjs = append(runtimeObjs, &v1alpha1.CAPTenantOutput{ObjectMeta: v1.ObjectMeta{Name: subName, Namespace: v1.NamespaceDefault, Labels: map[string]string{LabelTenantId: tenantId}}, Spec: v1alpha1.CAPTenantOutputSpec{SubscriptionCallbackData: "{\"foo3\":\"bar3\"}"}})
 			}
 
 			secrets := createSmsSecret()
-			if testData.existingTenant {
-				secrets = append(secrets, createTenantSubscriptionContextSecret(testData.body))
-			}
-			subHandler := setup(client, secrets, runtimeObjs...)
+			subHandler := setup(nil, secrets, runtimeObjs...)
 
 			res := httptest.NewRecorder()
 			req := httptest.NewRequest(testData.method, SmsRequestPath, strings.NewReader(testData.body))
@@ -898,12 +477,12 @@ func Test_sms_provisioning(t *testing.T) {
 			// Get the relevant response
 			decoder := json.NewDecoder(res.Body)
 			var resType Result
-			err = decoder.Decode(&resType)
+			err := decoder.Decode(&resType)
 			if err != nil {
 				t.Error("Unexpected error in expected response: ", res.Body)
 			}
 
-			if resType.Tenant != testData.expectedResponse.Tenant && resType.Message != testData.expectedResponse.Message {
+			if resType.Subscription != testData.expectedResponse.Subscription && resType.Message != testData.expectedResponse.Message {
 				t.Error("Response: ", res.Body, " does not match expected result: ", testData.expectedResponse)
 			}
 		})
@@ -912,15 +491,13 @@ func Test_sms_provisioning(t *testing.T) {
 
 func Test_deprovisioning(t *testing.T) {
 	tests := []struct {
-		name                     string
-		method                   string
-		createCROs               bool
-		existingTenant           bool
-		body                     string
-		expectedStatusCode       int
-		expectedResponse         Result
-		withSecretKey            bool
-		withProviderSubaccountId bool
+		name                 string
+		method               string
+		createCROs           bool
+		existingSubscription bool
+		body                 string
+		expectedStatusCode   int
+		expectedResponse     Result
 	}{
 		{
 			name:               "Invalid Deprovisioning Request",
@@ -928,47 +505,35 @@ func Test_deprovisioning(t *testing.T) {
 			body:               "",
 			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse: Result{
-				Message: "EOF", //TODO
+				Message: "EOF",
 			},
 		},
 		{
-			name:               "Deprovisioning Request without CAPApplication and CAPTenant",
+			name:               "Deprovisioning Request without SubscriptionProvider and Subscription",
 			method:             http.MethodDelete,
 			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			expectedStatusCode: http.StatusNotFound,
 			expectedResponse: Result{
-				Message: "the server could not find the requested resource (get capapplications.sme.sap.com)", //TODO
+				Message: SubscriptionNotFound,
 			},
 		},
 		{
-			name:               "Deprovisioning Request valid without existing tenant",
+			name:               "Deprovisioning Request valid without existing subscription",
 			method:             http.MethodDelete,
 			createCROs:         true,
 			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
 			expectedStatusCode: http.StatusNotFound,
 			expectedResponse: Result{
-				Message: ResourceDeleted,
+				Message: SubscriptionNotFound,
 			},
 		},
 		{
-			name:               "Deprovisioning Request valid existing tenant",
-			method:             http.MethodDelete,
-			createCROs:         true,
-			existingTenant:     true,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
-			expectedStatusCode: http.StatusAccepted,
-			expectedResponse: Result{
-				Message: ResourceDeleted,
-			},
-		},
-		{
-			name:                     "Deprovisioning Request valid existing tenant having provider subaccount id",
-			method:                   http.MethodDelete,
-			createCROs:               true,
-			existingTenant:           true,
-			withProviderSubaccountId: true,
-			body:                     `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
-			expectedStatusCode:       http.StatusAccepted,
+			name:                 "Deprovisioning Request valid existing subscription",
+			method:               http.MethodDelete,
+			createCROs:           true,
+			existingSubscription: true,
+			body:                 `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			expectedStatusCode:   http.StatusAccepted,
 			expectedResponse: Result{
 				Message: ResourceDeleted,
 			},
@@ -977,16 +542,12 @@ func Test_deprovisioning(t *testing.T) {
 
 	for _, testData := range tests {
 		t.Run(testData.name, func(t *testing.T) {
-			var ca *v1alpha1.CAPApplication
-			var cat *v1alpha1.CAPTenant
 			runtimeObjs := []runtime.Object{}
 			if testData.createCROs {
-				ca = createCA()
-				runtimeObjs = append(runtimeObjs, ca)
+				runtimeObjs = append(runtimeObjs, createSubscriptionProvider(SaaS))
 			}
-			if testData.existingTenant {
-				cat = createCAT(false, testData.withProviderSubaccountId)
-				runtimeObjs = append(runtimeObjs, cat)
+			if testData.existingSubscription {
+				runtimeObjs = append(runtimeObjs, createSubscription("", subscriptionGUID))
 			}
 
 			// set custom client for testing
@@ -995,11 +556,7 @@ func Test_deprovisioning(t *testing.T) {
 				t.Fatal(err.Error())
 			}
 
-			secrets := createSecrets()
-			if testData.existingTenant {
-				secrets = append(secrets, createTenantSubscriptionContextSecret(testData.body))
-			}
-			subHandler := setup(client, secrets, runtimeObjs...)
+			subHandler := setup(client, createSecrets(), runtimeObjs...)
 
 			res := httptest.NewRecorder()
 			req := httptest.NewRequest(testData.method, RequestPath, strings.NewReader(testData.body))
@@ -1017,7 +574,7 @@ func Test_deprovisioning(t *testing.T) {
 				t.Error("Unexpected error in expected response: ", res.Body)
 			}
 
-			if resType.Tenant != testData.expectedResponse.Tenant && resType.Message != testData.expectedResponse.Message {
+			if resType.Subscription != testData.expectedResponse.Subscription && resType.Message != testData.expectedResponse.Message {
 				t.Error("Response: ", res.Body, " does not match expected result: ", testData.expectedResponse)
 			}
 		})
@@ -1026,14 +583,13 @@ func Test_deprovisioning(t *testing.T) {
 
 func Test_sms_deprovisioning(t *testing.T) {
 	tests := []struct {
-		name               string
-		method             string
-		invalidReqUrl      bool
-		createCROs         bool
-		existingTenant     bool
-		expectedStatusCode int
-		expectedResponse   Result
-		withSecretKey      bool
+		name                 string
+		method               string
+		invalidReqUrl        bool
+		createCROs           bool
+		existingSubscription bool
+		expectedStatusCode   int
+		expectedResponse     Result
 	}{
 		{
 			name:               "Invalid Deprovisioning Request",
@@ -1041,32 +597,32 @@ func Test_sms_deprovisioning(t *testing.T) {
 			invalidReqUrl:      true,
 			expectedStatusCode: http.StatusBadRequest,
 			expectedResponse: Result{
-				Message: "EOF", //TODO
+				Message: "EOF",
 			},
 		},
 		{
-			name:               "Deprovisioning Request without CAPApplication and CAPTenant",
+			name:               "Deprovisioning Request without SubscriptionProvider and Subscription",
 			method:             http.MethodDelete,
 			expectedStatusCode: http.StatusNotFound,
 			expectedResponse: Result{
-				Message: "the server could not find the requested resource (get capapplications.sme.sap.com)", //TODO
+				Message: SubscriptionNotFound,
 			},
 		},
 		{
-			name:               "Deprovisioning Request valid without existing tenant",
+			name:               "Deprovisioning Request valid without existing subscription",
 			method:             http.MethodDelete,
 			createCROs:         true,
 			expectedStatusCode: http.StatusNotFound,
 			expectedResponse: Result{
-				Message: ResourceDeleted,
+				Message: SubscriptionNotFound,
 			},
 		},
 		{
-			name:               "Deprovisioning Request valid existing tenant",
-			method:             http.MethodDelete,
-			createCROs:         true,
-			existingTenant:     true,
-			expectedStatusCode: http.StatusAccepted,
+			name:                 "Deprovisioning Request valid existing subscription",
+			method:               http.MethodDelete,
+			createCROs:           true,
+			existingSubscription: true,
+			expectedStatusCode:   http.StatusAccepted,
 			expectedResponse: Result{
 				Message: ResourceDeleted,
 			},
@@ -1075,30 +631,15 @@ func Test_sms_deprovisioning(t *testing.T) {
 
 	for _, testData := range tests {
 		t.Run(testData.name, func(t *testing.T) {
-			var ca *v1alpha1.CAPApplication
-			var cat *v1alpha1.CAPTenant
 			runtimeObjs := []runtime.Object{}
 			if testData.createCROs {
-				ca = createCA()
-				runtimeObjs = append(runtimeObjs, ca)
+				runtimeObjs = append(runtimeObjs, createSubscriptionProvider(SMS))
 			}
-			if testData.existingTenant {
-				cat = createCAT(false, true)
-				runtimeObjs = append(runtimeObjs, cat)
+			if testData.existingSubscription {
+				runtimeObjs = append(runtimeObjs, createSubscription("", subscriptionGUID))
 			}
 
-			// set custom client for testing
-			client, _, err := SetupValidTokenAndIssuerForSubscriptionTests("appname!b14")
-			if err != nil {
-				t.Fatal(err.Error())
-			}
-
-			secrets := createSmsSecret()
-			if testData.existingTenant {
-				secrets = append(secrets, createTenantSubscriptionContextSecret(`{"rootApplication":{"appName":"`+appName+`","commercialAppName":"`+appName+`"},"subscriber":{"subscriptionGUID":"`+subscriptionGUID+"update"+`","app_tid":"`+tenantId+`","globalAccountId":"`+globalAccountId+`","subaccountSubdomain":"`+subDomain+`"}}`))
-			}
-
-			subHandler := setup(client, secrets, runtimeObjs...)
+			subHandler := setup(nil, createSmsSecret(), runtimeObjs...)
 
 			res := httptest.NewRecorder()
 
@@ -1109,7 +650,7 @@ func Test_sms_deprovisioning(t *testing.T) {
 
 			req := httptest.NewRequest(testData.method, requestTarget, nil)
 
-			certBytes, err := os.ReadFile("testdata/rootCA.pem")
+			certBytes, _ := os.ReadFile("testdata/rootCA.pem")
 			certStr := strings.TrimSpace(string(certBytes))
 			encodedCert := url.QueryEscape(certStr)
 
@@ -1122,12 +663,12 @@ func Test_sms_deprovisioning(t *testing.T) {
 			// Get the relevant response
 			decoder := json.NewDecoder(res.Body)
 			var resType Result
-			err = decoder.Decode(&resType)
+			err := decoder.Decode(&resType)
 			if err != nil {
 				t.Error("Unexpected error in expected response: ", res.Body)
 			}
 
-			if resType.Tenant != testData.expectedResponse.Tenant && resType.Message != testData.expectedResponse.Message {
+			if resType.Subscription != testData.expectedResponse.Subscription && resType.Message != testData.expectedResponse.Message {
 				t.Error("Response: ", res.Body, " does not match expected result: ", testData.expectedResponse)
 			}
 		})
@@ -1366,240 +907,58 @@ func TestAsyncCallback(t *testing.T) {
 	}
 }
 
-func TestCheckTenantStatusContextCancellationAsyncTimeout(t *testing.T) {
-	execTestsWithBLI(t, "Check Tenant Status Context Cancellation AsyncTimeout", []string{"ERP4SMEPREPWORKAPPPLAT-2240"}, func(t *testing.T) {
+func TestCheckSubscriptionStatusContextCancellationAsyncTimeout(t *testing.T) {
+	execTestsWithBLI(t, "Check Subscription Status Context Cancellation AsyncTimeout", []string{"ERP4SMEPREPWORKAPPPLAT-2240"}, func(t *testing.T) {
 		// test context cancellation (like deadline)
 		subHandler := setup(nil, createSecrets())
-		notify := make(chan bool)
+		type result struct {
+			ready bool
+			url   string
+		}
+		notify := make(chan result)
 		go func() {
-			r := subHandler.checkCAPTenantStatus(context.Background(), "default", "test-cat", true, "4000")
-			notify <- r
+			ready, url := subHandler.checkSubscriptionStatus(context.Background(), "default", "test-sub", true, "4000")
+			notify <- result{ready, url}
 		}()
 
-		timeout := time.After(6 * time.Second) // this is greater than the sleep duration of the tenant check routine
+		timeout := time.After(8 * time.Second) // this is greater than the sleep duration of the subscription check routine
 
 		select {
 		case r := <-notify:
-			if r != false {
-				t.Error("expected tenant check to return false")
+			if r.ready != false {
+				t.Error("expected subscription check to return false")
 			}
 		case <-timeout:
-			t.Fatal("failed to cancel tenant check routine")
+			t.Fatal("failed to cancel subscription check routine")
 		}
 	})
 }
 
-func TestCheckTenantStatusTenantReady(t *testing.T) {
-	// test context cancellation (like deadline)
-	cat := createCAT(true)
-	subHandler := setup(nil, createSecrets(), cat)
-	r := subHandler.checkCAPTenantStatus(context.TODO(), cat.Namespace, cat.Name, true, "")
+func TestCheckSubscriptionStatusReady(t *testing.T) {
+	sub := createSubscription(v1alpha1.SubscriptionStateReady, subscriptionGUID)
+	sub.Status.Url = "https://" + subDomain + ".auth.service.local"
+	subHandler := setup(nil, createSecrets(), sub)
+	ready, u := subHandler.checkSubscriptionStatus(context.TODO(), sub.Namespace, sub.Name, true, "")
 
-	if r != true {
-		t.Error("expected tenant check to return false")
+	if !ready {
+		t.Error("expected subscription check to return true")
+	}
+	if u != sub.Status.Url {
+		t.Errorf("expected subscription url %q, got %q", sub.Status.Url, u)
 	}
 }
 
-func TestCheckTenantStatusWithCallbacktimeout(t *testing.T) {
-	execTestsWithBLI(t, "Check Tenant Status With Callback timeout", []string{"ERP4SMEPREPWORKAPPPLAT-2240"}, func(t *testing.T) {
-		// test context cancellation (like deadline)
-		cat := createCAT(false)
-		subHandler := setup(nil, createSecrets(), cat)
-		r := subHandler.checkCAPTenantStatus(context.TODO(), cat.Namespace, cat.Name, true, "4000")
+func TestCheckSubscriptionStatusWithCallbacktimeout(t *testing.T) {
+	execTestsWithBLI(t, "Check Subscription Status With Callback timeout", []string{"ERP4SMEPREPWORKAPPPLAT-2240"}, func(t *testing.T) {
+		// subscription not ready --> should time out
+		sub := createSubscription("", subscriptionGUID)
+		subHandler := setup(nil, createSecrets(), sub)
+		ready, _ := subHandler.checkSubscriptionStatus(context.TODO(), sub.Namespace, sub.Name, true, "4000")
 
-		if r != false {
-			t.Error("expected tenant check to return false, due to timeout (async callback timeout exceeded)")
+		if ready != false {
+			t.Error("expected subscription check to return false, due to timeout (async callback timeout exceeded)")
 		}
 	})
-}
-
-func TestMultiXSUAA(t *testing.T) {
-	execTestsWithBLI(t, "Check Multiple xsuaa services used in a CA", []string{"ERP4SMEPREPWORKAPPPLAT-3773"}, func(t *testing.T) {
-		// CA without "sme.sap.com/primary-xsuaa" annotation
-		ca := createCA()
-
-		subHandler := setup(nil, createSecrets(), ca)
-		uaaCreds := subHandler.getXSUAADetails(ca, "Test")
-
-		if uaaCreds.AuthUrl != "https://app-domain.auth.service.local" {
-			t.Error("incorrect uaa returned")
-		}
-
-		// CA with "sme.sap.com/primary-xsuaa" annotation
-		ca2 := createCA()
-		ca2.Annotations = map[string]string{
-			util.AnnotationPrimaryXSUAA: "test-xsuaa2",
-		}
-
-		uaaCreds = subHandler.getXSUAADetails(ca2, "Test")
-
-		if uaaCreds.AuthUrl != "https://app2-domain.auth2.service.local" {
-			t.Error("incorrect uaa via annotations returned")
-		}
-	})
-}
-
-func TestAppURL(t *testing.T) {
-	tests := []struct {
-		name                      string
-		payloadSubscriptionDomain string
-		tenantSubdomain           string
-		caAnnotations             map[string]string
-		domainRefs                []v1alpha1.DomainRef
-		createDomain              bool
-		createClusterDomain       bool
-		expectedURL               string
-		expectError               bool
-	}{
-		{
-			name:                      "subscription domain from payload with matching Domain",
-			payloadSubscriptionDomain: "auth.service.local",
-			tenantSubdomain:           subDomain,
-			createDomain:              true,
-			expectedURL:               "https://" + subDomain + ".auth.service.local",
-		},
-		{
-			name:                      "subscription domain from payload with matching ClusterDomain",
-			payloadSubscriptionDomain: "external.service.sap",
-			tenantSubdomain:           subDomain,
-			createClusterDomain:       true,
-			expectedURL:               "https://" + subDomain + ".external.service.sap",
-		},
-		{
-			name:                      "subscription domain from payload not found in any domain resource",
-			payloadSubscriptionDomain: "unknown.domain.com",
-			tenantSubdomain:           subDomain,
-			expectError:               true,
-		},
-		{
-			name:                      "fallback to annotation subscription domain with matching Domain",
-			payloadSubscriptionDomain: "",
-			tenantSubdomain:           subDomain,
-			caAnnotations:             map[string]string{AnnotationSubscriptionDomain: "auth.service.local"},
-			createDomain:              true,
-			expectedURL:               "https://" + subDomain + ".auth.service.local",
-		},
-		{
-			name:                      "fallback to annotation subscription domain not found in any domain",
-			payloadSubscriptionDomain: "",
-			tenantSubdomain:           subDomain,
-			caAnnotations:             map[string]string{AnnotationSubscriptionDomain: "unknown.domain.com"},
-			expectError:               true,
-		},
-		{
-			name:                      "fallback to primary domain calculation (Domain ref)",
-			payloadSubscriptionDomain: "",
-			tenantSubdomain:           subDomain,
-			domainRefs:                []v1alpha1.DomainRef{{Kind: "Domain", Name: "primary-domain"}},
-			createDomain:              true,
-			expectedURL:               "https://" + subDomain + ".auth.service.local",
-		},
-		{
-			name:                      "fallback to primary domain calculation (ClusterDomain ref)",
-			payloadSubscriptionDomain: "",
-			tenantSubdomain:           subDomain,
-			domainRefs:                []v1alpha1.DomainRef{{Kind: "ClusterDomain", Name: "external-domain"}},
-			createClusterDomain:       true,
-			expectedURL:               "https://" + subDomain + ".external.service.sap",
-		},
-		{
-			name:                      "fallback to primary domain with no domain refs",
-			payloadSubscriptionDomain: "",
-			tenantSubdomain:           subDomain,
-			expectedURL:               "https://" + subDomain + ".",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ca := createCA()
-			if tt.caAnnotations != nil {
-				ca.Annotations = tt.caAnnotations
-			}
-			if tt.domainRefs != nil {
-				ca.Spec.DomainRefs = tt.domainRefs
-			}
-
-			runtimeObjs := []runtime.Object{ca}
-			if tt.createDomain {
-				runtimeObjs = append(runtimeObjs, createDomain())
-			}
-			if tt.createClusterDomain {
-				runtimeObjs = append(runtimeObjs, createClusterDomain())
-			}
-
-			subHandler := setup(nil, createSecrets(), runtimeObjs...)
-			appURL, err := subHandler.getAppURL(tt.payloadSubscriptionDomain, tt.tenantSubdomain, ca)
-
-			if tt.expectError {
-				if err == nil {
-					t.Fatalf("expected error, got nil")
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %s", err.Error())
-			}
-			if appURL != tt.expectedURL {
-				t.Errorf("getAppURL() = %q, want %q", appURL, tt.expectedURL)
-			}
-		})
-	}
-}
-
-func TestValidateDomain(t *testing.T) {
-	tests := []struct {
-		name                string
-		domain              string
-		createDomain        bool
-		createClusterDomain bool
-		expectError         bool
-	}{
-		{
-			name:         "domain found in namespace Domains",
-			domain:       "auth.service.local",
-			createDomain: true,
-		},
-		{
-			name:                "domain found in ClusterDomains",
-			domain:              "external.service.sap",
-			createClusterDomain: true,
-		},
-		{
-			name:        "domain not found anywhere",
-			domain:      "nonexistent.domain.com",
-			expectError: true,
-		},
-		{
-			name:                "domain not matching but resources exist",
-			domain:              "other.domain.com",
-			createDomain:        true,
-			createClusterDomain: true,
-			expectError:         true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			runtimeObjs := []runtime.Object{}
-			if tt.createDomain {
-				runtimeObjs = append(runtimeObjs, createDomain())
-			}
-			if tt.createClusterDomain {
-				runtimeObjs = append(runtimeObjs, createClusterDomain())
-			}
-
-			subHandler := setup(nil, createSecrets(), runtimeObjs...)
-			err := subHandler.validateDomain(tt.domain, v1.NamespaceDefault)
-
-			if tt.expectError && err == nil {
-				t.Error("expected error, got nil")
-			}
-			if !tt.expectError && err != nil {
-				t.Errorf("unexpected error: %s", err.Error())
-			}
-		})
-	}
 }
 
 func execTestsWithBLI(t *testing.T, name string, backlogItems []string, test func(t *testing.T)) {
@@ -1612,104 +971,51 @@ func TestGetDependencies(t *testing.T) {
 		method             string
 		invalidToken       bool
 		invalidURI         bool
+		noDependencies     bool
 		expectedStatusCode int
-		expectedResponse   []map[string]string
-		caModifier         func(*v1alpha1.CAPApplication)
+		expectedResponse   string
 	}{
 		{
 			name:               "Invalid get dependency request - wrong method",
 			method:             http.MethodPut,
 			expectedStatusCode: http.StatusMethodNotAllowed,
-			expectedResponse:   nil,
 		},
 		{
 			name:               "Not authorized request",
 			method:             http.MethodGet,
 			invalidToken:       true,
 			expectedStatusCode: http.StatusUnauthorized,
-			expectedResponse:   nil,
 		},
 		{
 			name:               "Invalid URI",
 			method:             http.MethodGet,
 			invalidURI:         true,
 			expectedStatusCode: http.StatusBadRequest,
-			expectedResponse:   nil,
 		},
 		{
 			name:               "Valid get dependency request",
 			method:             http.MethodGet,
 			expectedStatusCode: http.StatusOK,
-			expectedResponse: []map[string]string{
-				{"xsappname": "saasappname!b15"},
-				{"xsappname": "smappname!b15"},
-				{"appId": "destappname!b15", "appName": "destination"},
-				{"xsappname": "rtappname!b15"},
-			},
-		},
-		{
-			name:               "SubscriptionDependency Always - service included regardless of class",
-			method:             http.MethodGet,
-			expectedStatusCode: http.StatusOK,
-			caModifier: func(ca *v1alpha1.CAPApplication) {
-				dep := v1alpha1.SubscriptionDependencyAlways
-				ca.Spec.BTP.Services[0].SubscriptionDependency = &dep // xsuaa: not auto-qualified, but Always forces inclusion
-			},
-			expectedResponse: []map[string]string{
-				{"xsappname": "appname!b14"},
-				{"xsappname": "saasappname!b15"},
-				{"xsappname": "smappname!b15"},
-				{"appId": "destappname!b15", "appName": "destination"},
-				{"xsappname": "rtappname!b15"},
-			},
-		},
-		{
-			name:               "SubscriptionDependency Auto - non-qualifying service excluded",
-			method:             http.MethodGet,
-			expectedStatusCode: http.StatusOK,
-			caModifier: func(ca *v1alpha1.CAPApplication) {
-				dep := v1alpha1.SubscriptionDependencyAuto
-				ca.Spec.BTP.Services[0].SubscriptionDependency = &dep // xsuaa: explicit Auto, still not qualified by class/credentials
-			},
-			expectedResponse: []map[string]string{
-				{"xsappname": "saasappname!b15"},
-				{"xsappname": "smappname!b15"},
-				{"appId": "destappname!b15", "appName": "destination"},
-				{"xsappname": "rtappname!b15"},
-			},
-		},
-		{
-			name:               "SubscriptionDependency Never - service excluded regardless of credentials",
-			method:             http.MethodGet,
-			expectedStatusCode: http.StatusOK,
-			caModifier: func(ca *v1alpha1.CAPApplication) {
-				dep := v1alpha1.SubscriptionDependencyNever
-				ca.Spec.BTP.Services[4].SubscriptionDependency = &dep // destination: auto-qualified by class, but Never prevents inclusion
-			},
-			expectedResponse: []map[string]string{
-				{"xsappname": "saasappname!b15"},
-				{"xsappname": "smappname!b15"},
-				{"xsappname": "rtappname!b15"},
-			},
+			expectedResponse:   dependenciesJSON,
 		},
 	}
 
 	for _, testData := range tests {
 		t.Run(testData.name, func(t *testing.T) {
-			ca := createCA()
-			if testData.caModifier != nil {
-				testData.caModifier(ca)
+			subPro := createSubscriptionProvider(SaaS)
+			if testData.noDependencies {
+				subPro.Status.Dependencies = ""
 			}
 
 			client, tokenString, err := SetupValidTokenAndIssuerForSubscriptionTests("appname!b14")
 			if err != nil {
 				t.Fatal(err.Error())
 			}
-			subHandler := setup(client, createSecrets(), ca)
+			subHandler := setup(client, createSecrets(), subPro)
 
 			res := httptest.NewRecorder()
 			var req *http.Request
-			if testData.invalidURI == true {
+			if testData.invalidURI {
 				req = httptest.NewRequest(testData.method, "/callback/dependencies/providerSubaccountId/{appName}", nil)
 				req.SetPathValue("appName", appName)
 			} else {
@@ -1718,7 +1024,7 @@ func TestGetDependencies(t *testing.T) {
 				req.SetPathValue("appName", appName)
 			}
 
-			if testData.invalidToken == true {
+			if testData.invalidToken {
 				tokenString = "abc" //invalid token
 			}
 
@@ -1732,9 +1038,8 @@ func TestGetDependencies(t *testing.T) {
 			// Get the relevant response
 			if res.Code == http.StatusOK {
 				resBodyStr := res.Body.String()
-				expectedResponseByte, _ := json.Marshal(testData.expectedResponse)
-				if resBodyStr != string(expectedResponseByte) {
-					t.Error("Unexpected error in expected response: ", res.Body)
+				if resBodyStr != testData.expectedResponse {
+					t.Error("Unexpected response: ", res.Body, " expected: ", testData.expectedResponse)
 				}
 			}
 		})
@@ -1748,84 +1053,30 @@ func TestGetSMSDependencies(t *testing.T) {
 		invalidCert        bool
 		invalidURI         bool
 		expectedStatusCode int
-		expectedResponse   []map[string]string
-		caModifier         func(*v1alpha1.CAPApplication)
+		expectedResponse   string
 	}{
 		{
 			name:               "Invalid get SMS dependency request - wrong method",
 			method:             http.MethodPut,
 			expectedStatusCode: http.StatusMethodNotAllowed,
-			expectedResponse:   nil,
 		},
 		{
 			name:               "Not authorized SMS request - invalid certificate",
 			method:             http.MethodGet,
 			invalidCert:        true,
 			expectedStatusCode: http.StatusUnauthorized,
-			expectedResponse:   nil,
 		},
 		{
 			name:               "Invalid URI",
 			method:             http.MethodGet,
 			invalidURI:         true,
 			expectedStatusCode: http.StatusBadRequest,
-			expectedResponse:   nil,
 		},
 		{
 			name:               "Valid get SMS dependency request",
 			method:             http.MethodGet,
 			expectedStatusCode: http.StatusOK,
-			expectedResponse: []map[string]string{
-				{"xsappname": "saasappname!b15"},
-				{"xsappname": "smappname!b15"},
-				{"appId": "destappname!b15", "appName": "destination"},
-				{"xsappname": "rtappname!b15"},
-			},
-		},
-		{
-			name:               "SubscriptionDependency Always - service included regardless of class",
-			method:             http.MethodGet,
-			expectedStatusCode: http.StatusOK,
-			caModifier: func(ca *v1alpha1.CAPApplication) {
-				dep := v1alpha1.SubscriptionDependencyAlways
-				ca.Spec.BTP.Services[0].SubscriptionDependency = &dep // xsuaa: not auto-qualified, but Always forces inclusion
-			},
-			expectedResponse: []map[string]string{
-				{"xsappname": "appname!b14"},
-				{"xsappname": "saasappname!b15"},
-				{"xsappname": "smappname!b15"},
-				{"appId": "destappname!b15", "appName": "destination"},
-				{"xsappname": "rtappname!b15"},
-			},
-		},
-		{
-			name:               "SubscriptionDependency Auto - non-qualifying service excluded",
-			method:             http.MethodGet,
-			expectedStatusCode: http.StatusOK,
-			caModifier: func(ca *v1alpha1.CAPApplication) {
-				dep := v1alpha1.SubscriptionDependencyAuto
-				ca.Spec.BTP.Services[0].SubscriptionDependency = &dep // xsuaa: explicit Auto, still not qualified by class/credentials
-			},
-			expectedResponse: []map[string]string{
-				{"xsappname": "saasappname!b15"},
-				{"xsappname": "smappname!b15"},
-				{"appId": "destappname!b15", "appName": "destination"},
-				{"xsappname": "rtappname!b15"},
-			},
-		},
-		{
-			name:               "SubscriptionDependency Never - service excluded regardless of credentials",
-			method:             http.MethodGet,
-			expectedStatusCode: http.StatusOK,
-			caModifier: func(ca *v1alpha1.CAPApplication) {
-				dep := v1alpha1.SubscriptionDependencyNever
-				ca.Spec.BTP.Services[4].SubscriptionDependency = &dep // destination: auto-qualified by class, but Never prevents inclusion
-			},
-			expectedResponse: []map[string]string{
-				{"xsappname": "saasappname!b15"},
-				{"xsappname": "smappname!b15"},
-				{"xsappname": "rtappname!b15"},
-			},
+			expectedResponse:   dependenciesJSON,
 		},
 	}
 
@@ -1835,12 +1086,8 @@ func TestGetSMSDependencies(t *testing.T) {
 
 	for _, testData := range tests {
 		t.Run(testData.name, func(t *testing.T) {
-			ca := createCA()
-			if testData.caModifier != nil {
-				testData.caModifier(ca)
-			}
-			secrets := append(createSmsSecret(), createSecrets()...)
-			subHandler := setup(nil, secrets, ca)
+			subPro := createSubscriptionProvider(SMS)
+			subHandler := setup(nil, createSmsSecret(), subPro)
 
 			res := httptest.NewRecorder()
 			var req *http.Request
@@ -1867,9 +1114,8 @@ func TestGetSMSDependencies(t *testing.T) {
 
 			if res.Code == http.StatusOK {
 				resBodyStr := res.Body.String()
-				expectedResponseByte, _ := json.Marshal(testData.expectedResponse)
-				if resBodyStr != string(expectedResponseByte) {
-					t.Error("Unexpected error in expected response: ", res.Body)
+				if resBodyStr != testData.expectedResponse {
+					t.Error("Unexpected response: ", res.Body, " expected: ", testData.expectedResponse)
 				}
 			}
 		})

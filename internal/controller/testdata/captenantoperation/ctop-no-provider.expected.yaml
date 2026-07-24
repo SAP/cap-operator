@@ -8,7 +8,6 @@ metadata:
     - sme.sap.com/captenantoperation
   annotations:
     sme.sap.com/owner-identifier: default.test-cap-01-consumer
-    sme.sap.com/subscription-context-secret: test-cap-01-consumer-gen
     sme.sap.com/subscription-guid: 12abcde3-4f56-7f89-0edc-09876b54321a
   labels:
     sme.sap.com/tenant-operation-type: provisioning
@@ -99,10 +98,7 @@ spec:
             - name: CAPOP_PROVIDER_SUBACCOUNT_ID
               value: pro-subacc-id
             - name: CAPOP_SUBSCRIPTION_PAYLOAD
-              valueFrom:
-                secretKeyRef:
-                  name: test-cap-01-consumer-gen
-                  key: subscriptionContext
+              value: ""
             - name: CAPOP_TENANT_MTXS_OPERATION
               value: subscribe
           envFrom:

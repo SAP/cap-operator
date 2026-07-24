@@ -1,0 +1,23 @@
+apiVersion: sme.sap.com/v1alpha1
+kind: SubscriptionProvider
+metadata:
+  name: test-subpro-01
+  namespace: default
+  uid: aaaa-bbbb-cccc-0001
+  generation: 1
+spec:
+  appName: test-cap-01
+  providerSubaccountId: pro-subacc-id
+  subscriptionInfo:
+    type: saas-registry
+    subscriptionSecret: subpro-saas-sec
+    authSecret: subpro-xsuaa-sec
+status:
+  conditions:
+    - reason: Processing
+      message: Processing subscription provider
+      observedGeneration: 1
+      status: "False"
+      type: Ready
+  observedGeneration: 1
+  state: Processing

@@ -12,8 +12,10 @@ import (
 	"strings"
 
 	"github.com/sap/cap-operator/internal/controller"
+	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
@@ -21,6 +23,7 @@ import (
 )
 
 const LabelBTPApplicationIdentifierHash = "sme.sap.com/btp-app-identifier-hash"
+const AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
 
 // Returns an sha1 checksum for a given source string
 func sha1Sum(source ...string) string {
@@ -145,6 +148,9 @@ func migrateAppsAndSecrets(migrationDone chan bool, crdClient versioned.Interfac
 		migrateCAPApplicationVersions(crdClient, ca.Namespace, ca.Name, appIdHash, appId)
 		migrateCAPTenants(crdClient, ca.Namespace, ca.Name, appIdHash, appId)
 
+		// Create SubscriptionProvider and Subscription resources for any existing consumer tenants
+		createSubscriptionResourcesForCA(crdClient, kubeClient, &ca)
+
 		// Remove secrets that were preserved by the finalizer in the past.
 		cleanupSecrets(ca.Namespace, kubeClient)
 	}
@@ -226,4 +232,153 @@ func annotateAllTenants(crdClient versioned.Interface) {
 		}
 	}
 	klog.InfoS("Annotated CAPTenants with subscription-guid", "count", count)
+}
+
+// createSubscriptionResourcesForCA creates a SubscriptionProvider for the given CAPApplication (if not present)
+// and a Subscription for each existing consumer CAPTenant that has a subscription context secret.
+// Skipped when the CA has no providerSubaccountId set, or when it is a services-only scenario.
+func createSubscriptionResourcesForCA(crdClient versioned.Interface, kubeClient kubernetes.Interface, ca *v1alpha1.CAPApplication) {
+	if ca.Spec.ProviderSubaccountId == "" || ca.IsServicesOnly() {
+		return
+	}
+	createSubscriptionProviderIfNeeded(crdClient, ca)
+	createSubscriptionsForTenants(crdClient, kubeClient, ca)
+}
+
+func createSubscriptionProviderIfNeeded(crdClient versioned.Interface, ca *v1alpha1.CAPApplication) {
+	_, err := crdClient.SmeV1alpha1().SubscriptionProviders(ca.Namespace).Get(context.TODO(), ca.Name, metav1.GetOptions{})
+	if err == nil {
+		return
+	}
+	if !k8sErrors.IsNotFound(err) {
+		klog.ErrorS(err, "Failed to check SubscriptionProvider existence", "name", ca.Name, "namespace", ca.Namespace)
+		return
+	}
+
+	var subscriptionInfo v1alpha1.SubscriptionInfo
+	for _, svc := range ca.Spec.BTP.Services {
+		switch svc.Class {
+		case "subscription-manager":
+			subscriptionInfo.Type = "subscription-manager"
+			subscriptionInfo.SubscriptionSecret = svc.Secret
+		case "saas-registry":
+			subscriptionInfo.Type = "saas-registry"
+			subscriptionInfo.SubscriptionSecret = svc.Secret
+			if xsuaaInfo := util.GetXSUAAInfo(ca.Spec.BTP.Services, ca); xsuaaInfo != nil {
+				subscriptionInfo.AuthSecret = xsuaaInfo.Secret
+			}
+		}
+		if subscriptionInfo.SubscriptionSecret != "" {
+			break
+		}
+	}
+
+	appIdHash := sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
+	_, err = crdClient.SmeV1alpha1().SubscriptionProviders(ca.Namespace).Create(context.TODO(), &v1alpha1.SubscriptionProvider{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      ca.Name,
+			Namespace: ca.Namespace,
+			Labels:    map[string]string{controller.LabelAppIdHash: appIdHash},
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(ca, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationKind)),
+			},
+		},
+		Spec: v1alpha1.SubscriptionProviderSpec{
+			AppName:              ca.Spec.BTPAppName,
+			ProviderSubaccountID: ca.Spec.ProviderSubaccountId,
+			SubscriptionInfo:     subscriptionInfo,
+		},
+	}, metav1.CreateOptions{})
+	if err != nil {
+		klog.ErrorS(err, "Failed to create SubscriptionProvider", "name", ca.Name, "namespace", ca.Namespace)
+		return
+	}
+	klog.InfoS("Created SubscriptionProvider", "name", ca.Name, "namespace", ca.Namespace)
+}
+
+func createSubscriptionsForTenants(crdClient versioned.Interface, kubeClient kubernetes.Interface, ca *v1alpha1.CAPApplication) {
+	cats, err := crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: ownerIdSelector(ca.Namespace, ca.Name),
+	})
+	if err != nil {
+		klog.ErrorS(err, "Failed to list CAPTenants for subscription migration", "capApplication", ca.Name, "namespace", ca.Namespace)
+		return
+	}
+
+	appIdHash := sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
+
+	for _, cat := range cats.Items {
+		// Skip provider tenants: require both subscription-guid label and annotation to be present
+		guid := cat.Labels[controller.MetadataSubscriptionGUID]
+		if guid == "" || cat.Annotations[controller.MetadataSubscriptionGUID] == "" {
+			continue
+		}
+
+		// Skip tenants without a subscription context secret (no payload to migrate)
+		secretName := cat.Annotations[AnnotationSubscriptionContextSecret]
+		if secretName == "" {
+			klog.InfoS("Skipping tenant without subscription context secret annotation", "tenant", cat.Name, "namespace", cat.Namespace)
+			continue
+		}
+
+		// Skip if a Subscription for this tenant already exists
+		existingSubs, err := crdClient.SmeV1alpha1().Subscriptions(ca.Namespace).List(context.TODO(), metav1.ListOptions{
+			LabelSelector: labels.SelectorFromSet(map[string]string{
+				controller.LabelAppIdHash: appIdHash,
+				controller.LabelTenantId:  cat.Spec.TenantId,
+			}).String(),
+		})
+		if err != nil {
+			klog.ErrorS(err, "Failed to check existing Subscriptions", "tenant", cat.Name, "namespace", cat.Namespace)
+			continue
+		}
+		if len(existingSubs.Items) > 0 {
+			continue
+		}
+
+		// Read the subscription context secret to get the original request payload
+		secret, err := kubeClient.CoreV1().Secrets(ca.Namespace).Get(context.TODO(), secretName, metav1.GetOptions{})
+		if err != nil {
+			klog.ErrorS(err, "Failed to read subscription context secret", "secret", secretName, "tenant", cat.Name, "namespace", cat.Namespace)
+			continue
+		}
+
+		if cat.Labels[controller.LabelTenantType] != controller.TenantTypeProvider {
+			sub, err := crdClient.SmeV1alpha1().Subscriptions(ca.Namespace).Create(context.TODO(), &v1alpha1.Subscription{
+				ObjectMeta: metav1.ObjectMeta{
+					GenerateName: ca.Name + "-",
+					Namespace:    ca.Namespace,
+					Labels: map[string]string{
+						controller.LabelAppIdHash:           appIdHash,
+						controller.LabelTenantId:            cat.Spec.TenantId,
+						controller.MetadataSubscriptionGUID: guid,
+					},
+				},
+				Spec: v1alpha1.SubscriptionSpec{
+					AppName:                    ca.Spec.BTPAppName,
+					ProviderSubaccountId:       ca.Spec.ProviderSubaccountId,
+					TenantId:                   cat.Spec.TenantId,
+					Subdomain:                  cat.Spec.SubDomain,
+					SubscriptionGuid:           guid,
+					SubscriptionRequestPayload: string(secret.Data["subscriptionContext"]),
+				},
+			}, metav1.CreateOptions{})
+			if err != nil {
+				klog.ErrorS(err, "Failed to create Subscription", "tenant", cat.Name, "namespace", cat.Namespace)
+				continue
+			}
+			cat.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(sub, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.SubscriptionKind)), *metav1.NewControllerRef(ca, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationKind))}
+		} else {
+			cat.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(ca, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationKind))}
+		}
+		// Get rid of the old annotation
+		delete(cat.Annotations, AnnotationSubscriptionContextSecret)
+
+		// Update the CAPTenant resource to remove the annotation
+		crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Update(context.TODO(), &cat, metav1.UpdateOptions{})
+		// Finally get rid of the old secrets that have now been migrated to
+		kubeClient.CoreV1().Secrets(ca.Namespace).Delete(context.TODO(), secret.Name, metav1.DeleteOptions{})
+
+		klog.InfoS("Created Subscription for tenant", "tenant", cat.Name, "namespace", cat.Namespace, "guid", guid)
+	}
 }

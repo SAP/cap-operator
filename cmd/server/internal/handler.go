@@ -22,7 +22,6 @@ import (
 	"sync"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -35,28 +34,25 @@ import (
 )
 
 const (
-	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
-	AnnotationSaaSAdditionalOutput      = "sme.sap.com/saas-additional-output"
-	AnnotationSubscriptionDomain        = "sme.sap.com/subscription-domain"
+	AnnotationSaaSAdditionalOutput = "sme.sap.com/saas-additional-output"
 )
 
 const (
 	LabelAppIdHash           = "sme.sap.com/app-identifier-hash"
 	LabelTenantId            = "sme.sap.com/btp-tenant-id"
-	LabelTenantType          = "sme.sap.com/tenant-type"
 	MetadataSubscriptionGUID = "sme.sap.com/subscription-guid"
 )
 
 const (
-	ResourceCreated  = "resource created successfully"
-	ResourceUpdated  = "resource updated successfully"
-	ResourceFound    = "resource exists"
-	ResourceDeleted  = "resource deleted successfully"
-	ResourceNotFound = "resource not found"
-	TenantNotFound   = "tenant not found"
+	ResourceCreated      = "resource created successfully"
+	ResourceUpdated      = "resource updated successfully"
+	ResourceFound        = "resource exists"
+	ResourceDeleted      = "resource deleted successfully"
+	ResourceNotFound     = "resource not found"
+	SubscriptionNotFound = "subscription not found"
+	SubscriptionFound    = "Subscription found"
 )
 
-const SubscriptionDomain = "subscription domain"
 const ErrorOccurred = "Error occurred "
 const InvalidRequestMethod = "invalid request method"
 const AuthorizationCheckFailed = "authorization check failed"
@@ -115,8 +111,8 @@ type requestHeaderDetails struct {
 }
 
 type Result struct {
-	Tenant  *v1alpha1.CAPTenant
-	Message string
+	Subscription *v1alpha1.Subscription
+	Message      string
 }
 
 type SubscriptionHandler struct {
@@ -158,20 +154,6 @@ type tenantInfo struct {
 	tenantSubDomain string
 }
 
-type serviceCredentials struct {
-	XSAppName           string `json:"xsappname"`
-	SaasRegistryEnabled bool   `json:"saasregistryenabled"`
-	UAA                 *struct {
-		XSAppName string `json:"xsappname"`
-	} `json:"uaa"`
-}
-
-// Credentials with plan
-type serviceMetaInfo struct {
-	Plan        string             `json:"plan"`
-	Credentials serviceCredentials `json:"credentials"`
-}
-
 type GetDependenciesAuthError struct{}
 
 func (err *GetDependenciesAuthError) Error() string {
@@ -184,61 +166,49 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 	var saasData *util.SaasRegistryCredentials
 	var smsData *util.SmsCredentials
 
-	// Check if CAPApplication instance for the given btpApp exists
-	ca, err := s.checkCAPApp(reqInfo.payload.providerSubaccountId, reqInfo.payload.appName)
+	// Check if a SubscriptionProvider exists matching the providerSubaccountID and appName
+	subPro, err := s.checkSubscriptionProvider(reqInfo.payload.providerSubaccountId, reqInfo.payload.appName)
 	if err != nil {
-		util.LogError(err, ErrorOccurred, TenantProvisioning, ca, nil)
-		return &Result{Tenant: nil, Message: err.Error()}
-	}
-	if ca.IsServicesOnly() {
-		err := errors.New("no multi-tenant capapplication found")
-		util.LogError(err, "CAPApplication invalid", TenantProvisioning, ca, nil)
-		return &Result{Tenant: nil, Message: err.Error()}
+		util.LogError(err, ErrorOccurred, TenantProvisioning, subPro, nil)
+		return &Result{Subscription: nil, Message: err.Error()}
 	}
 
-	saasData, smsData, err = s.authorizationCheck(reqInfo.headerDetails, ca, reqInfo.subscriptionType, TenantProvisioning)
+	saasData, smsData, err = s.authorizationCheck(reqInfo.headerDetails, subPro, reqInfo.subscriptionType, TenantProvisioning)
 	if err != nil {
-		util.LogError(err, AuthorizationCheckFailed, TenantProvisioning, ca, nil)
-		return &Result{Tenant: nil, Message: err.Error()}
+		util.LogError(err, AuthorizationCheckFailed, TenantProvisioning, subPro, nil)
+		return &Result{Subscription: nil, Message: err.Error()}
 	}
 
-	appUrl, err := s.getAppURL(reqInfo.subscriptionDomain, reqInfo.payload.subdomain, ca)
-	if err != nil {
-		util.LogError(err, ErrorOccurred, TenantProvisioning, ca, nil)
-		return &Result{Tenant: nil, Message: "Error constructing subscription URL: " + err.Error()}
-	}
-
-	// Check if A CRO for CAPTenant already exists
-	tenant := s.getTenantByAppIdentifier(ca.Spec.ProviderSubaccountId, reqInfo.payload.appName, reqInfo.payload.tenantId, ca.Namespace, TenantProvisioning).Tenant
+	// Check if a Subscription resource already exists for this payload
+	sub := s.getSubscriptionByAppIdentifier(reqInfo.payload.providerSubaccountId, reqInfo.payload.appName, reqInfo.payload.tenantId, subPro.Namespace, TenantProvisioning).Subscription
 
 	// If the resource doesn't exist, we'll create it
-	if tenant == nil {
+	if sub == nil {
 		created = true
-		tenant, err = s.createTenant(reqInfo, ca)
+		sub, err = s.createSubscription(reqInfo, subPro)
 		if err != nil {
-			return &Result{Tenant: nil, Message: err.Error()}
+			return &Result{Subscription: nil, Message: err.Error()}
 		}
 	} else {
-		// Update the tenant metadata and subscription context secret with new subscription guid and context if needed (subscriptionGUID maybe different when a new provisioning request comes in for an existing tenant)
-		updated, err = s.updateTenant(reqInfo, ca, tenant)
+		// Update the subscription with the new subscription guid, payload and additional context if needed (subscriptionGUID maybe different when a new provisioning request comes in for an existing tenant)
+		updated, err = s.updateSubscription(reqInfo, subPro, sub)
 		if err != nil {
-			return &Result{Tenant: nil, Message: err.Error()}
+			return &Result{Subscription: nil, Message: err.Error()}
 		}
 	}
 
-	// TODO: consider retrying tenant creation if it is in Error state
-	if tenant != nil {
+	if sub != nil {
 		tenantIn := tenantInfo{tenantId: reqInfo.payload.tenantId, tenantSubDomain: reqInfo.payload.subdomain}
 		callbackReqInfo := s.getCallbackReqInfo(reqInfo.subscriptionType, reqInfo.headerDetails.callbackInfo, saasData, smsData)
-		s.initializeCallback(appUrl, tenant.Name, ca, callbackReqInfo, tenantIn, true)
+		s.initializeCallback(sub.Name, sub.Namespace, subPro, callbackReqInfo, tenantIn, true)
 	}
 
 	if created {
-		util.LogInfo("Tenant successfully created", TenantProvisioning, ca, tenant, "message", getMessage(created, updated))
+		util.LogInfo("Subscription successfully created", TenantProvisioning, subPro, sub, "message", getMessage(created, updated))
 	} else if updated {
-		util.LogInfo("Tenant successfully updated", TenantProvisioning, ca, tenant, "message", getMessage(created, updated))
+		util.LogInfo("Subscription successfully updated", TenantProvisioning, subPro, sub, "message", getMessage(created, updated))
 	}
-	return &Result{Tenant: tenant, Message: getMessage(created, updated)}
+	return &Result{Subscription: sub, Message: getMessage(created, updated)}
 }
 
 func getMessage(isCreated, isUpdated bool) string {
@@ -252,105 +222,65 @@ func getMessage(isCreated, isUpdated bool) string {
 	}
 }
 
-func (s *SubscriptionHandler) createTenant(reqInfo *RequestInfo, ca *v1alpha1.CAPApplication) (tenant *v1alpha1.CAPTenant, err error) {
+func (s *SubscriptionHandler) createSubscription(reqInfo *RequestInfo, subPro *v1alpha1.SubscriptionProvider) (*v1alpha1.Subscription, error) {
 	subscriptionGUID := reqInfo.payload.subscriptionGUID
 	jsonReqByte, _ := json.Marshal(reqInfo.payload.raw)
-	// Create a secret to store the subscription context (payload from the request)
-	secret, err := s.KubeClientset.CoreV1().Secrets(ca.Namespace).Create(context.TODO(), &corev1.Secret{
+
+	util.LogInfo("Creating subscription", TenantProvisioning, subPro, nil, "tenantId", reqInfo.payload.tenantId, "subscriptionGuid", subscriptionGUID)
+
+	sub, err := s.Clientset.SmeV1alpha1().Subscriptions(subPro.Namespace).Create(context.TODO(), &v1alpha1.Subscription{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: ca.Name + "-consumer-",
-			Namespace:    ca.Namespace,
+			GenerateName: subPro.Name + "-",
+			Namespace:    subPro.Namespace,
 			Labels: map[string]string{
+				LabelAppIdHash:           sha1Sum(reqInfo.payload.providerSubaccountId, reqInfo.payload.appName),
 				LabelTenantId:            reqInfo.payload.tenantId,
 				MetadataSubscriptionGUID: subscriptionGUID,
 			},
 		},
-		StringData: map[string]string{
-			"subscriptionContext": string(jsonReqByte),
+		Spec: v1alpha1.SubscriptionSpec{
+			AppName:                    reqInfo.payload.appName,
+			ProviderSubaccountId:       reqInfo.payload.providerSubaccountId,
+			TenantId:                   reqInfo.payload.tenantId,
+			Subdomain:                  reqInfo.payload.subdomain,
+			SubscriptionGuid:           subscriptionGUID,
+			SubscriptionDomain:         reqInfo.subscriptionDomain,
+			SubscriptionRequestPayload: string(jsonReqByte),
 		},
 	}, metav1.CreateOptions{})
-	if err != nil {
-		// Log error and exit if secret creation fails
-		util.LogError(err, "Error creating subscription context secret", TenantProvisioning, ca, nil)
-		return nil, err
-	}
-	util.LogInfo("Creating tenant", TenantProvisioning, ca, nil)
-
-	tenant, err = s.Clientset.SmeV1alpha1().CAPTenants(ca.Namespace).Create(context.TODO(), &v1alpha1.CAPTenant{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: ca.Name + "-",
-			Namespace:    ca.Namespace,
-			Annotations: map[string]string{
-				AnnotationSubscriptionContextSecret: secret.Name, // Store the secret name in the tenant annotation
-				MetadataSubscriptionGUID:            subscriptionGUID,
-			},
-			Labels: map[string]string{
-				LabelTenantId:            reqInfo.payload.tenantId,
-				MetadataSubscriptionGUID: subscriptionGUID,
-				LabelTenantType:          "consumer", // Default tenant type for consumer tenants
-			},
-		},
-		Spec: v1alpha1.CAPTenantSpec{
-			CAPApplicationInstance: ca.Name,
-			BTPTenantIdentification: v1alpha1.BTPTenantIdentification{
-				SubDomain: reqInfo.payload.subdomain,
-				TenantId:  reqInfo.payload.tenantId,
-			},
-		},
-	}, metav1.CreateOptions{})
-	if err != nil || tenant == nil {
-		// Log error and exit if tenant creation fails
-		util.LogError(err, "Error creating tenant", TenantProvisioning, ca, nil)
+	if err != nil || sub == nil {
+		util.LogError(err, "Error creating subscription", TenantProvisioning, subPro, nil, "tenantId", reqInfo.payload.tenantId)
 		return nil, err
 	}
 
-	// Update secret with tenant info and return
-	return tenant, s.updateSecret(tenant, secret)
+	return sub, nil
 }
 
-func (s *SubscriptionHandler) updateTenant(reqInfo *RequestInfo, ca *v1alpha1.CAPApplication, tenant *v1alpha1.CAPTenant) (bool, error) {
-	updated := false
+func (s *SubscriptionHandler) updateSubscription(reqInfo *RequestInfo, subPro *v1alpha1.SubscriptionProvider, sub *v1alpha1.Subscription) (bool, error) {
+	jsonReqByte, _ := json.Marshal(reqInfo.payload.raw)
 
-	// Update the tenant labels if needed
-	if tenant.Labels[MetadataSubscriptionGUID] != reqInfo.payload.subscriptionGUID {
-		tenant.Labels[MetadataSubscriptionGUID] = reqInfo.payload.subscriptionGUID
-		tenant.Annotations[MetadataSubscriptionGUID] = reqInfo.payload.subscriptionGUID
-		util.LogInfo("Updating tenant subscriptionGUID label", TenantProvisioning, tenant, nil)
-		if _, err := s.Clientset.SmeV1alpha1().CAPTenants(ca.Namespace).Update(context.TODO(), tenant, metav1.UpdateOptions{}); err != nil {
-			util.LogError(err, "Error updating tenant labels", TenantProvisioning, tenant, nil)
-			return false, err
-		}
-		updated = true
+	// Nothing changed --> no update needed
+	if sub.Spec.SubscriptionGuid == reqInfo.payload.subscriptionGUID &&
+		sub.Spec.SubscriptionDomain == reqInfo.subscriptionDomain &&
+		sub.Spec.SubscriptionRequestPayload == string(jsonReqByte) {
+		return false, nil
 	}
 
-	// Update the secret to store the new subscription context (payload from the request) if needed
-	if tenant.Annotations[AnnotationSubscriptionContextSecret] == "" {
-		return updated, nil
+	sub.Spec.SubscriptionGuid = reqInfo.payload.subscriptionGUID
+	sub.Spec.SubscriptionDomain = reqInfo.subscriptionDomain
+	sub.Spec.SubscriptionRequestPayload = string(jsonReqByte)
+	if sub.Labels == nil {
+		sub.Labels = map[string]string{}
+	}
+	sub.Labels[MetadataSubscriptionGUID] = reqInfo.payload.subscriptionGUID
+
+	util.LogInfo("Updating subscription", TenantProvisioning, sub, nil, "tenantId", reqInfo.payload.tenantId, "subscriptionGuid", reqInfo.payload.subscriptionGUID)
+	if _, err := s.Clientset.SmeV1alpha1().Subscriptions(subPro.Namespace).Update(context.TODO(), sub, metav1.UpdateOptions{}); err != nil {
+		util.LogError(err, "Error updating subscription", TenantProvisioning, sub, nil)
+		return false, err
 	}
 
-	secret, err := s.KubeClientset.CoreV1().Secrets(ca.Namespace).Get(context.TODO(), tenant.Annotations[AnnotationSubscriptionContextSecret], metav1.GetOptions{})
-	if err != nil {
-		util.LogError(err, "subscription context secret not found", TenantProvisioning, tenant, nil, "secretName", tenant.Annotations[AnnotationSubscriptionContextSecret])
-		return updated, err
-	}
-
-	if secret.Labels[MetadataSubscriptionGUID] != reqInfo.payload.subscriptionGUID {
-		secret.Labels[MetadataSubscriptionGUID] = reqInfo.payload.subscriptionGUID
-		jsonReqByte, _ := json.Marshal(reqInfo.payload.raw)
-		secret.StringData = map[string]string{
-			"subscriptionContext": string(jsonReqByte),
-		}
-
-		util.LogInfo("Updating tenant subscription context secret", TenantProvisioning, secret, nil, "tenantName", tenant.Name)
-		_, err = s.KubeClientset.CoreV1().Secrets(ca.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
-		if err != nil {
-			util.LogError(err, "Error updating subscription context secret", TenantProvisioning, secret, secret)
-			return false, err
-		}
-		updated = true
-	}
-
-	return updated, nil
+	return true, nil
 }
 
 func extractTimeoutInMillis(appUrls string, isSMS bool) string {
@@ -423,56 +353,43 @@ func (s *SubscriptionHandler) getCallbackReqInfo(subscriptionType subscriptionTy
 	return callbackReqInfo
 }
 
-func (s *SubscriptionHandler) updateSecret(tenant *v1alpha1.CAPTenant, secret *corev1.Secret) error {
-	secret.OwnerReferences = []metav1.OwnerReference{
-		*metav1.NewControllerRef(tenant, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind)),
+func (s *SubscriptionHandler) getSubscriptionByAppIdentifier(providerSubaccountId, btpAppName, tenantId, namespace, step string) (result *Result) {
+	labelsMap := map[string]string{
+		LabelTenantId:  tenantId,
+		LabelAppIdHash: sha1Sum(providerSubaccountId, btpAppName),
 	}
-	_, err := s.KubeClientset.CoreV1().Secrets(tenant.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
-	if err != nil {
-		util.LogError(err, "Error updating payload tenant subscription secret", TenantProvisioning, tenant, secret)
-	}
-	return err
+
+	return s.getSubscriptionByLabels(labelsMap, namespace, step, "getSubscriptionByAppIdentifier")
 }
 
-func (s *SubscriptionHandler) getTenantByAppIdentifier(providerSubaccountId, btpAppName, tenantId, namespace, step string) (result *Result) {
-	tenantLabels := map[string]string{
-		LabelTenantId: tenantId,
-	}
-
-	labelsMaps := maps.Clone(tenantLabels)
-	labelsMaps[LabelAppIdHash] = sha1Sum(providerSubaccountId, btpAppName)
-
-	return s.getTenantByLabels(labelsMaps, namespace, step, "getTenantByAppIdentifier")
-}
-
-func (s *SubscriptionHandler) getTenantBySubscriptionGUID(subscriptionGUID, tenantId, step string) *Result {
+func (s *SubscriptionHandler) getSubscriptionBySubscriptionGUID(subscriptionGUID, tenantId, step string) *Result {
 	labelsMap := map[string]string{
 		MetadataSubscriptionGUID: subscriptionGUID,
 		LabelTenantId:            tenantId,
 	}
-	return s.getTenantByLabels(labelsMap, metav1.NamespaceAll, step, "getTenantBySubscriptionGUID")
+	return s.getSubscriptionByLabels(labelsMap, metav1.NamespaceAll, step, "getSubscriptionBySubscriptionGUID")
 }
 
-func (s *SubscriptionHandler) getTenantByLabels(labelsMap map[string]string, namespace, step, methodName string) *Result {
+func (s *SubscriptionHandler) getSubscriptionByLabels(labelsMap map[string]string, namespace, step, methodName string) *Result {
 	labelSelector, err := labels.ValidatedSelectorFromSet(labelsMap)
 	if err != nil {
 		util.LogError(err, "Error in "+methodName, step, methodName, nil, flattenLabels(labelsMap)...)
-		return &Result{Tenant: nil, Message: err.Error()}
+		return &Result{Subscription: nil, Message: err.Error()}
 	}
 
-	ctList, err := s.Clientset.SmeV1alpha1().CAPTenants(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
+	subList, err := s.Clientset.SmeV1alpha1().Subscriptions(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
 	if err != nil {
 		util.LogError(err, "Error in "+methodName, step, methodName, nil, flattenLabels(labelsMap)...)
-		return &Result{Tenant: nil, Message: err.Error()}
+		return &Result{Subscription: nil, Message: err.Error()}
 	}
 
-	if len(ctList.Items) == 0 {
-		util.LogInfo("No tenant found", step, methodName, nil, flattenLabels(labelsMap)...)
-		return &Result{Tenant: nil, Message: ResourceNotFound}
+	if len(subList.Items) == 0 {
+		util.LogInfo("No subscription found", step, methodName, nil, flattenLabels(labelsMap)...)
+		return &Result{Subscription: nil, Message: ResourceNotFound}
 	}
-	// Assume only 1 tenant actually matches the selector!
-	util.LogInfo("Tenant found", step, &ctList.Items[0], nil, flattenLabels(labelsMap, "namespace", &ctList.Items[0].Namespace)...)
-	return &Result{Tenant: &ctList.Items[0], Message: ResourceFound}
+	// Assume only 1 subscription actually matches the selector!
+	util.LogInfo(SubscriptionFound, step, &subList.Items[0], nil, flattenLabels(labelsMap, "namespace", &subList.Items[0].Namespace)...)
+	return &Result{Subscription: &subList.Items[0], Message: ResourceFound}
 }
 
 func flattenLabels(labelsMap map[string]string, args ...any) []any {
@@ -488,61 +405,61 @@ func flattenLabels(labelsMap map[string]string, args ...any) []any {
 func (s *SubscriptionHandler) DeleteTenant(reqInfo *RequestInfo) *Result {
 	var saasData *util.SaasRegistryCredentials
 	var smsData *util.SmsCredentials
-	var tenant *v1alpha1.CAPTenant
-	var ca *v1alpha1.CAPApplication
+	var sub *v1alpha1.Subscription
+	var subPro *v1alpha1.SubscriptionProvider
 	var err error
 
 	util.LogInfo("Delete Tenant triggered", TenantDeprovisioning, "DeleteTenant", nil)
 
-	// Check if tenant exists by subscriptionGUID and tenantId
-	tenant = s.getTenantBySubscriptionGUID(reqInfo.payload.subscriptionGUID, reqInfo.payload.tenantId, TenantDeprovisioning).Tenant
-	if tenant != nil {
-		ca, err = s.Clientset.SmeV1alpha1().CAPApplications(tenant.Namespace).Get(context.TODO(), tenant.Spec.CAPApplicationInstance, metav1.GetOptions{})
+	// Check if a Subscription exists by subscriptionGUID and tenantId
+	sub = s.getSubscriptionBySubscriptionGUID(reqInfo.payload.subscriptionGUID, reqInfo.payload.tenantId, TenantDeprovisioning).Subscription
+	if sub != nil {
+		subPro, err = s.checkSubscriptionProviderInNamespace(sub.Spec.ProviderSubaccountId, sub.Spec.AppName, sub.Namespace)
 		if err != nil {
-			util.LogError(err, "CAPApplication not found", TenantDeprovisioning, tenant, nil)
-			return &Result{Tenant: nil, Message: err.Error()}
+			util.LogError(err, "SubscriptionProvider not found", TenantDeprovisioning, sub, nil)
+			return &Result{Subscription: nil, Message: err.Error()}
 		}
 	} else if reqInfo.subscriptionType == SaaS {
-		ca, err = s.checkCAPApp(reqInfo.payload.providerSubaccountId, reqInfo.payload.appName)
+		subPro, err = s.checkSubscriptionProvider(reqInfo.payload.providerSubaccountId, reqInfo.payload.appName)
 		if err != nil {
-			util.LogError(err, "CAPApplication not found", TenantDeprovisioning, tenant, nil)
-			return &Result{Tenant: nil, Message: TenantNotFound}
+			util.LogError(err, "SubscriptionProvider not found", TenantDeprovisioning, nil, nil)
+			return &Result{Subscription: nil, Message: SubscriptionNotFound}
 		}
-		// if tenant is not found in SaaS subscription scenario, check if it exists by btpApp identifier to handle cases where tenant was created without subscriptionGUID
-		util.LogInfo("Tenant not found by subscriptionGUID, checking by BTP app identifier", TenantDeprovisioning, "DeleteTenant", nil, "subscriptionGUID", reqInfo.payload.subscriptionGUID)
-		tenant = s.getTenantByAppIdentifier(ca.Spec.ProviderSubaccountId, reqInfo.payload.appName, reqInfo.payload.tenantId, metav1.NamespaceAll, TenantDeprovisioning).Tenant
+		// if subscription is not found in SaaS subscription scenario, check if it exists by btpApp identifier to handle cases where it was created without subscriptionGUID
+		util.LogInfo("Subscription not found by subscriptionGUID, checking by BTP app identifier", TenantDeprovisioning, "DeleteTenant", nil, "subscriptionGUID", reqInfo.payload.subscriptionGUID)
+		sub = s.getSubscriptionByAppIdentifier(subPro.Spec.ProviderSubaccountID, reqInfo.payload.appName, reqInfo.payload.tenantId, metav1.NamespaceAll, TenantDeprovisioning).Subscription
 	}
 
-	if tenant == nil {
-		util.LogWarning("CAPTenant not found", TenantDeprovisioning)
-		return &Result{Tenant: nil, Message: TenantNotFound}
+	if sub == nil {
+		util.LogWarning("Subscription not found", TenantDeprovisioning)
+		return &Result{Subscription: nil, Message: SubscriptionNotFound}
 	}
 
-	saasData, smsData, err = s.authorizationCheck(reqInfo.headerDetails, ca, reqInfo.subscriptionType, TenantDeprovisioning)
+	saasData, smsData, err = s.authorizationCheck(reqInfo.headerDetails, subPro, reqInfo.subscriptionType, TenantDeprovisioning)
 	if err != nil {
-		util.LogError(err, AuthorizationCheckFailed, TenantDeprovisioning, ca, nil)
-		return &Result{Tenant: nil, Message: err.Error()}
+		util.LogError(err, AuthorizationCheckFailed, TenantDeprovisioning, subPro, nil)
+		return &Result{Subscription: nil, Message: err.Error()}
 	}
 
-	util.LogInfo("Tenant found", TenantDeprovisioning, ca, tenant)
-	err = s.Clientset.SmeV1alpha1().CAPTenants(tenant.Namespace).Delete(context.TODO(), tenant.Name, metav1.DeleteOptions{})
+	util.LogInfo(SubscriptionFound, TenantDeprovisioning, subPro, sub)
+	err = s.Clientset.SmeV1alpha1().Subscriptions(sub.Namespace).Delete(context.TODO(), sub.Name, metav1.DeleteOptions{})
 	if err != nil {
-		util.LogError(err, "Error deleting tenant", TenantDeprovisioning, ca, tenant)
-		return &Result{Tenant: nil, Message: err.Error()}
+		util.LogError(err, "Error deleting subscription", TenantDeprovisioning, subPro, sub)
+		return &Result{Subscription: nil, Message: err.Error()}
 	}
 
 	tenantIn := tenantInfo{tenantId: reqInfo.payload.tenantId, tenantSubDomain: reqInfo.payload.subdomain}
 	callbackReqInfo := s.getCallbackReqInfo(reqInfo.subscriptionType, reqInfo.headerDetails.callbackInfo, saasData, smsData)
-	s.initializeCallback("", tenant.Name, ca, callbackReqInfo, tenantIn, false)
+	s.initializeCallback(sub.Name, sub.Namespace, subPro, callbackReqInfo, tenantIn, false)
 
-	return &Result{Tenant: tenant, Message: ResourceDeleted}
+	return &Result{Subscription: sub, Message: ResourceDeleted}
 }
 
-func (s *SubscriptionHandler) authorizationCheck(headerDetails *requestHeaderDetails, ca *v1alpha1.CAPApplication, subscription subscriptionType, step string) (saasData *util.SaasRegistryCredentials, smsData *util.SmsCredentials, err error) {
+func (s *SubscriptionHandler) authorizationCheck(headerDetails *requestHeaderDetails, subPro *v1alpha1.SubscriptionProvider, subscription subscriptionType, step string) (saasData *util.SaasRegistryCredentials, smsData *util.SmsCredentials, err error) {
 	switch subscription {
 	case SMS:
 		// fetch SMS information
-		smsData = s.getSmsDetails(ca, step)
+		smsData = s.getSmsDetails(subPro, step)
 		if smsData == nil {
 			return nil, nil, errors.New(ResourceNotFound)
 		}
@@ -553,7 +470,7 @@ func (s *SubscriptionHandler) authorizationCheck(headerDetails *requestHeaderDet
 	default:
 		var uaaData *util.XSUAACredentials
 		// fetch SaaS Registry and XSUAA information
-		saasData, uaaData = s.getServiceDetails(ca, step)
+		saasData, uaaData = s.getServiceDetails(subPro, step)
 		if saasData == nil || uaaData == nil {
 			return nil, nil, errors.New(ResourceNotFound)
 		}
@@ -564,25 +481,34 @@ func (s *SubscriptionHandler) authorizationCheck(headerDetails *requestHeaderDet
 	return
 }
 
-func (s *SubscriptionHandler) checkCAPApp(providerSubaccountId, btpAppName string) (*v1alpha1.CAPApplication, error) {
-	// First try to find CAPApplication by providerSubaccountId (appIdHash)
+func (s *SubscriptionHandler) checkSubscriptionProvider(providerSubaccountId, btpAppName string) (*v1alpha1.SubscriptionProvider, error) {
+	// Find SubscriptionProvider by providerSubaccountId + appName (appIdHash) across all namespaces
 	labelSelector, _ := labels.ValidatedSelectorFromSet(map[string]string{
 		LabelAppIdHash: sha1Sum(providerSubaccountId, btpAppName),
 	})
 
-	return s.getAppByLabelSelector(labelSelector)
+	return s.getSubscriptionProviderByLabelSelector(metav1.NamespaceAll, labelSelector)
 }
 
-func (s *SubscriptionHandler) getAppByLabelSelector(labelSelector labels.Selector) (*v1alpha1.CAPApplication, error) {
-	capAppsList, err := s.Clientset.SmeV1alpha1().CAPApplications(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
+func (s *SubscriptionHandler) checkSubscriptionProviderInNamespace(providerSubaccountId, btpAppName, namespace string) (*v1alpha1.SubscriptionProvider, error) {
+	// Find SubscriptionProvider by providerSubaccountId + appName (appIdHash) in a specific namespace
+	labelSelector, _ := labels.ValidatedSelectorFromSet(map[string]string{
+		LabelAppIdHash: sha1Sum(providerSubaccountId, btpAppName),
+	})
+
+	return s.getSubscriptionProviderByLabelSelector(namespace, labelSelector)
+}
+
+func (s *SubscriptionHandler) getSubscriptionProviderByLabelSelector(namespace string, labelSelector labels.Selector) (*v1alpha1.SubscriptionProvider, error) {
+	subProList, err := s.Clientset.SmeV1alpha1().SubscriptionProviders(namespace).List(context.TODO(), metav1.ListOptions{LabelSelector: labelSelector.String()})
 	if err != nil {
 		return nil, err
 	}
-	if len(capAppsList.Items) == 0 {
+	if len(subProList.Items) == 0 {
 		return nil, errors.New(ResourceNotFound)
 	}
-	// Assume only 1 app actually matches the selector!
-	return &capAppsList.Items[0], nil
+	// Assume only 1 provider actually matches the selector!
+	return &subProList.Items[0], nil
 }
 
 func (s *SubscriptionHandler) checkAuthorization(authHeader string, saasData *util.SaasRegistryCredentials, uaaData *util.XSUAACredentials, step string) error {
@@ -615,38 +541,38 @@ func (s *SubscriptionHandler) checkCertIssuerAndSubject(xForwardedClientCert str
 	return nil
 }
 
-func (s *SubscriptionHandler) initializeCallback(appUrl, tenantName string, ca *v1alpha1.CAPApplication, callbackReqInfo *CallbackReqInfo, tenantIn tenantInfo, isProvisioning bool) {
+func (s *SubscriptionHandler) initializeCallback(subName, subNamespace string, subPro *v1alpha1.SubscriptionProvider, callbackReqInfo *CallbackReqInfo, tenantIn tenantInfo, isProvisioning bool) {
 	step := TenantProvisioning
 	if !isProvisioning {
 		step = TenantDeprovisioning
 	}
-	util.LogInfo("Callback initialized", step, ca, nil, "subscription URL", appUrl, "async callback path", callbackReqInfo.CallbackPath, "tenantName", tenantName)
+	util.LogInfo("Callback initialized", step, subPro, nil, "async callback path", callbackReqInfo.CallbackPath, "subscription", subName)
 
 	go func() {
-		// create a context for tenant checks and outgoing requests
+		// create a context for subscription checks and outgoing requests
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		// Check tenant status asynchronously
-		util.LogInfo("Starting tenant status check", step, ca, nil, "tenantName", tenantName)
-		status := s.checkCAPTenantStatus(ctx, ca.Namespace, tenantName, isProvisioning, callbackReqInfo.CallbackTimeoutMillis)
-		util.LogInfo("Tenant status check complete", step, ca, nil, "tenantName", tenantName, "status", status)
+		// Check subscription status asynchronously
+		util.LogInfo("Starting subscription status check", step, subPro, nil, "subscription", subName)
+		status, appUrl := s.checkSubscriptionStatus(ctx, subNamespace, subName, isProvisioning, callbackReqInfo.CallbackTimeoutMillis)
+		util.LogInfo("Subscription status check complete", step, subPro, nil, "subscription", subName, "status", status, "subscription URL", appUrl)
 
 		additionalOutput := &map[string]any{}
 		if isProvisioning {
-			saasAdditionalOutput := ca.Annotations[AnnotationSaaSAdditionalOutput]
+			saasAdditionalOutput := subPro.Annotations[AnnotationSaaSAdditionalOutput]
 			if saasAdditionalOutput != "" {
 				// Add additional output to the callback response
 				err := json.Unmarshal([]byte(saasAdditionalOutput), additionalOutput)
 				if err != nil {
-					util.LogError(err, "Error parsing additional output", step, ca, nil, "annotation value", saasAdditionalOutput)
+					util.LogError(err, "Error parsing additional output", step, subPro, nil, "annotation value", saasAdditionalOutput)
 					additionalOutput = nil
 				}
 			}
 			// Add tenant data to the additional output if it exists
-			err := s.enrichAdditionalOutput(ca.Namespace, tenantIn.tenantId, additionalOutput)
+			err := s.enrichAdditionalOutput(subPro.Namespace, tenantIn.tenantId, additionalOutput)
 			if err != nil {
-				util.LogError(err, "Error updating tenant data", step, ca, nil, "tenantId", tenantIn.tenantId)
+				util.LogError(err, "Error updating tenant data", step, subPro, nil, "tenantId", tenantIn.tenantId)
 			}
 		} else {
 			additionalOutput = nil
@@ -654,89 +580,6 @@ func (s *SubscriptionHandler) initializeCallback(appUrl, tenantName string, ca *
 
 		s.handleAsyncCallback(ctx, callbackReqInfo, status, callbackReqInfo.CallbackPath, appUrl, additionalOutput, isProvisioning)
 	}()
-}
-
-func (s *SubscriptionHandler) getAppURL(payloadSubscriptionDomain, tenantSubdomain string, ca *v1alpha1.CAPApplication) (string, error) {
-	needsValidation := true
-	var subscriptionDomain string
-	// Check if subscription domain is provided in the request payload.
-	if payloadSubscriptionDomain != "" {
-		subscriptionDomain = payloadSubscriptionDomain
-		util.LogInfo("Using subscription domain from request payload", TenantProvisioning, ca, nil, SubscriptionDomain, subscriptionDomain)
-	} else {
-		// Fallback:
-		// First, check if subscription domain is provided in the CAPApplication annotation. If not, fallback to calculating the primary domain from the CAPApplication domain refs and use that as the subscription domain.
-		subscriptionDomain = ca.Annotations[AnnotationSubscriptionDomain]
-		if subscriptionDomain == "" {
-			subscriptionDomain = s.getPrimaryDomain(ca)
-			needsValidation = false
-			util.LogInfo("Using subscription domain from fallback 'primary' calculation", TenantProvisioning, ca, nil, SubscriptionDomain, subscriptionDomain)
-		} else {
-			util.LogInfo("Using subscription domain from CAPApplication annotation", TenantProvisioning, ca, nil, SubscriptionDomain, subscriptionDomain)
-		}
-	}
-
-	if needsValidation {
-		err := s.validateDomain(subscriptionDomain, ca.Namespace)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return "https://" + tenantSubdomain + "." + subscriptionDomain, nil
-}
-
-func (s *SubscriptionHandler) validateDomain(domain, namespace string) error {
-	// First check for Domains in the apps namespace
-	domainsList, err := s.Clientset.SmeV1alpha1().Domains(namespace).List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-	for _, d := range domainsList.Items {
-		if d.Spec.Domain == domain {
-			return nil
-		}
-	}
-
-	// Check for ClusterDomains if not found in the namespace
-	clusterDomainsList, err := s.Clientset.SmeV1alpha1().ClusterDomains(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		return err
-	}
-	for _, cd := range clusterDomainsList.Items {
-		if cd.Spec.Domain == domain {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("domain %s not found in Domains or ClusterDomains", domain)
-}
-
-func (s *SubscriptionHandler) getPrimaryDomain(ca *v1alpha1.CAPApplication) string {
-	// If no domainRefs are specified, return an empty string
-	if len(ca.Spec.DomainRefs) == 0 {
-		return ""
-	}
-	// Return the first domain as the primary domain
-	primaryDomainRef := ca.Spec.DomainRefs[0]
-	domain := ""
-	if primaryDomainRef.Kind == v1alpha1.DomainKind {
-		primaryDom, err := s.Clientset.SmeV1alpha1().Domains(ca.Namespace).Get(context.TODO(), primaryDomainRef.Name, metav1.GetOptions{})
-		if err != nil {
-			util.LogError(err, "Error getting primary domain", TenantProvisioning, ca, nil, "domainRef", primaryDomainRef.Name)
-		} else if primaryDom != nil {
-			domain = primaryDom.Spec.Domain
-		}
-	} else {
-		primaryDom, err := s.Clientset.SmeV1alpha1().ClusterDomains(metav1.NamespaceAll).Get(context.TODO(), primaryDomainRef.Name, metav1.GetOptions{})
-		if err != nil {
-			util.LogError(err, "Error getting primary cluster domain", TenantProvisioning, ca, nil, "domainRef", primaryDomainRef.Name)
-		} else if primaryDom != nil {
-			domain = primaryDom.Spec.Domain
-		}
-	}
-	// Return the primary domain if it exists, else return an empty string
-	return domain
 }
 
 func (s *SubscriptionHandler) enrichAdditionalOutput(namespace string, tenantId string, additionalOutput *map[string]any) error {
@@ -765,7 +608,7 @@ func (s *SubscriptionHandler) enrichAdditionalOutput(namespace string, tenantId 
 	return nil
 }
 
-func (s *SubscriptionHandler) checkCAPTenantStatus(ctx context.Context, tenantNamespace string, tenantName string, provisioning bool, callbackTimeoutMs string) bool {
+func (s *SubscriptionHandler) checkSubscriptionStatus(ctx context.Context, subNamespace string, subName string, provisioning bool, callbackTimeoutMs string) (ready bool, url string) {
 	asyncCallbackTimeout := 15 * time.Minute
 	if callbackTimeoutMs != "" {
 		asyncCallbackTimeout, _ = time.ParseDuration(callbackTimeoutMs + "ms")
@@ -776,27 +619,27 @@ func (s *SubscriptionHandler) checkCAPTenantStatus(ctx context.Context, tenantNa
 		step = TenantDeprovisioning
 	}
 
-	timedCtx, cancel := context.WithTimeout(ctx, asyncCallbackTimeout) // Assume tenants won't take over 15mins to be "Ready"
+	timedCtx, cancel := context.WithTimeout(ctx, asyncCallbackTimeout) // Assume subscriptions won't take over 15mins to be "Ready"
 	defer cancel()
 
 	for {
 		select {
 		case <-timedCtx.Done():
-			klog.Warningf("tenant status check: %s", timedCtx.Err().Error())
-			return false
+			klog.Warningf("subscription status check: %s", timedCtx.Err().Error())
+			return false, ""
 		default:
-			capTenant, err := s.Clientset.SmeV1alpha1().CAPTenants(tenantNamespace).Get(context.TODO(), tenantName, metav1.GetOptions{})
+			sub, err := s.Clientset.SmeV1alpha1().Subscriptions(subNamespace).Get(context.TODO(), subName, metav1.GetOptions{})
 			if k8sErrors.IsNotFound(err) {
-				util.LogInfo("No tenant found.. Exiting CAPTenant status check.", step, "Tenant Status Check", nil, "tenantName", tenantName, "namespace", tenantNamespace)
+				util.LogInfo("No subscription found.. Exiting subscription status check.", step, "Subscription Status Check", nil, "subscription", subName, "namespace", subNamespace)
 				if !provisioning {
-					return true
+					return true, ""
 				}
 			}
-			if capTenant != nil {
-				util.LogInfo("CAPTenant found", step, capTenant, nil, "tenantid", capTenant.Spec.TenantId, "status", capTenant.Status.State)
-				if provisioning && (capTenant.Status.State == v1alpha1.CAPTenantStateReady || capTenant.Status.State == v1alpha1.CAPTenantStateProvisioningError) {
-					util.LogInfo("Exiting CAPTenant status check", step, capTenant, nil, "tenantid", capTenant.Spec.TenantId, "status", capTenant.Status.State)
-					return capTenant.Status.State == v1alpha1.CAPTenantStateReady
+			if sub != nil {
+				util.LogInfo(SubscriptionFound, step, sub, nil, "tenantid", sub.Spec.TenantId, "status", sub.Status.State)
+				if provisioning && (sub.Status.State == v1alpha1.SubscriptionStateReady || sub.Status.State == v1alpha1.SubscriptionStateError) {
+					util.LogInfo("Exiting subscription status check", step, sub, nil, "tenantid", sub.Spec.TenantId, "status", sub.Status.State)
+					return sub.Status.State == v1alpha1.SubscriptionStateReady, sub.Status.Url
 				}
 			}
 			time.Sleep(5 * time.Second)
@@ -804,77 +647,52 @@ func (s *SubscriptionHandler) checkCAPTenantStatus(ctx context.Context, tenantNa
 	}
 }
 
-func (s *SubscriptionHandler) getServiceDetails(ca *v1alpha1.CAPApplication, step string) (saasData *util.SaasRegistryCredentials, uaaData *util.XSUAACredentials) {
+func (s *SubscriptionHandler) getServiceDetails(subPro *v1alpha1.SubscriptionProvider, step string) (saasData *util.SaasRegistryCredentials, uaaData *util.XSUAACredentials) {
 	var wg sync.WaitGroup
 
 	wg.Go(func() {
-		saasData = s.getSaasDetails(ca, step)
+		saasData = s.getSaasDetails(subPro, step)
 	})
 	wg.Go(func() {
-		uaaData = s.getXSUAADetails(ca, step)
+		uaaData = s.getXSUAADetails(subPro, step)
 	})
 
 	wg.Wait()
 	return saasData, uaaData
 }
 
-func (s *SubscriptionHandler) getSaasDetails(capApp *v1alpha1.CAPApplication, step string) *util.SaasRegistryCredentials {
-	var (
-		result *util.SaasRegistryCredentials = nil
-		err    error
-		info   *v1alpha1.ServiceInfo
-	)
-	if info, err = s.getServiceInfo(capApp, "saas-registry"); err == nil {
-		result, err = util.ReadServiceCredentialsFromSecret[util.SaasRegistryCredentials](info, capApp.Namespace, s.KubeClientset, false)
-	}
+func (s *SubscriptionHandler) getSaasDetails(subPro *v1alpha1.SubscriptionProvider, step string) *util.SaasRegistryCredentials {
+	secret := subPro.Spec.SubscriptionInfo.SubscriptionSecret
+	info := &v1alpha1.ServiceInfo{Name: secret, Secret: secret}
+	result, err := util.ReadServiceCredentialsFromSecret[util.SaasRegistryCredentials](info, subPro.Namespace, s.KubeClientset, false)
 	if err != nil {
-		util.LogError(err, "SaaS Registry credentials could not be read. Exiting..", step, capApp, nil)
+		util.LogError(err, "SaaS Registry credentials could not be read. Exiting..", step, subPro, nil)
 	}
 	return result
 }
 
-func (s *SubscriptionHandler) getXSUAADetails(capApp *v1alpha1.CAPApplication, step string) *util.XSUAACredentials {
-	var (
-		result *util.XSUAACredentials = nil
-		err    error
-		info   *v1alpha1.ServiceInfo
-	)
-	info = util.GetXSUAAInfo(capApp.Spec.BTP.Services, capApp)
-
-	if info == nil {
-		err = fmt.Errorf("could not find service with class %s in CAPApplication %s.%s", "xsuaa", capApp.Namespace, capApp.Name)
-	} else {
-		result, err = util.ReadServiceCredentialsFromSecret[util.XSUAACredentials](info, capApp.Namespace, s.KubeClientset, false)
+func (s *SubscriptionHandler) getXSUAADetails(subPro *v1alpha1.SubscriptionProvider, step string) *util.XSUAACredentials {
+	secret := subPro.Spec.SubscriptionInfo.AuthSecret
+	if secret == "" {
+		util.LogError(fmt.Errorf("no auth secret configured in SubscriptionProvider %s.%s", subPro.Namespace, subPro.Name), "XSUAA credentials could not be read. Exiting..", step, subPro, nil)
+		return nil
 	}
-
+	info := &v1alpha1.ServiceInfo{Name: secret, Secret: secret}
+	result, err := util.ReadServiceCredentialsFromSecret[util.XSUAACredentials](info, subPro.Namespace, s.KubeClientset, false)
 	if err != nil {
-		util.LogError(err, "XSUAA credentials could not be read. Exiting..", step, capApp, nil)
+		util.LogError(err, "XSUAA credentials could not be read. Exiting..", step, subPro, nil)
 	}
 	return result
 }
 
-func (s *SubscriptionHandler) getSmsDetails(capApp *v1alpha1.CAPApplication, step string) *util.SmsCredentials {
-	var (
-		result *util.SmsCredentials = nil
-		err    error
-		info   *v1alpha1.ServiceInfo
-	)
-	if info, err = s.getServiceInfo(capApp, "subscription-manager"); err == nil {
-		result, err = util.ReadServiceCredentialsFromSecret[util.SmsCredentials](info, capApp.Namespace, s.KubeClientset, false)
-	}
+func (s *SubscriptionHandler) getSmsDetails(subPro *v1alpha1.SubscriptionProvider, step string) *util.SmsCredentials {
+	secret := subPro.Spec.SubscriptionInfo.SubscriptionSecret
+	info := &v1alpha1.ServiceInfo{Name: secret, Secret: secret}
+	result, err := util.ReadServiceCredentialsFromSecret[util.SmsCredentials](info, subPro.Namespace, s.KubeClientset, false)
 	if err != nil {
-		util.LogError(err, "SMS credentials could not be read. Exiting..", step, capApp, nil)
+		util.LogError(err, "SMS credentials could not be read. Exiting..", step, subPro, nil)
 	}
 	return result
-}
-
-func (s *SubscriptionHandler) getServiceInfo(ca *v1alpha1.CAPApplication, serviceClass string) (*v1alpha1.ServiceInfo, error) {
-	for i := range ca.Spec.BTP.Services {
-		if ca.Spec.BTP.Services[i].Class == serviceClass {
-			return &ca.Spec.BTP.Services[i], nil
-		}
-	}
-	return nil, fmt.Errorf("could not find service with class %s in CAPApplication %s.%s", serviceClass, ca.Namespace, ca.Name)
 }
 
 func prepareTokenRequest(ctx context.Context, callbackReqInfo *CallbackReqInfo, client *http.Client) (tokenReq *http.Request, err error) {
@@ -1004,13 +822,13 @@ func (s *SubscriptionHandler) HandleRequest(w http.ResponseWriter, req *http.Req
 	var subscriptionResult *Result
 	// Always return a response
 	defer func() {
-		subscriptionResult.Tenant = nil // Don't return tenant details in response
+		subscriptionResult.Subscription = nil // Don't return subscription details in response
 		res, _ := json.Marshal(subscriptionResult)
 		w.Write(res)
 	}()
 
 	if req.Method != http.MethodPut && req.Method != http.MethodDelete {
-		subscriptionResult = &Result{Tenant: nil, Message: InvalidRequestMethod}
+		subscriptionResult = &Result{Subscription: nil, Message: InvalidRequestMethod}
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
@@ -1019,21 +837,21 @@ func (s *SubscriptionHandler) HandleRequest(w http.ResponseWriter, req *http.Req
 	reqInfo, err := ProcessRequest(req, subscriptionType)
 	if err != nil || reqInfo == nil {
 		w.WriteHeader(http.StatusBadRequest)
-		subscriptionResult = &Result{Tenant: nil, Message: err.Error()}
+		subscriptionResult = &Result{Subscription: nil, Message: err.Error()}
 		return
 	}
 
 	switch req.Method {
 	case http.MethodPut:
 		subscriptionResult = s.CreateTenant(reqInfo)
-		if subscriptionResult.Tenant == nil {
+		if subscriptionResult.Subscription == nil {
 			w.WriteHeader(http.StatusNotAcceptable)
 		} else {
 			w.WriteHeader(http.StatusAccepted)
 		}
 	case http.MethodDelete:
 		subscriptionResult = s.DeleteTenant(reqInfo)
-		if subscriptionResult.Message == TenantNotFound {
+		if subscriptionResult.Message == SubscriptionNotFound {
 			w.WriteHeader(http.StatusNotFound)
 		} else if subscriptionResult.Message != ResourceDeleted {
 			w.WriteHeader(http.StatusNotAcceptable)
@@ -1135,64 +953,8 @@ func getSubscriptionDomain(payload map[string]any) string {
 	return ""
 }
 
-func (c *serviceCredentials) xsAppName() string {
-	if c.XSAppName != "" {
-		return c.XSAppName
-	}
-	if c.UAA != nil && c.UAA.XSAppName != "" {
-		return c.UAA.XSAppName
-	}
-	return ""
-}
-
-func (s *SubscriptionHandler) getServiceDependencies(capApp *v1alpha1.CAPApplication, service v1alpha1.ServiceInfo) map[string]string {
-	// Read credentials with metadata (as we need a check based on the plan
-	serviceCredInfo, err := util.ReadServiceCredentialsFromSecret[serviceMetaInfo](&service, capApp.Namespace, s.KubeClientset, true)
-	if err != nil {
-		util.LogError(err, "Failed to read secret for service", GetDependencies, capApp, nil, "service", service.Name, "secret", service.Secret)
-		return nil
-	}
-
-	if isServiceRelevantForDependencies(service, serviceCredInfo) {
-
-		if name := serviceCredInfo.Credentials.xsAppName(); name != "" {
-			if isSpecialDependency(service, serviceCredInfo) {
-				return map[string]string{
-					"appName": service.Class,
-					"appId":   name,
-				}
-			}
-			return map[string]string{"xsappname": name}
-		}
-	}
-
-	return nil
-}
-
-func isServiceRelevantForDependencies(serviceInfo v1alpha1.ServiceInfo, creds *serviceMetaInfo) bool {
-	if serviceInfo.GetSubscriptionDependency() == v1alpha1.SubscriptionDependencyAlways {
-		return true
-	}
-
-	if serviceInfo.GetSubscriptionDependency() == v1alpha1.SubscriptionDependencyAuto {
-		return isSpecialDependency(serviceInfo, creds) ||
-			creds.Credentials.SaasRegistryEnabled
-	}
-
-	return false
-}
-
-// These services might need some special handling for now, until there is some clarity from BTP as to how saas-registry differentiates b/w xsappname and appId/appName dependencies.
-func isSpecialDependency(serviceInfo v1alpha1.ServiceInfo, creds *serviceMetaInfo) bool {
-	return serviceInfo.Class == "destination" ||
-		serviceInfo.Class == "connectivity" ||
-		(serviceInfo.Class == "auditlog" && creds.Plan == "oauth2")
-}
-
 func (s *SubscriptionHandler) getDependencies(req *http.Request, subscriptionType subscriptionType) ([]byte, error) {
-	var dependenciesArray []map[string]string
-
-	// Read the cap application by using the provider subaccount id & app-name passed in the URI
+	// Read the subscription provider by using the provider subaccount id & app-name passed in the URI
 	// URI format - /dependencies/providersubaccountId/app-name or /sms/dependencies/providersubaccountId/app-name/{app_tid}
 	providersubaccountId := req.PathValue("providerSubaccountId")
 	appName := req.PathValue("appName")
@@ -1204,14 +966,9 @@ func (s *SubscriptionHandler) getDependencies(req *http.Request, subscriptionTyp
 
 	util.LogInfo("Get dependencies request received", GetDependencies, nil, nil, "subscriptionType", subscriptionType, "providerSubaccountId", providersubaccountId, "btpAppName", appName)
 
-	ca, err := s.checkCAPApp(providersubaccountId, appName)
+	subPro, err := s.checkSubscriptionProvider(providersubaccountId, appName)
 	if err != nil {
-		util.LogError(err, "CAPApplication not found for providerSubaccountId and appName", GetDependencies, nil, nil, "providerSubaccountId", providersubaccountId, "btpAppName", appName)
-		return nil, err
-	}
-	if ca.IsServicesOnly() {
-		err := errors.New("no multi-tenant capapplication found")
-		util.LogError(err, "CAPApplication invalid", GetDependencies, nil, nil, "providerSubaccountId", providersubaccountId, "btpAppName", appName)
+		util.LogError(err, "SubscriptionProvider not found for providerSubaccountId and appName", GetDependencies, nil, nil, "providerSubaccountId", providersubaccountId, "btpAppName", appName)
 		return nil, err
 	}
 
@@ -1223,31 +980,20 @@ func (s *SubscriptionHandler) getDependencies(req *http.Request, subscriptionTyp
 		headerDetails.authorization = req.Header.Get("Authorization")
 	}
 
-	if _, _, err = s.authorizationCheck(&headerDetails, ca, subscriptionType, GetDependencies); err != nil {
-		util.LogError(err, "Authorization check failed for get dependencies request", GetDependencies, ca, nil, "subscriptionType", subscriptionType)
+	if _, _, err = s.authorizationCheck(&headerDetails, subPro, subscriptionType, GetDependencies); err != nil {
+		util.LogError(err, "Authorization check failed for get dependencies request", GetDependencies, subPro, nil, "subscriptionType", subscriptionType)
 		return nil, &GetDependenciesAuthError{}
 	}
 
-	for _, service := range ca.Spec.BTP.Services {
-		if serviceDependency := s.getServiceDependencies(ca, service); serviceDependency != nil {
-			dependenciesArray = append(dependenciesArray, serviceDependency)
-		}
-	}
-
-	if len(dependenciesArray) == 0 {
-		util.LogInfo("No subscription dependencies found", GetDependencies, ca, nil)
+	// Dependencies are precomputed by the controller and published to the SubscriptionProvider status
+	if subPro.Status.Dependencies == "" {
+		util.LogInfo("No subscription dependencies found", GetDependencies, subPro, nil)
 		return nil, nil
 	}
 
-	dependencies, err := json.Marshal(dependenciesArray)
-	if err != nil {
-		util.LogError(err, "Failed to marshal dependencies to JSON", GetDependencies, ca, nil)
-		return nil, err
-	}
+	util.LogInfo("Subscription dependencies resolved", GetDependencies, subPro, nil, "dependencies", subPro.Status.Dependencies)
 
-	util.LogInfo("Subscription dependencies resolved", GetDependencies, ca, nil, "count", len(dependenciesArray), "dependencies", string(dependencies))
-
-	return dependencies, nil
+	return []byte(subPro.Status.Dependencies), nil
 }
 
 func (s *SubscriptionHandler) handleGetDependenciesRequest(w http.ResponseWriter, req *http.Request, subscriptionType subscriptionType) {
