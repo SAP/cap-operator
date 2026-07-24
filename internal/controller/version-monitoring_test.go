@@ -29,17 +29,18 @@ func TestMonitoringEnv(t *testing.T) {
 	expAcqRetryInt := "10s"
 	expEvalInt := "3h"
 	tests := []struct {
+		name        string
 		add         *string
 		acqRetryInt *string
 		evalInt     *string
 	}{
-		{},
-		{add: &expAdd, acqRetryInt: &expAcqRetryInt, evalInt: &expEvalInt},
-		{add: &expAdd},
+		{name: "without env vars set"},
+		{name: "with all env vars set", add: &expAdd, acqRetryInt: &expAcqRetryInt, evalInt: &expEvalInt},
+		{name: "with only PROMETHEUS_ADDRESS set", add: &expAdd},
 	}
 
 	for _, tt := range tests {
-		t.Run("test monitoring env", func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			if tt.add != nil {
 				t.Setenv(EnvPrometheusAddress, *tt.add)
 			}
@@ -343,6 +344,7 @@ func mockPromQueryHandler(testCases []queryTestCase, query string, w http.Respon
 				}
 			}`, tCase.simulatedResultType),
 		)
+		return
 	}
 
 	getScalar := func() *prommodel.Scalar {
