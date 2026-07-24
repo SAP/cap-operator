@@ -20,3 +20,7 @@ type CAPTenantOutputExpansion interface{}
 type ClusterDomainExpansion interface{}
 
 type DomainExpansion interface{}
+
+type SubscriptionExpansion interface{}
+
+type SubscriptionProviderExpansion interface{}

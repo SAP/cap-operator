@@ -32,9 +32,10 @@ const (
 )
 
 const (
-	EventActionProcessingSecrets        = "ProcessingSecrets"
-	EventActionProviderTenantProcessing = "ProviderTenantProcessing"
-	EventActionCheckForVersion          = "CheckForVersion"
+	EventActionProcessingSecrets              = "ProcessingSecrets"
+	EventActionProviderTenantProcessing       = "ProviderTenantProcessing"
+	EventActionSubscriptionProviderProcessing = "SubscriptionProviderProcessing"
+	EventActionCheckForVersion                = "CheckForVersion"
 )
 
 func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem, _ int) (result *ReconcileResult, err error) {
@@ -130,6 +131,12 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 		return
 	}
 	// We can already update LatestVersionReady to "true" at this point in time, but as this method is called several times, we do not do it here (during initial Provisioning as CA itself is may not be Consistent)
+
+	// Create/Update SubscriptionProvider resource for non services only scenario if not already created
+	if err = c.resolveSubscriptionProvider(ctx, ca); err != nil {
+		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "SubscriptionProviderError", err.Error())
+		return
+	}
 
 	// step 4 - validate provider tenant, create if not available
 	if processing, err = c.reconcileCAPApplicationProviderTenant(ctx, ca, cav); err != nil || processing {
@@ -415,58 +422,21 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 }
 
 func (c *Controller) createProviderTenant(ctx context.Context, ca *v1alpha1.CAPApplication, version string, providerTenantName string) (tenant *v1alpha1.CAPTenant, err error) {
-	providerSubaccountId := ca.Spec.ProviderSubaccountId
-	tenantLabels := map[string]string{
-		LabelTenantId: ca.Spec.Provider.TenantId,
-	}
-
-	globalAccountGUID := ca.Spec.GlobalAccountId
-	if globalAccountGUID == "" {
-		globalAccountGUID = ca.Annotations[AnnotationGlobalAccountId]
-	}
-
-	// Create a secret with the provider subscription context (dervied from the spec of CAPApplication)
-	secret, err := c.kubeClient.CoreV1().Secrets(ca.Namespace).Create(context.TODO(), &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: providerTenantName + "-",
-			Namespace:    ca.Namespace,
-			Labels:       tenantLabels,
-		},
-		StringData: map[string]string{
-			SubscriptionContext: `{
-					"subscriptionAppName": "` + ca.Spec.BTPAppName + `",
-					"subscribedTenantId": "` + ca.Spec.Provider.TenantId + `",
-					"subscribedSubaccountId": "` + providerSubaccountId + `",
-					"subscribedSubdomain": "` + ca.Spec.Provider.SubDomain + `",
-					"globalAccountGUID": "` + globalAccountGUID + `"
-				}`,
-		},
-	}, metav1.CreateOptions{})
-	if err != nil {
-		util.LogError(err, "Error creating tenant subscription context secret", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
-		return
-	}
-
 	// Create provider tenant
 	util.LogInfo("Creating provider tenant", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
-	annotations := map[string]string{
-		AnnotationSubscriptionContextSecret: secret.Name, // Store the secret name in the tenant annotation
-	}
+
 	labels := map[string]string{
 		LabelTenantType: TenantTypeProvider,
 		LabelTenantId:   ca.Spec.Provider.TenantId,
+		LabelAppIdHash:  sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName),
 	}
-
-	labels[LabelAppIdHash] = sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
 
 	if tenant, err = c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Create(
 		ctx, &v1alpha1.CAPTenant{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:        providerTenantName,
-				Namespace:   ca.Namespace,
-				Annotations: annotations,
-				Labels:      labels,
+				Name:      providerTenantName,
+				Namespace: ca.Namespace,
+				Labels:    labels,
 			},
 			Spec: v1alpha1.CAPTenantSpec{
 				CAPApplicationInstance: ca.Name,
@@ -479,17 +449,6 @@ func (c *Controller) createProviderTenant(ctx context.Context, ca *v1alpha1.CAPA
 		}, metav1.CreateOptions{}); err != nil {
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
 		return
-	}
-	if tenant != nil {
-		secret.OwnerReferences = []metav1.OwnerReference{
-			*metav1.NewControllerRef(tenant, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind)),
-		}
-		_, err = c.kubeClient.CoreV1().Secrets(tenant.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
-		if err != nil {
-			util.LogError(err, "Error updating tenant subscription context secret", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
-			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
-			return
-		}
 	}
 	c.Event(ca, tenant, corev1.EventTypeNormal, CAPApplicationEventProviderTenantCreated, EventActionProviderTenantProcessing, fmt.Sprintf("created provider tenant %s.%s", tenant.Namespace, tenant.Name))
 	return

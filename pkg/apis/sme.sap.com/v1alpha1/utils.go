@@ -212,6 +212,16 @@ func (cdom *ClusterDomain) GetStatusReadyConditionMessage() string {
 	return ""
 }
 
+func (sub *Subscription) SetStatusWithReadyCondition(state SubscriptionState, readyStatus metav1.ConditionStatus, reason string, message string) {
+	sub.Status.State = state
+	sub.SetStatusCondition(readyType, readyStatus, reason, message)
+}
+
+// SetStatusCondition updates/sets a condition in the Status of the Subscription.
+func (sub *Subscription) SetStatusCondition(conditionType string, status metav1.ConditionStatus, reason string, message string) {
+	sub.Status.SetStatusCondition(metav1.Condition{Type: conditionType, Status: status, Reason: reason, Message: message, ObservedGeneration: sub.Generation})
+}
+
 func (serviceInfo ServiceInfo) GetSubscriptionDependency() SubscriptionDependency {
 	if serviceInfo.SubscriptionDependency == nil {
 		return SubscriptionDependencyAuto

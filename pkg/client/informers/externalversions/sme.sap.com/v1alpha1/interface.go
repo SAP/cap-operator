@@ -27,6 +27,10 @@ type Interface interface {
 	ClusterDomains() TypedClusterDomainInformer
 	// Domains returns a DomainInformer.
 	Domains() TypedDomainInformer
+	// Subscriptions returns a SubscriptionInformer.
+	Subscriptions() TypedSubscriptionInformer
+	// SubscriptionProviders returns a SubscriptionProviderInformer.
+	SubscriptionProviders() TypedSubscriptionProviderInformer
 }
 
 type version struct {
@@ -73,4 +77,14 @@ func (v *version) ClusterDomains() TypedClusterDomainInformer {
 // Domains returns a TypedDomainInformer.
 func (v *version) Domains() TypedDomainInformer {
 	return &domainInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// Subscriptions returns a TypedSubscriptionInformer.
+func (v *version) Subscriptions() TypedSubscriptionInformer {
+	return &subscriptionInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// SubscriptionProviders returns a TypedSubscriptionProviderInformer.
+func (v *version) SubscriptionProviders() TypedSubscriptionProviderInformer {
+	return &subscriptionProviderInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
