@@ -43,8 +43,7 @@ jobs:
           node-version: "lts/*"
       - name: Package .agent folder
         run: |
-          mkdir -p website/static
-          tar -czf website/static/agents.tar.gz -C .agents .
+          tar -czf website/static/agentskills.tar.gz -C .agents .
 
       - name: Update dependencies
         run: |
