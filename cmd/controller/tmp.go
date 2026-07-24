@@ -17,7 +17,6 @@ import (
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned"
 	"google.golang.org/protobuf/types/known/durationpb"
 	networkingv1 "istio.io/api/networking/v1"
-	"istio.io/api/networking/v1alpha3"
 	istionwv1 "istio.io/client-go/pkg/apis/networking/v1"
 	istio "istio.io/client-go/pkg/clientset/versioned"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -60,7 +59,7 @@ func checkDRs(checkDone chan bool, istioClient istio.Interface, crdClient versio
 							LoadBalancer: &networkingv1.LoadBalancerSettings{
 								LbPolicy: &networkingv1.LoadBalancerSettings_ConsistentHash{
 									ConsistentHash: &networkingv1.LoadBalancerSettings_ConsistentHashLB{
-										HashKey: &v1alpha3.LoadBalancerSettings_ConsistentHashLB_HttpCookie{
+										HashKey: &networkingv1.LoadBalancerSettings_ConsistentHashLB_HttpCookie{
 											HttpCookie: &networkingv1.LoadBalancerSettings_ConsistentHashLB_HTTPCookie{
 												Name: "CAPOP_ROUTER_STICKY",
 												Path: "/",
@@ -237,9 +236,9 @@ func migrateAppsAndSecrets(migrationDone chan bool, crdClient versioned.Interfac
 		migrateCAPTenantOperations(crdClient, ca, appIdHash, appId)
 		// Remove secrets that were preserved by the finalizer in the past.
 		cleanupSecrets(ca.Namespace, kubeClient)
-		// annotate all tenants with subscription-guid based on the existing label, if not already set
-		annotateAllTenants(crdClient)
 	}
+	// annotate all tenants with subscription-guid based on the existing label, if not already set
+	annotateAllTenants(crdClient)
 }
 
 func cleanupSecrets(ns string, kubeClient kubernetes.Interface) {
