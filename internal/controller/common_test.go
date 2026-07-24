@@ -69,6 +69,8 @@ var gvrKindMap map[string]string = map[string]string{
 	"domains.sme.sap.com/v1alpha2":                "Domain",
 	"clusterdomains.sme.sap.com/v1alpha2":         "ClusterDomain",
 	"servicemonitors.monitoring.coreos.com/v1":    "ServiceMonitor",
+	"subscriptionproviders.sme.sap.com/v1alpha2":  "SubscriptionProvider",
+	"subscriptions.sme.sap.com/v1alpha2":          "Subscription",
 }
 
 var createKindMap map[string]int
@@ -171,6 +173,8 @@ var removeStatusTimestampHandler k8stesting.ReactionFunc = func(action k8stestin
 		case *v1alpha2.Domain:
 			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
 		case *v1alpha2.ClusterDomain:
+			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
+		case *v1alpha2.Subscription:
 			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
 		}
 	}
@@ -363,6 +367,8 @@ func reconcileTestItem(ctx context.Context, t *testing.T, item QueueItem, data T
 			requeue, err = c.reconcileDomain(ctx, item, data.attempts)
 		case ResourceClusterDomain:
 			requeue, err = c.reconcileClusterDomain(ctx, item, data.attempts)
+		case ResourceSubscription:
+			requeue, err = c.reconcileSubscription(ctx, item, data.attempts)
 		default:
 			t.Error("unidentified queue item for testing")
 		}
@@ -576,7 +582,7 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 			fakeClient.Tracker().Create(schema.GroupVersionResource{Group: "networking.istio.io", Version: "v1", Resource: "destinationrules"}, obj, metaObj.GetNamespace())
 			err = c.istioInformerFactory.Networking().V1().DestinationRules().Informer().GetIndexer().Add(obj)
 		}
-	case *v1alpha2.CAPApplication, *v1alpha2.CAPApplicationVersion, *v1alpha2.CAPTenant, *v1alpha2.CAPTenantOperation, *v1alpha2.Domain, *v1alpha2.ClusterDomain:
+	case *v1alpha2.CAPApplication, *v1alpha2.CAPApplicationVersion, *v1alpha2.CAPTenant, *v1alpha2.CAPTenantOperation, *v1alpha2.Domain, *v1alpha2.ClusterDomain, *v1alpha2.SubscriptionProvider, *v1alpha2.Subscription:
 		fakeClient, ok := c.crdClient.(*copfake.Clientset)
 		if !ok {
 			return fmt.Errorf("controller is not using a fake clientset")
@@ -595,6 +601,10 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 			err = c.crdInformerFactory.Sme().V1alpha2().Domains().Informer().GetIndexer().Add(obj)
 		case *v1alpha2.ClusterDomain:
 			err = c.crdInformerFactory.Sme().V1alpha2().ClusterDomains().Informer().GetIndexer().Add(obj)
+		case *v1alpha2.SubscriptionProvider:
+			err = c.crdInformerFactory.Sme().V1alpha2().SubscriptionProviders().Informer().GetIndexer().Add(obj)
+		case *v1alpha2.Subscription:
+			err = c.crdInformerFactory.Sme().V1alpha2().Subscriptions().Informer().GetIndexer().Add(obj)
 		}
 	case *monv1.ServiceMonitor:
 		fakeClient, ok := c.promClient.(*promopFake.Clientset)
@@ -649,7 +659,7 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 		case *istionwv1.Gateway:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("gateways"), mo.GetNamespace(), mo.GetName())
 		}
-	case *v1alpha2.CAPApplication, *v1alpha2.CAPApplicationVersion, *v1alpha2.CAPTenant, *v1alpha2.CAPTenantOperation, *v1alpha2.Domain, *v1alpha2.ClusterDomain:
+	case *v1alpha2.CAPApplication, *v1alpha2.CAPApplicationVersion, *v1alpha2.CAPTenant, *v1alpha2.CAPTenantOperation, *v1alpha2.Domain, *v1alpha2.ClusterDomain, *v1alpha2.SubscriptionProvider, *v1alpha2.Subscription:
 		fakeClient := c.crdClient.(*copfake.Clientset)
 		switch expected.(type) {
 		case *v1alpha2.CAPApplication:
@@ -664,6 +674,10 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("domains"), mo.GetNamespace(), mo.GetName())
 		case *v1alpha2.ClusterDomain:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("clusterdomains"), metav1.NamespaceAll, mo.GetName())
+		case *v1alpha2.SubscriptionProvider:
+			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("subscriptionproviders"), mo.GetNamespace(), mo.GetName())
+		case *v1alpha2.Subscription:
+			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("subscriptions"), mo.GetNamespace(), mo.GetName())
 		}
 	case *monv1.ServiceMonitor:
 		fakeClient := c.promClient.(*promopFake.Clientset)
