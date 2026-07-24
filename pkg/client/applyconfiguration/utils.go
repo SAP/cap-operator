@@ -127,6 +127,18 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &smesapcomv1alpha2.StickinessApplyConfiguration{}
 	case v1alpha2.SchemeGroupVersion.WithKind("StickinessHash"):
 		return &smesapcomv1alpha2.StickinessHashApplyConfiguration{}
+	case v1alpha2.SchemeGroupVersion.WithKind("Subscription"):
+		return &smesapcomv1alpha2.SubscriptionApplyConfiguration{}
+	case v1alpha2.SchemeGroupVersion.WithKind("SubscriptionInfo"):
+		return &smesapcomv1alpha2.SubscriptionInfoApplyConfiguration{}
+	case v1alpha2.SchemeGroupVersion.WithKind("SubscriptionProvider"):
+		return &smesapcomv1alpha2.SubscriptionProviderApplyConfiguration{}
+	case v1alpha2.SchemeGroupVersion.WithKind("SubscriptionProviderSpec"):
+		return &smesapcomv1alpha2.SubscriptionProviderSpecApplyConfiguration{}
+	case v1alpha2.SchemeGroupVersion.WithKind("SubscriptionSpec"):
+		return &smesapcomv1alpha2.SubscriptionSpecApplyConfiguration{}
+	case v1alpha2.SchemeGroupVersion.WithKind("SubscriptionStatus"):
+		return &smesapcomv1alpha2.SubscriptionStatusApplyConfiguration{}
 	case v1alpha2.SchemeGroupVersion.WithKind("TenantOperations"):
 		return &smesapcomv1alpha2.TenantOperationsApplyConfiguration{}
 	case v1alpha2.SchemeGroupVersion.WithKind("TenantOperationWorkloadReference"):

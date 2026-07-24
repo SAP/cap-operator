@@ -1,0 +1,57 @@
+apiVersion: sme.sap.com/v1alpha2
+kind: Subscription
+metadata:
+  name: test-sub-21
+  namespace: default
+  uid: aaaa-bbbb-dddd-0021
+  generation: 1
+  finalizers:
+    - sme.sap.com/subscription
+  labels:
+    sme.sap.com/app-identifier-hash: 8de67d2d3734797789af01ba68df94b31dda0357
+    sme.sap.com/btp-tenant-id: test-tenant-01
+    sme.sap.com/subscription-guid: test-guid-21-new
+spec:
+  appName: test-cap-01
+  providerSubaccountId: pro-subacc-id
+  tenantId: test-tenant-01
+  subdomain: test-subdomain
+  subscriptionGuid: test-guid-21-new
+  subscriptionDomain: app-domain.test.local
+  subscriptionRequestPayload: ""
+status:
+  conditions:
+    - reason: Ready
+      message: Subscription is ready
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+  observedGeneration: 1
+  state: Ready
+  url: https://test-subdomain.app-domain.test.local
+---
+# subscription-guid label and annotation must be synced to the Subscription's current guid
+apiVersion: sme.sap.com/v1alpha2
+kind: CAPTenant
+metadata:
+  name: test-sub-21-tenant
+  namespace: default
+  annotations:
+    sme.sap.com/app-identifier: pro-subacc-id.test-cap-01
+    sme.sap.com/subscription-guid: test-guid-21-new
+  labels:
+    sme.sap.com/app-identifier-hash: 8de67d2d3734797789af01ba68df94b31dda0357
+    sme.sap.com/btp-tenant-id: test-tenant-01
+    sme.sap.com/subscription-guid: test-guid-21-new
+spec:
+  tenantId: test-tenant-01
+  subDomain: test-subdomain
+status:
+  conditions:
+    - reason: Ready
+      message: Tenant is ready
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+  observedGeneration: 1
+  state: Ready
