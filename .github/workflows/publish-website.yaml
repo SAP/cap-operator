@@ -41,9 +41,9 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "lts/*"
-      - name: Package .agent folder
+      - name: Package CAP Operator skills (.agents folder)
         run: |
-          tar -czf website/static/agentskills.tar.gz -C .agents .
+          tar -czvf website/static/agentskills.tar.gz .agents
 
       - name: Update dependencies
         run: |
