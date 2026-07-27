@@ -313,10 +313,6 @@ func (c *Controller) handleContentDeployJob(ca *v1alpha1.CAPApplication, cav *v1
 
 // newContentDeploymentJob creates a Content Deployment Job for the CAV resource. It also sets the appropriate OwnerReferences.
 func newContentDeploymentJob(cav *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails, ownerRef metav1.OwnerReference, vcapSecretName string) *batchv1.Job {
-	labels := copyMaps(workload.Labels, map[string]string{
-		LabelDisableKarydia: "true",
-	})
-
 	contentJobName := getContentJobName(workload.Name, cav)
 
 	util.LogInfo("Creating content job", string(Processing), cav, nil, "contentJobName", contentJobName, "version", cav.Spec.Version)
@@ -337,7 +333,7 @@ func newContentDeploymentJob(cav *v1alpha1.CAPApplicationVersion, workload *v1al
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Annotations: workload.Annotations,
-					Labels:      labels,
+					Labels:      workload.Labels,
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -368,7 +364,7 @@ func newContentDeploymentJob(cav *v1alpha1.CAPApplicationVersion, workload *v1al
 					NodeName:                  workload.JobDefinition.NodeName,
 					PriorityClassName:         workload.JobDefinition.PriorityClassName,
 					Affinity:                  workload.JobDefinition.Affinity,
-					TopologySpreadConstraints: getTopologySpreadConstraints(workload.JobDefinition.TopologySpreadConstraints, labels, false),
+					TopologySpreadConstraints: getTopologySpreadConstraints(workload.JobDefinition.TopologySpreadConstraints, workload.Labels, false),
 					Tolerations:               workload.JobDefinition.Tolerations,
 				},
 			},
