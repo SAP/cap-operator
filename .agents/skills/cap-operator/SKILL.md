@@ -7,7 +7,7 @@ metadata:
   author: SAP
   project: https://sap.github.io/cap-operator
   api-group: sme.sap.com/v1alpha1
-allowed-tools: Bash(kubectl:*)
+allowed-tools: Bash(kubectl get:*) Bash(kubectl describe:*) Bash(kubectl logs:*)
 ---
 
 # CAP Operator Skill
