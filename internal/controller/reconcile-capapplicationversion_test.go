@@ -629,6 +629,26 @@ func TestCAV_PodSecurityContext(t *testing.T) {
 	)
 }
 
+func TestCAV_PodLifecycle(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
+		TestData{
+			description: "capapplication version with container lifecycle and pod termination grace period on deployment and job workloads",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/capapplicationversion/cav-pod-lifecycle.yaml",
+			},
+			expectedResources: "testdata/capapplicationversion/expected/cav-ready-pod-lifecycle.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPApplicationVersion: {{Namespace: "default", Name: "test-cap-01-cav-v1"}}},
+			backlogItems: []string{
+				"#488", // Pod lifecycle configs (lifecycle & terminationGracePeriodSeconds)
+			},
+		},
+	)
+}
+
 func TestCAV_Annotations(t *testing.T) {
 	reconcileTestItem(
 		context.TODO(), t,

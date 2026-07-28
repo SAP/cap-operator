@@ -554,6 +554,28 @@ func TestProvisioningWithPodSecurityContext(t *testing.T) {
 	)
 }
 
+func TestProvisioningWithPodLifecycle(t *testing.T) {
+	_ = reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPTenantOperation, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+		TestData{
+			backlogItems: []string{"#488"},
+			description:  "Provisioning - With container lifecycle and pod terminationGracePeriodSeconds",
+			initialResources: []string{
+				"testdata/common/capapplication.yaml",
+				"testdata/common/captenant-provider-ready.yaml",
+				"testdata/common/capapplicationversion-v2-pod-lifecycle.yaml",
+				"testdata/common/credential-secrets.yaml",
+				"testdata/captenantoperation/ctop-27.initial.yaml",
+			},
+			expectedResources: "testdata/captenantoperation/ctop-27.expected.yaml",
+			expectedRequeue: map[int][]NamespacedResourceKey{
+				ResourceCAPTenantOperation: {{Namespace: "default", Name: "test-cap-01-provider-abcd"}},
+			},
+		},
+	)
+}
+
 func TestProvisioningWithAnnotations(t *testing.T) {
 	_ = reconcileTestItem(
 		context.TODO(), t,

@@ -55,6 +55,10 @@ type CommonDetailsApplyConfiguration struct {
 	InitContainers []v1.Container `json:"initContainers,omitempty"`
 	// Restart policy for the Pod. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
 	RestartPolicy *v1.RestartPolicy `json:"restartPolicy,omitempty"`
+	// Optional duration in seconds the pod needs to terminate gracefully. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-flow
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+	// Optional actions that the management system should take in response to container lifecycle events. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination
+	Lifecycle *v1.Lifecycle `json:"lifecycle,omitempty"`
 }
 
 // CommonDetailsApplyConfiguration constructs a declarative configuration of the CommonDetails type for use with
@@ -234,5 +238,21 @@ func (b *CommonDetailsApplyConfiguration) WithInitContainers(values ...v1.Contai
 // If called multiple times, the RestartPolicy field is set to the value of the last call.
 func (b *CommonDetailsApplyConfiguration) WithRestartPolicy(value v1.RestartPolicy) *CommonDetailsApplyConfiguration {
 	b.RestartPolicy = &value
+	return b
+}
+
+// WithTerminationGracePeriodSeconds sets the TerminationGracePeriodSeconds field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the TerminationGracePeriodSeconds field is set to the value of the last call.
+func (b *CommonDetailsApplyConfiguration) WithTerminationGracePeriodSeconds(value int64) *CommonDetailsApplyConfiguration {
+	b.TerminationGracePeriodSeconds = &value
+	return b
+}
+
+// WithLifecycle sets the Lifecycle field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Lifecycle field is set to the value of the last call.
+func (b *CommonDetailsApplyConfiguration) WithLifecycle(value v1.Lifecycle) *CommonDetailsApplyConfiguration {
+	b.Lifecycle = &value
 	return b
 }
