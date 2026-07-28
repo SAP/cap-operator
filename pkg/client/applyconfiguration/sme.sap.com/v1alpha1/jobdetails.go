@@ -208,6 +208,22 @@ func (b *JobDetailsApplyConfiguration) WithRestartPolicy(value v1.RestartPolicy)
 	return b
 }
 
+// WithTerminationGracePeriodSeconds sets the TerminationGracePeriodSeconds field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the TerminationGracePeriodSeconds field is set to the value of the last call.
+func (b *JobDetailsApplyConfiguration) WithTerminationGracePeriodSeconds(value int64) *JobDetailsApplyConfiguration {
+	b.CommonDetailsApplyConfiguration.TerminationGracePeriodSeconds = &value
+	return b
+}
+
+// WithLifecycle sets the Lifecycle field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Lifecycle field is set to the value of the last call.
+func (b *JobDetailsApplyConfiguration) WithLifecycle(value v1.Lifecycle) *JobDetailsApplyConfiguration {
+	b.CommonDetailsApplyConfiguration.Lifecycle = &value
+	return b
+}
+
 // WithType sets the Type field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Type field is set to the value of the last call.

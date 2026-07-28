@@ -529,6 +529,10 @@ type CommonDetails struct {
 	InitContainers []corev1.Container `json:"initContainers,omitempty"`
 	// Restart policy for the Pod. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
 	RestartPolicy corev1.RestartPolicy `json:"restartPolicy,omitempty"`
+	//  Optional duration in seconds the pod needs to terminate gracefully. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-flow
+	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
+	// Optional actions that the management system should take in response to container lifecycle events. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination
+	Lifecycle *corev1.Lifecycle `json:"lifecycle,omitempty"`
 }
 
 // Configuration of Service Ports for the deployment
