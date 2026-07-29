@@ -1,6 +1,6 @@
 {
   "name": "website",
   "devDependencies": {
-    "@docsy/theme": "^0.16.0-rc.1"
+    "@docsy/theme": "^0.16.0"
   }
 }
