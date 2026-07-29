@@ -287,7 +287,7 @@ func TestDeletion_Case4(t *testing.T) {
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01"}},
 		TestData{
-			description: "With deletion triggered & provider tenant doesn't exist",
+			description: "With deletion triggered & no tenants exist",
 			initialResources: []string{
 				"testdata/capapplication/ca-16.initial.yaml",
 			},
@@ -301,7 +301,7 @@ func TestDeletion_Case5(t *testing.T) {
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01"}},
 		TestData{
-			description: "With deletion triggered & provider tenant exists",
+			description: "With deletion triggered & a tenant exists",
 			initialResources: []string{
 				"testdata/common/domain-ready.yaml",
 				"testdata/common/cluster-domain-ready.yaml",
@@ -315,12 +315,28 @@ func TestDeletion_Case5(t *testing.T) {
 	)
 }
 
+func TestDeletion_Case6(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01"}},
+		TestData{
+			description: "With deletion triggered & tenants existed but are now all deleted",
+			initialResources: []string{
+				"testdata/common/domain-ready.yaml",
+				"testdata/common/cluster-domain-ready.yaml",
+				"testdata/capapplication/ca-18.initial.yaml",
+			},
+			expectedResources: "testdata/capapplication/ca-18.expected.yaml",
+		},
+	)
+}
+
 func TestDeletion_Case7(t *testing.T) {
 	reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPApplication, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01"}},
 		TestData{
-			description: "With deletion triggered & provider tenant doesn't exist",
+			description: "With deletion triggered & no tenants exist",
 			initialResources: []string{
 				"testdata/common/domain-ready.yaml",
 				"testdata/common/cluster-domain-ready.yaml",

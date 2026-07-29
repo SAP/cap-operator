@@ -532,14 +532,15 @@ func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alp
 	}
 
 	if !ca.IsServicesOnly() {
-		// delete CAPTenants - return if found in this loop, to verify deletion
+		// check fot CAPTenants - return if any are found in this loop.
+		// This is to confirm that the user has deleted all tenants before deleting the CAPApplication.
 		var tenantFound bool
-		util.LogInfo("Deleting dependent tenants", string(Deleting), ca, nil)
-		if tenantFound, err = c.deleteTenants(ctx, ca); tenantFound || err != nil {
+		util.LogInfo("Checking dependent tenants", string(Deleting), ca, nil)
+		if tenantFound, err = c.checkTenants(ca); tenantFound || err != nil {
 			if tenantFound {
-				return NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 10*time.Second), nil
+				return NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 20*time.Second), nil
 			}
-			util.LogError(err, "Could not delete dependent tenant", string(Deleting), ca, nil)
+			util.LogError(err, "Error checking tenants", string(Deleting), ca, nil)
 			return nil, err
 		}
 	}
@@ -562,22 +563,22 @@ func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alp
 	return nil, nil
 }
 
-func (c *Controller) deleteTenants(ctx context.Context, ca *v1alpha1.CAPApplication) (bool, error) {
+func (c *Controller) checkTenants(ca *v1alpha1.CAPApplication) (bool, error) {
 	tenants, err := c.getRelevantTenantsForCA(ca)
 	if err != nil {
 		return false, err
 	}
 
-	// delete tenants - if not triggered yet
-	for _, tenant := range tenants {
-		if tenant.DeletionTimestamp == nil {
-			if err = c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Delete(ctx, tenant.Name, metav1.DeleteOptions{}); err != nil {
-				return true, err
-			}
-		}
+	tenantsExist := len(tenants) > 0
+
+	if tenantsExist {
+		util.LogInfo("Dependent tenants found", string(Deleting), ca, nil, "tenantCount", len(tenants))
+		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateDeleting, metav1.ConditionFalse, "TenantsExist", "Delete all tenants (e.g. by unsubscribing to the app) before deleting this application")
+	} else {
+		util.LogInfo("No dependent tenants found, proceeding with deletion", string(Deleting), ca, nil)
 	}
 
-	return len(tenants) > 0, nil
+	return tenantsExist, nil
 }
 
 func (c *Controller) prepareCAPApplication(ca *v1alpha1.CAPApplication) (update bool) {
