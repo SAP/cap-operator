@@ -1,9 +1,9 @@
 apiVersion: sme.sap.com/v1alpha1
 kind: CAPApplication
 metadata:
+  deletionTimestamp: "2022-03-22T13:24:38Z"
   finalizers:
     - sme.sap.com/capapplication
-  deletionTimestamp: "2022-03-22T13:24:38Z"
   generation: 2
   name: test-cap-01
   namespace: default
@@ -36,12 +36,7 @@ spec:
     subDomain: my-provider
     tenantId: tenant-id-for-provider
 status:
-  state: Deleting
-  domainSpecHash: '{"ClusterDomain.test-cap-01-secondary":"foo.bar.local","Domain.default.test-cap-01-primary":"app-domain.test.local"}'
-  observedSubdomains:
-  - my-consumer
-  - my-provider
-  observedGeneration: 2
+  state: "Deleting"
   conditions:
     - type: Ready
       reason: TenantsExist
