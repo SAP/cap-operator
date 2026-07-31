@@ -79,6 +79,10 @@ controller:
   volumes: []
   # -- Optionally specify list of additional volumeMounts for the controller container(s)
   volumeMounts: []
+  # -- Override the cert manager type (e.g. "gardener" or "cert-manager.io"); if empty, auto-detected via API capabilities
+  certManager: ""
+  # -- Override the DNS manager type (e.g. "gardener" or "kubernetes"); if empty, auto-detected via API capabilities
+  dnsManager: ""
   # -- The dns target mentioned on the public ingress gateway service used in the cluster
   dnsTarget: ""
   # -- Optionally enable detailed opertational metrics for the controller by setting this to true
