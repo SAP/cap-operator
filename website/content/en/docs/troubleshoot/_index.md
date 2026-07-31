@@ -70,8 +70,32 @@ Use `@sap/approuter` version `14.x.x` or higher.
 
 ### CAP Operator resources cannot be deleted
 
-All custom resources (CRs) created by CAP Operator are protected with `finalizers` to ensure proper cleanup. For example, when deleting a `CAPApplication`, all existing tenants are automatically deprovisioned to avoid inconsistencies. Once deprovisioning completes, the corresponding CRs are removed automatically. The provider `CAPTenant` resource cannot be deleted before the associated `CAPApplication` is deleted or the `provider` section is deleted from the `CAPApplication` specification.
+All custom resources (CRs) created by CAP Operator are protected with `finalizers` to ensure proper cleanup. The provider `CAPTenant` resource can be manually deleted after removing the `provider` section from the `CAPApplication` specification.
+
+**As of version 0.34.0**, when a `CAPApplication` is deleted, it enters a `Deleting` state and waits until all existing `CAPTenant` resources are removed before proceeding. Consumer tenants must be cleaned up by unsubscribing from the application (via the SAP BTP cockpit or SaaS Provisioning service APIs), and the provider tenant must be deleted manually (by removing the `provider` section from the `CAPApplication` spec or deleting the `CAPApplication`). Once all tenants are removed, the deletion of the `CAPApplication` and its remaining child resources proceeds automatically.
+
+Prior to version 0.34.0, deleting a `CAPApplication` automatically triggered deprovisioning of all existing tenants.
 
 > **Important**: CAP Operator requires the Secrets from service instances and bindings to exist for the entire lifecycle of the application. Removing service instances, bindings, or their Secrets from the cluster while CAP application CRs still exist will leave orphaned resources (and potentially orphaned database data), and recovery from such inconsistent states may not be possible.
 >
 > This situation can easily occur when using `helm uninstall`, since the deletion order of resources is not configurable. Ensure that Secrets from service instances and bindings are not deleted before all CAP application resources that depend on them are fully removed.
+
+### CAPApplication is stuck with reason "WaitingForSecrets"
+
+A `CAPApplication` resource in `WaitingForSecrets` state indicates that one or more Secrets referenced under `spec.btp.services` are not present in the cluster. CAP Operator itself cannot resolve this condition — the Secrets are owned and created by an external operator (for instance, the [SAP BTP Service Operator](https://github.com/SAP/sap-btp-service-operator)).
+
+To investigate, inspect the custom resources responsible for creating the missing Secrets — typically `ServiceInstance` and `ServiceBinding` resources of the BTP service operator (or whichever operator manages service bindings in your cluster) — and check their status for errors or failed conditions that may explain why the Secret has not been created.
+
+### Tenant operations or other jobs/pods fail with SAP HANA connection errors
+
+If `CAPTenantOperation` jobs or other pods fail with errors indicating connection problems with SAP HANA, the issue is outside the scope of CAP Operator. Check the following on the consumer side:
+
+- **Entitlements**: Ensure the subaccount has the required entitlements for SAP HANA Cloud/schema.
+- **Connection configuration**: Verify that the HANA instance is configured to allow inbound connections from the Kubernetes cluster (for example, IP allowlist / allowed connections settings in the HANA Cloud configuration).
+- **Cluster-to-subaccount mapping**: SAP HANA Cloud requires the Kubernetes cluster to be explicitly mapped to the environment context where the HANA instance runs. This mapping must be done per cluster and can optionally be scoped to a specific namespace. See the [SAP HANA Cloud Administration Guide — Map SAP HANA Database to Another Environment Context](https://help.sap.com/docs/hana-cloud/sap-hana-cloud-administration-guide/map-sap-hana-database-to-another-environment-context?ai=true) for instructions.
+
+### Controller memory limits on clusters with a large number of Secrets
+
+CAP Operator relies on a global informer cache that watches Secrets across the entire cluster. It does not currently support namespace-scoped caching or excluding namespaces to limit the set of Secrets held in memory. On clusters with a large number of Secrets, the controller pod may consume significant memory.
+
+If the controller pod is being OOM-killed or is showing high memory usage, increase the memory limit of the CAP Operator controller workload in your Helm values to accommodate the full set of cluster Secrets cached at runtime.

@@ -2349,6 +2349,30 @@ Kubernetes core/v1.RestartPolicy
 <p>Restart policy for the Pod. See: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy</a></p>
 </td>
 </tr>
+<tr>
+<td>
+<code>terminationGracePeriodSeconds</code><br/>
+<em>
+int64
+</em>
+</td>
+<td>
+<p>Optional duration in seconds the pod needs to terminate gracefully. See: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-flow">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-flow</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lifecycle</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Lifecycle">
+Kubernetes core/v1.Lifecycle
+</a>
+</em>
+</td>
+<td>
+<p>Optional actions that the management system should take in response to container lifecycle events. See: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination</a></p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha1.DNSMode">DNSMode
@@ -4058,5 +4082,5 @@ If not specified, CAP Operator will not attempt to create a ServiceMonitor for t
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>908e7b6</code>.
+on git commit <code>169d972</code>.
 </em></p>

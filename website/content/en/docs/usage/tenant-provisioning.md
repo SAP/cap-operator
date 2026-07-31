@@ -133,3 +133,18 @@ This behavior aligns with the implementation in the [`@sap/approuter`](https://w
 When a tenant unsubscribes from the application, the subscription server receives the request, validates the existence and status of the `CAPTenant`, and submits a deletion request to the Kubernetes API server.
 
 The controller identifies the pending deletion but defers it until a `CAPTenantOperation` of type `deprovisioning` is created and completes successfully. The `CAPTenantOperation` creates the corresponding Jobs (steps) that execute the tenant deprovisioning.
+
+### CAPApplication Deletion
+
+**As of version 0.34.0**, deleting a `CAPApplication` does **not** automatically deprovision existing tenants. Instead, the `CAPApplication` enters a `Deleting` state and its deletion is blocked until all associated `CAPTenant` resources have been removed.
+
+Before a `CAPApplication` can be fully deleted:
+
+- All **consumer tenants** must be removed by unsubscribing from the application (via the SAP BTP cockpit or SaaS Provisioning service APIs), which triggers the normal deprovisioning flow for each tenant.
+- The **provider tenant** `CAPTenant` resource can be manually deleted after removing the `provider` section from the `CAPApplication` specification.
+
+Once all tenants are cleaned up, the operator proceeds to delete the remaining child resources (`CAPApplicationVersion` instances and other CRs) and completes the `CAPApplication` deletion.
+
+{{% alert color="warning" title="Warning" %}}
+Prior to version 0.34.0, deleting a `CAPApplication` automatically triggered deprovisioning of all existing tenants. If you are upgrading from an earlier version, be aware of this change in behavior.
+{{% /alert %}}
