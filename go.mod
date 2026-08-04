@@ -3,11 +3,11 @@ module github.com/sap/cap-operator
 go 1.26.5
 
 require (
-	github.com/MicahParks/jwkset v0.11.2
+	github.com/MicahParks/jwkset v0.11.3
 	github.com/MicahParks/keyfunc/v3 v3.8.1
 	github.com/cert-manager/cert-manager v1.21.1
-	github.com/gardener/cert-management v0.26.0
-	github.com/gardener/cert-management/pkg/apis v0.26.1
+	github.com/gardener/cert-management v0.27.0
+	github.com/gardener/cert-management/pkg/apis v0.27.0
 	github.com/gardener/external-dns-management v0.48.0
 	github.com/go-logr/logr v1.4.4
 	github.com/go-logr/zapr v1.3.0
@@ -42,7 +42,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
-	github.com/gardener/gardener/pkg/apis v1.147.2 // indirect
+	github.com/gardener/gardener/pkg/apis v1.148.0 // indirect
 	github.com/go-openapi/jsonpointer v1.0.0 // indirect
 	github.com/go-openapi/jsonreference v1.0.0 // indirect
 	github.com/go-openapi/swag v0.28.0 // indirect
@@ -83,7 +83,7 @@ require (
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260729162451-8efbd57d26e0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260803160001-6ac0973c030d // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/apiextensions-apiserver v0.36.3 // indirect
