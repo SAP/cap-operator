@@ -350,9 +350,9 @@ func (c *Controller) validateSecrets(ca *v1alpha1.CAPApplication) (bool, error) 
 	}
 
 	// waiting for secrets
-	message := fmt.Sprintf("waiting for secrets to get ready for %s %s.%s", v1alpha1.CAPApplicationKind, ca.Name, ca.Namespace)
+	message := fmt.Sprintf("waiting for secrets to get ready for %s %s.%s; %s", v1alpha1.CAPApplicationKind, ca.Name, ca.Namespace, err.Error())
 
-	util.LogInfo("Waiting for secrets", string(Processing), ca, nil)
+	util.LogInfo(message, string(Processing), ca, nil)
 	c.Event(ca, nil, corev1.EventTypeWarning, CAPApplicationEventMissingSecrets, EventActionProcessingSecrets, message)
 	ca.SetStatusWithReadyCondition(ca.Status.State, metav1.ConditionFalse, EventActionProcessingSecrets, message)
 	return true, nil

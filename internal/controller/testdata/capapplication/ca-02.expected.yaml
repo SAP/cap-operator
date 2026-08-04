@@ -37,7 +37,7 @@ spec:
 status:
   conditions:
     - reason: ProcessingSecrets
-      message: waiting for secrets to get ready for CAPApplication test-cap-01.default
+      message: 'waiting for secrets to get ready for CAPApplication test-cap-01.default; secret "cap-cap-01-uaa-bind-cf" not found'
       observedGeneration: 2
       status: "False"
       type: Ready

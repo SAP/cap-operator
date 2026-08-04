@@ -112,7 +112,7 @@ func (c *Controller) handleCAPApplicationVersion(ctx context.Context, cav *v1alp
 	if err != nil {
 		// Requeue after 10s to check if secrets exist
 		util.LogInfo("Missing secrets; check again if the required secrets exists after 10 seconds", string(Processing), cav, nil, "version", cav.Spec.Version)
-		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second), c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "WaitingForSecrets"})
+		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second), c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "WaitingForSecrets", Message: err.Error()})
 	}
 
 	// If Valid secrets exists proceed with processing deployment
