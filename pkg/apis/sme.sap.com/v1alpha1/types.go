@@ -88,7 +88,6 @@ type CAPApplicationList struct {
 }
 
 // CAPApplicationSpec defines the desired state of CAPApplication
-// +kubebuilder:validation:AtLeastOneOf=globalAccountId;providerSubaccountId
 type CAPApplicationSpec struct {
 	// Reference to `Domain` resources used by the application
 	DomainRefs []DomainRef `json:"domainRefs,omitempty"`
@@ -97,8 +96,8 @@ type CAPApplicationSpec struct {
 	// Deprecated: SAP BTP Global Account Identifier where services are entitled for the current application
 	// Will be removed soon, use ProviderSubaccountId instead
 	GlobalAccountId string `json:"globalAccountId,omitempty"`
-	// The subaccount ID in which the application is provided (will soon replace GlobalAccountId)
-	ProviderSubaccountId string `json:"providerSubaccountId,omitempty"`
+	// The subaccount ID in which the application is provided
+	ProviderSubaccountId string `json:"providerSubaccountId"`
 	// Short name for the application (BTP XSAPPNAME)
 	BTPAppName string `json:"btpAppName"`
 	// Deprecated: Provider subaccount where application services are created

@@ -34,17 +34,17 @@ import (
 )
 
 const (
-	caCroName          = "ca-test-name"
-	providerSubDomain  = "provider-subdomain"
-	consumerSubDomain  = "consumer-subdomain"
-	providerTenantId   = "provider-tenant-id"
-	consumerTenantId   = "consumer-tenant-id"
-	cavCroName         = "cav-test-name"
-	btpApplicationName = "some-app-name"
-	globalAccountId    = "global-id-test"
-	primaryDomain      = "app.sme.sap.com"
-	secondaryDomain    = "sec.sme.sap.com"
-	defaultVersion     = "0.0.1"
+	caCroName            = "ca-test-name"
+	providerSubDomain    = "provider-subdomain"
+	consumerSubDomain    = "consumer-subdomain"
+	providerTenantId     = "provider-tenant-id"
+	consumerTenantId     = "consumer-tenant-id"
+	cavCroName           = "cav-test-name"
+	btpApplicationName   = "some-app-name"
+	providerSubaccountId = "provider-id-test"
+	primaryDomain        = "app.sme.sap.com"
+	secondaryDomain      = "sec.sme.sap.com"
+	defaultVersion       = "0.0.1"
 )
 
 type ingressResources struct {
@@ -86,8 +86,8 @@ func createCaCRO(name string, withFinalizer bool) *v1alpha1.CAPApplication {
 					},
 				},
 			},
-			GlobalAccountId: globalAccountId,
-			BTPAppName:      btpApplicationName,
+			ProviderSubaccountId: providerSubaccountId,
+			BTPAppName:           btpApplicationName,
 			Provider: &v1alpha1.BTPTenantIdentification{
 				SubDomain: providerSubDomain,
 				TenantId:  providerTenantId,

@@ -4,9 +4,9 @@ metadata:
   finalizers:
     - sme.sap.com/capapplication
   annotations:
-    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+    sme.sap.com/app-identifier: pro-subacc-id.test-cap-01
   labels:
-    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/app-identifier-hash: 8de67d2d3734797789af01ba68df94b31dda0357
   name: test-ca-01
   namespace: default
   resourceVersion: "11373799"
@@ -32,4 +32,4 @@ spec:
     name: test-cap-01-primary
   - kind: ClusterDomain
     name: test-cap-01-secondary
-  globalAccountId: btp-glo-acc-id
+  providerSubaccountId: pro-subacc-id

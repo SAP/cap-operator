@@ -20,7 +20,6 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/selection"
 )
 
 const (
@@ -44,6 +43,13 @@ func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem
 		return nil, handleOperatorResourceErrors(err)
 	}
 	ca := cached.DeepCopy()
+
+	// Set Error state and return when there is no ProviderSubaccountId
+	if ca.Spec.ProviderSubaccountId == "" {
+		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "MissingProviderSubaccountId", "set providerSubaccountId and restart CAP Operator controller to be able to use this app")
+		c.updateCAPApplicationStatus(ctx, ca)
+		return
+	}
 
 	// prepare annotations, labels, finalizers
 	if c.prepareCAPApplication(ca) {
@@ -363,40 +369,15 @@ func (c *Controller) getRelevantTenantsForCA(ca *v1alpha1.CAPApplication) ([]*v1
 	if ca.IsServicesOnly() {
 		return []*v1alpha1.CAPTenant{}, nil
 	}
-	migratedTenantLabels := map[string]string{}
-	migratedTenants := []*v1alpha1.CAPTenant{}
-	if ca.Spec.ProviderSubaccountId != "" {
-		migratedTenantLabels[LabelAppIdHash] = sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
+	tenantLabels := map[string]string{}
+	tenantLabels[LabelAppIdHash] = sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
 
-		migratedTenantsSelector, err := labels.ValidatedSelectorFromSet(migratedTenantLabels)
-		if err != nil {
-			return nil, err
-		}
-		migratedTenants, err = c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(ca.Namespace).List(migratedTenantsSelector)
-		if err != nil {
-			return nil, err
-		}
+	tenantsSelector, err := labels.ValidatedSelectorFromSet(tenantLabels)
+	if err != nil {
+		return nil, err
 	}
+	return c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(ca.Namespace).List(tenantsSelector)
 
-	// TODO: Directly return above and delete this code in upcoming releases (once providerSubaccountId is made mandatory)
-	var err error
-	oldTenants := []*v1alpha1.CAPTenant{}
-	oldTenantLabels := map[string]string{}
-	if ca.Spec.GlobalAccountId != "" {
-		oldTenantLabels[LabelBTPApplicationIdentifierHash] = sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName)
-
-		oldTenantsSelector, err := labels.ValidatedSelectorFromSet(oldTenantLabels)
-		if err != nil {
-			return nil, err
-		}
-		noMigratedLabelReq, _ := labels.NewRequirement(LabelAppIdHash, selection.DoesNotExist, nil)
-		oldTenantsSelector.Add(*noMigratedLabelReq)
-
-		// Get old tenants - ones that aren't migrated and only have the old labels
-		oldTenants, err = c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(ca.Namespace).List(oldTenantsSelector)
-	}
-
-	return append(migratedTenants, oldTenants...), err
 }
 
 func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (bool, error) {
@@ -439,11 +420,6 @@ func (c *Controller) createProviderTenant(ctx context.Context, ca *v1alpha1.CAPA
 		LabelTenantId: ca.Spec.Provider.TenantId,
 	}
 
-	if providerSubaccountId == "" {
-		// If no provider subaccount id annotation is found use provider tenantId that is needed because some cds / hana APIs seem to rely on this field instead of tenantId!
-		providerSubaccountId = ca.Spec.Provider.TenantId
-	}
-
 	globalAccountGUID := ca.Spec.GlobalAccountId
 	if globalAccountGUID == "" {
 		globalAccountGUID = ca.Annotations[AnnotationGlobalAccountId]
@@ -481,11 +457,8 @@ func (c *Controller) createProviderTenant(ctx context.Context, ca *v1alpha1.CAPA
 		LabelTenantType: TenantTypeProvider,
 		LabelTenantId:   ca.Spec.Provider.TenantId,
 	}
-	if ca.Spec.ProviderSubaccountId != "" {
-		labels[LabelAppIdHash] = sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
-	} else {
-		labels[LabelBTPApplicationIdentifierHash] = sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName)
-	}
+
+	labels[LabelAppIdHash] = sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
 
 	if tenant, err = c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Create(
 		ctx, &v1alpha1.CAPTenant{
@@ -596,7 +569,6 @@ func (c *Controller) prepareCAPApplication(ca *v1alpha1.CAPApplication) (update 
 
 	// add Label/Annotation for BTP App
 	appMetadata := appMetadataIdentifiers{
-		globalAccountId:      ca.Spec.GlobalAccountId,
 		providerSubaccountId: ca.Spec.ProviderSubaccountId,
 		appName:              ca.Spec.BTPAppName,
 	}
@@ -726,12 +698,8 @@ func (c *Controller) addApplicationResourcesToReconcileResult(ca *v1alpha1.CAPAp
 
 // Collect service operation metrics based on the status of the CAV
 func collectServiceOperationMetrics(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, err error) {
-	appIdHash := ""
-	if ca.Spec.ProviderSubaccountId != "" {
-		appIdHash = cav.Labels[LabelAppIdHash]
-	} else {
-		appIdHash = cav.Labels[LabelBTPApplicationIdentifierHash]
-	}
+	appIdHash := ca.Labels[LabelAppIdHash]
+
 	// Collect/Increment overall completed service operation metrics
 	ServiceOperations.WithLabelValues(appIdHash).Inc()
 

@@ -41,11 +41,10 @@ const (
 )
 
 const (
-	LabelBTPApplicationIdentifierHash = "sme.sap.com/btp-app-identifier-hash"
-	LabelAppIdHash                    = "sme.sap.com/app-identifier-hash"
-	LabelTenantId                     = "sme.sap.com/btp-tenant-id"
-	LabelTenantType                   = "sme.sap.com/tenant-type"
-	MetadataSubscriptionGUID          = "sme.sap.com/subscription-guid"
+	LabelAppIdHash           = "sme.sap.com/app-identifier-hash"
+	LabelTenantId            = "sme.sap.com/btp-tenant-id"
+	LabelTenantType          = "sme.sap.com/tenant-type"
+	MetadataSubscriptionGUID = "sme.sap.com/subscription-guid"
 )
 
 const (
@@ -186,7 +185,7 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 	var smsData *util.SmsCredentials
 
 	// Check if CAPApplication instance for the given btpApp exists
-	ca, err := s.checkCAPApp(reqInfo.payload.globalAccountId, reqInfo.payload.providerSubaccountId, reqInfo.payload.appName)
+	ca, err := s.checkCAPApp(reqInfo.payload.providerSubaccountId, reqInfo.payload.appName)
 	if err != nil {
 		util.LogError(err, ErrorOccurred, TenantProvisioning, ca, nil)
 		return &Result{Tenant: nil, Message: err.Error()}
@@ -210,7 +209,7 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 	}
 
 	// Check if A CRO for CAPTenant already exists
-	tenant := s.getTenantByAppIdentifier(ca.Spec.GlobalAccountId, ca.Spec.ProviderSubaccountId, reqInfo.payload.appName, reqInfo.payload.tenantId, ca.Namespace, TenantProvisioning).Tenant
+	tenant := s.getTenantByAppIdentifier(ca.Spec.ProviderSubaccountId, reqInfo.payload.appName, reqInfo.payload.tenantId, ca.Namespace, TenantProvisioning).Tenant
 
 	// If the resource doesn't exist, we'll create it
 	if tenant == nil {
@@ -435,7 +434,7 @@ func (s *SubscriptionHandler) updateSecret(tenant *v1alpha1.CAPTenant, secret *c
 	return err
 }
 
-func (s *SubscriptionHandler) getTenantByAppIdentifier(globalAccountGUID, providerSubaccountId, btpAppName, tenantId, namespace, step string) (result *Result) {
+func (s *SubscriptionHandler) getTenantByAppIdentifier(providerSubaccountId, btpAppName, tenantId, namespace, step string) (result *Result) {
 	tenantLabels := map[string]string{
 		LabelTenantId: tenantId,
 	}
@@ -443,12 +442,7 @@ func (s *SubscriptionHandler) getTenantByAppIdentifier(globalAccountGUID, provid
 	labelsMaps := maps.Clone(tenantLabels)
 	labelsMaps[LabelAppIdHash] = sha1Sum(providerSubaccountId, btpAppName)
 
-	if result = s.getTenantByLabels(labelsMaps, namespace, step, "getTenantByAppIdentifier"); result.Tenant == nil {
-		oldLabelsMap := maps.Clone(tenantLabels)
-		oldLabelsMap[LabelBTPApplicationIdentifierHash] = sha1Sum(globalAccountGUID, btpAppName)
-		result = s.getTenantByLabels(oldLabelsMap, namespace, step, "getTenantByAppIdentifier")
-	}
-	return
+	return s.getTenantByLabels(labelsMaps, namespace, step, "getTenantByAppIdentifier")
 }
 
 func (s *SubscriptionHandler) getTenantBySubscriptionGUID(subscriptionGUID, tenantId, step string) *Result {
@@ -509,14 +503,14 @@ func (s *SubscriptionHandler) DeleteTenant(reqInfo *RequestInfo) *Result {
 			return &Result{Tenant: nil, Message: err.Error()}
 		}
 	} else if reqInfo.subscriptionType == SaaS {
-		ca, err = s.checkCAPApp(reqInfo.payload.globalAccountId, reqInfo.payload.providerSubaccountId, reqInfo.payload.appName)
+		ca, err = s.checkCAPApp(reqInfo.payload.providerSubaccountId, reqInfo.payload.appName)
 		if err != nil {
 			util.LogError(err, "CAPApplication not found", TenantDeprovisioning, tenant, nil)
 			return &Result{Tenant: nil, Message: TenantNotFound}
 		}
 		// if tenant is not found in SaaS subscription scenario, check if it exists by btpApp identifier to handle cases where tenant was created without subscriptionGUID
 		util.LogInfo("Tenant not found by subscriptionGUID, checking by BTP app identifier", TenantDeprovisioning, "DeleteTenant", nil, "subscriptionGUID", reqInfo.payload.subscriptionGUID)
-		tenant = s.getTenantByAppIdentifier(ca.Spec.GlobalAccountId, ca.Spec.ProviderSubaccountId, reqInfo.payload.appName, reqInfo.payload.tenantId, metav1.NamespaceAll, TenantDeprovisioning).Tenant
+		tenant = s.getTenantByAppIdentifier(ca.Spec.ProviderSubaccountId, reqInfo.payload.appName, reqInfo.payload.tenantId, metav1.NamespaceAll, TenantDeprovisioning).Tenant
 	}
 
 	if tenant == nil {
@@ -570,24 +564,10 @@ func (s *SubscriptionHandler) authorizationCheck(headerDetails *requestHeaderDet
 	return
 }
 
-func (s *SubscriptionHandler) checkCAPApp(globalAccountId, providerSubaccountId, btpAppName string) (*v1alpha1.CAPApplication, error) {
+func (s *SubscriptionHandler) checkCAPApp(providerSubaccountId, btpAppName string) (*v1alpha1.CAPApplication, error) {
 	// First try to find CAPApplication by providerSubaccountId (appIdHash)
 	labelSelector, _ := labels.ValidatedSelectorFromSet(map[string]string{
 		LabelAppIdHash: sha1Sum(providerSubaccountId, btpAppName),
-	})
-
-	ca, err := s.getAppByLabelSelector(labelSelector)
-	if err != nil && err.Error() != ResourceNotFound {
-		return nil, err
-	}
-
-	if ca != nil {
-		return ca, nil
-	}
-
-	// If no CAPApplication is found by providerSubaccountId, try to find by globalAccountId (btpAppIdentifierHash) to cover previous cases where appIdHash label might not be present
-	labelSelector, _ = labels.ValidatedSelectorFromSet(map[string]string{
-		LabelBTPApplicationIdentifierHash: sha1Sum(globalAccountId, btpAppName),
 	})
 
 	return s.getAppByLabelSelector(labelSelector)
@@ -1224,7 +1204,7 @@ func (s *SubscriptionHandler) getDependencies(req *http.Request, subscriptionTyp
 
 	util.LogInfo("Get dependencies request received", GetDependencies, nil, nil, "subscriptionType", subscriptionType, "providerSubaccountId", providersubaccountId, "btpAppName", appName)
 
-	ca, err := s.checkCAPApp("", providersubaccountId, appName)
+	ca, err := s.checkCAPApp(providersubaccountId, appName)
 	if err != nil {
 		util.LogError(err, "CAPApplication not found for providerSubaccountId and appName", GetDependencies, nil, nil, "providerSubaccountId", providersubaccountId, "btpAppName", appName)
 		return nil, err

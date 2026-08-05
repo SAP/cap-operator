@@ -19,7 +19,7 @@ type CAPApplicationSpecApplyConfiguration struct {
 	// Deprecated: SAP BTP Global Account Identifier where services are entitled for the current application
 	// Will be removed soon, use ProviderSubaccountId instead
 	GlobalAccountId *string `json:"globalAccountId,omitempty"`
-	// The subaccount ID in which the application is provided (will soon replace GlobalAccountId)
+	// The subaccount ID in which the application is provided
 	ProviderSubaccountId *string `json:"providerSubaccountId,omitempty"`
 	// Short name for the application (BTP XSAPPNAME)
 	BTPAppName *string `json:"btpAppName,omitempty"`

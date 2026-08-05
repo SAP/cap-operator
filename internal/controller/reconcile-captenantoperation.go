@@ -408,7 +408,6 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 		imagePullSecrets:     convertToLocalObjectReferences(relatedResources.CAPApplicationVersion.Spec.RegistrySecrets),
 		version:              relatedResources.CAPApplicationVersion.Spec.Version,
 		appName:              relatedResources.CAPApplication.Spec.BTPAppName,
-		globalAccountId:      relatedResources.CAPApplication.Spec.GlobalAccountId,
 		providerSubaccountId: relatedResources.CAPApplication.Spec.ProviderSubaccountId,
 		tenantType:           relatedResources.CAPTenant.Labels[LabelTenantType],
 	}
@@ -446,7 +445,6 @@ type jobCreateParams struct {
 	imagePullSecrets     []corev1.LocalObjectReference
 	version              string
 	appName              string
-	globalAccountId      string
 	providerSubaccountId string
 	providerTenantId     string
 	providerSubdomain    string
@@ -591,10 +589,6 @@ func addCAPTenantOperationLabels(ctop *v1alpha1.CAPTenantOperation, cat *v1alpha
 			ctop.Labels[LabelAppIdHash] = cat.Labels[LabelAppIdHash]
 			updated = true
 		}
-	} else if _, ok := ctop.Labels[LabelBTPApplicationIdentifierHash]; !ok {
-		// Add missing BTPApplicationIdentifierHash label
-		ctop.Labels[LabelBTPApplicationIdentifierHash] = cat.Labels[LabelBTPApplicationIdentifierHash]
-		updated = true
 	}
 
 	if _, ok := ctop.Labels[LabelTenantOperationType]; !ok {
@@ -619,7 +613,6 @@ func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation, step
 		{Name: EnvCAPOpTenantSubDomain, Value: string(ctop.Spec.SubDomain)},
 		{Name: EnvCAPOpTenantType, Value: params.tenantType},
 		{Name: EnvCAPOpAppName, Value: params.appName},
-		{Name: EnvCAPOpGlobalAccountId, Value: params.globalAccountId},
 	}
 
 	if params.providerSubaccountId != "" {
@@ -651,12 +644,7 @@ func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation, step
 
 // Collect tenant operation metrics based on the status of the tenant operation
 func collectTenantOperationMetrics(ctop *v1alpha1.CAPTenantOperation) {
-	relevantAppIdHash := ""
-	if _, ok := ctop.Labels[LabelAppIdHash]; ok {
-		relevantAppIdHash = ctop.Labels[LabelAppIdHash]
-	} else {
-		relevantAppIdHash = ctop.Labels[LabelBTPApplicationIdentifierHash]
-	}
+	relevantAppIdHash := ctop.Labels[LabelAppIdHash]
 
 	if isCROConditionReady(ctop.Status.GenericStatus) {
 		// Collect/Increment overall completed tenant operation metrics

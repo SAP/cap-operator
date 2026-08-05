@@ -14,7 +14,7 @@ metadata:
     sme.sap.com/tenant-operation-type: provisioning
     sme.sap.com/owner-generation: "2"
     sme.sap.com/owner-identifier-hash: a9df2080f99fd77b1b2c7e4cee1e1bff69498511
-    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/app-identifier-hash: 8de67d2d3734797789af01ba68df94b31dda0357
     sme.sap.com/cav-version: "5.6.7"
     sme.sap.com/tenant-type: consumer
     sme.sap.com/subscription-guid: 12abcde3-4f56-7f89-0edc-09876b54321a
