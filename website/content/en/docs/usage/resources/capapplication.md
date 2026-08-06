@@ -36,9 +36,9 @@ spec:
       - class: html5-apps-repo
         name: cap-html5-repo-runtime
         secret: cap-html5-rt-bind
-      - class: portal
-        name: cap-portal
-        secret: cap-portal-bind
+      - class: some-content-service
+        name: cap-some-content-service
+        secret: cap-some-content-service-bind
       - class: business-logging
         name: cap-business-logging
         secret: cap-business-logging-bind
