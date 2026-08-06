@@ -84,9 +84,9 @@ spec:
       - class: html5-apps-repo
         name: app-html5-repo-runtime
         secret: cap-app-01-html5-rt-bind-cf
-      - class: portal
-        name: app-portal
-        secret: cap-app-01-portal-bind-cf
+      - class: some-content-service
+        name: app-some-content-service
+        secret: cap-app-01-some-content-service-bind-cf
   domainRefs:
   - kind: Domain
     name: cap-app-01-primary # <-- reference to Domain resource in the same namespace
@@ -128,7 +128,7 @@ spec:
         - app-destination
         - app-saas-registry
         - app-html5-repo-runtime
-        - app-portal
+        - app-some-content-service
       deploymentDefinition:
         type: Router
         image: app.some.repo.example.com/approuter/approuter:0.0.1
@@ -141,7 +141,7 @@ spec:
       consumedBTPServices:
         - app-uaa
         - app-html5-repo-host
-        - app-portal
+        - app-some-content-service
       jobDefinition:
         type: Content
         image: app.some.repo.example.com/approuter/content:0.0.1

@@ -69,7 +69,7 @@ spec:
       consumedBTPServices:
         - app-uaa
         - app-html5-repo-host
-        - app-portal
+        - app-some-content-service
       jobDefinition:
         type: Content
         image: some.repo.example.com/cap-app/content:0.0.1
@@ -199,7 +199,7 @@ spec:
       consumedBTPServices:
         - app-uaa
         - app-html5-repo-host
-        - app-portal
+        - app-some-content-service
       jobDefinition:
         type: Content
         image: app.some.repo.example.com/approuter/content:0.0.1

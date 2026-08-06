@@ -42,7 +42,7 @@ spec:
         - app-destination
         - app-saas-registry
         - app-html5-repo-runtime
-        - app-portal
+        - app-some-content-service
       deploymentDefinition:
         type: Router
         image: app.some.repo.example.com/approuter/approuter:0.0.2
@@ -55,7 +55,7 @@ spec:
       consumedBTPServices:
         - app-uaa
         - app-html5-repo-host
-        - app-portal
+        - app-some-content-service
       jobDefinition:
         type: Content
         image: app.some.repo.example.com/approuter/content:0.0.2
