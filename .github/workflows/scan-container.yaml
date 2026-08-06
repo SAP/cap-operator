@@ -3,6 +3,7 @@ on:
 
   schedule:
     - cron:  '30 19 * * *'
+    - cron:  '30 7 * * *'
 
   workflow_dispatch:
     inputs:
@@ -29,7 +30,7 @@ jobs:
         with:
           image-ref: ghcr.io/sap/cap-operator/${{ matrix.workload }}:${{ inputs.version || 'latest' }}
           scanners: 'vuln'
-          version: 'v0.72.0'
+          version: 'v0.73.0'
           format: 'sarif'
           output: 'vuln-${{ matrix.workload }}.sarif'
 
@@ -42,6 +43,7 @@ jobs:
         uses: anchore/scan-action@v7
         with:
           fail-build: false
+          grype-version: v0.116.1
           image: ghcr.io/sap/cap-operator/${{ matrix.workload }}:${{ inputs.version || 'latest' }}
           output-file: 'vuln-grype-${{ matrix.workload }}.sarif'
 
