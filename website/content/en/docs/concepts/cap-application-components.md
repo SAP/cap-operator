@@ -27,4 +27,4 @@ The [Approuter](https://www.npmjs.com/package/@sap/approuter), or an extended ve
 
 ### SAP Fiori Applications
 
-Multiple SAP Fiori front-end applications can connect to the CAP application back end. These UI5 applications are deployed to the SAP HTML5 Application Repository service for SAP BTP and served from there. Similarly, the application can have content specific to other services that needs to be deployed, such as the SAP Cloud Portal service.
+Multiple SAP Fiori front-end applications can connect to the CAP application back end. These UI5 applications are deployed to the SAP HTML5 Application Repository service for SAP BTP and served from there. Similarly, the application can have content specific to other services that needs to be deployed.
