@@ -59,7 +59,7 @@ spec:
       - class: service-manager
         name: app-service-manager
         secret: cap-app-01-svc-man-bind-cf
-      # add destination, html5-apps-repo, portal, etc. as needed
+      # add destination, html5-apps-repo, other content services, etc. as needed
       # optionally control subscription dependency inclusion:
       # subscriptionDependency: Auto | Always | Never
   domainRefs:

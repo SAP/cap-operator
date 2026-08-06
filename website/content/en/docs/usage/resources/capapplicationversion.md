@@ -314,7 +314,7 @@ spec:
     - name: "service-content"
       consumedServices:
         - cap-uaa
-        - cap-portal
+        - cap-some-content-service
         - cap-html5-repo-host
       jobDefinition:
         type: Content
@@ -325,7 +325,7 @@ spec:
     - name: "ui-content"
       consumedServices:
         - cap-uaa
-        - cap-portal
+        - cap-some-content-service
         - cap-html5-repo-host
       jobDefinition:
         type: Content
