@@ -29,5 +29,5 @@ spec:
     name: test-cap-01-primary
   - kind: ClusterDomain
     name: test-cap-01-secondary
-  globalAccountId: btp-glo-acc-id
+  providerSubaccountId: pro-subacc-id
   provider: {}

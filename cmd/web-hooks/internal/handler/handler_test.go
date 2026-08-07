@@ -77,9 +77,9 @@ func createCaCRO(serviceOnlyScenario ...bool) *v1alpha1.CAPApplication {
 					Name: "secondaryDomain",
 				},
 			},
-			GlobalAccountId: "globalAccountId",
-			BTPAppName:      "btpApplicationName",
-			Provider:        provider,
+			ProviderSubaccountId: "providerSubaccountId",
+			BTPAppName:           "btpApplicationName",
+			Provider:             provider,
 			BTP: v1alpha1.BTP{
 				Services: []v1alpha1.ServiceInfo{
 					{

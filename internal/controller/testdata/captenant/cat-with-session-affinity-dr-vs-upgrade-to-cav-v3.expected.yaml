@@ -5,10 +5,10 @@ metadata:
     - sme.sap.com/captenant
   generation: 2
   annotations:
-    sme.sap.com/btp-app-identifier: btp-glo-acc-id.test-cap-01
+    sme.sap.com/app-identifier: pro-subacc-id.test-cap-01
     sme.sap.com/owner-identifier: default.test-cap-01
   labels:
-    sme.sap.com/btp-app-identifier-hash: f20cc8aeb2003b3abc33f749a16bd53544b6bab2
+    sme.sap.com/app-identifier-hash: 8de67d2d3734797789af01ba68df94b31dda0357
     sme.sap.com/btp-tenant-id: tenant-id-for-provider
     sme.sap.com/owner-generation: "2"
     sme.sap.com/owner-identifier-hash: 1f74ae2fbff71a708786a4df4bb2ca87ec603581

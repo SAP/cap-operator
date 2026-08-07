@@ -134,11 +134,6 @@ func main() {
 
 				c := controller.NewController(coreClient, crdClient, istioClient, certClient, certManagerClient, dnsClient, promClient)
 
-				checkDR := make(chan bool, 1)
-				go checkDRs(checkDR, istioClient, crdClient)
-				<-checkDR
-				klog.InfoS("check & update of DestinationRules done")
-
 				migrateApp := make(chan bool, 1)
 				go migrateAppsAndSecrets(migrateApp, crdClient, coreClient)
 				<-migrateApp

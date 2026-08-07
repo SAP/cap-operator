@@ -227,13 +227,12 @@ func createCA() *v1alpha1.CAPApplication {
 			Name:      caName,
 			Namespace: v1.NamespaceDefault,
 			Labels: map[string]string{
-				LabelBTPApplicationIdentifierHash: sha1Sum(globalAccountId, appName),
-				LabelAppIdHash:                    sha1Sum(providerSubaccountId, appName),
+				LabelAppIdHash: sha1Sum(providerSubaccountId, appName),
 			},
 		},
 		Spec: v1alpha1.CAPApplicationSpec{
-			GlobalAccountId: globalAccountId,
-			BTPAppName:      appName,
+			ProviderSubaccountId: providerSubaccountId,
+			BTPAppName:           appName,
 			Provider: &v1alpha1.BTPTenantIdentification{
 				SubDomain: subDomain,
 				TenantId:  tenantId,
@@ -286,14 +285,14 @@ func createCA() *v1alpha1.CAPApplication {
 	}
 }
 
-func createCAT(ready bool, withGlobalTenantId ...bool) *v1alpha1.CAPTenant {
+func createCAT(ready bool, withProviderSubaccountId ...bool) *v1alpha1.CAPTenant {
 	cat := &v1alpha1.CAPTenant{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      catName,
 			Namespace: v1.NamespaceDefault,
 			Labels: map[string]string{
-				LabelBTPApplicationIdentifierHash: sha1Sum(globalAccountId, appName),
-				LabelTenantId:                     tenantId,
+				LabelAppIdHash: sha1Sum(providerSubaccountId, appName),
+				LabelTenantId:  tenantId,
 			},
 			Annotations: map[string]string{
 				AnnotationSubscriptionContextSecret: subscriptionContextSecretName,
@@ -307,7 +306,7 @@ func createCAT(ready bool, withGlobalTenantId ...bool) *v1alpha1.CAPTenant {
 			},
 		},
 	}
-	if withGlobalTenantId != nil && withGlobalTenantId[0] {
+	if withProviderSubaccountId != nil && withProviderSubaccountId[0] {
 		cat.ObjectMeta.Labels[MetadataSubscriptionGUID] = subscriptionGUID
 		cat.ObjectMeta.Annotations[MetadataSubscriptionGUID] = subscriptionGUID
 	}
@@ -913,15 +912,15 @@ func Test_sms_provisioning(t *testing.T) {
 
 func Test_deprovisioning(t *testing.T) {
 	tests := []struct {
-		name               string
-		method             string
-		createCROs         bool
-		existingTenant     bool
-		body               string
-		expectedStatusCode int
-		expectedResponse   Result
-		withSecretKey      bool
-		withGlobalTenantId bool
+		name                     string
+		method                   string
+		createCROs               bool
+		existingTenant           bool
+		body                     string
+		expectedStatusCode       int
+		expectedResponse         Result
+		withSecretKey            bool
+		withProviderSubaccountId bool
 	}{
 		{
 			name:               "Invalid Deprovisioning Request",
@@ -942,7 +941,7 @@ func Test_deprovisioning(t *testing.T) {
 			},
 		},
 		{
-			name:               "Deprovisioning Request valid without existing tenant)",
+			name:               "Deprovisioning Request valid without existing tenant",
 			method:             http.MethodDelete,
 			createCROs:         true,
 			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
@@ -963,13 +962,13 @@ func Test_deprovisioning(t *testing.T) {
 			},
 		},
 		{
-			name:               "Deprovisioning Request valid existing tenant having global tenant id",
-			method:             http.MethodDelete,
-			createCROs:         true,
-			existingTenant:     true,
-			withGlobalTenantId: true,
-			body:               `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
-			expectedStatusCode: http.StatusAccepted,
+			name:                     "Deprovisioning Request valid existing tenant having provider subaccount id",
+			method:                   http.MethodDelete,
+			createCROs:               true,
+			existingTenant:           true,
+			withProviderSubaccountId: true,
+			body:                     `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`,
+			expectedStatusCode:       http.StatusAccepted,
 			expectedResponse: Result{
 				Message: ResourceDeleted,
 			},
@@ -986,7 +985,7 @@ func Test_deprovisioning(t *testing.T) {
 				runtimeObjs = append(runtimeObjs, ca)
 			}
 			if testData.existingTenant {
-				cat = createCAT(false, testData.withGlobalTenantId)
+				cat = createCAT(false, testData.withProviderSubaccountId)
 				runtimeObjs = append(runtimeObjs, cat)
 			}
 

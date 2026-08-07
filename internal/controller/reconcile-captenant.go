@@ -604,7 +604,6 @@ func (c *Controller) getCAPApplicationVersionForTenantOperationType(ctx context.
 
 func addCAPTenantLabels(cat *v1alpha1.CAPTenant, ca *v1alpha1.CAPApplication) (updated bool) {
 	appMetadata := appMetadataIdentifiers{
-		globalAccountId:      ca.Spec.GlobalAccountId,
 		providerSubaccountId: ca.Spec.ProviderSubaccountId,
 		appName:              ca.Spec.BTPAppName,
 		ownerInfo: &ownerInfo{

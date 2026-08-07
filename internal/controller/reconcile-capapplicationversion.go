@@ -1069,7 +1069,6 @@ func getLabels(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion,
 
 func addCAPApplicationVersionLabels(cav *v1alpha1.CAPApplicationVersion, ca *v1alpha1.CAPApplication) (updated bool) {
 	appMetadata := appMetadataIdentifiers{
-		globalAccountId:      ca.Spec.GlobalAccountId,
 		providerSubaccountId: ca.Spec.ProviderSubaccountId,
 		appName:              ca.Spec.BTPAppName,
 		ownerInfo: &ownerInfo{
@@ -1243,11 +1242,8 @@ func (c *Controller) getRelevantTenantsForCAV(cav *v1alpha1.CAPApplicationVersio
 	ca, _ := c.getCachedCAPApplication(cav.Namespace, cav.Spec.CAPApplicationInstance)
 	if ca != nil {
 		tenantLabels := map[string]string{}
-		if ca.Spec.ProviderSubaccountId != "" {
-			tenantLabels[LabelAppIdHash] = sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
-		} else {
-			tenantLabels[LabelBTPApplicationIdentifierHash] = sha1Sum(ca.Spec.GlobalAccountId, ca.Spec.BTPAppName)
-		}
+		tenantLabels[LabelAppIdHash] = sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
+
 		// Get all tenants in the namespace for the CAPApplication
 		allTenants, _ := c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(cav.Namespace).List(labels.SelectorFromSet(tenantLabels))
 		// Filter out relevant tenants for the CAPApplicationVersion

@@ -30,11 +30,11 @@ func buildCA(name string, rolloutEnabled bool, services []v1alpha1.ServiceInfo) 
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
 			Labels: map[string]string{
-				LabelBTPApplicationIdentifierHash: sha1Sum(globalAccountId, btpApplicationName),
+				LabelAppIdHash: sha1Sum(providerSubaccountId, btpApplicationName),
 			},
 		},
 		Spec: v1alpha1.CAPApplicationSpec{
-			GlobalAccountId:           globalAccountId,
+			ProviderSubaccountId:      providerSubaccountId,
 			BTPAppName:                btpApplicationName,
 			RolloutOnCredentialUpdate: rolloutEnabled,
 			BTP: v1alpha1.BTP{
@@ -77,8 +77,8 @@ func buildReadyTenant(name, caName, cavName string) *v1alpha1.CAPTenant {
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
 			Labels: map[string]string{
-				LabelBTPApplicationIdentifierHash: sha1Sum(globalAccountId, btpApplicationName),
-				LabelTenantId:                     providerTenantId,
+				LabelAppIdHash: sha1Sum(providerSubaccountId, btpApplicationName),
+				LabelTenantId:  providerTenantId,
 			},
 		},
 		Spec: v1alpha1.CAPTenantSpec{
