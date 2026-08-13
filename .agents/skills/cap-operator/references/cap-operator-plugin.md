@@ -129,8 +129,15 @@ npx cap-op-plugin convert-to-configurable-template-chart --with-runtime-yaml cha
 | `capOperatorSubdomain` | Subdomain where CAP Operator is installed. Kyma default: `cap-op`. |
 | `clusterDomain` | Shoot/cluster domain. Kyma: `kubectl get gateway -n kyma-system kyma-gateway -o jsonpath='{.spec.servers[0].hosts[0]}'` |
 | `providerSubaccountId` | BTP provider subaccount ID. |
-| `hanaInstanceId` *(optional)* | Required only when multiple HANA instances exist in the subaccount. |
-| `imagePullSecret` *(optional)* | Kubernetes secret for private image registries. |
+
+**Optional inputs:**
+
+| Field | Description |
+|---|---|
+| `hanaInstanceId` | Required only when multiple HANA instances exist in the subaccount. |
+| `imagePullSecret` | Kubernetes secret for private image registries. |
+
+**Note:** `npx cap-op-plugin` requires `node_modules` to be present. If not already installed, run `npm install` first.
 
 **Interactive mode** — prompts for each value:
 
@@ -171,16 +178,18 @@ What gets written to `chart/runtime-values.yaml`:
 
 ## Deploying
 
-```sh
-helm upgrade -i -n <namespace> <release-name> <project-path>/chart \
-  -f <project-path>/chart/runtime-values.yaml
-```
-
-To pass `xs-security.json` as `jsonParameters` for the xsuaa service instance:
+If `values.yaml` includes an `xsuaa` service instance (the common case), use `--set-file` to pass `xs-security.json` as `jsonParameters`:
 
 ```sh
 helm upgrade -i -n <namespace> <release-name> <project-path>/chart \
   --set-file serviceInstances.xsuaa.jsonParameters=<project-path>/xs-security.json \
+  -f <project-path>/chart/runtime-values.yaml
+```
+
+If there is no xsuaa service instance:
+
+```sh
+helm upgrade -i -n <namespace> <release-name> <project-path>/chart \
   -f <project-path>/chart/runtime-values.yaml
 ```
 

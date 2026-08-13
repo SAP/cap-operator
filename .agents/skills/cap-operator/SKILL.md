@@ -131,6 +131,8 @@ The `@cap-js/cap-operator-plugin` CDS plugin scaffolds the Helm chart for a CAP 
 ```sh
 npm add @cap-js/cap-operator-plugin -D
 cds add cap-operator --with-templates   # default
+# ensure node_modules exists before running the plugin:
+npm install
 npx cap-op-plugin generate-runtime-values
 helm upgrade -i -n <namespace> <release-name> chart -f chart/runtime-values.yaml
 ```
