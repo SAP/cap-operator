@@ -70,9 +70,11 @@ Use `@sap/approuter` version `14.x.x` or higher.
 
 ### CAP Operator resources cannot be deleted
 
-All custom resources (CRs) created by CAP Operator are protected with `finalizers` to ensure proper cleanup. The provider `CAPTenant` resource can be manually deleted after removing the `provider` section from the `CAPApplication` specification.
+All custom resources (CRs) created by CAP Operator are protected with `finalizers` to ensure proper cleanup.
 
-**As of version 0.34.0**, when a `CAPApplication` is deleted, it enters a `Deleting` state and waits until all existing `CAPTenant` resources are removed before proceeding. Consumer tenants must be cleaned up by unsubscribing from the application (via the SAP BTP cockpit or SaaS Provisioning service APIs), and the provider tenant must be deleted manually (by removing the `provider` section from the `CAPApplication` spec or deleting the `CAPApplication`). Once all tenants are removed, the deletion of the `CAPApplication` and its remaining child resources proceeds automatically.
+The provider `CAPTenant` resource can also be manually deleted after removing the `provider` section from the `CAPApplication` specification.
+
+**As of version 0.34.0**, when a `CAPApplication` is deleted, it enters a `Deleting` state and waits until all existing `CAPTenant` resources are removed before proceeding. Consumer tenants must be cleaned up by unsubscribing from the application (via the SAP BTP cockpit or SaaS Provisioning service APIs); the provider tenant is automatically deleted. Once all tenants are removed, the deletion of the `CAPApplication` and its remaining child resources proceeds automatically.
 
 Prior to version 0.34.0, deleting a `CAPApplication` automatically triggered deprovisioning of all existing tenants.
 
