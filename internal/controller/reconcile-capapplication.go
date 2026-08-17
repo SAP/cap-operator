@@ -537,16 +537,28 @@ func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alp
 }
 
 func (c *Controller) checkTenants(ca *v1alpha1.CAPApplication) (bool, error) {
+	ignoredTenants := 0
 	tenants, err := c.getRelevantTenantsForCA(ca)
 	if err != nil {
 		return false, err
+	}
+
+	// Automatically delete the provider tenant on deleting CAPApplication.
+	for _, tenant := range tenants {
+		if tenantType, ok := tenant.Labels[LabelTenantType]; ok && tenantType == TenantTypeProvider {
+			c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Delete(context.TODO(), tenant.Name, metav1.DeleteOptions{})
+			ignoredTenants = 1
+			break
+		}
 	}
 
 	tenantsExist := len(tenants) > 0
 
 	if tenantsExist {
 		util.LogInfo("Dependent tenants found", string(Deleting), ca, nil, "tenantCount", len(tenants))
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateDeleting, metav1.ConditionFalse, "TenantsExist", "Delete all tenants (e.g. by unsubscribing to the app) before deleting this application")
+		if len(tenants) > ignoredTenants {
+			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateDeleting, metav1.ConditionFalse, "TenantsExist", "Delete all tenants (e.g. by unsubscribing to the app) before deleting this application")
+		}
 	} else {
 		util.LogInfo("No dependent tenants found, proceeding with deletion", string(Deleting), ca, nil)
 	}
