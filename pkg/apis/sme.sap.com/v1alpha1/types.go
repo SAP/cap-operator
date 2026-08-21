@@ -30,6 +30,10 @@ const (
 	DomainResource                = "domains"
 	ClusterDomainKind             = "ClusterDomain"
 	ClusterDomainResource         = "clusterdomains"
+	SubscriptionProviderKind      = "SubscriptionProvider"
+	SubscriptionProviderResource  = "subscriptionproviders"
+	SubscriptionKind              = "Subscription"
+	SubscriptionResource          = "subscriptions"
 )
 
 // +kubebuilder:resource:shortName=ca
@@ -914,3 +918,135 @@ type ClusterDomainList struct {
 	metav1.ListMeta `json:"metadata"`
 	Items           []ClusterDomain `json:"items"`
 }
+
+// +kubebuilder:resource:shortName=subpro
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="SubscriptionProvider",type="string",JSONPath=".spec.appName"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// SubscriptionProvider is the schema for subscriptionproviders API
+type SubscriptionProvider struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	// SubscriptionProvider spec
+	Spec SubscriptionProviderSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
+	// SubscriptionProvider status
+	Status SubscriptionProviderStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// SubscriptionProviderList contains a list of SubscriptionProvider
+type SubscriptionProviderList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []SubscriptionProvider `json:"items"`
+}
+
+type SubscriptionProviderSpec struct {
+	// Name of the application that is being subscribed to
+	AppName string `json:"appName"`
+	// Provider subaccount ID for the application that is being subscribed to
+	ProviderSubaccountID string `json:"providerSubaccountId"`
+	// The secret(s) containing the subscription credentials that are necessary to create a subscription for the application (Fetched from the same namespace as this resource).
+	SubscriptionInfo SubscriptionInfo `json:"subscriptionInfo"`
+}
+
+type SubscriptionInfo struct {
+	// Type of Subscription (subscription-manager / saas-registry)
+	Type string `json:"type"`
+	// Name of the Subscription Credential
+	SubscriptionSecret string `json:"subscriptionSecret"`
+	// Name of the Auth Credential (Optional)
+	AuthSecret string `json:"authSecret,omitempty"`
+}
+
+type SubscriptionProviderStatus struct {
+	GenericStatus `json:",inline"`
+	// State of the Domain
+	State SubscriptionProviderState `json:"state"`
+	// List of subscription dependencies discovered for the services specified in the spec
+	Dependencies string `json:"dependencies,omitempty"`
+}
+
+// +kubebuilder:validation:Enum="";Ready;Error;Processing;Deleting
+type SubscriptionProviderState string
+
+const (
+	SubscriptionProviderStateProcessing SubscriptionProviderState = "Processing"
+	SubscriptionProviderStateError      SubscriptionProviderState = "Error"
+	SubscriptionProviderStateDeleting   SubscriptionProviderState = "Deleting"
+	SubscriptionProviderStateReady      SubscriptionProviderState = "Ready"
+)
+
+// +kubebuilder:resource:shortName=sub
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="App",type="string",JSONPath=".spec.appName"
+// +kubebuilder:printcolumn:name="Guid",type="string",JSONPath=".spec.subscriptionGuid"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+// +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
+// +kubebuilder:printcolumn:name="Url",type="string",JSONPath=".status.url"
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// Subscription is the schema for subscriptions API
+type Subscription struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata"`
+	// SubscriptionProvider spec
+	Spec SubscriptionSpec `json:"spec"`
+	// +kubebuilder:validation:Optional
+	// SubscriptionProvider status
+	Status SubscriptionStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// SubscriptionList contains a list of Subscription
+type SubscriptionList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+	Items           []Subscription `json:"items"`
+}
+
+type SubscriptionSpec struct {
+	// Name of the application that is being subscribed to
+	AppName string `json:"appName"`
+	// Provider subaccount ID of the application that is being subscribed to (used to identify the owning CAPApplication)
+	ProviderSubaccountId string `json:"providerSubaccountId"`
+	// TenantId of the consumer subaccount subscribing to the application
+	TenantId string `json:"tenantId"`
+	// SubscriptionGuid of the subscription
+	SubscriptionGuid string `json:"subscriptionGuid"`
+	// Payload of the subscription request (JSON string).
+	SubscriptionRequestPayload string `json:"subscriptionRequestPayload"`
+}
+
+type SubscriptionStatus struct {
+	GenericStatus `json:",inline"`
+	// State of the Domain
+	State SubscriptionState `json:"state"`
+	// Tenant specific URL of the subscribed application
+	Url string `json:"url,omitempty"`
+}
+
+// +kubebuilder:validation:Enum="";Ready;Error;Processing;Deleting
+type SubscriptionState string
+
+const (
+	SubscriptionStateProcessing SubscriptionState = "Processing"
+	SubscriptionStateError      SubscriptionState = "Error"
+	SubscriptionStateDeleting   SubscriptionState = "Deleting"
+	SubscriptionStateReady      SubscriptionState = "Ready"
+)
+
+type SubscriptionStatusConditionType string
+
+const (
+	// Condition reflecting whether the owned CAPTenant is ready
+	ConditionTypeTenantReady SubscriptionStatusConditionType = "TenantReady"
+)

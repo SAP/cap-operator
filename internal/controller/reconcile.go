@@ -75,6 +75,7 @@ const (
 )
 
 const TenantTypeProvider = "provider"
+const TenantTypeConsumer = "consumer"
 
 const (
 	EnvCAPOpAppVersion           = "CAPOP_APP_VERSION"
