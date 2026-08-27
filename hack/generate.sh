@@ -23,7 +23,7 @@ if [ ! -f ./tmp/go.mod ]; then
   cd ..
 fi
 
-echo $(go get -modfile=./tmp/go.mod k8s.io/code-generator@latest)
+echo $(go get -modfile=./tmp/go.mod k8s.io/code-generator@master) # Use latest once the next release is available
 CODEGEN_PKG=$(go list -modfile=./tmp/go.mod -m -f {{.Dir}} k8s.io/code-generator)
 
 cd $(dirname "${BASH_SOURCE[0]}")/..

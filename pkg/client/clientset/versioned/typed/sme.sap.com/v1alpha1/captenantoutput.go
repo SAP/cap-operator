@@ -30,6 +30,7 @@ type CAPTenantOutputInterface interface {
 	Create(ctx context.Context, cAPTenantOutput *smesapcomv1alpha1.CAPTenantOutput, opts v1.CreateOptions) (*smesapcomv1alpha1.CAPTenantOutput, error)
 	Update(ctx context.Context, cAPTenantOutput *smesapcomv1alpha1.CAPTenantOutput, opts v1.UpdateOptions) (*smesapcomv1alpha1.CAPTenantOutput, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
+	DeleteWithResult(ctx context.Context, name string, opts v1.DeleteOptions) (v1.APIResult, error)
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
 	Get(ctx context.Context, name string, opts v1.GetOptions) (*smesapcomv1alpha1.CAPTenantOutput, error)
 	List(ctx context.Context, opts v1.ListOptions) (*smesapcomv1alpha1.CAPTenantOutputList, error)
