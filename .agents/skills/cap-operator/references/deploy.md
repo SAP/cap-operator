@@ -142,7 +142,7 @@ spec:
 
 ## Services-only applications (no multi-tenancy)
 
-Omit `TenantOperation` workloads from `CAPApplicationVersion` and omit `providerSubaccountId` from `CAPApplication`. No `CAPTenant` resources are created.
+Omit `TenantOperation` workloads from `CAPApplicationVersion` and omit `provider` from `CAPApplication`. No `CAPTenant` resources are created.
 
 > Note: the application mode (services-only vs. multi-tenant) cannot be changed after initial deployment.
 

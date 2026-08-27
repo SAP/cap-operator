@@ -136,12 +136,12 @@ The controller identifies the pending deletion but defers it until a `CAPTenantO
 
 ### CAPApplication Deletion
 
-**As of version 0.34.0**, deleting a `CAPApplication` does **not** automatically deprovision existing tenants. Instead, the `CAPApplication` enters a `Deleting` state and its deletion is blocked until all associated `CAPTenant` resources have been removed.
+**As of version 0.34.0**, deleting a `CAPApplication` does **not** automatically remove existing tenants. Instead, the `CAPApplication` enters a `Deleting` state and its deletion is blocked until all associated `CAPTenant` resources have been removed.
 
 Before a `CAPApplication` can be fully deleted:
 
-- All **consumer tenants** must be removed by unsubscribing from the application (via the SAP BTP cockpit or SaaS Provisioning service APIs), which triggers the normal deprovisioning flow for each tenant.
-- The **provider tenant** `CAPTenant` resource can be manually deleted after removing the `provider` section from the `CAPApplication` specification.
+- The **provider tenant** `CAPTenant` resource will be automatically deleted.
+- All **consumer tenants** must be removed by unsubscribing from the application (for e.g. via the SAP BTP cockpit or SaaS Provisioning service APIs), which triggers the normal deprovisioning flow for each tenant.
 
 Once all tenants are cleaned up, the operator proceeds to delete the remaining child resources (`CAPApplicationVersion` instances and other CRs) and completes the `CAPApplication` deletion.
 
