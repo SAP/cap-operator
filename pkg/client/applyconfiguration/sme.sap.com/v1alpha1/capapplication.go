@@ -18,7 +18,7 @@ import (
 //
 // CAPApplication is the schema for capapplications API
 type CAPApplicationApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	// CAPApplication spec
 	Spec *CAPApplicationSpecApplyConfiguration `json:"spec,omitempty"`

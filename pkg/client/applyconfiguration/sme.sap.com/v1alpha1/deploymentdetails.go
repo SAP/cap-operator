@@ -18,7 +18,7 @@ import (
 //
 // DeploymentDetails specifies the details of the Deployment
 type DeploymentDetailsApplyConfiguration struct {
-	CommonDetailsApplyConfiguration `json:",inline"`
+	CommonDetailsApplyConfiguration `json:""`
 	// Type of the Deployment
 	Type *smesapcomv1alpha1.DeploymentType `json:"type,omitempty"`
 	// Number of replicas

@@ -19,7 +19,7 @@ type CAPTenantSpecApplyConfiguration struct {
 	// Denotes to which CAPApplication the current tenant belongs
 	CAPApplicationInstance *string `json:"capApplicationInstance,omitempty"`
 	// Details of consumer sub-account subscribing to the application
-	BTPTenantIdentificationApplyConfiguration `json:",inline"`
+	BTPTenantIdentificationApplyConfiguration `json:""`
 	// Semver that is used to determine the relevant CAPApplicationVersion that a CAPTenant can be upgraded to (i.e. if it is not already on that version)
 	Version *string `json:"version,omitempty"`
 	// Denotes whether a CAPTenant can be upgraded. One of ('always', 'never')
