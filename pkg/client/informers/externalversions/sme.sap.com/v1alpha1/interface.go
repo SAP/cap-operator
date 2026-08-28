@@ -14,19 +14,19 @@ import (
 // Interface provides access to all the informers in this group version.
 type Interface interface {
 	// CAPApplications returns a CAPApplicationInformer.
-	CAPApplications() CAPApplicationInformer
+	CAPApplications() TypedCAPApplicationInformer
 	// CAPApplicationVersions returns a CAPApplicationVersionInformer.
-	CAPApplicationVersions() CAPApplicationVersionInformer
+	CAPApplicationVersions() TypedCAPApplicationVersionInformer
 	// CAPTenants returns a CAPTenantInformer.
-	CAPTenants() CAPTenantInformer
+	CAPTenants() TypedCAPTenantInformer
 	// CAPTenantOperations returns a CAPTenantOperationInformer.
-	CAPTenantOperations() CAPTenantOperationInformer
+	CAPTenantOperations() TypedCAPTenantOperationInformer
 	// CAPTenantOutputs returns a CAPTenantOutputInformer.
-	CAPTenantOutputs() CAPTenantOutputInformer
+	CAPTenantOutputs() TypedCAPTenantOutputInformer
 	// ClusterDomains returns a ClusterDomainInformer.
-	ClusterDomains() ClusterDomainInformer
+	ClusterDomains() TypedClusterDomainInformer
 	// Domains returns a DomainInformer.
-	Domains() DomainInformer
+	Domains() TypedDomainInformer
 }
 
 type version struct {
@@ -40,37 +40,37 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// CAPApplications returns a CAPApplicationInformer.
-func (v *version) CAPApplications() CAPApplicationInformer {
+// CAPApplications returns a TypedCAPApplicationInformer.
+func (v *version) CAPApplications() TypedCAPApplicationInformer {
 	return &cAPApplicationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// CAPApplicationVersions returns a CAPApplicationVersionInformer.
-func (v *version) CAPApplicationVersions() CAPApplicationVersionInformer {
+// CAPApplicationVersions returns a TypedCAPApplicationVersionInformer.
+func (v *version) CAPApplicationVersions() TypedCAPApplicationVersionInformer {
 	return &cAPApplicationVersionInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// CAPTenants returns a CAPTenantInformer.
-func (v *version) CAPTenants() CAPTenantInformer {
+// CAPTenants returns a TypedCAPTenantInformer.
+func (v *version) CAPTenants() TypedCAPTenantInformer {
 	return &cAPTenantInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// CAPTenantOperations returns a CAPTenantOperationInformer.
-func (v *version) CAPTenantOperations() CAPTenantOperationInformer {
+// CAPTenantOperations returns a TypedCAPTenantOperationInformer.
+func (v *version) CAPTenantOperations() TypedCAPTenantOperationInformer {
 	return &cAPTenantOperationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// CAPTenantOutputs returns a CAPTenantOutputInformer.
-func (v *version) CAPTenantOutputs() CAPTenantOutputInformer {
+// CAPTenantOutputs returns a TypedCAPTenantOutputInformer.
+func (v *version) CAPTenantOutputs() TypedCAPTenantOutputInformer {
 	return &cAPTenantOutputInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// ClusterDomains returns a ClusterDomainInformer.
-func (v *version) ClusterDomains() ClusterDomainInformer {
+// ClusterDomains returns a TypedClusterDomainInformer.
+func (v *version) ClusterDomains() TypedClusterDomainInformer {
 	return &clusterDomainInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// Domains returns a DomainInformer.
-func (v *version) Domains() DomainInformer {
+// Domains returns a TypedDomainInformer.
+func (v *version) Domains() TypedDomainInformer {
 	return &domainInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

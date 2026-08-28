@@ -23,11 +23,39 @@ import (
 )
 
 // CAPApplicationVersionInformer provides access to a shared informer and lister for
-// CAPApplicationVersions.
+// CAPApplicationVersions. Prefer using the type-safe variant (see [TypedCAPApplicationVersionInformer]).
 type CAPApplicationVersionInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() smesapcomv1alpha1.CAPApplicationVersionLister
 }
+
+// TypedCAPApplicationVersionInformer provides access to a shared informer and lister for
+// CAPApplicationVersions, including the type-safe TypedInformer variant.
+// It is a superset of CAPApplicationVersionInformer.
+type TypedCAPApplicationVersionInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() CAPApplicationVersionIndexInformer
+	Lister() smesapcomv1alpha1.CAPApplicationVersionLister
+}
+
+// CAPApplicationVersionIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type CAPApplicationVersionIndexInformer cache.TypedSharedIndexInformer[*apissmesapcomv1alpha1.CAPApplicationVersion]
+
+// CAPApplicationVersionHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for CAPApplicationVersion.
+type CAPApplicationVersionHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apissmesapcomv1alpha1.CAPApplicationVersion]
+
+// CAPApplicationVersionDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for CAPApplicationVersion.
+type CAPApplicationVersionDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apissmesapcomv1alpha1.CAPApplicationVersion]
+
+// CAPApplicationVersionFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for CAPApplicationVersion.
+type CAPApplicationVersionFilteringHandler = cache.TypedFilteringResourceEventHandler[*apissmesapcomv1alpha1.CAPApplicationVersion]
+
+// CAPApplicationVersionIndexers is a specialization of [cache.TypedIndexers] for CAPApplicationVersion.
+type CAPApplicationVersionIndexers = cache.TypedIndexers[*apissmesapcomv1alpha1.CAPApplicationVersion]
+
+// DeletedCAPApplicationVersion is a specialization of [cache.DeletedObject] for CAPApplicationVersion.
+type DeletedCAPApplicationVersion = cache.DeletedObject[*apissmesapcomv1alpha1.CAPApplicationVersion]
 
 type cAPApplicationVersionInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -38,25 +66,49 @@ type cAPApplicationVersionInformer struct {
 // NewCAPApplicationVersionInformer constructs a new informer for CAPApplicationVersion type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedCAPApplicationVersionInformer]).
 func NewCAPApplicationVersionInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewCAPApplicationVersionInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedCAPApplicationVersionInformer constructs a new informer for CAPApplicationVersion type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedCAPApplicationVersionInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers CAPApplicationVersionIndexers) CAPApplicationVersionIndexInformer {
+	return NewTypedCAPApplicationVersionInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredCAPApplicationVersionInformer constructs a new informer for CAPApplicationVersion type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredCAPApplicationVersionInformer]).
 func NewFilteredCAPApplicationVersionInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewCAPApplicationVersionInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedCAPApplicationVersionInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredCAPApplicationVersionInformer constructs a new informer for CAPApplicationVersion type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredCAPApplicationVersionInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers CAPApplicationVersionIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) CAPApplicationVersionIndexInformer {
+	return NewTypedCAPApplicationVersionInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewCAPApplicationVersionInformerWithOptions constructs a new informer for CAPApplicationVersion type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedCAPApplicationVersionInformerWithOptions]).
 func NewCAPApplicationVersionInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedCAPApplicationVersionInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedCAPApplicationVersionInformerWithOptions constructs a new informer for CAPApplicationVersion type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedCAPApplicationVersionInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) CAPApplicationVersionIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "sme.sap.com", Version: "v1alpha1", Resource: "capapplicationversions"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.CAPApplicationVersion](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -89,17 +141,57 @@ func NewCAPApplicationVersionInformerWithOptions(client versioned.Interface, nam
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *cAPApplicationVersionInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewCAPApplicationVersionInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedCAPApplicationVersionInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *cAPApplicationVersionInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apissmesapcomv1alpha1.CAPApplicationVersion{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *cAPApplicationVersionInformer) TypedInformer() CAPApplicationVersionIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.CAPApplicationVersion](f.factory.InformerFor(&apissmesapcomv1alpha1.CAPApplicationVersion{}, f.defaultInformer))
 }
 
 func (f *cAPApplicationVersionInformer) Lister() smesapcomv1alpha1.CAPApplicationVersionLister {
 	return smesapcomv1alpha1.NewCAPApplicationVersionLister(f.Informer().GetIndexer())
+}
+
+// ToTypedCAPApplicationVersionInformer converts an untyped informer into a TypedCAPApplicationVersionInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *CAPApplicationVersion. If that is not the case, calling type-safe methods of the returned
+// TypedCAPApplicationVersionInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedCAPApplicationVersionInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedCAPApplicationVersionInformer(informer CAPApplicationVersionInformer) TypedCAPApplicationVersionInformer {
+	if informer, ok := informer.(TypedCAPApplicationVersionInformer); ok {
+		return informer
+	}
+	return &cAPApplicationVersionTypedInformerAdapter{informer}
+}
+
+type cAPApplicationVersionTypedInformerAdapter struct {
+	CAPApplicationVersionInformer
+}
+
+func (a *cAPApplicationVersionTypedInformerAdapter) TypedInformer() CAPApplicationVersionIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.CAPApplicationVersion](a.Informer())
+}
+
+// ToCAPApplicationVersionIndexInformer converts an untyped informer into a CAPApplicationVersionIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *CAPApplicationVersion. If that is not the case, calling type-safe methods of the returned
+// CAPApplicationVersionIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a CAPApplicationVersionIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToCAPApplicationVersionIndexInformer(informer cache.SharedIndexInformer) CAPApplicationVersionIndexInformer {
+	if informer, ok := informer.(CAPApplicationVersionIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.CAPApplicationVersion](informer)
 }

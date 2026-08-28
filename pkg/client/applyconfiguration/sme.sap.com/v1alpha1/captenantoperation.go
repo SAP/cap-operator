@@ -18,7 +18,7 @@ import (
 //
 // CAPTenantOperation defines the schema for captenantoperations API
 type CAPTenantOperationApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	// CAPTenantOperation spec
 	Spec *CAPTenantOperationSpecApplyConfiguration `json:"spec,omitempty"`
