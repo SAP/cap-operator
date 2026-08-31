@@ -358,7 +358,7 @@ spec:
       jobDefinition:
         type: CustomTenantOperation
         image: some.repo.example.com/cap-app/server:3.22.11
-        command: ["npm", "run ", "deploy:testdata"]
+        command: ["npm", "run", "deploy:testdata"]
   tenantOperations:
     provisioning:
       - workloadName: "tenant-operation"
