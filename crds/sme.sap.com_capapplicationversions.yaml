@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.21.0
+    controller-gen.kubebuilder.io/version: v0.22.0
   name: capapplicationversions.sme.sap.com
 spec:
   group: sme.sap.com
@@ -1995,8 +1995,8 @@ spec:
                               x-kubernetes-validations:
                               - message: exactly one of the fields in [metrics expression]
                                   must be set
-                                rule: '[has(self.metrics),has(self.expression)].filter(x,x==true).size()
-                                  == 1'
+                                rule: (has(self.metrics)?1:0)+(has(self.expression)?1:0)
+                                  == 1
                             scrapeConfig:
                               properties:
                                 interval:
@@ -2481,8 +2481,8 @@ spec:
                               - message: at most one of the fields in [httpHeaderName
                                   httpCookie useSourceIp httpQueryParameterName] may
                                   be set
-                                rule: '[has(self.httpHeaderName),has(self.httpCookie),has(self.useSourceIp),has(self.httpQueryParameterName)].filter(x,x==true).size()
-                                  <= 1'
+                                rule: (has(self.httpHeaderName)?1:0)+(has(self.httpCookie)?1:0)+(has(self.useSourceIp)?1:0)+(has(self.httpQueryParameterName)?1:0)
+                                  <= 1
                           type: object
                         terminationGracePeriodSeconds:
                           format: int64
@@ -6014,8 +6014,8 @@ spec:
                   x-kubernetes-validations:
                   - message: exactly one of the fields in [deploymentDefinition jobDefinition]
                       must be set
-                    rule: '[has(self.deploymentDefinition),has(self.jobDefinition)].filter(x,x==true).size()
-                      == 1'
+                    rule: (has(self.deploymentDefinition)?1:0)+(has(self.jobDefinition)?1:0)
+                      == 1
                 maxItems: 100
                 type: array
             required:
