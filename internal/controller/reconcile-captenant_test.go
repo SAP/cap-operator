@@ -17,9 +17,10 @@ func TestInvalidCAPApplication(t *testing.T) {
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
 		TestData{
-			description:      "new captenant with invalid capapplication reference",
-			initialResources: []string{"testdata/captenant/cat-01.initial.yaml"},
-			expectError:      true,
+			description:       "new captenant with unresolved capapplication reference gets finalizer added and requeues (no longer errors at prepare)",
+			initialResources:  []string{"testdata/captenant/cat-01.initial.yaml"},
+			expectedResources: "testdata/captenant/cat-01.expected.yaml",
+			expectedRequeue:   map[int][]NamespacedResourceKey{ResourceCAPTenant: {{Name: "test-cap-01-provider", Namespace: "default"}}},
 		},
 	)
 }

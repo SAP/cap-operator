@@ -29,12 +29,14 @@ const (
 	CAPApplicationEventMissingIngressGatewayInfo    = "MissingIngressGatewayInfo"
 	CAPApplicationEventProviderTenantCreated        = "ProviderTenantCreated"
 	CAPApplicationEventNewCAVTriggeredTenantUpgrade = "NewCAVTriggeredTenantUpgrade"
+	CAPApplicationEventSubscriptionProviderCreated  = "SubscriptionProviderCreated"
 )
 
 const (
-	EventActionProcessingSecrets        = "ProcessingSecrets"
-	EventActionProviderTenantProcessing = "ProviderTenantProcessing"
-	EventActionCheckForVersion          = "CheckForVersion"
+	EventActionProcessingSecrets              = "ProcessingSecrets"
+	EventActionProviderTenantProcessing       = "ProviderTenantProcessing"
+	EventActionSubscriptionProviderProcessing = "SubscriptionProviderProcessing"
+	EventActionCheckForVersion                = "CheckForVersion"
 )
 
 func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem, _ int) (result *ReconcileResult, err error) {
@@ -79,6 +81,10 @@ func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem
 		reason, message := getCAReason(genChanged)
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, reason, message)
 		result = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0)
+		// If a SubscriptionProvider exists, reconcile it as well
+		if exists, _ := c.resolveSubscriptionProvider(ctx, ca, true); exists {
+			result.AddResource(ResourceSubscriptionProvider, ca.Name, ca.Namespace, 0)
+		}
 	} else {
 		result, err = c.handleCAPApplicationDependentResources(ctx, ca)
 	}
@@ -130,6 +136,11 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 		return
 	}
 	// We can already update LatestVersionReady to "true" at this point in time, but as this method is called several times, we do not do it here (during initial Provisioning as CA itself is may not be Consistent)
+
+	// Create SubscriptionProvider resource for non services only scenario if not already created
+	if _, err = c.resolveSubscriptionProvider(ctx, ca, false); err != nil {
+		return
+	}
 
 	// step 4 - validate provider tenant, create if not available
 	if processing, err = c.reconcileCAPApplicationProviderTenant(ctx, ca, cav); err != nil || processing {
@@ -415,58 +426,21 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 }
 
 func (c *Controller) createProviderTenant(ctx context.Context, ca *v1alpha1.CAPApplication, version string, providerTenantName string) (tenant *v1alpha1.CAPTenant, err error) {
-	providerSubaccountId := ca.Spec.ProviderSubaccountId
-	tenantLabels := map[string]string{
-		LabelTenantId: ca.Spec.Provider.TenantId,
-	}
-
-	globalAccountGUID := ca.Spec.GlobalAccountId
-	if globalAccountGUID == "" {
-		globalAccountGUID = ca.Annotations[AnnotationGlobalAccountId]
-	}
-
-	// Create a secret with the provider subscription context (dervied from the spec of CAPApplication)
-	secret, err := c.kubeClient.CoreV1().Secrets(ca.Namespace).Create(context.TODO(), &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: providerTenantName + "-",
-			Namespace:    ca.Namespace,
-			Labels:       tenantLabels,
-		},
-		StringData: map[string]string{
-			SubscriptionContext: `{
-					"subscriptionAppName": "` + ca.Spec.BTPAppName + `",
-					"subscribedTenantId": "` + ca.Spec.Provider.TenantId + `",
-					"subscribedSubaccountId": "` + providerSubaccountId + `",
-					"subscribedSubdomain": "` + ca.Spec.Provider.SubDomain + `",
-					"globalAccountGUID": "` + globalAccountGUID + `"
-				}`,
-		},
-	}, metav1.CreateOptions{})
-	if err != nil {
-		util.LogError(err, "Error creating tenant subscription context secret", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
-		return
-	}
-
 	// Create provider tenant
 	util.LogInfo("Creating provider tenant", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
-	annotations := map[string]string{
-		AnnotationSubscriptionContextSecret: secret.Name, // Store the secret name in the tenant annotation
-	}
+
 	labels := map[string]string{
 		LabelTenantType: TenantTypeProvider,
 		LabelTenantId:   ca.Spec.Provider.TenantId,
+		LabelAppIdHash:  sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName),
 	}
-
-	labels[LabelAppIdHash] = sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
 
 	if tenant, err = c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Create(
 		ctx, &v1alpha1.CAPTenant{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:        providerTenantName,
-				Namespace:   ca.Namespace,
-				Annotations: annotations,
-				Labels:      labels,
+				Name:      providerTenantName,
+				Namespace: ca.Namespace,
+				Labels:    labels,
 			},
 			Spec: v1alpha1.CAPTenantSpec{
 				CAPApplicationInstance: ca.Name,
@@ -480,19 +454,71 @@ func (c *Controller) createProviderTenant(ctx context.Context, ca *v1alpha1.CAPA
 		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
 		return
 	}
-	if tenant != nil {
-		secret.OwnerReferences = []metav1.OwnerReference{
-			*metav1.NewControllerRef(tenant, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind)),
-		}
-		_, err = c.kubeClient.CoreV1().Secrets(tenant.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
-		if err != nil {
-			util.LogError(err, "Error updating tenant subscription context secret", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
-			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
-			return
-		}
-	}
 	c.Event(ca, tenant, corev1.EventTypeNormal, CAPApplicationEventProviderTenantCreated, EventActionProviderTenantProcessing, fmt.Sprintf("created provider tenant %s.%s", tenant.Namespace, tenant.Name))
 	return
+}
+
+func (c *Controller) resolveSubscriptionProvider(ctx context.Context, ca *v1alpha1.CAPApplication, skipCreate bool) (bool, error) {
+	if ca.IsServicesOnly() {
+		return false, nil
+	}
+	prov, err := c.crdInformerFactory.Sme().V1alpha1().SubscriptionProviders().Lister().SubscriptionProviders(ca.Namespace).Get(ca.Name)
+	if err != nil && !skipCreate {
+		if !k8sErrors.IsNotFound(err) {
+			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "SubscriptionProviderError", err.Error())
+			return false, err
+		}
+		return false, c.createSubscriptionProvider(ctx, ca)
+	}
+	return prov != nil, err
+}
+
+func (c *Controller) createSubscriptionProvider(ctx context.Context, ca *v1alpha1.CAPApplication) error {
+	var subscriptionInfo v1alpha1.SubscriptionInfo
+	for _, svc := range ca.Spec.BTP.Services {
+		switch svc.Class {
+		case "subscription-manager":
+			subscriptionInfo.Type = "subscription-manager"
+			subscriptionInfo.SubscriptionSecret = svc.Secret
+		case "saas-registry":
+			subscriptionInfo.Type = "saas-registry"
+			subscriptionInfo.SubscriptionSecret = svc.Secret
+			if xsuaaInfo := util.GetXSUAAInfo(ca.Spec.BTP.Services, ca); xsuaaInfo != nil {
+				subscriptionInfo.AuthSecret = xsuaaInfo.Secret
+			}
+		}
+		if subscriptionInfo.SubscriptionSecret != "" {
+			break
+		}
+	}
+
+	labels := map[string]string{
+		LabelAppIdHash: sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName),
+	}
+
+	util.LogInfo("Creating SubscriptionProvider", string(Processing), ca, nil)
+	subPro, err := c.crdClient.SmeV1alpha1().SubscriptionProviders(ca.Namespace).Create(
+		ctx, &v1alpha1.SubscriptionProvider{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      ca.Name,
+				Namespace: ca.Namespace,
+				Labels:    labels,
+				OwnerReferences: []metav1.OwnerReference{
+					*metav1.NewControllerRef(ca, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationKind)),
+				},
+			},
+			Spec: v1alpha1.SubscriptionProviderSpec{
+				AppName:              ca.Spec.BTPAppName,
+				ProviderSubaccountID: ca.Spec.ProviderSubaccountId,
+				SubscriptionInfo:     subscriptionInfo,
+			},
+		}, metav1.CreateOptions{})
+	if err != nil {
+		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "SubscriptionProviderError", err.Error())
+		return err
+	}
+	c.Event(ca, subPro, corev1.EventTypeNormal, CAPApplicationEventSubscriptionProviderCreated, EventActionSubscriptionProviderProcessing, fmt.Sprintf("created SubscriptionProvider %s.%s", subPro.Namespace, subPro.Name))
+	return nil
 }
 
 func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alpha1.CAPApplication) (*ReconcileResult, error) {

@@ -27,43 +27,44 @@ import (
 )
 
 const (
-	LabelOwnerIdentifierHash            = "sme.sap.com/owner-identifier-hash"
-	LabelOwnerGeneration                = "sme.sap.com/owner-generation"
-	LabelWorkloadName                   = "sme.sap.com/workload-name"
-	LabelWorkloadType                   = "sme.sap.com/workload-type"
-	LabelResourceCategory               = "sme.sap.com/category"
-	LabelAppIdHash                      = "sme.sap.com/app-identifier-hash"
-	LabelTenantType                     = "sme.sap.com/tenant-type"
-	LabelTenantId                       = "sme.sap.com/btp-tenant-id"
-	LabelTenantOperationType            = "sme.sap.com/tenant-operation-type"
-	LabelTenantOperationStep            = "sme.sap.com/tenant-operation-step"
-	LabelCAVVersion                     = "sme.sap.com/cav-version"
-	LabelRelevantDNSTarget              = "sme.sap.com/relevant-dns-target-hash"
-	LabelDisableKarydia                 = "x4.sap.com/disable-karydia"
-	LabelExposedWorkload                = "sme.sap.com/exposed-workload"
-	LabelDNSNameHash                    = "sme.sap.com/dns-name-hash"
-	LabelSecretOwnerHash                = "sme.sap.com/secret-owner-hash"
-	AnnotationOwnerIdentifier           = "sme.sap.com/owner-identifier"
-	AnnotationAppId                     = "sme.sap.com/app-identifier"
-	AnnotationResourceHash              = "sme.sap.com/resource-hash"
-	AnnotationControllerClass           = "sme.sap.com/controller-class"
-	AnnotationGardenerDNSTarget         = "dns.gardener.cloud/dnsnames"
-	AnnotationKubernetesDNSTarget       = "external-dns.alpha.kubernetes.io/hostname"
-	AnnotationSubscriptionContextSecret = "sme.sap.com/subscription-context-secret"
-	AnnotationGlobalAccountId           = "sme.sap.com/global-account-id"
-	AnnotationEnableCleanupMonitoring   = "sme.sap.com/enable-cleanup-monitoring"
-	AnnotationVSRouteRequestHeaderSet   = "sme.sap.com/vs-route-request-header-set"  // configures headers on incoming requests for Istio VirtualService route handling
-	AnnotationVSRouteResponseHeaderSet  = "sme.sap.com/vs-route-response-header-set" // configures headers on outgoing responses for Istio VirtualService route handling
-	AnnotationLogoutEndpoint            = "sme.sap.com/logout-endpoint"
-	AnnotationEnableVersionAffinity     = "sme.sap.com/enable-version-affinity"
-	AnnotationCertManagerCommonName     = "sme.sap.com/cert-manager-common-name"
-	MetadataSubscriptionGUID            = "sme.sap.com/subscription-guid" // used as both Label and Annotation for CAPTenant related resources
-	FinalizerCAPApplication             = "sme.sap.com/capapplication"
-	FinalizerCAPApplicationVersion      = "sme.sap.com/capapplicationversion"
-	FinalizerCAPTenant                  = "sme.sap.com/captenant"
-	FinalizerCAPTenantOperation         = "sme.sap.com/captenantoperation"
-	FinalizerDomain                     = "sme.sap.com/domain"
-	GardenerDNSClassIdentifier          = "dns.gardener.cloud/class"
+	LabelOwnerIdentifierHash           = "sme.sap.com/owner-identifier-hash"
+	LabelOwnerGeneration               = "sme.sap.com/owner-generation"
+	LabelWorkloadName                  = "sme.sap.com/workload-name"
+	LabelWorkloadType                  = "sme.sap.com/workload-type"
+	LabelResourceCategory              = "sme.sap.com/category"
+	LabelAppIdHash                     = "sme.sap.com/app-identifier-hash"
+	LabelTenantType                    = "sme.sap.com/tenant-type"
+	LabelTenantId                      = "sme.sap.com/btp-tenant-id"
+	LabelTenantOperationType           = "sme.sap.com/tenant-operation-type"
+	LabelTenantOperationStep           = "sme.sap.com/tenant-operation-step"
+	LabelCAVVersion                    = "sme.sap.com/cav-version"
+	LabelRelevantDNSTarget             = "sme.sap.com/relevant-dns-target-hash"
+	LabelDisableKarydia                = "x4.sap.com/disable-karydia"
+	LabelExposedWorkload               = "sme.sap.com/exposed-workload"
+	LabelDNSNameHash                   = "sme.sap.com/dns-name-hash"
+	LabelSecretOwnerHash               = "sme.sap.com/secret-owner-hash"
+	AnnotationOwnerIdentifier          = "sme.sap.com/owner-identifier"
+	AnnotationAppId                    = "sme.sap.com/app-identifier"
+	AnnotationResourceHash             = "sme.sap.com/resource-hash"
+	AnnotationControllerClass          = "sme.sap.com/controller-class"
+	AnnotationGardenerDNSTarget        = "dns.gardener.cloud/dnsnames"
+	AnnotationKubernetesDNSTarget      = "external-dns.alpha.kubernetes.io/hostname"
+	AnnotationSubscriptionDomain       = "sme.sap.com/subscription-domain"
+	AnnotationGlobalAccountId          = "sme.sap.com/global-account-id"
+	AnnotationEnableCleanupMonitoring  = "sme.sap.com/enable-cleanup-monitoring"
+	AnnotationVSRouteRequestHeaderSet  = "sme.sap.com/vs-route-request-header-set"  // configures headers on incoming requests for Istio VirtualService route handling
+	AnnotationVSRouteResponseHeaderSet = "sme.sap.com/vs-route-response-header-set" // configures headers on outgoing responses for Istio VirtualService route handling
+	AnnotationLogoutEndpoint           = "sme.sap.com/logout-endpoint"
+	AnnotationEnableVersionAffinity    = "sme.sap.com/enable-version-affinity"
+	AnnotationCertManagerCommonName    = "sme.sap.com/cert-manager-common-name"
+	MetadataSubscriptionGUID           = "sme.sap.com/subscription-guid" // used as both Label and Annotation for CAPTenant related resources
+	FinalizerCAPApplication            = "sme.sap.com/capapplication"
+	FinalizerCAPApplicationVersion     = "sme.sap.com/capapplicationversion"
+	FinalizerCAPTenant                 = "sme.sap.com/captenant"
+	FinalizerCAPTenantOperation        = "sme.sap.com/captenantoperation"
+	FinalizerDomain                    = "sme.sap.com/domain"
+	FinalizerSubscription              = "sme.sap.com/subscription"
+	GardenerDNSClassIdentifier         = "dns.gardener.cloud/class"
 )
 
 const (
@@ -75,6 +76,7 @@ const (
 )
 
 const TenantTypeProvider = "provider"
+const TenantTypeConsumer = "consumer"
 
 const (
 	EnvCAPOpAppVersion           = "CAPOP_APP_VERSION"
