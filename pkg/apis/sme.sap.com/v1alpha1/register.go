@@ -68,6 +68,16 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&ClusterDomain{},
 		&ClusterDomainList{},
 	)
+	scheme.AddKnownTypes(
+		SchemeGroupVersion,
+		&SubscriptionProvider{},
+		&SubscriptionProviderList{},
+	)
+	scheme.AddKnownTypes(
+		SchemeGroupVersion,
+		&Subscription{},
+		&SubscriptionList{},
+	)
 	metaV1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
 }
