@@ -49,6 +49,7 @@ jobs:
         run: |
           cd website
           npm ci
+          npm i -g sass-embedded
       - name: Build with Hugo
         env:
           HUGO_ENVIRONMENT: production
