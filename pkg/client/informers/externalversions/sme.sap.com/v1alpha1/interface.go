@@ -13,19 +13,19 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// CAPApplications returns a CAPApplicationInformer.
+	// CAPApplications returns a TypedCAPApplicationInformer.
 	CAPApplications() TypedCAPApplicationInformer
-	// CAPApplicationVersions returns a CAPApplicationVersionInformer.
+	// CAPApplicationVersions returns a TypedCAPApplicationVersionInformer.
 	CAPApplicationVersions() TypedCAPApplicationVersionInformer
-	// CAPTenants returns a CAPTenantInformer.
+	// CAPTenants returns a TypedCAPTenantInformer.
 	CAPTenants() TypedCAPTenantInformer
-	// CAPTenantOperations returns a CAPTenantOperationInformer.
+	// CAPTenantOperations returns a TypedCAPTenantOperationInformer.
 	CAPTenantOperations() TypedCAPTenantOperationInformer
-	// CAPTenantOutputs returns a CAPTenantOutputInformer.
+	// CAPTenantOutputs returns a TypedCAPTenantOutputInformer.
 	CAPTenantOutputs() TypedCAPTenantOutputInformer
-	// ClusterDomains returns a ClusterDomainInformer.
+	// ClusterDomains returns a TypedClusterDomainInformer.
 	ClusterDomains() TypedClusterDomainInformer
-	// Domains returns a DomainInformer.
+	// Domains returns a TypedDomainInformer.
 	Domains() TypedDomainInformer
 }
 
