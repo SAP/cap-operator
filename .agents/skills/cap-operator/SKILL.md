@@ -1,6 +1,6 @@
 ---
 name: cap-operator
-description: Manage the lifecycle of multi-tenant SAP CAP applications on Kubernetes using CAP Operator custom resources (CAPApplication, CAPApplicationVersion, CAPTenant, Domain, ClusterDomain). Use when deploying, upgrading, configuring domains, rotating credentials, or troubleshooting CAP Operator-managed apps.
+description: Manage the lifecycle of multi-tenant SAP CAP applications on Kubernetes using CAP Operator custom resources (CAPApplication, CAPApplicationVersion, CAPTenant, Domain, ClusterDomain). Use when deploying, upgrading, configuring domains, rotating credentials, troubleshooting CAP Operator-managed apps, or generating Helm charts with the CAP Operator Plugin.
 license: Apache-2.0
 compatibility: Requires kubectl access to a Kubernetes cluster with CAP Operator installed (sme.sap.com/v1alpha1 CRDs). If kubectl commands return "No resources found" or "the server doesn't have a resource type", verify CAP Operator is installed by running `kubectl get crd | grep sme.sap.com`. If no CRDs are listed, direct the user to install CAP Operator before proceeding.
 metadata:
@@ -122,3 +122,27 @@ Tuned via env vars on the controller deployment. Key variables:
 | `MAX_CONCURRENT_RECONCILES_CAP_TENANT_OPERATION` | CAPTenantOperation reconciliation concurrency |
 
 Full list: `website/content/en/docs/configuration/_index.md` | https://sap.github.io/cap-operator/docs/configuration/
+
+## CAP Operator Plugin (Helm Chart Generation)
+
+The `@cap-js/cap-operator-plugin` CDS plugin scaffolds the Helm chart for a CAP application, generates runtime values, and builds the final deployable chart.
+
+**Quick start:**
+```sh
+npm add @cap-js/cap-operator-plugin -D
+cds add cap-operator --with-templates   # default
+# ensure node_modules exists before running the plugin:
+npm install
+npx cap-op-plugin generate-runtime-values
+helm upgrade -i -n <namespace> <release-name> chart -f chart/runtime-values.yaml
+```
+
+**Chart variants:**
+
+| Command | Use when |
+|---|---|
+| `cds add cap-operator --with-templates` | Default — includes `chart/templates/`, editable if needed |
+| `cds add cap-operator --with-configurable-templates` | You need Helm template functions inside CAP Operator resources |
+| `cds add cap-operator --with-service-only` | Tenant-independent service-only application |
+
+See [CAP Operator Plugin reference](references/cap-operator-plugin.md) for full details: installation, chart variants, `runtime-values.yaml` generation, and deployment commands.
