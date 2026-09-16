@@ -48,6 +48,9 @@ const (
 	imageUpdate
 	domainsUpdate
 	useDomains
+	providerSubaccountIdUpdate
+	btpAppNameUpdate
+	duplicateAppIdentifier
 )
 
 func createCaCRO(serviceOnlyScenario ...bool) *v1alpha1.CAPApplication {
@@ -208,12 +211,43 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 				crd.Spec.DomainRefs = []v1alpha1.DomainRef{}
 				crd.Spec.Domains = v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}}
 				rawBytes, err = json.Marshal(crd)
+			case providerSubaccountIdUpdate:
+				// old and new both have the identifiers set, but providerSubaccountId differs
+				crd.Spec.ProviderSubaccountId = "providerSubaccountId"
+				crd.Spec.BTPAppName = "btpApplicationName"
+				rawBytes, err = json.Marshal(crd)
+				crdOld.Spec.ProviderSubaccountId = "providerSubaccountId-old"
+				crdOld.Spec.BTPAppName = "btpApplicationName"
+				rawBytesOld, err = json.Marshal(crdOld)
+			case btpAppNameUpdate:
+				// old and new both have the identifiers set, but btpAppName differs
+				crd.Spec.ProviderSubaccountId = "providerSubaccountId"
+				crd.Spec.BTPAppName = "btpApplicationName"
+				rawBytes, err = json.Marshal(crd)
+				crdOld.Spec.ProviderSubaccountId = "providerSubaccountId"
+				crdOld.Spec.BTPAppName = "btpApplicationName-old"
+				rawBytesOld, err = json.Marshal(crdOld)
+			case duplicateAppIdentifier:
+				// new object sets an identifier combination that already exists elsewhere;
+				// old object carries the same (unchanged) combination so the immutability check passes
+				crd.Spec.ProviderSubaccountId = "providerSubaccountId"
+				crd.Spec.BTPAppName = "btpApplicationName"
+				rawBytes, err = json.Marshal(crd)
+				crdOld.Spec.ProviderSubaccountId = "providerSubaccountId"
+				crdOld.Spec.BTPAppName = "btpApplicationName"
+				rawBytesOld, err = json.Marshal(crdOld)
 			}
 		}
 
 		if operation == admissionv1.Create && change == useDomains && err == nil {
 			crd.Spec.DomainRefs = []v1alpha1.DomainRef{}
 			crd.Spec.Domains = v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}}
+			rawBytes, err = json.Marshal(crd)
+		}
+
+		if operation == admissionv1.Create && change == duplicateAppIdentifier && err == nil {
+			crd.Spec.ProviderSubaccountId = "providerSubaccountId"
+			crd.Spec.BTPAppName = "btpApplicationName"
 			rawBytes, err = json.Marshal(crd)
 		}
 	case v1alpha1.CAPApplicationVersionKind:
@@ -765,6 +799,98 @@ func TestCaInvalidity(t *testing.T) {
 				admissionReview.APIVersion != apiVersion ||
 				admissionReview.Response.Result.Message != errorMessage {
 				t.Fatal("validation response error")
+			}
+		})
+	}
+}
+
+func createExistingCa(name string) *v1alpha1.CAPApplication {
+	return &v1alpha1.CAPApplication{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: metav1.NamespaceDefault,
+		},
+		Spec: v1alpha1.CAPApplicationSpec{
+			ProviderSubaccountId: "providerSubaccountId",
+			BTPAppName:           "btpApplicationName",
+		},
+	}
+}
+
+func TestCaAppIdentifierValidity(t *testing.T) {
+	tests := []struct {
+		name            string
+		operation       admissionv1.Operation
+		update          updateType
+		existingCa      *v1alpha1.CAPApplication
+		allowed         bool
+		expectedMessage string
+	}{
+		{
+			name:            "changing providerSubaccountId once set is not allowed",
+			operation:       admissionv1.Update,
+			update:          providerSubaccountIdUpdate,
+			allowed:         false,
+			expectedMessage: fmt.Sprintf("%s %s providerSubaccountId cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, metav1.NamespaceDefault, caName),
+		},
+		{
+			name:            "changing btpAppName once set is not allowed",
+			operation:       admissionv1.Update,
+			update:          btpAppNameUpdate,
+			allowed:         false,
+			expectedMessage: fmt.Sprintf("%s %s btpAppName cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, metav1.NamespaceDefault, caName),
+		},
+		{
+			name:            "creating an app with an already existing providerSubaccountId and btpAppName combination is not allowed",
+			operation:       admissionv1.Create,
+			update:          duplicateAppIdentifier,
+			existingCa:      createExistingCa("otherCa"),
+			allowed:         false,
+			expectedMessage: fmt.Sprintf("%s %s %s already exists in namespace %s with the same providerSubaccountId %s and btpAppName %s", InvalidationMessage, v1alpha1.CAPApplicationKind, "otherCa", metav1.NamespaceDefault, "providerSubaccountId", "btpApplicationName"),
+		},
+		{
+			name:       "creating an app with a unique providerSubaccountId and btpAppName combination is allowed",
+			operation:  admissionv1.Create,
+			update:     duplicateAppIdentifier,
+			existingCa: nil,
+			allowed:    true,
+		},
+		{
+			name:       "updating the same app (self) does not count as a duplicate",
+			operation:  admissionv1.Update,
+			update:     duplicateAppIdentifier,
+			existingCa: createExistingCa(caName),
+			allowed:    true,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			var crdObjects []runtime.Object
+			if test.existingCa != nil {
+				crdObjects = append(crdObjects, test.existingCa)
+			}
+			wh := &WebhookHandler{
+				CrdClient: fakeCrdClient.NewSimpleClientset(crdObjects...),
+			}
+
+			request, recorder := getHttpRequest(test.operation, v1alpha1.CAPApplicationKind, caName, test.update, t)
+
+			wh.Validate(recorder, request)
+
+			admissionReview := admissionv1.AdmissionReview{}
+			bytes, err := io.ReadAll(recorder.Body)
+			if err != nil {
+				t.Fatal("io read error")
+			}
+			universalDeserializer.Decode(bytes, nil, &admissionReview)
+
+			if admissionReview.Response.Allowed != test.allowed ||
+				admissionReview.Response.UID != uid ||
+				admissionReview.APIVersion != apiVersion {
+				t.Fatal("validation response error")
+			}
+			if !test.allowed && admissionReview.Response.Result.Message != test.expectedMessage {
+				t.Fatal("unexpected error message: ", admissionReview.Response.Result.Message)
 			}
 		})
 	}

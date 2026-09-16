@@ -18,7 +18,7 @@ import (
 //
 // CAPTenantOutput is the schema for captenantoutputs API
 type CAPTenantOutputApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	// CAPTenantOutput spec
 	Spec *CAPTenantOutputSpecApplyConfiguration `json:"spec,omitempty"`

@@ -751,6 +751,54 @@ func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissio
 		}
 	}
 
+	if identifierValidate := wh.validateCAPApplicationIdentifiers(admissionReview.Request.Operation, caObjOld, caObjNew); !identifierValidate.allowed {
+		return identifierValidate
+	}
+
+	return validAdmissionReviewObj()
+}
+
+// ensures providerSubaccountId and btpAppName are immutable once set and that their combination is unique
+func (wh *WebhookHandler) validateCAPApplicationIdentifiers(operation admissionv1.Operation, caObjOld, caObjNew v1alpha1.CAPApplication) validateResource {
+	// providerSubaccountId and btpAppName are required and cannot be updated
+	if operation == admissionv1.Update {
+		if caObjNew.Spec.ProviderSubaccountId != caObjOld.Spec.ProviderSubaccountId {
+			return validateResource{
+				allowed: false,
+				message: fmt.Sprintf("%s %s providerSubaccountId cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.GetNamespace(), caObjNew.GetName()),
+			}
+		}
+		if caObjNew.Spec.BTPAppName != caObjOld.Spec.BTPAppName {
+			return validateResource{
+				allowed: false,
+				message: fmt.Sprintf("%s %s btpAppName cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, caObjNew.GetNamespace(), caObjNew.GetName()),
+			}
+		}
+	}
+
+	// Ensure that the combination of providerSubaccountId and btpAppName is unique across all CAPApplications
+	if operation == admissionv1.Create {
+		return wh.checkForDuplicateCAPApplication(caObjNew)
+	}
+
+	return validAdmissionReviewObj()
+}
+
+func (wh *WebhookHandler) checkForDuplicateCAPApplication(ca v1alpha1.CAPApplication) validateResource {
+	caList, _ := wh.CrdClient.SmeV1alpha1().CAPApplications(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
+	for _, existingCa := range caList.Items {
+		// skip the same object (identified by namespace and name)
+		if existingCa.Namespace == ca.Namespace && existingCa.Name == ca.Name {
+			continue
+		}
+		if existingCa.Spec.ProviderSubaccountId == ca.Spec.ProviderSubaccountId && existingCa.Spec.BTPAppName == ca.Spec.BTPAppName {
+			return validateResource{
+				allowed: false,
+				message: fmt.Sprintf("%s %s %s already exists in namespace %s with the same providerSubaccountId %s and btpAppName %s", InvalidationMessage, v1alpha1.CAPApplicationKind, existingCa.Name, existingCa.Namespace, ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName),
+			}
+		}
+	}
+
 	return validAdmissionReviewObj()
 }
 

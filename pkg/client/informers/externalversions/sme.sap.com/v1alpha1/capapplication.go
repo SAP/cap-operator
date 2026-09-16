@@ -23,11 +23,39 @@ import (
 )
 
 // CAPApplicationInformer provides access to a shared informer and lister for
-// CAPApplications.
+// CAPApplications. Prefer using the type-safe variant (see [TypedCAPApplicationInformer]).
 type CAPApplicationInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() smesapcomv1alpha1.CAPApplicationLister
 }
+
+// TypedCAPApplicationInformer provides access to a shared informer and lister for
+// CAPApplications, including the type-safe TypedInformer variant.
+// It is a superset of CAPApplicationInformer.
+type TypedCAPApplicationInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() CAPApplicationIndexInformer
+	Lister() smesapcomv1alpha1.CAPApplicationLister
+}
+
+// CAPApplicationIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type CAPApplicationIndexInformer cache.TypedSharedIndexInformer[*apissmesapcomv1alpha1.CAPApplication]
+
+// CAPApplicationHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for CAPApplication.
+type CAPApplicationHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apissmesapcomv1alpha1.CAPApplication]
+
+// CAPApplicationDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for CAPApplication.
+type CAPApplicationDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apissmesapcomv1alpha1.CAPApplication]
+
+// CAPApplicationFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for CAPApplication.
+type CAPApplicationFilteringHandler = cache.TypedFilteringResourceEventHandler[*apissmesapcomv1alpha1.CAPApplication]
+
+// CAPApplicationIndexers is a specialization of [cache.TypedIndexers] for CAPApplication.
+type CAPApplicationIndexers = cache.TypedIndexers[*apissmesapcomv1alpha1.CAPApplication]
+
+// DeletedCAPApplication is a specialization of [cache.DeletedObject] for CAPApplication.
+type DeletedCAPApplication = cache.DeletedObject[*apissmesapcomv1alpha1.CAPApplication]
 
 type cAPApplicationInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -38,25 +66,49 @@ type cAPApplicationInformer struct {
 // NewCAPApplicationInformer constructs a new informer for CAPApplication type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedCAPApplicationInformer]).
 func NewCAPApplicationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewCAPApplicationInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedCAPApplicationInformer constructs a new informer for CAPApplication type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedCAPApplicationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers CAPApplicationIndexers) CAPApplicationIndexInformer {
+	return NewTypedCAPApplicationInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredCAPApplicationInformer constructs a new informer for CAPApplication type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredCAPApplicationInformer]).
 func NewFilteredCAPApplicationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewCAPApplicationInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedCAPApplicationInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredCAPApplicationInformer constructs a new informer for CAPApplication type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredCAPApplicationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers CAPApplicationIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) CAPApplicationIndexInformer {
+	return NewTypedCAPApplicationInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewCAPApplicationInformerWithOptions constructs a new informer for CAPApplication type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedCAPApplicationInformerWithOptions]).
 func NewCAPApplicationInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedCAPApplicationInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedCAPApplicationInformerWithOptions constructs a new informer for CAPApplication type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedCAPApplicationInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) CAPApplicationIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "sme.sap.com", Version: "v1alpha1", Resource: "capapplications"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.CAPApplication](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -89,17 +141,57 @@ func NewCAPApplicationInformerWithOptions(client versioned.Interface, namespace 
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *cAPApplicationInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewCAPApplicationInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedCAPApplicationInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *cAPApplicationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apissmesapcomv1alpha1.CAPApplication{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *cAPApplicationInformer) TypedInformer() CAPApplicationIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.CAPApplication](f.factory.InformerFor(&apissmesapcomv1alpha1.CAPApplication{}, f.defaultInformer))
 }
 
 func (f *cAPApplicationInformer) Lister() smesapcomv1alpha1.CAPApplicationLister {
 	return smesapcomv1alpha1.NewCAPApplicationLister(f.Informer().GetIndexer())
+}
+
+// ToTypedCAPApplicationInformer converts an untyped informer into a TypedCAPApplicationInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *CAPApplication. If that is not the case, calling type-safe methods of the returned
+// TypedCAPApplicationInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedCAPApplicationInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedCAPApplicationInformer(informer CAPApplicationInformer) TypedCAPApplicationInformer {
+	if informer, ok := informer.(TypedCAPApplicationInformer); ok {
+		return informer
+	}
+	return &cAPApplicationTypedInformerAdapter{informer}
+}
+
+type cAPApplicationTypedInformerAdapter struct {
+	CAPApplicationInformer
+}
+
+func (a *cAPApplicationTypedInformerAdapter) TypedInformer() CAPApplicationIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.CAPApplication](a.Informer())
+}
+
+// ToCAPApplicationIndexInformer converts an untyped informer into a CAPApplicationIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *CAPApplication. If that is not the case, calling type-safe methods of the returned
+// CAPApplicationIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a CAPApplicationIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToCAPApplicationIndexInformer(informer cache.SharedIndexInformer) CAPApplicationIndexInformer {
+	if informer, ok := informer.(CAPApplicationIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.CAPApplication](informer)
 }

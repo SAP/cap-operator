@@ -17,7 +17,7 @@ import (
 //
 // JobDetails specifies the details of the Job
 type JobDetailsApplyConfiguration struct {
-	CommonDetailsApplyConfiguration `json:",inline"`
+	CommonDetailsApplyConfiguration `json:""`
 	// Type of Job
 	Type *smesapcomv1alpha1.JobType `json:"type,omitempty"`
 	// Specifies the number of retries before marking this job failed.

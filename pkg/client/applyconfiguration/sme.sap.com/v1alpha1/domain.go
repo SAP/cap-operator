@@ -18,7 +18,7 @@ import (
 //
 // Domain is the schema for domains API
 type DomainApplyConfiguration struct {
-	v1.TypeMetaApplyConfiguration    `json:",inline"`
+	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	// Domains spec
 	Spec *DomainSpecApplyConfiguration `json:"spec,omitempty"`

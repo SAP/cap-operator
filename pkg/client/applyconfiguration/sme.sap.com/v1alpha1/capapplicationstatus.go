@@ -16,7 +16,7 @@ import (
 // CAPApplicationStatusApplyConfiguration represents a declarative configuration of the CAPApplicationStatus type for use
 // with apply.
 type CAPApplicationStatusApplyConfiguration struct {
-	GenericStatusApplyConfiguration `json:",inline"`
+	GenericStatusApplyConfiguration `json:""`
 	// State of CAPApplication
 	State *smesapcomv1alpha1.CAPApplicationState `json:"state,omitempty"`
 	// Represents whether this is a services only scenario

@@ -15,7 +15,7 @@ import (
 // DomainStatusApplyConfiguration represents a declarative configuration of the DomainStatus type for use
 // with apply.
 type DomainStatusApplyConfiguration struct {
-	GenericStatusApplyConfiguration `json:",inline"`
+	GenericStatusApplyConfiguration `json:""`
 	// State of the Domain
 	State *smesapcomv1alpha1.DomainState `json:"state,omitempty"`
 	// Effective DNS Target identified for this domain

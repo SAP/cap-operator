@@ -23,11 +23,39 @@ import (
 )
 
 // DomainInformer provides access to a shared informer and lister for
-// Domains.
+// Domains. Prefer using the type-safe variant (see [TypedDomainInformer]).
 type DomainInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() smesapcomv1alpha1.DomainLister
 }
+
+// TypedDomainInformer provides access to a shared informer and lister for
+// Domains, including the type-safe TypedInformer variant.
+// It is a superset of DomainInformer.
+type TypedDomainInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() DomainIndexInformer
+	Lister() smesapcomv1alpha1.DomainLister
+}
+
+// DomainIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type DomainIndexInformer cache.TypedSharedIndexInformer[*apissmesapcomv1alpha1.Domain]
+
+// DomainHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for Domain.
+type DomainHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apissmesapcomv1alpha1.Domain]
+
+// DomainDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for Domain.
+type DomainDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apissmesapcomv1alpha1.Domain]
+
+// DomainFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for Domain.
+type DomainFilteringHandler = cache.TypedFilteringResourceEventHandler[*apissmesapcomv1alpha1.Domain]
+
+// DomainIndexers is a specialization of [cache.TypedIndexers] for Domain.
+type DomainIndexers = cache.TypedIndexers[*apissmesapcomv1alpha1.Domain]
+
+// DeletedDomain is a specialization of [cache.DeletedObject] for Domain.
+type DeletedDomain = cache.DeletedObject[*apissmesapcomv1alpha1.Domain]
 
 type domainInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -38,25 +66,49 @@ type domainInformer struct {
 // NewDomainInformer constructs a new informer for Domain type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedDomainInformer]).
 func NewDomainInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewDomainInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedDomainInformer constructs a new informer for Domain type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedDomainInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers DomainIndexers) DomainIndexInformer {
+	return NewTypedDomainInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredDomainInformer constructs a new informer for Domain type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredDomainInformer]).
 func NewFilteredDomainInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewDomainInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedDomainInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredDomainInformer constructs a new informer for Domain type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredDomainInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers DomainIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) DomainIndexInformer {
+	return NewTypedDomainInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewDomainInformerWithOptions constructs a new informer for Domain type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedDomainInformerWithOptions]).
 func NewDomainInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedDomainInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedDomainInformerWithOptions constructs a new informer for Domain type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedDomainInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) DomainIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "sme.sap.com", Version: "v1alpha1", Resource: "domains"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.Domain](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -89,17 +141,57 @@ func NewDomainInformerWithOptions(client versioned.Interface, namespace string, 
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *domainInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewDomainInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedDomainInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *domainInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apissmesapcomv1alpha1.Domain{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *domainInformer) TypedInformer() DomainIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.Domain](f.factory.InformerFor(&apissmesapcomv1alpha1.Domain{}, f.defaultInformer))
 }
 
 func (f *domainInformer) Lister() smesapcomv1alpha1.DomainLister {
 	return smesapcomv1alpha1.NewDomainLister(f.Informer().GetIndexer())
+}
+
+// ToTypedDomainInformer converts an untyped informer into a TypedDomainInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *Domain. If that is not the case, calling type-safe methods of the returned
+// TypedDomainInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedDomainInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedDomainInformer(informer DomainInformer) TypedDomainInformer {
+	if informer, ok := informer.(TypedDomainInformer); ok {
+		return informer
+	}
+	return &domainTypedInformerAdapter{informer}
+}
+
+type domainTypedInformerAdapter struct {
+	DomainInformer
+}
+
+func (a *domainTypedInformerAdapter) TypedInformer() DomainIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.Domain](a.Informer())
+}
+
+// ToDomainIndexInformer converts an untyped informer into a DomainIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *Domain. If that is not the case, calling type-safe methods of the returned
+// DomainIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a DomainIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToDomainIndexInformer(informer cache.SharedIndexInformer) DomainIndexInformer {
+	if informer, ok := informer.(DomainIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.Domain](informer)
 }

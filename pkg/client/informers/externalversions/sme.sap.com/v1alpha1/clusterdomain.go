@@ -23,11 +23,39 @@ import (
 )
 
 // ClusterDomainInformer provides access to a shared informer and lister for
-// ClusterDomains.
+// ClusterDomains. Prefer using the type-safe variant (see [TypedClusterDomainInformer]).
 type ClusterDomainInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() smesapcomv1alpha1.ClusterDomainLister
 }
+
+// TypedClusterDomainInformer provides access to a shared informer and lister for
+// ClusterDomains, including the type-safe TypedInformer variant.
+// It is a superset of ClusterDomainInformer.
+type TypedClusterDomainInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() ClusterDomainIndexInformer
+	Lister() smesapcomv1alpha1.ClusterDomainLister
+}
+
+// ClusterDomainIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type ClusterDomainIndexInformer cache.TypedSharedIndexInformer[*apissmesapcomv1alpha1.ClusterDomain]
+
+// ClusterDomainHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for ClusterDomain.
+type ClusterDomainHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apissmesapcomv1alpha1.ClusterDomain]
+
+// ClusterDomainDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for ClusterDomain.
+type ClusterDomainDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apissmesapcomv1alpha1.ClusterDomain]
+
+// ClusterDomainFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for ClusterDomain.
+type ClusterDomainFilteringHandler = cache.TypedFilteringResourceEventHandler[*apissmesapcomv1alpha1.ClusterDomain]
+
+// ClusterDomainIndexers is a specialization of [cache.TypedIndexers] for ClusterDomain.
+type ClusterDomainIndexers = cache.TypedIndexers[*apissmesapcomv1alpha1.ClusterDomain]
+
+// DeletedClusterDomain is a specialization of [cache.DeletedObject] for ClusterDomain.
+type DeletedClusterDomain = cache.DeletedObject[*apissmesapcomv1alpha1.ClusterDomain]
 
 type clusterDomainInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -38,25 +66,49 @@ type clusterDomainInformer struct {
 // NewClusterDomainInformer constructs a new informer for ClusterDomain type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedClusterDomainInformer]).
 func NewClusterDomainInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewClusterDomainInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedClusterDomainInformer constructs a new informer for ClusterDomain type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedClusterDomainInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ClusterDomainIndexers) ClusterDomainIndexInformer {
+	return NewTypedClusterDomainInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredClusterDomainInformer constructs a new informer for ClusterDomain type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredClusterDomainInformer]).
 func NewFilteredClusterDomainInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewClusterDomainInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedClusterDomainInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredClusterDomainInformer constructs a new informer for ClusterDomain type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredClusterDomainInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ClusterDomainIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) ClusterDomainIndexInformer {
+	return NewTypedClusterDomainInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewClusterDomainInformerWithOptions constructs a new informer for ClusterDomain type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedClusterDomainInformerWithOptions]).
 func NewClusterDomainInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedClusterDomainInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedClusterDomainInformerWithOptions constructs a new informer for ClusterDomain type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedClusterDomainInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) ClusterDomainIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "sme.sap.com", Version: "v1alpha1", Resource: "clusterdomains"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.ClusterDomain](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -89,17 +141,57 @@ func NewClusterDomainInformerWithOptions(client versioned.Interface, namespace s
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *clusterDomainInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewClusterDomainInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedClusterDomainInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *clusterDomainInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apissmesapcomv1alpha1.ClusterDomain{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *clusterDomainInformer) TypedInformer() ClusterDomainIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.ClusterDomain](f.factory.InformerFor(&apissmesapcomv1alpha1.ClusterDomain{}, f.defaultInformer))
 }
 
 func (f *clusterDomainInformer) Lister() smesapcomv1alpha1.ClusterDomainLister {
 	return smesapcomv1alpha1.NewClusterDomainLister(f.Informer().GetIndexer())
+}
+
+// ToTypedClusterDomainInformer converts an untyped informer into a TypedClusterDomainInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ClusterDomain. If that is not the case, calling type-safe methods of the returned
+// TypedClusterDomainInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedClusterDomainInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedClusterDomainInformer(informer ClusterDomainInformer) TypedClusterDomainInformer {
+	if informer, ok := informer.(TypedClusterDomainInformer); ok {
+		return informer
+	}
+	return &clusterDomainTypedInformerAdapter{informer}
+}
+
+type clusterDomainTypedInformerAdapter struct {
+	ClusterDomainInformer
+}
+
+func (a *clusterDomainTypedInformerAdapter) TypedInformer() ClusterDomainIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.ClusterDomain](a.Informer())
+}
+
+// ToClusterDomainIndexInformer converts an untyped informer into a ClusterDomainIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ClusterDomain. If that is not the case, calling type-safe methods of the returned
+// ClusterDomainIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a ClusterDomainIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToClusterDomainIndexInformer(informer cache.SharedIndexInformer) ClusterDomainIndexInformer {
+	if informer, ok := informer.(ClusterDomainIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.ClusterDomain](informer)
 }

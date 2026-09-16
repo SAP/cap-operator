@@ -16,7 +16,7 @@ import (
 // CAPTenantStatusApplyConfiguration represents a declarative configuration of the CAPTenantStatus type for use
 // with apply.
 type CAPTenantStatusApplyConfiguration struct {
-	GenericStatusApplyConfiguration `json:",inline"`
+	GenericStatusApplyConfiguration `json:""`
 	// State of CAPTenant
 	State *smesapcomv1alpha1.CAPTenantState `json:"state,omitempty"`
 	// Specifies the current version of the tenant after provisioning or upgrade

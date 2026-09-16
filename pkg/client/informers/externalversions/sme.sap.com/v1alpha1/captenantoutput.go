@@ -23,11 +23,39 @@ import (
 )
 
 // CAPTenantOutputInformer provides access to a shared informer and lister for
-// CAPTenantOutputs.
+// CAPTenantOutputs. Prefer using the type-safe variant (see [TypedCAPTenantOutputInformer]).
 type CAPTenantOutputInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() smesapcomv1alpha1.CAPTenantOutputLister
 }
+
+// TypedCAPTenantOutputInformer provides access to a shared informer and lister for
+// CAPTenantOutputs, including the type-safe TypedInformer variant.
+// It is a superset of CAPTenantOutputInformer.
+type TypedCAPTenantOutputInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() CAPTenantOutputIndexInformer
+	Lister() smesapcomv1alpha1.CAPTenantOutputLister
+}
+
+// CAPTenantOutputIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type CAPTenantOutputIndexInformer cache.TypedSharedIndexInformer[*apissmesapcomv1alpha1.CAPTenantOutput]
+
+// CAPTenantOutputHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for CAPTenantOutput.
+type CAPTenantOutputHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apissmesapcomv1alpha1.CAPTenantOutput]
+
+// CAPTenantOutputDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for CAPTenantOutput.
+type CAPTenantOutputDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apissmesapcomv1alpha1.CAPTenantOutput]
+
+// CAPTenantOutputFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for CAPTenantOutput.
+type CAPTenantOutputFilteringHandler = cache.TypedFilteringResourceEventHandler[*apissmesapcomv1alpha1.CAPTenantOutput]
+
+// CAPTenantOutputIndexers is a specialization of [cache.TypedIndexers] for CAPTenantOutput.
+type CAPTenantOutputIndexers = cache.TypedIndexers[*apissmesapcomv1alpha1.CAPTenantOutput]
+
+// DeletedCAPTenantOutput is a specialization of [cache.DeletedObject] for CAPTenantOutput.
+type DeletedCAPTenantOutput = cache.DeletedObject[*apissmesapcomv1alpha1.CAPTenantOutput]
 
 type cAPTenantOutputInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -38,25 +66,49 @@ type cAPTenantOutputInformer struct {
 // NewCAPTenantOutputInformer constructs a new informer for CAPTenantOutput type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedCAPTenantOutputInformer]).
 func NewCAPTenantOutputInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewCAPTenantOutputInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedCAPTenantOutputInformer constructs a new informer for CAPTenantOutput type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedCAPTenantOutputInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers CAPTenantOutputIndexers) CAPTenantOutputIndexInformer {
+	return NewTypedCAPTenantOutputInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredCAPTenantOutputInformer constructs a new informer for CAPTenantOutput type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredCAPTenantOutputInformer]).
 func NewFilteredCAPTenantOutputInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewCAPTenantOutputInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedCAPTenantOutputInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredCAPTenantOutputInformer constructs a new informer for CAPTenantOutput type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredCAPTenantOutputInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers CAPTenantOutputIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) CAPTenantOutputIndexInformer {
+	return NewTypedCAPTenantOutputInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewCAPTenantOutputInformerWithOptions constructs a new informer for CAPTenantOutput type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedCAPTenantOutputInformerWithOptions]).
 func NewCAPTenantOutputInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedCAPTenantOutputInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedCAPTenantOutputInformerWithOptions constructs a new informer for CAPTenantOutput type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedCAPTenantOutputInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) CAPTenantOutputIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "sme.sap.com", Version: "v1alpha1", Resource: "captenantoutputs"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.CAPTenantOutput](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -89,17 +141,57 @@ func NewCAPTenantOutputInformerWithOptions(client versioned.Interface, namespace
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *cAPTenantOutputInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewCAPTenantOutputInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedCAPTenantOutputInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *cAPTenantOutputInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apissmesapcomv1alpha1.CAPTenantOutput{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *cAPTenantOutputInformer) TypedInformer() CAPTenantOutputIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.CAPTenantOutput](f.factory.InformerFor(&apissmesapcomv1alpha1.CAPTenantOutput{}, f.defaultInformer))
 }
 
 func (f *cAPTenantOutputInformer) Lister() smesapcomv1alpha1.CAPTenantOutputLister {
 	return smesapcomv1alpha1.NewCAPTenantOutputLister(f.Informer().GetIndexer())
+}
+
+// ToTypedCAPTenantOutputInformer converts an untyped informer into a TypedCAPTenantOutputInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *CAPTenantOutput. If that is not the case, calling type-safe methods of the returned
+// TypedCAPTenantOutputInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedCAPTenantOutputInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedCAPTenantOutputInformer(informer CAPTenantOutputInformer) TypedCAPTenantOutputInformer {
+	if informer, ok := informer.(TypedCAPTenantOutputInformer); ok {
+		return informer
+	}
+	return &cAPTenantOutputTypedInformerAdapter{informer}
+}
+
+type cAPTenantOutputTypedInformerAdapter struct {
+	CAPTenantOutputInformer
+}
+
+func (a *cAPTenantOutputTypedInformerAdapter) TypedInformer() CAPTenantOutputIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.CAPTenantOutput](a.Informer())
+}
+
+// ToCAPTenantOutputIndexInformer converts an untyped informer into a CAPTenantOutputIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *CAPTenantOutput. If that is not the case, calling type-safe methods of the returned
+// CAPTenantOutputIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a CAPTenantOutputIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToCAPTenantOutputIndexInformer(informer cache.SharedIndexInformer) CAPTenantOutputIndexInformer {
+	if informer, ok := informer.(CAPTenantOutputIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apissmesapcomv1alpha1.CAPTenantOutput](informer)
 }

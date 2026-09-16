@@ -15,7 +15,7 @@ import (
 // CAPApplicationVersionStatusApplyConfiguration represents a declarative configuration of the CAPApplicationVersionStatus type for use
 // with apply.
 type CAPApplicationVersionStatusApplyConfiguration struct {
-	GenericStatusApplyConfiguration `json:",inline"`
+	GenericStatusApplyConfiguration `json:""`
 	// State of CAPApplicationVersion
 	State *smesapcomv1alpha1.CAPApplicationVersionState `json:"state,omitempty"`
 	// List of finished Content Jobs

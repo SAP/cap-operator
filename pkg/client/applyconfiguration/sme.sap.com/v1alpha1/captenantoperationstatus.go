@@ -15,7 +15,7 @@ import (
 // CAPTenantOperationStatusApplyConfiguration represents a declarative configuration of the CAPTenantOperationStatus type for use
 // with apply.
 type CAPTenantOperationStatusApplyConfiguration struct {
-	GenericStatusApplyConfiguration `json:",inline"`
+	GenericStatusApplyConfiguration `json:""`
 	// State of CAPTenantOperation
 	State *smesapcomv1alpha1.CAPTenantOperationState `json:"state,omitempty"`
 	// Current step being processed from the sequence of specified steps

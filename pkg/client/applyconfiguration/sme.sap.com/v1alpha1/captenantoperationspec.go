@@ -17,7 +17,7 @@ type CAPTenantOperationSpecApplyConfiguration struct {
 	// Scope of the tenant lifecycle operation. One of 'provisioning', 'deprovisioning' or 'upgrade'
 	Operation *smesapcomv1alpha1.CAPTenantOperationType `json:"operation,omitempty"`
 	// BTP sub-account (tenant) for which request is created
-	BTPTenantIdentificationApplyConfiguration `json:",inline"`
+	BTPTenantIdentificationApplyConfiguration `json:""`
 	// Reference to CAPApplicationVersion for executing the operation
 	CAPApplicationVersionInstance *string `json:"capApplicationVersionInstance,omitempty"`
 	// Steps (jobs) to be executed for the operation to complete
