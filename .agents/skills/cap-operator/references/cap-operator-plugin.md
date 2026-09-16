@@ -6,6 +6,27 @@ Plugin docs: https://github.com/cap-js/cap-operator-plugin#readme
 
 ---
 
+## Workflow
+
+**Do not run any of these steps on skill invocation.** Start this workflow only when the user explicitly asks to generate a Helm chart or deploy the app. Once asked, chart generation and deployment are two separate phases — finish the first and let the user decide before starting the second; they're often only after the chart.
+
+**1. Generate the Helm chart.** First determine whether the app is multitenant or service-only by checking for a populated MTX sidecar folder (`mtx/sidecar` with contents):
+
+- **Sidecar present** → multitenant app → `cds add cap-operator --with-templates`
+- **No sidecar** → tenant-independent app → `cds add cap-operator --with-service-only`
+
+Run the install and the appropriate command right away. Chart generation reads no environment values, so there's nothing to ask up front — skip the questions about namespace, image registry, or BTP services. Say which variant you picked and why, rather than offering a menu.
+
+Reach for `--with-configurable-templates` instead of `--with-templates` only when the request clearly needs Helm template functions (`if`, `range`, custom helpers) inside CAP Operator resources.
+
+**2. Ask whether they want to deploy.** This is the gate between the two phases. If they only wanted the chart, you're done — leave `runtime-values.yaml` alone. Hold off on everything that feeds it (gathering values, running `kubectl`, building an input file) until the answer is yes.
+
+**3. After a yes, generate `runtime-values.yaml`.** Collect the required inputs first: `appName`, `capOperatorSubdomain`, `clusterDomain`, and `providerSubaccountId`. Ask for any value you don't have — placeholders like `<YOUR_CLUSTER_DOMAIN>` and files with missing values are worse than a question.
+
+For `clusterDomain`, derive it from the current kube context (see below), then ask the user to confirm the derived value. Fall back to free-text entry only if derivation fails.
+
+---
+
 ## Installing the Plugin
 
 ```sh
@@ -25,6 +46,8 @@ cds add cap-operator --with-configurable-templates
 ```
 
 This creates a `chart/` folder including a `chart/templates/` folder — the chart is deployment-ready without any further build step.
+
+> The chart is now complete. Ask whether the user wants to deploy before doing anything toward `runtime-values.yaml` — see "Workflow" above.
 
 ### `--with-templates` (default choice)
 
@@ -90,21 +113,6 @@ helm lint chart/
 
 Validation errors for runtime values (fields populated by `runtime-values.yaml`) can be ignored at this stage.
 
-### Migrating deprecated fields
-
-To migrate, upgrade the plugin and re-run:
-
-```sh
-cds add cap-operator --with-templates --force
-```
-
-`--force` overwrites the generated files. Review the diff (`git diff`) and selectively accept the plugin's changes while restoring any of your own customisations that were overwritten. Deploy only after the review is complete.
-
-| Deprecated field | Deprecated since | Required plugin | Notes |
-|---|---|---|---|
-| `CAPApplication.spec.provider` (`subdomain`, `tenantId`) | CAP Operator v0.31.0 | v0.17.0+ | Removed from generated chart. Existing provider tenants must be **manually cleaned up** in the cluster. |
-| `CAPApplication.spec.globalAccountId` | CAP Operator v0.28.0 | v0.15.0+ | Replaced by `providerSubaccountId`. |
-
 ### Converting an existing chart
 
 If you already have a basic chart and want to switch to configurable templates:
@@ -121,14 +129,30 @@ npx cap-op-plugin convert-to-configurable-template-chart --with-runtime-yaml cha
 
 `values.yaml` holds design-time (repo-committable) values. Environment-specific ("runtime") values are kept in `chart/runtime-values.yaml`, which **must not** be committed.
 
+> **Prerequisite:** Generate `runtime-values.yaml` only once the user has chosen to deploy and all required inputs below are known. Ask for any missing value rather than filling in a placeholder or guess.
+
 **Required inputs:**
 
 | Field | Description |
 |---|---|
 | `appName` | Lowercase alphanumeric + hyphens only (`^[a-z0-9-]+$`). Used as `xsappname` in saas-registry. |
-| `capOperatorSubdomain` | Subdomain where CAP Operator is installed. Kyma default: `cap-op`. |
-| `clusterDomain` | Shoot/cluster domain. Kyma: `kubectl get gateway -n kyma-system kyma-gateway -o jsonpath='{.spec.servers[0].hosts[0]}'` |
+| `capOperatorSubdomain` | Subdomain where CAP Operator is installed. On a **Kyma** cluster, recommend the default `cap-op` instead of asking. |
+| `clusterDomain` | Shoot/cluster domain. See "Deriving the cluster domain" below. |
 | `providerSubaccountId` | BTP provider subaccount ID. |
+
+### Deriving the cluster domain
+
+Prefer deriving `clusterDomain` from the cluster over manual entry. Read it from the active kube context, then ask the user to confirm the derived value. Ask the user to type the domain only if derivation fails.
+
+```sh
+kubectl config view --minify --output jsonpath={.clusters[*].cluster.server}
+```
+
+This returns the API server URL; derive the cluster/shoot domain from it. On Kyma the primary domain can alternatively be read from the ingress gateway:
+
+```sh
+kubectl get gateway -n kyma-system kyma-gateway -o jsonpath='{.spec.servers[0].hosts[0]}'
+```
 
 **Optional inputs:**
 
@@ -137,19 +161,13 @@ npx cap-op-plugin convert-to-configurable-template-chart --with-runtime-yaml cha
 | `hanaInstanceId` | Required only when multiple HANA instances exist in the subaccount. |
 | `imagePullSecret` | Kubernetes secret for private image registries. |
 
-**Note:** `npx cap-op-plugin` requires `node_modules` to be present. If not already installed, run `npm install` first.
-
-**Interactive mode** — prompts for each value:
-
-```sh
-npx cap-op-plugin generate-runtime-values
-```
-
-**File mode** — reads values from a YAML file:
+**Always use file mode** — reads values from a YAML file:
 
 ```sh
 npx cap-op-plugin generate-runtime-values --with-input-yaml <path-to-input.yaml>
 ```
+
+> The bare `npx cap-op-plugin generate-runtime-values` runs an interactive `enquirer` prompt that **cannot be driven by piped input** (it throws `ERR_USE_AFTER_CLOSE`). An agent must always pass `--with-input-yaml` with a fully populated file.
 
 Sample input file:
 
@@ -172,8 +190,6 @@ What gets written to `chart/runtime-values.yaml`:
 - For basic charts: `CDS_CONFIG` env var (with `database_id`) merged into relevant workloads
 - For configurable-template charts: `hanaInstanceId` as a top-level value
 
-> When using GitOps tools (e.g. Argo CD) that always render `Release.Revision` as `1`, set `app.version: "1.2.3"` in `runtime-values.yaml` to pin the `CAPApplicationVersion` version explicitly.
-
 ---
 
 ## Deploying
@@ -192,5 +208,3 @@ If there is no xsuaa service instance:
 helm upgrade -i -n <namespace> <release-name> <project-path>/chart \
   -f <project-path>/chart/runtime-values.yaml
 ```
-
-> **Environment variable consistency:** Helm does not merge arrays. If `values.yaml` defines env vars for a workload and `runtime-values.yaml` also defines env vars for the same workload, `runtime-values.yaml` must repeat all existing vars plus any new ones. The plugin copies existing env vars automatically when generating `runtime-values.yaml` via the CLI.

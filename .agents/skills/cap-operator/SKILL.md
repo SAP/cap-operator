@@ -127,22 +127,13 @@ Full list: `website/content/en/docs/configuration/_index.md` | https://sap.githu
 
 The `@cap-js/cap-operator-plugin` CDS plugin scaffolds the Helm chart for a CAP application, generates runtime values, and builds the final deployable chart.
 
-**Quick start:**
-```sh
-npm add @cap-js/cap-operator-plugin -D
-cds add cap-operator --with-templates   # default
-# ensure node_modules exists before running the plugin:
-npm install
-npx cap-op-plugin generate-runtime-values
-helm upgrade -i -n <namespace> <release-name> chart -f chart/runtime-values.yaml
-```
+**Do not run any of these steps on skill invocation.** Only start when the user explicitly asks to generate a Helm chart or deploy the app. Merely loading this skill (e.g. via `/cap-operator`) is not a request — describe the skill's capabilities and wait.
 
-**Chart variants:**
+Chart generation and deployment are **two separate phases** with a gate between them — finish the chart and let the user decide before deploying; they're often only after the chart.
 
-| Command | Use when |
-|---|---|
-| `cds add cap-operator --with-templates` | Default — includes `chart/templates/`, editable if needed |
-| `cds add cap-operator --with-configurable-templates` | You need Helm template functions inside CAP Operator resources |
-| `cds add cap-operator --with-service-only` | Tenant-independent service-only application |
+1. **Scaffold the chart.** Pick the variant by checking for a populated MTX sidecar folder (`mtx/sidecar` with contents): sidecar present → multitenant → `--with-templates`; no sidecar → service-only → `--with-service-only`. Don't ask prep questions — chart generation reads no environment values. Say which variant you picked and why.
+2. **Ask whether they want to deploy.** This is the gate. If they only wanted the chart, stop — don't touch `runtime-values.yaml`.
+3. **Only after a yes,** collect the runtime inputs (`appName`, `capOperatorSubdomain`, `clusterDomain`, `providerSubaccountId`) and generate `runtime-values.yaml`.
+4. **Deploy** with `helm upgrade -i`.
 
-See [CAP Operator Plugin reference](references/cap-operator-plugin.md) for full details: installation, chart variants, `runtime-values.yaml` generation, and deployment commands.
+See [CAP Operator Plugin reference](references/cap-operator-plugin.md) for everything else: install and exact command syntax, chart-variant internals, how to source each runtime input (Kyma `cap-op` default, cluster-domain derivation), and deployment nuances.
