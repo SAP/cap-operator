@@ -1,6 +1,6 @@
 ---
 name: cap-operator
-description: Manage the lifecycle of multi-tenant SAP CAP applications on Kubernetes using CAP Operator custom resources (CAPApplication, CAPApplicationVersion, CAPTenant, Domain, ClusterDomain). Use when deploying, upgrading, configuring domains, rotating credentials, or troubleshooting CAP Operator-managed apps.
+description: Manage the lifecycle of multi-tenant SAP CAP applications on Kubernetes using CAP Operator custom resources (CAPApplication, CAPApplicationVersion, CAPTenant, Domain, ClusterDomain). Use when deploying, upgrading, configuring domains, rotating credentials, troubleshooting CAP Operator-managed apps, or generating Helm charts with the CAP Operator Plugin.
 license: Apache-2.0
 compatibility: Requires kubectl access to a Kubernetes cluster with CAP Operator installed (sme.sap.com/v1alpha1 CRDs). If kubectl commands return "No resources found" or "the server doesn't have a resource type", verify CAP Operator is installed by running `kubectl get crd | grep sme.sap.com`. If no CRDs are listed, direct the user to install CAP Operator before proceeding.
 metadata:
@@ -122,3 +122,19 @@ Tuned via env vars on the controller deployment. Key variables:
 | `MAX_CONCURRENT_RECONCILES_CAP_TENANT_OPERATION` | CAPTenantOperation reconciliation concurrency |
 
 Full list: `website/content/en/docs/configuration/_index.md` | https://sap.github.io/cap-operator/docs/configuration/
+
+## CAP Operator Plugin (Helm Chart Generation)
+
+The `@cap-js/cap-operator-plugin` CDS plugin scaffolds the Helm chart for a CAP application, generates runtime values, and builds the final deployable chart.
+
+**Do not run any of these steps on skill invocation.** Only start when the user explicitly asks to generate a Helm chart or deploy the app. Merely loading this skill (e.g. via `/cap-operator`) is not a request — describe the skill's capabilities and wait.
+
+Chart generation and deployment are **two separate phases** with a gate between them — create just the chart; let the user decide if/when to deploy.
+
+1. **Scaffold the chart.** Pick the variant by checking for a populated MTX sidecar folder (`mtx/sidecar` with contents): sidecar present → multitenant → `--with-templates`; no sidecar → service-only → `--with-service-only`.
+2. **Ask whether they want to deploy.**
+3. **Only after a yes,** collect the runtime inputs (`appName`, `capOperatorSubdomain`, `clusterDomain`, `providerSubaccountId`) and generate `runtime-values.yaml`.
+4. **Validate before deploying** — run `helm lint` with `runtime-values.yaml` passed in and confirm no required values are missing.
+5. **Deploy** with `helm upgrade -i`.
+
+See [CAP Operator Plugin reference](references/cap-operator-plugin.md) for more details on plugin usage and configuration.
