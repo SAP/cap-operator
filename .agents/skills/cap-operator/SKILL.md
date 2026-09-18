@@ -137,4 +137,4 @@ Chart generation and deployment are **two separate phases** with a gate between 
 4. **Validate before deploying** — run `helm lint` with `runtime-values.yaml` passed in and confirm no required values are missing.
 5. **Deploy** with `helm upgrade -i`.
 
-See [CAP Operator Plugin reference](references/cap-operator-plugin.md) for everything else.
+See [CAP Operator Plugin reference](references/cap-operator-plugin.md) for more details on plugin usage and configuration.
