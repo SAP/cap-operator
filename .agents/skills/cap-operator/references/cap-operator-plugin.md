@@ -25,6 +25,8 @@ Reach for `--with-configurable-templates` instead of `--with-templates` only whe
 
 For `clusterDomain`, derive it from the current kube context (see below), then ask the user to confirm the derived value. Fall back to free-text entry only if derivation fails.
 
+**4. Before deploying, validate the chart for missing values.** Run `helm lint` with `runtime-values.yaml` passed in — the chart's `values.schema.json` confirms every required field resolves. Only deploy once it lints cleanly. See "Deploying" below.
+
 ---
 
 ## Installing the Plugin
@@ -193,6 +195,16 @@ What gets written to `chart/runtime-values.yaml`:
 ---
 
 ## Deploying
+
+**Always validate the chart for missing values before deploying.** Unlike the generation-time lint (where runtime-value errors are ignored), `runtime-values.yaml` is now in play, so run `helm lint` with it passed in — the chart's `values.schema.json` validates that every required field resolves:
+
+```sh
+helm lint <project-path>/chart \
+  --set-file serviceInstances.xsuaa.jsonParameters=<project-path>/xs-security.json \
+  -f <project-path>/chart/runtime-values.yaml
+```
+
+(Drop the `--set-file` line if there's no xsuaa instance.) A lint error here means a required value is missing or invalid — resolve it before proceeding. Do not deploy a chart with missing values.
 
 If `values.yaml` includes an `xsuaa` service instance (the common case), use `--set-file` to pass `xs-security.json` as `jsonParameters`:
 
