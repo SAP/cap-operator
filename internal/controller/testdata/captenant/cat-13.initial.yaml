@@ -1,4 +1,4 @@
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPTenant
 metadata:
   generation: 2
@@ -16,7 +16,7 @@ metadata:
   name: test-cap-01-provider
   namespace: default
   ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
+    - apiVersion: sme.sap.com/v1alpha2
       blockOwnerDeletion: true
       controller: true
       kind: CAPApplication
@@ -37,7 +37,7 @@ status:
   state: Upgrading
   currentCAPApplicationVersionInstance: test-cap-01-cav-v1
 ---
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPTenantOperation
 metadata:
   generateName: test-cap-01-provider-
@@ -53,7 +53,7 @@ metadata:
   finalizers:
     - sme.sap.com/captenantoperation
   ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
+    - apiVersion: sme.sap.com/v1alpha2
       blockOwnerDeletion: true
       controller: true
       kind: CAPTenant

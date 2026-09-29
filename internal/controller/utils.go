@@ -16,10 +16,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	networkingv1 "istio.io/api/networking/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
 )
 
@@ -49,13 +50,22 @@ type appMetadataIdentifiers struct {
 	ownerInfo            *ownerInfo
 }
 
-func getOwnerByKind(owners []metav1.OwnerReference, kind string) (*metav1.OwnerReference, bool) {
+func getOwnerByKind(owners []metav1.OwnerReference, kind, group string) (*metav1.OwnerReference, bool) {
 	for _, o := range owners {
-		if o.APIVersion == v1alpha1.SchemeGroupVersion.String() && o.Kind == kind && *o.Controller {
+		gvk := schema.FromAPIVersionAndKind(o.APIVersion, o.Kind)
+		if gvk.Group == group && gvk.Kind == kind {
 			return &o, true
 		}
 	}
 	return nil, false
+}
+
+func getOwnerByObject(owners []metav1.OwnerReference, kind string, owningObj metav1.Object) (*metav1.OwnerReference, bool) {
+	o, ok := getOwnerByKind(owners, kind, v1alpha2.Group)
+	if ok && o.Name == owningObj.GetName() && o.UID == owningObj.GetUID() {
+		return o, ok
+	}
+	return o, false
 }
 
 func getOwnerFromObjectMetadata(objectMeta metav1.Object, dependentKind string) (NamespacedResourceKey, bool) {
@@ -94,13 +104,13 @@ func getResourceKindFromKey(key int) string {
 /*
 check whether the status of a custom resource (sme.sap.com) is Ready (based on metav1.Condition)
 */
-func isCROConditionReady(status v1alpha1.GenericStatus) bool {
+func isCROConditionReady(status v1alpha2.GenericStatus) bool {
 	if status.Conditions == nil {
 		return false
 	}
 
 	return slices.ContainsFunc(status.Conditions, func(condition metav1.Condition) bool {
-		return condition.Type == string(v1alpha1.ConditionTypeReady) && condition.Status == metav1.ConditionTrue
+		return condition.Type == string(v1alpha2.ConditionTypeReady) && condition.Status == metav1.ConditionTrue
 	})
 }
 
@@ -240,11 +250,11 @@ func updateLabelAnnotationMetadata(object *metav1.ObjectMeta, appMetadata *appMe
 	return updated
 }
 
-func convertTlsMode(m v1alpha1.TLSMode) networkingv1.ServerTLSSettings_TLSmode {
+func convertTlsMode(m v1alpha2.TLSMode) networkingv1.ServerTLSSettings_TLSmode {
 	switch m {
-	case v1alpha1.TlsModeOptionalMutual:
+	case v1alpha2.TlsModeOptionalMutual:
 		return networkingv1.ServerTLSSettings_OPTIONAL_MUTUAL
-	case v1alpha1.TlsModeMutual:
+	case v1alpha2.TlsModeMutual:
 		return networkingv1.ServerTLSSettings_MUTUAL
 	default:
 		return networkingv1.ServerTLSSettings_SIMPLE
@@ -252,36 +262,36 @@ func convertTlsMode(m v1alpha1.TLSMode) networkingv1.ServerTLSSettings_TLSmode {
 }
 
 func (c *Controller) setCAStatusError(ctx context.Context, itemKey NamespacedResourceKey, err error) {
-	cached, _ := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister().CAPApplications(itemKey.Namespace).Get(itemKey.Name)
+	cached, _ := c.crdInformerFactory.Sme().V1alpha2().CAPApplications().Lister().CAPApplications(itemKey.Namespace).Get(itemKey.Name)
 	ca := cached.DeepCopy()
-	ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, recoveredPanic, err.Error())
-	c.crdClient.SmeV1alpha1().CAPApplications(itemKey.Namespace).UpdateStatus(ctx, ca, metav1.UpdateOptions{})
+	ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateError, metav1.ConditionFalse, recoveredPanic, err.Error())
+	c.crdClient.SmeV1alpha2().CAPApplications(itemKey.Namespace).UpdateStatus(ctx, ca, metav1.UpdateOptions{})
 }
 
 func (c *Controller) setCAVStatusError(ctx context.Context, itemKey NamespacedResourceKey, err error) {
-	cached, _ := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(itemKey.Namespace).Get(itemKey.Name)
+	cached, _ := c.crdInformerFactory.Sme().V1alpha2().CAPApplicationVersions().Lister().CAPApplicationVersions(itemKey.Namespace).Get(itemKey.Name)
 	cav := cached.DeepCopy()
-	cav.SetStatusWithReadyCondition(v1alpha1.CAPApplicationVersionStateError, metav1.ConditionFalse, recoveredPanic, err.Error())
-	c.crdClient.SmeV1alpha1().CAPApplicationVersions(itemKey.Namespace).UpdateStatus(ctx, cav, metav1.UpdateOptions{})
+	cav.SetStatusWithReadyCondition(v1alpha2.CAPApplicationVersionStateError, metav1.ConditionFalse, recoveredPanic, err.Error())
+	c.crdClient.SmeV1alpha2().CAPApplicationVersions(itemKey.Namespace).UpdateStatus(ctx, cav, metav1.UpdateOptions{})
 }
 
 func (c *Controller) setCATStatusError(ctx context.Context, itemKey NamespacedResourceKey, err error) {
-	cached, _ := c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(itemKey.Namespace).Get(itemKey.Name)
+	cached, _ := c.crdInformerFactory.Sme().V1alpha2().CAPTenants().Lister().CAPTenants(itemKey.Namespace).Get(itemKey.Name)
 	cat := cached.DeepCopy()
-	var state v1alpha1.CAPTenantState
+	var state v1alpha2.CAPTenantState
 	// Determine error state based on current tenant state
-	if cat.Status.State == v1alpha1.CAPTenantStateUpgrading {
-		state = v1alpha1.CAPTenantStateUpgradeError
+	if cat.Status.State == v1alpha2.CAPTenantStateUpgrading {
+		state = v1alpha2.CAPTenantStateUpgradeError
 	} else {
-		state = v1alpha1.CAPTenantStateProvisioningError
+		state = v1alpha2.CAPTenantStateProvisioningError
 	}
 	cat.SetStatusWithReadyCondition(state, metav1.ConditionFalse, recoveredPanic, err.Error())
-	c.crdClient.SmeV1alpha1().CAPTenants(itemKey.Namespace).UpdateStatus(ctx, cat, metav1.UpdateOptions{})
+	c.crdClient.SmeV1alpha2().CAPTenants(itemKey.Namespace).UpdateStatus(ctx, cat, metav1.UpdateOptions{})
 }
 
 func (c *Controller) setCTOPStatusError(ctx context.Context, itemKey NamespacedResourceKey, err error) {
-	cached, _ := c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Lister().CAPTenantOperations(itemKey.Namespace).Get(itemKey.Name)
+	cached, _ := c.crdInformerFactory.Sme().V1alpha2().CAPTenantOperations().Lister().CAPTenantOperations(itemKey.Namespace).Get(itemKey.Name)
 	ctop := cached.DeepCopy()
-	ctop.SetStatusWithReadyCondition(v1alpha1.CAPTenantOperationStateFailed, metav1.ConditionFalse, recoveredPanic, err.Error())
-	c.crdClient.SmeV1alpha1().CAPTenantOperations(itemKey.Namespace).UpdateStatus(ctx, ctop, metav1.UpdateOptions{})
+	ctop.SetStatusWithReadyCondition(v1alpha2.CAPTenantOperationStateFailed, metav1.ConditionFalse, recoveredPanic, err.Error())
+	c.crdClient.SmeV1alpha2().CAPTenantOperations(itemKey.Namespace).UpdateStatus(ctx, ctop, metav1.UpdateOptions{})
 }

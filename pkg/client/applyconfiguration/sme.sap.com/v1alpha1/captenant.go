@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
+	v1alpha2 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
@@ -16,14 +17,15 @@ import (
 // CAPTenantApplyConfiguration represents a declarative configuration of the CAPTenant type for use
 // with apply.
 //
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPTenant defines the schema for captenants API
 type CAPTenantApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	// CAPTenant spec
-	Spec *CAPTenantSpecApplyConfiguration `json:"spec,omitempty"`
+	Spec *v1alpha2.CAPTenantSpecApplyConfiguration `json:"spec,omitempty"`
 	// CAPTenant status
-	Status *CAPTenantStatusApplyConfiguration `json:"status,omitempty"`
+	Status *v1alpha2.CAPTenantStatusApplyConfiguration `json:"status,omitempty"`
 }
 
 // CAPTenant constructs a declarative configuration of the CAPTenant type for use with
@@ -200,7 +202,7 @@ func (b *CAPTenantApplyConfiguration) ensureObjectMetaApplyConfigurationExists()
 // WithSpec sets the Spec field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Spec field is set to the value of the last call.
-func (b *CAPTenantApplyConfiguration) WithSpec(value *CAPTenantSpecApplyConfiguration) *CAPTenantApplyConfiguration {
+func (b *CAPTenantApplyConfiguration) WithSpec(value *v1alpha2.CAPTenantSpecApplyConfiguration) *CAPTenantApplyConfiguration {
 	b.Spec = value
 	return b
 }
@@ -208,7 +210,7 @@ func (b *CAPTenantApplyConfiguration) WithSpec(value *CAPTenantSpecApplyConfigur
 // WithStatus sets the Status field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Status field is set to the value of the last call.
-func (b *CAPTenantApplyConfiguration) WithStatus(value *CAPTenantStatusApplyConfiguration) *CAPTenantApplyConfiguration {
+func (b *CAPTenantApplyConfiguration) WithStatus(value *v1alpha2.CAPTenantStatusApplyConfiguration) *CAPTenantApplyConfiguration {
 	b.Status = value
 	return b
 }

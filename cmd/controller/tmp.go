@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/sap/cap-operator/internal/controller"
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -50,7 +50,7 @@ func ownerIdSelector(ownerNamespace, ownerName string) string {
 }
 
 func migrateCAPApplicationVersions(crdClient versioned.Interface, namespace, caName, appIdHash, appId string) {
-	cavs, err := crdClient.SmeV1alpha1().CAPApplicationVersions(namespace).List(context.TODO(), metav1.ListOptions{
+	cavs, err := crdClient.SmeV1alpha2().CAPApplicationVersions(namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: ownerIdSelector(namespace, caName),
 	})
 	if err != nil {
@@ -60,14 +60,14 @@ func migrateCAPApplicationVersions(crdClient versioned.Interface, namespace, caN
 	for _, cav := range cavs.Items {
 		cavCopy := cav.DeepCopy()
 		migrateAppIdLabels(&cavCopy.ObjectMeta, appIdHash, appId)
-		if _, err := crdClient.SmeV1alpha1().CAPApplicationVersions(cav.Namespace).Update(context.TODO(), cavCopy, metav1.UpdateOptions{}); err != nil {
+		if _, err := crdClient.SmeV1alpha2().CAPApplicationVersions(cav.Namespace).Update(context.TODO(), cavCopy, metav1.UpdateOptions{}); err != nil {
 			klog.ErrorS(err, "Failed to update CAPApplicationVersion", "name", cav.Name, "namespace", namespace)
 		}
 	}
 }
 
 func migrateCAPTenants(crdClient versioned.Interface, namespace, caName, appIdHash, appId string) {
-	cats, err := crdClient.SmeV1alpha1().CAPTenants(namespace).List(context.TODO(), metav1.ListOptions{
+	cats, err := crdClient.SmeV1alpha2().CAPTenants(namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: ownerIdSelector(namespace, caName),
 	})
 	if err != nil {
@@ -77,7 +77,7 @@ func migrateCAPTenants(crdClient versioned.Interface, namespace, caName, appIdHa
 	for _, cat := range cats.Items {
 		catCopy := cat.DeepCopy()
 		migrateAppIdLabels(&catCopy.ObjectMeta, appIdHash, appId)
-		if _, err := crdClient.SmeV1alpha1().CAPTenants(cat.Namespace).Update(context.TODO(), catCopy, metav1.UpdateOptions{}); err != nil {
+		if _, err := crdClient.SmeV1alpha2().CAPTenants(cat.Namespace).Update(context.TODO(), catCopy, metav1.UpdateOptions{}); err != nil {
 			klog.ErrorS(err, "Failed to update CAPTenant", "name", cat.Name, "namespace", namespace)
 		}
 		migrateCAPTenantOperations(crdClient, cat.Namespace, cat.Name, appIdHash, appId)
@@ -85,7 +85,7 @@ func migrateCAPTenants(crdClient versioned.Interface, namespace, caName, appIdHa
 }
 
 func migrateCAPTenantOperations(crdClient versioned.Interface, namespace, catName, appIdHash, appId string) {
-	ctops, err := crdClient.SmeV1alpha1().CAPTenantOperations(namespace).List(context.TODO(), metav1.ListOptions{
+	ctops, err := crdClient.SmeV1alpha2().CAPTenantOperations(namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: ownerIdSelector(namespace, catName),
 	})
 	if err != nil {
@@ -95,13 +95,13 @@ func migrateCAPTenantOperations(crdClient versioned.Interface, namespace, catNam
 	for _, ctop := range ctops.Items {
 		ctopCopy := ctop.DeepCopy()
 		migrateAppIdLabels(&ctopCopy.ObjectMeta, appIdHash, appId)
-		if _, err := crdClient.SmeV1alpha1().CAPTenantOperations(ctop.Namespace).Update(context.TODO(), ctopCopy, metav1.UpdateOptions{}); err != nil {
+		if _, err := crdClient.SmeV1alpha2().CAPTenantOperations(ctop.Namespace).Update(context.TODO(), ctopCopy, metav1.UpdateOptions{}); err != nil {
 			klog.ErrorS(err, "Failed to update CAPTenantOperation", "name", ctop.Name, "namespace", ctop.Namespace)
 		}
 	}
 }
 
-func needsMigration(ca *v1alpha1.CAPApplication, appIdHash string) bool {
+func needsMigration(ca *v1alpha2.CAPApplication, appIdHash string) bool {
 	if ca.Labels[controller.LabelAppIdHash] != appIdHash {
 		return true
 	}
@@ -118,7 +118,7 @@ func migrateAppsAndSecrets(migrationDone chan bool, crdClient versioned.Interfac
 	}()
 
 	// Go over all CAP applications and check if spec has ProviderSubaccountId set, if so trigger update after setting LabelAppIdHash and AnnotationAppId and remove LabelBTPApplicationIdentifierHash & AnnotationBTPApplicationIdentifier from all CAs.
-	apps, err := crdClient.SmeV1alpha1().CAPApplications(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
+	apps, err := crdClient.SmeV1alpha2().CAPApplications(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		klog.ErrorS(err, "Failed to list CAP applications")
 		return
@@ -136,7 +136,7 @@ func migrateAppsAndSecrets(migrationDone chan bool, crdClient versioned.Interfac
 		if needsMigration(&ca, appIdHash) {
 			caCopy := ca.DeepCopy()
 			migrateAppIdLabels(&caCopy.ObjectMeta, appIdHash, appId)
-			if _, err := crdClient.SmeV1alpha1().CAPApplications(ca.Namespace).Update(context.TODO(), caCopy, metav1.UpdateOptions{}); err != nil {
+			if _, err := crdClient.SmeV1alpha2().CAPApplications(ca.Namespace).Update(context.TODO(), caCopy, metav1.UpdateOptions{}); err != nil {
 				klog.ErrorS(err, "Failed to update CAPApplication", "name", ca.Name, "namespace", ca.Namespace)
 				continue
 			}
@@ -152,12 +152,12 @@ func migrateAppsAndSecrets(migrationDone chan bool, crdClient versioned.Interfac
 	annotateAllTenants(crdClient)
 }
 
-func missingProviderSubaccountID(crdClient versioned.Interface, ca *v1alpha1.CAPApplication) bool {
+func missingProviderSubaccountID(crdClient versioned.Interface, ca *v1alpha2.CAPApplication) bool {
 	missing := ca.Spec.ProviderSubaccountId == ""
 
 	if missing {
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "MissingProviderSubaccountId", "set providerSubaccountId and restart CAP Operator controller to be able to use this app")
-		_, err := crdClient.SmeV1alpha1().CAPApplications(ca.Namespace).UpdateStatus(context.TODO(), ca, metav1.UpdateOptions{})
+		ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateError, metav1.ConditionFalse, "MissingProviderSubaccountId", "set providerSubaccountId and restart CAP Operator controller to be able to use this app")
+		_, err := crdClient.SmeV1alpha2().CAPApplications(ca.Namespace).UpdateStatus(context.TODO(), ca, metav1.UpdateOptions{})
 		if err != nil {
 			klog.ErrorS(err, "Failed to update CAPApplication status", "name", ca.Name, "namespace", ca.Namespace)
 		}
@@ -205,7 +205,7 @@ func removeFinalizer(finalizers *[]string, finalizerType string) bool {
 func annotateAllTenants(crdClient versioned.Interface) {
 	count := 0
 	// Get all CAPTenants and check if they have the new subscription-guid annotation set, if not set it based on the existing label
-	tenants, err := crdClient.SmeV1alpha1().CAPTenants(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
+	tenants, err := crdClient.SmeV1alpha2().CAPTenants(metav1.NamespaceAll).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		klog.ErrorS(err, "Failed to list CAPTenants")
 		return
@@ -218,7 +218,7 @@ func annotateAllTenants(crdClient versioned.Interface) {
 		}
 		if tenant.Annotations[controller.MetadataSubscriptionGUID] != subscriptionGUID {
 			tenant.Annotations[controller.MetadataSubscriptionGUID] = subscriptionGUID
-			if _, err := crdClient.SmeV1alpha1().CAPTenants(tenant.Namespace).Update(context.TODO(), &tenant, metav1.UpdateOptions{}); err != nil {
+			if _, err := crdClient.SmeV1alpha2().CAPTenants(tenant.Namespace).Update(context.TODO(), &tenant, metav1.UpdateOptions{}); err != nil {
 				klog.ErrorS(err, "Failed to update CAPTenant annotation", "name", tenant.Name, "namespace", tenant.Namespace)
 				continue
 			}

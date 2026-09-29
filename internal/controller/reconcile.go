@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/sap/cap-operator/internal/util"
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	"golang.org/x/mod/semver"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -165,13 +165,13 @@ func (c *Controller) Event(main runtime.Object, related runtime.Object, eventTyp
 	c.eventRecorder.Eventf(main, related, eventType, reason, action, message)
 }
 
-func (c *Controller) getCachedCAPApplication(namespace, name string) (*v1alpha1.CAPApplication, error) {
-	lister := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister()
+func (c *Controller) getCachedCAPApplication(namespace, name string) (*v1alpha2.CAPApplication, error) {
+	lister := c.crdInformerFactory.Sme().V1alpha2().CAPApplications().Lister()
 	return lister.CAPApplications(namespace).Get(name)
 }
 
-func (c *Controller) getCachedCAPTenant(namespace, value string, valueIsTenantId bool) (*v1alpha1.CAPTenant, error) {
-	lister := c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister()
+func (c *Controller) getCachedCAPTenant(namespace, value string, valueIsTenantId bool) (*v1alpha2.CAPTenant, error) {
+	lister := c.crdInformerFactory.Sme().V1alpha2().CAPTenants().Lister()
 	if !valueIsTenantId {
 		// fetch with name
 		return lister.CAPTenants(namespace).Get(value)
@@ -197,13 +197,13 @@ func (c *Controller) getCachedCAPTenant(namespace, value string, valueIsTenantId
 /*
 fetch the latest CAPApplicationVersion in Ready state, for a specified CAPApplication
 */
-func (c *Controller) getLatestReadyCAPApplicationVersion(ca *v1alpha1.CAPApplication, avoidNotFound bool) (*v1alpha1.CAPApplicationVersion, error) {
+func (c *Controller) getLatestReadyCAPApplicationVersion(ca *v1alpha2.CAPApplication, avoidNotFound bool) (*v1alpha2.CAPApplicationVersion, error) {
 	cavs, err := c.getCachedCAPApplicationVersions(ca)
 	if err != nil {
 		return nil, err
 	}
 
-	var latestCav *v1alpha1.CAPApplicationVersion
+	var latestCav *v1alpha2.CAPApplicationVersion
 	for _, cav := range cavs {
 		// determine the latest semantic version
 		if isCROConditionReady(cav.Status.GenericStatus) &&
@@ -213,7 +213,7 @@ func (c *Controller) getLatestReadyCAPApplicationVersion(ca *v1alpha1.CAPApplica
 	}
 
 	if latestCav == nil && !avoidNotFound {
-		err = fmt.Errorf("could not find a %s with status %s for %s %s.%s", v1alpha1.CAPApplicationVersionKind, v1alpha1.CAPApplicationVersionStateReady, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
+		err = fmt.Errorf("could not find a %s with status %s for %s %s.%s", v1alpha2.CAPApplicationVersionKind, v1alpha2.CAPApplicationVersionStateReady, v1alpha2.CAPApplicationKind, ca.Namespace, ca.Name)
 	}
 
 	return latestCav, err
@@ -222,13 +222,13 @@ func (c *Controller) getLatestReadyCAPApplicationVersion(ca *v1alpha1.CAPApplica
 /*
 fetch the latest CAPApplicationVersion, for a specified CAPApplication
 */
-func (c *Controller) getLatestCAPApplicationVersion(ca *v1alpha1.CAPApplication) (*v1alpha1.CAPApplicationVersion, error) {
+func (c *Controller) getLatestCAPApplicationVersion(ca *v1alpha2.CAPApplication) (*v1alpha2.CAPApplicationVersion, error) {
 	cavs, err := c.getCachedCAPApplicationVersions(ca)
 	if err != nil {
 		return nil, err
 	}
 
-	var latestCav *v1alpha1.CAPApplicationVersion
+	var latestCav *v1alpha2.CAPApplicationVersion
 	for _, cav := range cavs {
 		// determine the latest semantic version
 		if latestCav == nil || semver.Compare("v"+cav.Spec.Version, "v"+latestCav.Spec.Version) == 1 {
@@ -237,7 +237,7 @@ func (c *Controller) getLatestCAPApplicationVersion(ca *v1alpha1.CAPApplication)
 	}
 
 	if latestCav == nil {
-		err = fmt.Errorf("could not find a %s for %s %s.%s", v1alpha1.CAPApplicationVersionKind, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
+		err = fmt.Errorf("could not find a %s for %s %s.%s", v1alpha2.CAPApplicationVersionKind, v1alpha2.CAPApplicationKind, ca.Namespace, ca.Name)
 	}
 
 	return latestCav, err
@@ -248,13 +248,13 @@ func (c *Controller) getLatestCAPApplicationVersion(ca *v1alpha1.CAPApplication)
 
 	fetch the relevant CAPApplicationVersion in Ready state, for a specified CAPApplication and version string
 */
-func (c *Controller) getRelevantCAPApplicationVersion(ca *v1alpha1.CAPApplication, version string) (*v1alpha1.CAPApplicationVersion, error) {
+func (c *Controller) getRelevantCAPApplicationVersion(ca *v1alpha2.CAPApplication, version string) (*v1alpha2.CAPApplicationVersion, error) {
 	cavs, err := c.getCachedCAPApplicationVersions(ca)
 	if err != nil {
 		return nil, err
 	}
 
-	var latestCav *v1alpha1.CAPApplicationVersion
+	var latestCav *v1alpha2.CAPApplicationVersion
 	for _, cav := range cavs {
 		// determine the matching semantic version and return
 		if isCROConditionReady(cav.Status.GenericStatus) && cav.Spec.Version == version {
@@ -264,13 +264,13 @@ func (c *Controller) getRelevantCAPApplicationVersion(ca *v1alpha1.CAPApplicatio
 	}
 
 	if latestCav == nil {
-		err = fmt.Errorf("could not find a %s with status %s for %s %s.%s and version %s", v1alpha1.CAPApplicationVersionKind, v1alpha1.CAPApplicationVersionStateReady, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name, version)
+		err = fmt.Errorf("could not find a %s with status %s for %s %s.%s and version %s", v1alpha2.CAPApplicationVersionKind, v1alpha2.CAPApplicationVersionStateReady, v1alpha2.CAPApplicationKind, ca.Namespace, ca.Name, version)
 	}
 
 	return latestCav, err
 }
 
-func (c *Controller) getCachedCAPApplicationVersions(ca *v1alpha1.CAPApplication) ([]*v1alpha1.CAPApplicationVersion, error) {
+func (c *Controller) getCachedCAPApplicationVersions(ca *v1alpha2.CAPApplication) ([]*v1alpha2.CAPApplicationVersion, error) {
 	selector, err := labels.ValidatedSelectorFromSet(map[string]string{
 		LabelOwnerIdentifierHash: sha1Sum(ca.Namespace, ca.Name),
 	})
@@ -279,10 +279,10 @@ func (c *Controller) getCachedCAPApplicationVersions(ca *v1alpha1.CAPApplication
 		return nil, err
 	}
 
-	return c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().List(selector)
+	return c.crdInformerFactory.Sme().V1alpha2().CAPApplicationVersions().Lister().List(selector)
 }
 
-func (c *Controller) checkSecretsExist(serviceInfos []v1alpha1.ServiceInfo, namespace string) error {
+func (c *Controller) checkSecretsExist(serviceInfos []v1alpha2.ServiceInfo, namespace string) error {
 	var err error
 	secretNSLister := c.kubeInformerFactory.Core().V1().Secrets().Lister().Secrets(namespace)
 
@@ -296,9 +296,9 @@ func (c *Controller) checkSecretsExist(serviceInfos []v1alpha1.ServiceInfo, name
 }
 
 // Services Only will be set to true if there are jobs of type content (if any jobs exist) in CAV and the provider section is empty in CA
-func (c *Controller) checkServicesOnly(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) error {
-	servicesOnly := !slices.ContainsFunc(cav.Spec.Workloads, func(wd v1alpha1.WorkloadDetails) bool {
-		return wd.JobDefinition != nil && wd.JobDefinition.Type != v1alpha1.JobContent
+func (c *Controller) checkServicesOnly(ca *v1alpha2.CAPApplication, cav *v1alpha2.CAPApplicationVersion) error {
+	servicesOnly := !slices.ContainsFunc(cav.Spec.Workloads, func(wd v1alpha2.WorkloadDetails) bool {
+		return wd.JobDefinition != nil && wd.JobDefinition.Type != v1alpha2.JobContent
 	}) && ca.IsProviderEmpty()
 
 	// Check if the CAP Application is already marked with ServicesOnly from a previous version only once the Status is set!
@@ -332,8 +332,8 @@ func getConsumedServiceMap(consumedServices []string) map[string]string {
 	return consumedServicesMap
 }
 
-func getConsumedServiceInfos(consumedServicesMap map[string]string, serviceInfos []v1alpha1.ServiceInfo) []v1alpha1.ServiceInfo {
-	consumedServiceInfo := []v1alpha1.ServiceInfo{}
+func getConsumedServiceInfos(consumedServicesMap map[string]string, serviceInfos []v1alpha2.ServiceInfo) []v1alpha2.ServiceInfo {
+	consumedServiceInfo := []v1alpha2.ServiceInfo{}
 
 	for _, serviceInfo := range serviceInfos {
 		if serviceInfo.Name == consumedServicesMap[serviceInfo.Name] {
@@ -343,7 +343,7 @@ func getConsumedServiceInfos(consumedServicesMap map[string]string, serviceInfos
 	return consumedServiceInfo
 }
 
-func generateVCAPEnv(ns string, serviceInfos []v1alpha1.ServiceInfo, kubeInformerFactory informers.SharedInformerFactory) ([]byte, error) {
+func generateVCAPEnv(ns string, serviceInfos []v1alpha2.ServiceInfo, kubeInformerFactory informers.SharedInformerFactory) ([]byte, error) {
 	envVCAPServices := map[string][]map[string]any{}
 	for _, serviceInfo := range serviceInfos {
 		entry, err := util.CreateVCAPEntryFromSecret(&serviceInfo, ns, nil, kubeInformerFactory)
@@ -363,7 +363,7 @@ func generateVCAPEnv(ns string, serviceInfos []v1alpha1.ServiceInfo, kubeInforme
 	return json.Marshal(envVCAPServices)
 }
 
-func (c *Controller) createVCAPSecret(namePrefix string, ns string, ownerRef metav1.OwnerReference, serviceInfos []v1alpha1.ServiceInfo) (string, error) {
+func (c *Controller) createVCAPSecret(namePrefix string, ns string, ownerRef metav1.OwnerReference, serviceInfos []v1alpha2.ServiceInfo) (string, error) {
 	// Generate VCAP_SERVICES env. variable
 	vcapEnv, err := generateVCAPEnv(ns, serviceInfos, c.kubeInformerFactory)
 	if err != nil {
@@ -424,7 +424,7 @@ func errorEnv(workloadType, entry string) error {
 	return fmt.Errorf("invalid env configuration for workload: %s, remove entry: %s from configuration", workloadType, entry)
 }
 
-func getRelevantJob(workloadType v1alpha1.JobType, cav *v1alpha1.CAPApplicationVersion) *v1alpha1.WorkloadDetails {
+func getRelevantJob(workloadType v1alpha2.JobType, cav *v1alpha2.CAPApplicationVersion) *v1alpha2.WorkloadDetails {
 	for _, workload := range cav.Spec.Workloads {
 		if workload.JobDefinition != nil && workload.JobDefinition.Type == workloadType {
 			return &workload
@@ -433,7 +433,7 @@ func getRelevantJob(workloadType v1alpha1.JobType, cav *v1alpha1.CAPApplicationV
 	return nil
 }
 
-func getRelevantDeployment(workloadType v1alpha1.DeploymentType, cav *v1alpha1.CAPApplicationVersion) *v1alpha1.WorkloadDetails {
+func getRelevantDeployment(workloadType v1alpha2.DeploymentType, cav *v1alpha2.CAPApplicationVersion) *v1alpha2.WorkloadDetails {
 	workloads := getDeployments(workloadType, cav)
 	if len(workloads) == 0 {
 		return nil
@@ -441,8 +441,8 @@ func getRelevantDeployment(workloadType v1alpha1.DeploymentType, cav *v1alpha1.C
 	return &workloads[0]
 }
 
-func getDeployments(workloadType v1alpha1.DeploymentType, cav *v1alpha1.CAPApplicationVersion) []v1alpha1.WorkloadDetails {
-	deployments := []v1alpha1.WorkloadDetails{}
+func getDeployments(workloadType v1alpha2.DeploymentType, cav *v1alpha2.CAPApplicationVersion) []v1alpha2.WorkloadDetails {
+	deployments := []v1alpha2.WorkloadDetails{}
 	for _, workload := range cav.Spec.Workloads {
 		if workload.DeploymentDefinition != nil && workload.DeploymentDefinition.Type == workloadType {
 			deployments = append(deployments, workload)
@@ -451,7 +451,7 @@ func getDeployments(workloadType v1alpha1.DeploymentType, cav *v1alpha1.CAPAppli
 	return deployments
 }
 
-func getWorkloadByName(name string, cav *v1alpha1.CAPApplicationVersion) *v1alpha1.WorkloadDetails {
+func getWorkloadByName(name string, cav *v1alpha2.CAPApplicationVersion) *v1alpha2.WorkloadDetails {
 	for _, workload := range cav.Spec.Workloads {
 		if workload.Name == name {
 			return &workload
@@ -488,7 +488,7 @@ func isDeletionImminent(m *metav1.ObjectMeta) bool {
 	return len(m.Finalizers) == 0
 }
 
-func getRelevantServicePortInfo(cav *v1alpha1.CAPApplicationVersion) []servicePortInfo {
+func getRelevantServicePortInfo(cav *v1alpha2.CAPApplicationVersion) []servicePortInfo {
 	overallPortInfos := []servicePortInfo{}
 	for _, workload := range cav.Spec.Workloads {
 		var workloadPortInfo *servicePortInfo
@@ -503,7 +503,7 @@ func getRelevantServicePortInfo(cav *v1alpha1.CAPApplicationVersion) []servicePo
 	return overallPortInfos
 }
 
-func getWorkloadPortInfo(workload v1alpha1.WorkloadDetails, cavName string) *servicePortInfo {
+func getWorkloadPortInfo(workload v1alpha2.WorkloadDetails, cavName string) *servicePortInfo {
 	var servicePorts []corev1.ServicePort
 	var destinationDetails []destinationInfo
 	var clusterPorts []int32
@@ -519,7 +519,7 @@ func getWorkloadPortInfo(workload v1alpha1.WorkloadDetails, cavName string) *ser
 					Port:            port.Port,
 				})
 			}
-			if port.NetworkPolicy == v1alpha1.PortNetworkPolicyTypeCluster {
+			if port.NetworkPolicy == v1alpha2.PortNetworkPolicyTypeCluster {
 				clusterPorts = append(clusterPorts, port.Port)
 			}
 		}
@@ -528,16 +528,16 @@ func getWorkloadPortInfo(workload v1alpha1.WorkloadDetails, cavName string) *ser
 	return workloadPortInfo
 }
 
-func updateWorkloadPortInfo(cavName, workloadName string, deploymentType v1alpha1.DeploymentType, servicePorts []corev1.ServicePort, destinationDetails []destinationInfo, clusterPorts []int32) *servicePortInfo {
+func updateWorkloadPortInfo(cavName, workloadName string, deploymentType v1alpha2.DeploymentType, servicePorts []corev1.ServicePort, destinationDetails []destinationInfo, clusterPorts []int32) *servicePortInfo {
 	var workloadPortInfo *servicePortInfo
 	if len(servicePorts) == 0 {
 		// Use fallback defaults
 		switch deploymentType {
-		case v1alpha1.DeploymentRouter:
+		case v1alpha2.DeploymentRouter:
 			servicePorts = []corev1.ServicePort{
 				{Name: "router-svc-port", Port: defaultRouterPort},
 			}
-		case v1alpha1.DeploymentCAP:
+		case v1alpha2.DeploymentCAP:
 			servicePorts = []corev1.ServicePort{
 				{Name: "server-svc-port", Port: defaultServerPort},
 			}
@@ -573,12 +573,12 @@ func getServicePortInfoByWorkloadName(items []servicePortInfo, cavName, workload
 }
 
 func (c *Controller) getRouterServicePortInfo(cavName, namespace string) (*servicePortInfo, error) {
-	cav, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(namespace).Get(cavName)
+	cav, err := c.crdInformerFactory.Sme().V1alpha2().CAPApplicationVersions().Lister().CAPApplicationVersions(namespace).Get(cavName)
 	if err != nil {
 		return nil, err
 	}
 
-	routerWorkload := getRelevantDeployment(v1alpha1.DeploymentRouter, cav)
+	routerWorkload := getRelevantDeployment(v1alpha2.DeploymentRouter, cav)
 
 	return getWorkloadPortInfo(*routerWorkload, cavName), nil
 }

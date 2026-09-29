@@ -70,7 +70,6 @@ func main() {
 	}
 
 	http.HandleFunc("/validate", whHandler.Validate)
-	http.HandleFunc("/mutate", whHandler.Mutate)
 
 	if parameters.tlsEnabled {
 		klog.Fatal(http.ListenAndServeTLS(":"+strconv.Itoa(parameters.port), parameters.certFile, parameters.keyFile, nil))

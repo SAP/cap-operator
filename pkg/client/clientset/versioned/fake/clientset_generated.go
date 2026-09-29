@@ -12,6 +12,8 @@ import (
 	clientset "github.com/sap/cap-operator/pkg/client/clientset/versioned"
 	smev1alpha1 "github.com/sap/cap-operator/pkg/client/clientset/versioned/typed/sme.sap.com/v1alpha1"
 	fakesmev1alpha1 "github.com/sap/cap-operator/pkg/client/clientset/versioned/typed/sme.sap.com/v1alpha1/fake"
+	smev1alpha2 "github.com/sap/cap-operator/pkg/client/clientset/versioned/typed/sme.sap.com/v1alpha2"
+	fakesmev1alpha2 "github.com/sap/cap-operator/pkg/client/clientset/versioned/typed/sme.sap.com/v1alpha2/fake"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
@@ -128,4 +130,9 @@ var (
 // SmeV1alpha1 retrieves the SmeV1alpha1Client
 func (c *Clientset) SmeV1alpha1() smev1alpha1.SmeV1alpha1Interface {
 	return &fakesmev1alpha1.FakeSmeV1alpha1{Fake: &c.Fake}
+}
+
+// SmeV1alpha2 retrieves the SmeV1alpha2Client
+func (c *Clientset) SmeV1alpha2() smev1alpha2.SmeV1alpha2Interface {
+	return &fakesmev1alpha2.FakeSmeV1alpha2{Fake: &c.Fake}
 }

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,8 +24,8 @@ import (
 
 // buildCA creates a CAPApplication with the given services and the
 // RolloutOnCredentialUpdate flag set to enabled.
-func buildCA(name string, rolloutEnabled bool, services []v1alpha1.ServiceInfo) *v1alpha1.CAPApplication {
-	return &v1alpha1.CAPApplication{
+func buildCA(name string, rolloutEnabled bool, services []v1alpha2.ServiceInfo) *v1alpha2.CAPApplication {
+	return &v1alpha2.CAPApplication{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
@@ -33,11 +33,11 @@ func buildCA(name string, rolloutEnabled bool, services []v1alpha1.ServiceInfo) 
 				LabelAppIdHash: sha1Sum(providerSubaccountId, btpApplicationName),
 			},
 		},
-		Spec: v1alpha1.CAPApplicationSpec{
+		Spec: v1alpha2.CAPApplicationSpec{
 			ProviderSubaccountId:      providerSubaccountId,
 			BTPAppName:                btpApplicationName,
 			RolloutOnCredentialUpdate: rolloutEnabled,
-			BTP: v1alpha1.BTP{
+			BTP: v1alpha2.BTP{
 				Services: services,
 			},
 		},
@@ -45,8 +45,8 @@ func buildCA(name string, rolloutEnabled bool, services []v1alpha1.ServiceInfo) 
 }
 
 // buildReadyCAV creates a CAPApplicationVersion in Ready state with the given workloads.
-func buildReadyCAV(name, caName string, workloads []v1alpha1.WorkloadDetails) *v1alpha1.CAPApplicationVersion {
-	return &v1alpha1.CAPApplicationVersion{
+func buildReadyCAV(name, caName string, workloads []v1alpha2.WorkloadDetails) *v1alpha2.CAPApplicationVersion {
+	return &v1alpha2.CAPApplicationVersion{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
@@ -54,25 +54,25 @@ func buildReadyCAV(name, caName string, workloads []v1alpha1.WorkloadDetails) *v
 				LabelOwnerIdentifierHash: sha1Sum(metav1.NamespaceDefault, caName),
 			},
 		},
-		Spec: v1alpha1.CAPApplicationVersionSpec{
+		Spec: v1alpha2.CAPApplicationVersionSpec{
 			CAPApplicationInstance: caName,
 			Version:                "1.0.0",
 			Workloads:              workloads,
 		},
-		Status: v1alpha1.CAPApplicationVersionStatus{
-			GenericStatus: v1alpha1.GenericStatus{
+		Status: v1alpha2.CAPApplicationVersionStatus{
+			GenericStatus: v1alpha2.GenericStatus{
 				Conditions: []metav1.Condition{
-					{Type: string(v1alpha1.ConditionTypeReady), Status: metav1.ConditionTrue},
+					{Type: string(v1alpha2.ConditionTypeReady), Status: metav1.ConditionTrue},
 				},
 			},
-			State: v1alpha1.CAPApplicationVersionStateReady,
+			State: v1alpha2.CAPApplicationVersionStateReady,
 		},
 	}
 }
 
 // buildReadyTenant creates a CAPTenant in Ready state pointing to cavName.
-func buildReadyTenant(name, caName, cavName string) *v1alpha1.CAPTenant {
-	return &v1alpha1.CAPTenant{
+func buildReadyTenant(name, caName, cavName string) *v1alpha2.CAPTenant {
+	return &v1alpha2.CAPTenant{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
@@ -81,19 +81,19 @@ func buildReadyTenant(name, caName, cavName string) *v1alpha1.CAPTenant {
 				LabelTenantId:  providerTenantId,
 			},
 		},
-		Spec: v1alpha1.CAPTenantSpec{
+		Spec: v1alpha2.CAPTenantSpec{
 			CAPApplicationInstance: caName,
-			BTPTenantIdentification: v1alpha1.BTPTenantIdentification{
+			BTPTenantIdentification: v1alpha2.BTPTenantIdentification{
 				SubDomain: providerSubDomain,
 				TenantId:  providerTenantId,
 			},
 		},
-		Status: v1alpha1.CAPTenantStatus{
-			State:                                v1alpha1.CAPTenantStateReady,
+		Status: v1alpha2.CAPTenantStatus{
+			State:                                v1alpha2.CAPTenantStateReady,
 			CurrentCAPApplicationVersionInstance: cavName,
-			GenericStatus: v1alpha1.GenericStatus{
+			GenericStatus: v1alpha2.GenericStatus{
 				Conditions: []metav1.Condition{
-					{Type: string(v1alpha1.ConditionTypeReady), Status: metav1.ConditionTrue},
+					{Type: string(v1alpha2.ConditionTypeReady), Status: metav1.ConditionTrue},
 				},
 			},
 		},
@@ -122,8 +122,8 @@ func buildDeployment(cavName, workloadName, namespace string) *appsv1.Deployment
 }
 
 // btpServices returns a reusable set of service definitions matching the common credential-secrets.
-func btpServices() []v1alpha1.ServiceInfo {
-	return []v1alpha1.ServiceInfo{
+func btpServices() []v1alpha2.ServiceInfo {
+	return []v1alpha2.ServiceInfo{
 		{Class: "xsuaa", Name: "cap-uaa", Secret: "cap-cap-01-uaa-bind-cf"},
 		{Class: "saas-registry", Name: "cap-saas-registry", Secret: "cap-cap-01-saas-bind-cf"},
 		{Class: "service-manager", Name: "cap-service-manager", Secret: "cap-cap-01-svc-man-bind-cf"},
@@ -221,7 +221,7 @@ func TestBtpServicesForSecrets_EmptySecretSet(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestWorkloadConsumesAffectedService_Matches(t *testing.T) {
-	workload := &v1alpha1.WorkloadDetails{
+	workload := &v1alpha2.WorkloadDetails{
 		Name:                "cap-backend",
 		ConsumedBTPServices: []string{"cap-uaa", "cap-service-manager"},
 	}
@@ -232,7 +232,7 @@ func TestWorkloadConsumesAffectedService_Matches(t *testing.T) {
 }
 
 func TestWorkloadConsumesAffectedService_NoMatch(t *testing.T) {
-	workload := &v1alpha1.WorkloadDetails{
+	workload := &v1alpha2.WorkloadDetails{
 		Name:                "app-router",
 		ConsumedBTPServices: []string{"cap-uaa"},
 	}
@@ -243,7 +243,7 @@ func TestWorkloadConsumesAffectedService_NoMatch(t *testing.T) {
 }
 
 func TestWorkloadConsumesAffectedService_EmptyConsumed(t *testing.T) {
-	workload := &v1alpha1.WorkloadDetails{
+	workload := &v1alpha2.WorkloadDetails{
 		Name:                "app-router",
 		ConsumedBTPServices: []string{},
 	}
@@ -410,19 +410,19 @@ func TestProcessNamespace_EmptyAffectedSecrets(t *testing.T) {
 func TestProcessNamespace_RolloutDisabledOnCA(t *testing.T) {
 	defer deregisterMetrics()
 	ca := buildCA("test-cap-01", false /* rollout disabled */, btpServices())
-	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha1.WorkloadDetails{
+	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha2.WorkloadDetails{
 		{
 			Name:                "cap-backend",
 			ConsumedBTPServices: []string{"cap-uaa"},
-			DeploymentDefinition: &v1alpha1.DeploymentDetails{
-				CommonDetails: v1alpha1.CommonDetails{Image: "test://image"},
+			DeploymentDefinition: &v1alpha2.DeploymentDetails{
+				CommonDetails: v1alpha2.CommonDetails{Image: "test://image"},
 			},
 		},
 	})
 
 	c := getTestController(testResources{
-		cas:  []*v1alpha1.CAPApplication{ca},
-		cavs: []*v1alpha1.CAPApplicationVersion{cav},
+		cas:  []*v1alpha2.CAPApplication{ca},
+		cavs: []*v1alpha2.CAPApplicationVersion{cav},
 	})
 	m := newRolloutManager(c)
 
@@ -446,19 +446,19 @@ func TestProcessNamespace_RolloutDisabledOnCA(t *testing.T) {
 func TestProcessNamespace_NoMatchingServicesForSecrets(t *testing.T) {
 	defer deregisterMetrics()
 	ca := buildCA("test-cap-01", true, btpServices())
-	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha1.WorkloadDetails{
+	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha2.WorkloadDetails{
 		{
 			Name:                "cap-backend",
 			ConsumedBTPServices: []string{"cap-uaa"},
-			DeploymentDefinition: &v1alpha1.DeploymentDetails{
-				CommonDetails: v1alpha1.CommonDetails{Image: "test://image"},
+			DeploymentDefinition: &v1alpha2.DeploymentDetails{
+				CommonDetails: v1alpha2.CommonDetails{Image: "test://image"},
 			},
 		},
 	})
 
 	c := getTestController(testResources{
-		cas:  []*v1alpha1.CAPApplication{ca},
-		cavs: []*v1alpha1.CAPApplicationVersion{cav},
+		cas:  []*v1alpha2.CAPApplication{ca},
+		cavs: []*v1alpha2.CAPApplicationVersion{cav},
 	})
 	m := newRolloutManager(c)
 
@@ -488,7 +488,7 @@ func TestProcessAffectedApplication_NoRelevantCAVs(t *testing.T) {
 	ca := buildCA("test-cap-01", true, btpServices())
 
 	c := getTestController(testResources{
-		cas: []*v1alpha1.CAPApplication{ca},
+		cas: []*v1alpha2.CAPApplication{ca},
 	})
 	m := newRolloutManager(c)
 
@@ -501,12 +501,12 @@ func TestProcessAffectedApplication_NoRelevantCAVs(t *testing.T) {
 func TestProcessAffectedApplication_WithLatestReadyCAV(t *testing.T) {
 	defer deregisterMetrics()
 	ca := buildCA("test-cap-01", true, btpServices())
-	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha1.WorkloadDetails{
+	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha2.WorkloadDetails{
 		{
 			Name:                "cap-backend",
 			ConsumedBTPServices: []string{"cap-uaa"},
-			DeploymentDefinition: &v1alpha1.DeploymentDetails{
-				CommonDetails: v1alpha1.CommonDetails{Image: "test://image"},
+			DeploymentDefinition: &v1alpha2.DeploymentDetails{
+				CommonDetails: v1alpha2.CommonDetails{Image: "test://image"},
 			},
 		},
 	})
@@ -519,8 +519,8 @@ func TestProcessAffectedApplication_WithLatestReadyCAV(t *testing.T) {
 	}
 
 	c := getTestController(testResources{
-		cas:  []*v1alpha1.CAPApplication{ca},
-		cavs: []*v1alpha1.CAPApplicationVersion{cav},
+		cas:  []*v1alpha2.CAPApplication{ca},
+		cavs: []*v1alpha2.CAPApplicationVersion{cav},
 	})
 	// add objects to fake clients directly
 	c.kubeClient.(*k8sfake.Clientset).Tracker().Add(deploy)
@@ -561,7 +561,7 @@ func TestProcessAffectedApplication_WithLatestReadyCAV(t *testing.T) {
 func TestProcessAffectedVersion_WorkloadWithNoDeploymentDef(t *testing.T) {
 	defer deregisterMetrics()
 	ca := buildCA("test-cap-01", true, btpServices())
-	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha1.WorkloadDetails{
+	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha2.WorkloadDetails{
 		{
 			// job workload — no DeploymentDefinition
 			Name:                "content-job",
@@ -570,8 +570,8 @@ func TestProcessAffectedVersion_WorkloadWithNoDeploymentDef(t *testing.T) {
 	})
 
 	c := getTestController(testResources{
-		cas:  []*v1alpha1.CAPApplication{ca},
-		cavs: []*v1alpha1.CAPApplicationVersion{cav},
+		cas:  []*v1alpha2.CAPApplication{ca},
+		cavs: []*v1alpha2.CAPApplicationVersion{cav},
 	})
 	m := newRolloutManager(c)
 	err := m.processAffectedVersion(context.TODO(), ca, cav, map[string]struct{}{"cap-uaa": {}})
@@ -590,19 +590,19 @@ func TestProcessAffectedVersion_WorkloadWithNoDeploymentDef(t *testing.T) {
 func TestProcessAffectedVersion_DeploymentNotYetCreated(t *testing.T) {
 	defer deregisterMetrics()
 	ca := buildCA("test-cap-01", true, btpServices())
-	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha1.WorkloadDetails{
+	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha2.WorkloadDetails{
 		{
 			Name:                "cap-backend",
 			ConsumedBTPServices: []string{"cap-uaa"},
-			DeploymentDefinition: &v1alpha1.DeploymentDetails{
-				CommonDetails: v1alpha1.CommonDetails{Image: "test://image"},
+			DeploymentDefinition: &v1alpha2.DeploymentDetails{
+				CommonDetails: v1alpha2.CommonDetails{Image: "test://image"},
 			},
 		},
 	})
 
 	c := getTestController(testResources{
-		cas:  []*v1alpha1.CAPApplication{ca},
-		cavs: []*v1alpha1.CAPApplicationVersion{cav},
+		cas:  []*v1alpha2.CAPApplication{ca},
+		cavs: []*v1alpha2.CAPApplicationVersion{cav},
 	})
 	m := newRolloutManager(c)
 	// No deployment pre-created → should silently skip (not an error)
@@ -772,11 +772,11 @@ func TestUpdateDeploymentVCAPRef_UpdatesContainersAndInitContainers(t *testing.T
 func TestCollectRelevantCAVs_LatestReadyOnly(t *testing.T) {
 	defer deregisterMetrics()
 	ca := buildCA("test-cap-01", true, btpServices())
-	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha1.WorkloadDetails{})
+	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha2.WorkloadDetails{})
 
 	c := getTestController(testResources{
-		cas:  []*v1alpha1.CAPApplication{ca},
-		cavs: []*v1alpha1.CAPApplicationVersion{cav},
+		cas:  []*v1alpha2.CAPApplication{ca},
+		cavs: []*v1alpha2.CAPApplicationVersion{cav},
 	})
 
 	relevant, err := c.collectRelevantCAVs(ca)
@@ -794,15 +794,15 @@ func TestCollectRelevantCAVs_LatestReadyOnly(t *testing.T) {
 func TestCollectRelevantCAVs_DeduplicatesLatestAndTenantCAV(t *testing.T) {
 	defer deregisterMetrics()
 	ca := buildCA("test-cap-01", true, btpServices())
-	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha1.WorkloadDetails{})
+	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha2.WorkloadDetails{})
 
 	// Tenant also references the same CAV
 	tenant := buildReadyTenant("test-cap-01-provider", ca.Name, cav.Name)
 
 	c := getTestController(testResources{
-		cas:  []*v1alpha1.CAPApplication{ca},
-		cavs: []*v1alpha1.CAPApplicationVersion{cav},
-		cats: []*v1alpha1.CAPTenant{tenant},
+		cas:  []*v1alpha2.CAPApplication{ca},
+		cavs: []*v1alpha2.CAPApplicationVersion{cav},
+		cats: []*v1alpha2.CAPTenant{tenant},
 	})
 
 	relevant, err := c.collectRelevantCAVs(ca)
@@ -820,19 +820,19 @@ func TestCollectRelevantCAVs_TenantReferencesAdditionalCAV(t *testing.T) {
 	ca := buildCA("test-cap-01", true, btpServices())
 
 	// Latest ready CAV
-	latestCAV := buildReadyCAV("test-cap-01-cav-v2", ca.Name, []v1alpha1.WorkloadDetails{})
+	latestCAV := buildReadyCAV("test-cap-01-cav-v2", ca.Name, []v1alpha2.WorkloadDetails{})
 	latestCAV.Spec.Version = "2.0.0"
 
 	// Older CAV still in use by a tenant
-	oldCAV := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha1.WorkloadDetails{})
+	oldCAV := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha2.WorkloadDetails{})
 	oldCAV.Spec.Version = "1.0.0"
 
 	tenant := buildReadyTenant("test-cap-01-provider", ca.Name, oldCAV.Name)
 
 	c := getTestController(testResources{
-		cas:  []*v1alpha1.CAPApplication{ca},
-		cavs: []*v1alpha1.CAPApplicationVersion{latestCAV, oldCAV},
-		cats: []*v1alpha1.CAPTenant{tenant},
+		cas:  []*v1alpha2.CAPApplication{ca},
+		cavs: []*v1alpha2.CAPApplicationVersion{latestCAV, oldCAV},
+		cats: []*v1alpha2.CAPTenant{tenant},
 	})
 
 	relevant, err := c.collectRelevantCAVs(ca)
@@ -858,7 +858,7 @@ func TestEnqueuePendingRollouts_NoRelevantCAs(t *testing.T) {
 	defer deregisterMetrics()
 	// CA with rollout disabled — nothing should be enqueued
 	ca := buildCA("test-cap-01", false, btpServices())
-	c := getTestController(testResources{cas: []*v1alpha1.CAPApplication{ca}})
+	c := getTestController(testResources{cas: []*v1alpha2.CAPApplication{ca}})
 	m := newRolloutManager(c)
 	defer m.queue.ShutDown()
 
@@ -873,7 +873,7 @@ func TestEnqueuePendingRollouts_NoRelevantCAs(t *testing.T) {
 func TestEnqueuePendingRollouts_EnqueuesNamespaceForRelevantCA(t *testing.T) {
 	defer deregisterMetrics()
 	ca := buildCA("test-cap-01", true, btpServices())
-	c := getTestController(testResources{cas: []*v1alpha1.CAPApplication{ca}})
+	c := getTestController(testResources{cas: []*v1alpha2.CAPApplication{ca}})
 	m := newRolloutManager(c)
 	defer m.queue.ShutDown()
 
@@ -897,14 +897,14 @@ func TestEnqueuePendingRollouts_MultipleCAsSameNamespaceDeduplicatesSecrets(t *t
 	defer deregisterMetrics()
 	// Two CAs in the same namespace sharing one secret — should only enqueue it once
 	sharedSecret := "shared-secret"
-	ca1 := buildCA("test-cap-01", true, []v1alpha1.ServiceInfo{
+	ca1 := buildCA("test-cap-01", true, []v1alpha2.ServiceInfo{
 		{Class: "xsuaa", Name: "svc-a", Secret: sharedSecret},
 	})
-	ca2 := buildCA("test-cap-02", true, []v1alpha1.ServiceInfo{
+	ca2 := buildCA("test-cap-02", true, []v1alpha2.ServiceInfo{
 		{Class: "xsuaa", Name: "svc-b", Secret: sharedSecret},
 		{Class: "saas-registry", Name: "svc-c", Secret: "unique-secret"},
 	})
-	c := getTestController(testResources{cas: []*v1alpha1.CAPApplication{ca1, ca2}})
+	c := getTestController(testResources{cas: []*v1alpha2.CAPApplication{ca1, ca2}})
 	m := newRolloutManager(c)
 	defer m.queue.ShutDown()
 
@@ -926,20 +926,20 @@ func TestProcessNamespace_FullRollout(t *testing.T) {
 	defer deregisterMetrics()
 
 	ca := buildCA("test-cap-01", true, btpServices())
-	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha1.WorkloadDetails{
+	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha2.WorkloadDetails{
 		{
 			Name:                "cap-backend",
 			ConsumedBTPServices: []string{"cap-uaa"},
-			DeploymentDefinition: &v1alpha1.DeploymentDetails{
-				CommonDetails: v1alpha1.CommonDetails{Image: "test://image"},
+			DeploymentDefinition: &v1alpha2.DeploymentDetails{
+				CommonDetails: v1alpha2.CommonDetails{Image: "test://image"},
 			},
 		},
 		{
 			// App-router does NOT consume cap-uaa, should not be rolled out
 			Name:                "app-router",
 			ConsumedBTPServices: []string{"cap-saas-registry"},
-			DeploymentDefinition: &v1alpha1.DeploymentDetails{
-				CommonDetails: v1alpha1.CommonDetails{Image: "test://image"},
+			DeploymentDefinition: &v1alpha2.DeploymentDetails{
+				CommonDetails: v1alpha2.CommonDetails{Image: "test://image"},
 			},
 		},
 	})
@@ -953,8 +953,8 @@ func TestProcessNamespace_FullRollout(t *testing.T) {
 	}
 
 	c := getTestController(testResources{
-		cas:  []*v1alpha1.CAPApplication{ca},
-		cavs: []*v1alpha1.CAPApplicationVersion{cav},
+		cas:  []*v1alpha2.CAPApplication{ca},
+		cavs: []*v1alpha2.CAPApplicationVersion{cav},
 	})
 	for _, obj := range []interface{ GetName() string }{backendDeploy, routerDeploy} {
 		switch o := obj.(type) {
@@ -996,12 +996,12 @@ func TestProcessNamespace_SkipsRolloutWhenVCAPUnchanged(t *testing.T) {
 	defer deregisterMetrics()
 
 	ca := buildCA("test-cap-01", true, btpServices())
-	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha1.WorkloadDetails{
+	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha2.WorkloadDetails{
 		{
 			Name:                "cap-backend",
 			ConsumedBTPServices: []string{"cap-uaa"},
-			DeploymentDefinition: &v1alpha1.DeploymentDetails{
-				CommonDetails: v1alpha1.CommonDetails{Image: "test://image"},
+			DeploymentDefinition: &v1alpha2.DeploymentDetails{
+				CommonDetails: v1alpha2.CommonDetails{Image: "test://image"},
 			},
 		},
 	})
@@ -1014,8 +1014,8 @@ func TestProcessNamespace_SkipsRolloutWhenVCAPUnchanged(t *testing.T) {
 	}
 
 	c := getTestController(testResources{
-		cas:  []*v1alpha1.CAPApplication{ca},
-		cavs: []*v1alpha1.CAPApplicationVersion{cav},
+		cas:  []*v1alpha2.CAPApplication{ca},
+		cavs: []*v1alpha2.CAPApplicationVersion{cav},
 	})
 	c.kubeClient.(*k8sfake.Clientset).Tracker().Add(backendDeploy)
 	c.kubeInformerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(backendDeploy)
@@ -1025,7 +1025,7 @@ func TestProcessNamespace_SkipsRolloutWhenVCAPUnchanged(t *testing.T) {
 	// Pre-compute the VCAP content that rolloutWorkloadDeployment would generate,
 	// then seed a secret with that exact content so checkVCAPSecret returns unchanged=true.
 	deploymentName := getWorkloadName(cav.Name, "cap-backend")
-	ownerRef := *metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind))
+	ownerRef := *metav1.NewControllerRef(cav, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPApplicationVersionKind))
 	consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap([]string{"cap-uaa"}), ca.Spec.BTP.Services)
 	vcapEnv, err := generateVCAPEnv(metav1.NamespaceDefault, consumedServiceInfos, c.kubeInformerFactory)
 	if err != nil {
@@ -1097,7 +1097,7 @@ func TestStartWorker_SuccessPath(t *testing.T) {
 	defer deregisterMetrics()
 
 	ca := buildCA("test-cap-01", true, btpServices())
-	c := getTestController(testResources{cas: []*v1alpha1.CAPApplication{ca}})
+	c := getTestController(testResources{cas: []*v1alpha2.CAPApplication{ca}})
 	m := newFastRolloutManager(c)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1128,12 +1128,12 @@ func TestStartWorker_ErrorPathRestoresSecretsAndRequeues(t *testing.T) {
 	defer deregisterMetrics()
 
 	ca := buildCA("test-cap-01", true, btpServices())
-	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha1.WorkloadDetails{
+	cav := buildReadyCAV("test-cap-01-cav-v1", ca.Name, []v1alpha2.WorkloadDetails{
 		{
 			Name:                "cap-backend",
 			ConsumedBTPServices: []string{"cap-uaa"},
-			DeploymentDefinition: &v1alpha1.DeploymentDetails{
-				CommonDetails: v1alpha1.CommonDetails{Image: "test://image"},
+			DeploymentDefinition: &v1alpha2.DeploymentDetails{
+				CommonDetails: v1alpha2.CommonDetails{Image: "test://image"},
 			},
 		},
 	})
@@ -1141,8 +1141,8 @@ func TestStartWorker_ErrorPathRestoresSecretsAndRequeues(t *testing.T) {
 	deploy := buildDeployment(cav.Name, "cap-backend", metav1.NamespaceDefault)
 
 	c := getTestController(testResources{
-		cas:  []*v1alpha1.CAPApplication{ca},
-		cavs: []*v1alpha1.CAPApplicationVersion{cav},
+		cas:  []*v1alpha2.CAPApplication{ca},
+		cavs: []*v1alpha2.CAPApplicationVersion{cav},
 	})
 	c.kubeClient.(*k8sfake.Clientset).Tracker().Add(deploy)
 	c.kubeInformerFactory.Apps().V1().Deployments().Informer().GetIndexer().Add(deploy)
@@ -1205,7 +1205,7 @@ func TestStartWorker_DrainSecretsCalledBeforeProcessing(t *testing.T) {
 	defer deregisterMetrics()
 
 	ca := buildCA("test-cap-01", true, btpServices())
-	c := getTestController(testResources{cas: []*v1alpha1.CAPApplication{ca}})
+	c := getTestController(testResources{cas: []*v1alpha2.CAPApplication{ca}})
 	m := newFastRolloutManager(c)
 
 	// Pre-populate two secrets for the same namespace.
