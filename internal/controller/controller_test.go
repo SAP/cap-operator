@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/informers"
@@ -219,8 +219,8 @@ func TestController_processQueueItem(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
-				ca  *v1alpha1.CAPApplication
-				cat *v1alpha1.CAPTenant
+				ca  *v1alpha2.CAPApplication
+				cat *v1alpha2.CAPTenant
 			)
 			if tt.createCA {
 				ca = createCaCRO(tt.resourceName, true)
@@ -232,7 +232,7 @@ func TestController_processQueueItem(t *testing.T) {
 			// Deregister metrics
 			defer deregisterMetrics()
 
-			c := getTestController(testResources{cas: []*v1alpha1.CAPApplication{ca}, cats: []*v1alpha1.CAPTenant{cat}, preventStart: true})
+			c := getTestController(testResources{cas: []*v1alpha2.CAPApplication{ca}, cats: []*v1alpha2.CAPTenant{cat}, preventStart: true})
 			if tt.resource == 9 || tt.resource == 99 {
 				c.queues[tt.resource] = workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{})
 			}
@@ -355,30 +355,30 @@ func TestController_recoverFromPanic(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
-				ca   *v1alpha1.CAPApplication
-				cav  *v1alpha1.CAPApplicationVersion
-				cat  *v1alpha1.CAPTenant
-				ctop *v1alpha1.CAPTenantOperation
+				ca   *v1alpha2.CAPApplication
+				cav  *v1alpha2.CAPApplicationVersion
+				cat  *v1alpha2.CAPTenant
+				ctop *v1alpha2.CAPTenantOperation
 			)
 
 			ca = createCaCRO(tt.resourceName, true)
 			cav = createCavCRO(tt.resourceName, "", "0.0.1")
 			cat = createCatCRO(resourceName, catType, true)
 			if tt.catUpgrading {
-				cat.Status.State = v1alpha1.CAPTenantStateUpgrading
+				cat.Status.State = v1alpha2.CAPTenantStateUpgrading
 			} else {
-				cat.Status.State = v1alpha1.CAPTenantStateProvisioning
+				cat.Status.State = v1alpha2.CAPTenantStateProvisioning
 			}
-			ctop = &v1alpha1.CAPTenantOperation{
+			ctop = &v1alpha2.CAPTenantOperation{
 				ObjectMeta: metav1.ObjectMeta{Name: tt.resourceName, Namespace: tt.resourceNamespace},
-				Spec:       v1alpha1.CAPTenantOperationSpec{},
-				Status: v1alpha1.CAPTenantOperationStatus{
-					GenericStatus: v1alpha1.GenericStatus{},
+				Spec:       v1alpha2.CAPTenantOperationSpec{},
+				Status: v1alpha2.CAPTenantOperationStatus{
+					GenericStatus: v1alpha2.GenericStatus{},
 					State:         "",
 				},
 			}
 
-			c := getTestController(testResources{cas: []*v1alpha1.CAPApplication{ca}, cavs: []*v1alpha1.CAPApplicationVersion{cav}, cats: []*v1alpha1.CAPTenant{cat}, ctops: []*v1alpha1.CAPTenantOperation{ctop}, preventStart: true})
+			c := getTestController(testResources{cas: []*v1alpha2.CAPApplication{ca}, cavs: []*v1alpha2.CAPApplicationVersion{cav}, cats: []*v1alpha2.CAPTenant{cat}, ctops: []*v1alpha2.CAPTenantOperation{ctop}, preventStart: true})
 			dummyKubeInformerFactory := &dummyInformerFactoryType{c.kubeInformerFactory, tt.resourceNamespace, nil}
 
 			testC := &Controller{

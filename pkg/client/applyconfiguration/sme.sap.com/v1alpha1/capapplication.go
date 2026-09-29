@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
+	v1alpha2 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
@@ -16,6 +17,7 @@ import (
 // CAPApplicationApplyConfiguration represents a declarative configuration of the CAPApplication type for use
 // with apply.
 //
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPApplication is the schema for capapplications API
 type CAPApplicationApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:""`
@@ -23,7 +25,7 @@ type CAPApplicationApplyConfiguration struct {
 	// CAPApplication spec
 	Spec *CAPApplicationSpecApplyConfiguration `json:"spec,omitempty"`
 	// CAPApplication status
-	Status *CAPApplicationStatusApplyConfiguration `json:"status,omitempty"`
+	Status *v1alpha2.CAPApplicationStatusApplyConfiguration `json:"status,omitempty"`
 }
 
 // CAPApplication constructs a declarative configuration of the CAPApplication type for use with
@@ -208,7 +210,7 @@ func (b *CAPApplicationApplyConfiguration) WithSpec(value *CAPApplicationSpecApp
 // WithStatus sets the Status field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Status field is set to the value of the last call.
-func (b *CAPApplicationApplyConfiguration) WithStatus(value *CAPApplicationStatusApplyConfiguration) *CAPApplicationApplyConfiguration {
+func (b *CAPApplicationApplyConfiguration) WithStatus(value *v1alpha2.CAPApplicationStatusApplyConfiguration) *CAPApplicationApplyConfiguration {
 	b.Status = value
 	return b
 }

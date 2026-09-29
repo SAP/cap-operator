@@ -9,7 +9,7 @@ metadata:
   name: test-ca-01-router
   namespace: default
   ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
+    - apiVersion: sme.sap.com/v1alpha2
       blockOwnerDeletion: true
       controller: true
       kind: CAPApplication
@@ -43,7 +43,7 @@ metadata:
   name: test-ca-01-cap-backend-service
   namespace: default
   ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
+    - apiVersion: sme.sap.com/v1alpha2
       blockOwnerDeletion: true
       controller: true
       kind: CAPApplication

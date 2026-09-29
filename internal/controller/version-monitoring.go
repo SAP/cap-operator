@@ -16,7 +16,7 @@ import (
 	promapi "github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	prommodel "github.com/prometheus/common/model"
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -232,7 +232,7 @@ func (c *Controller) scheduleVersionCollectionForCleanup(ctx context.Context, or
 }
 
 func (c *Controller) queueVersionsForCleanupEvaluation(orc *cleanupOrchestrator) error {
-	lister := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister()
+	lister := c.crdInformerFactory.Sme().V1alpha2().CAPApplications().Lister()
 	cas, err := lister.List(labels.Everything())
 	if err != nil {
 		return err
@@ -255,14 +255,14 @@ func (c *Controller) queueVersionsForCleanupEvaluation(orc *cleanupOrchestrator)
 	return nil
 }
 
-func (c *Controller) getCleanupRelevantVersions(ca *v1alpha1.CAPApplication) ([]*v1alpha1.CAPApplicationVersion, error) {
+func (c *Controller) getCleanupRelevantVersions(ca *v1alpha2.CAPApplication) ([]*v1alpha2.CAPApplicationVersion, error) {
 	excludedVersions := map[string]bool{}
 	excludedVersionNames := map[string]bool{}
 
 	selector, _ := labels.ValidatedSelectorFromSet(map[string]string{
 		LabelOwnerIdentifierHash: sha1Sum(ca.Namespace, ca.Name),
 	})
-	tenantLister := c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister()
+	tenantLister := c.crdInformerFactory.Sme().V1alpha2().CAPTenants().Lister()
 	cats, err := tenantLister.CAPTenants(ca.Namespace).List(selector)
 	if err != nil {
 		return nil, err
@@ -286,7 +286,7 @@ func (c *Controller) getCleanupRelevantVersions(ca *v1alpha1.CAPApplication) ([]
 	// Explicitly exclude the latest Ready version from cleanup
 	excludedVersions[latestReadyVersion.Spec.Version] = true
 
-	outdatedVersions := []*v1alpha1.CAPApplicationVersion{}
+	outdatedVersions := []*v1alpha2.CAPApplicationVersion{}
 	cavs, _ := c.getCachedCAPApplicationVersions(ca) // ignoring error as this is not critical
 	for i := range cavs {
 		cav := cavs[i]
@@ -348,14 +348,14 @@ func (c *Controller) processVersionCleanupQueueItem(ctx context.Context, orc *cl
 // for re-evaluation next cycle) while workloads without deletionRules remain
 // automatically eligible.
 func (c *Controller) evaluateVersionForCleanup(ctx context.Context, item NamespacedResourceKey, promapi promv1.API) error {
-	lister := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister()
+	lister := c.crdInformerFactory.Sme().V1alpha2().CAPApplicationVersions().Lister()
 	cav, err := lister.CAPApplicationVersions(item.Namespace).Get(item.Name)
 	if err != nil {
 		return handleOperatorResourceErrors(err)
 	}
 
 	// read CAPApplication to determine dry-run mode
-	ca, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister().CAPApplications(cav.Namespace).Get(cav.Spec.CAPApplicationInstance)
+	ca, err := c.crdInformerFactory.Sme().V1alpha2().CAPApplications().Lister().CAPApplications(cav.Namespace).Get(cav.Spec.CAPApplicationInstance)
 	if err != nil {
 		return err
 	}
@@ -374,7 +374,7 @@ func (c *Controller) evaluateVersionForCleanup(ctx context.Context, item Namespa
 		c.Event(cav, nil, corev1.EventTypeNormal, CAPApplicationVersionEventReadForDeletion, EventActionEvaluateMetrics, fmt.Sprintf("version %s is now ready for deletion", cav.Name))
 
 		if v, ok := ca.Annotations[AnnotationEnableCleanupMonitoring]; ok && strings.ToLower(v) == "true" {
-			return c.crdClient.SmeV1alpha1().CAPApplicationVersions(cav.Namespace).Delete(ctx, cav.Name, v1.DeleteOptions{})
+			return c.crdClient.SmeV1alpha2().CAPApplicationVersions(cav.Namespace).Delete(ctx, cav.Name, v1.DeleteOptions{})
 		}
 	}
 
@@ -391,7 +391,7 @@ func (c *Controller) evaluateVersionForCleanup(ctx context.Context, item Namespa
 //     single informational log entry is emitted.
 //   - When deletionRules are present and promapi is available, the rules are
 //     evaluated via the existing helpers.
-func evaluateWorkloadForCleanup(ctx context.Context, cav NamespacedResourceKey, wl *v1alpha1.WorkloadDetails, promapi promv1.API) bool {
+func evaluateWorkloadForCleanup(ctx context.Context, cav NamespacedResourceKey, wl *v1alpha2.WorkloadDetails, promapi promv1.API) bool {
 	if wl.DeploymentDefinition == nil || wl.DeploymentDefinition.Monitoring == nil || wl.DeploymentDefinition.Monitoring.DeletionRules == nil {
 		return true // if there are no rules - the workload is automatically eligible for cleanup
 	}
@@ -462,12 +462,12 @@ func evaluateExpression(ctx context.Context, rawExpr string, promapi promv1.API)
 	return s.Value == 1, nil // expecting a boolean result
 }
 
-func evaluateMetric(ctx context.Context, rule *v1alpha1.MetricRule, job, ns string, promapi promv1.API) (bool, error) {
+func evaluateMetric(ctx context.Context, rule *v1alpha2.MetricRule, job, ns string, promapi promv1.API) (bool, error) {
 	query := ""
 	switch rule.Type {
-	case v1alpha1.MetricTypeGauge:
+	case v1alpha2.MetricTypeGauge:
 		query = fmt.Sprintf(GaugeEvaluationExpression, rule.Name, job, ns, rule.CalculationPeriod)
-	case v1alpha1.MetricTypeCounter:
+	case v1alpha2.MetricTypeCounter:
 		query = fmt.Sprintf(CounterEvaluationExpression, rule.Name, job, ns, rule.CalculationPeriod)
 	default:
 		return false, fmt.Errorf("metric %s has unsupported type %s", rule.Name, rule.Type)

@@ -7,7 +7,7 @@ metadata:
   name: test-cap-01-cav-v1-content-job-1-content
   namespace: default
   ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
+    - apiVersion: sme.sap.com/v1alpha2
       blockOwnerDeletion: true
       controller: true
       kind: CAPApplicationVersion
@@ -76,7 +76,7 @@ metadata:
   name: test-cap-01-cav-v1-content-job-2-content
   namespace: default
   ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
+    - apiVersion: sme.sap.com/v1alpha2
       blockOwnerDeletion: true
       controller: true
       kind: CAPApplicationVersion
@@ -152,7 +152,7 @@ metadata:
   name: test-cap-01-cav-v1-cap-backend-srv
   namespace: default
   ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
+    - apiVersion: sme.sap.com/v1alpha2
       blockOwnerDeletion: true
       controller: true
       kind: CAPApplicationVersion
@@ -189,7 +189,7 @@ metadata:
   name: test-cap-01-cav-v1-app-router
   namespace: default
   ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
+    - apiVersion: sme.sap.com/v1alpha2
       blockOwnerDeletion: true
       controller: true
       kind: CAPApplicationVersion

@@ -11,6 +11,7 @@ import (
 	fmt "fmt"
 
 	v1alpha1 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	v1alpha2 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -56,6 +57,22 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Sme().V1alpha1().ClusterDomains().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("domains"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Sme().V1alpha1().Domains().Informer()}, nil
+
+		// Group=sme.sap.com, Version=v1alpha2
+	case v1alpha2.SchemeGroupVersion.WithResource("capapplications"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Sme().V1alpha2().CAPApplications().Informer()}, nil
+	case v1alpha2.SchemeGroupVersion.WithResource("capapplicationversions"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Sme().V1alpha2().CAPApplicationVersions().Informer()}, nil
+	case v1alpha2.SchemeGroupVersion.WithResource("captenants"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Sme().V1alpha2().CAPTenants().Informer()}, nil
+	case v1alpha2.SchemeGroupVersion.WithResource("captenantoperations"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Sme().V1alpha2().CAPTenantOperations().Informer()}, nil
+	case v1alpha2.SchemeGroupVersion.WithResource("captenantoutputs"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Sme().V1alpha2().CAPTenantOutputs().Informer()}, nil
+	case v1alpha2.SchemeGroupVersion.WithResource("clusterdomains"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Sme().V1alpha2().ClusterDomains().Informer()}, nil
+	case v1alpha2.SchemeGroupVersion.WithResource("domains"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Sme().V1alpha2().Domains().Informer()}, nil
 
 	}
 

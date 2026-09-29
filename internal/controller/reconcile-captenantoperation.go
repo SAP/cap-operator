@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/sap/cap-operator/internal/util"
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,9 +35,9 @@ const (
 )
 
 type cros struct {
-	CAPTenant             *v1alpha1.CAPTenant
-	CAPApplication        *v1alpha1.CAPApplication
-	CAPApplicationVersion *v1alpha1.CAPApplicationVersion
+	CAPTenant             *v1alpha2.CAPTenant
+	CAPApplication        *v1alpha2.CAPApplication
+	CAPApplicationVersion *v1alpha2.CAPApplicationVersion
 }
 
 const (
@@ -54,7 +54,7 @@ const (
 )
 
 func (c *Controller) reconcileCAPTenantOperation(ctx context.Context, item QueueItem, _ int) (result *ReconcileResult, err error) {
-	cached, err := c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Lister().CAPTenantOperations(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
+	cached, err := c.crdInformerFactory.Sme().V1alpha2().CAPTenantOperations().Lister().CAPTenantOperations(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
 
 	if err != nil {
 		return nil, handleOperatorResourceErrors(err)
@@ -83,20 +83,20 @@ func (c *Controller) reconcileCAPTenantOperation(ctx context.Context, item Queue
 	return result, err
 }
 
-func (c *Controller) updateCAPTenantOperationStatus(ctx context.Context, ctop *v1alpha1.CAPTenantOperation) error {
+func (c *Controller) updateCAPTenantOperationStatus(ctx context.Context, ctop *v1alpha2.CAPTenantOperation) error {
 	if isDeletionImminent(&ctop.ObjectMeta) {
 		return nil
 	}
 
 	if ctop.DeletionTimestamp != nil {
 		// set appropriate state for deletion
-		ctop.Status.State = v1alpha1.CAPTenantOperationStateDeleting
+		ctop.Status.State = v1alpha2.CAPTenantOperationStateDeleting
 	} else if ctop.Status.State == "" {
 		// start processing
-		ctop.Status.State = v1alpha1.CAPTenantOperationStateProcessing
+		ctop.Status.State = v1alpha2.CAPTenantOperationStateProcessing
 	}
 
-	ctopUpdated, err := c.crdClient.SmeV1alpha1().CAPTenantOperations(ctop.Namespace).UpdateStatus(ctx, ctop, metav1.UpdateOptions{})
+	ctopUpdated, err := c.crdClient.SmeV1alpha2().CAPTenantOperations(ctop.Namespace).UpdateStatus(ctx, ctop, metav1.UpdateOptions{})
 	// update reference to the resource
 	if ctopUpdated != nil {
 		*ctop = *ctopUpdated
@@ -104,21 +104,21 @@ func (c *Controller) updateCAPTenantOperationStatus(ctx context.Context, ctop *v
 	return err
 }
 
-func (c *Controller) prepareCAPTenantOperation(ctop *v1alpha1.CAPTenantOperation) (update bool, err error) {
+func (c *Controller) prepareCAPTenantOperation(ctop *v1alpha2.CAPTenantOperation) (update bool, err error) {
 	// Do nothing when object is deleted
 	if ctop.DeletionTimestamp != nil {
 		return false, nil
 	}
 	cat, err := c.getCachedCAPTenant(ctop.Namespace, ctop.Spec.TenantId, true)
 	if err != nil {
-		msg := fmt.Sprintf("invalid %s reference", v1alpha1.CAPTenantKind)
+		msg := fmt.Sprintf("invalid %s reference", v1alpha2.CAPTenantKind)
 		c.Event(ctop, nil, corev1.EventTypeWarning, CAPTenantOperationEventInvalidReference, EventActionPrepare, msg)
 		return false, err
 	}
 
 	// create owner reference - CAPTenant
-	if _, ok := getOwnerByKind(ctop.OwnerReferences, v1alpha1.CAPTenantKind); !ok {
-		ctop.OwnerReferences = append(ctop.OwnerReferences, *metav1.NewControllerRef(cat, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind)))
+	if _, ok := getOwnerByObject(ctop.OwnerReferences, v1alpha2.CAPTenantKind, cat); !ok {
+		ctop.OwnerReferences = append(ctop.OwnerReferences, *metav1.NewControllerRef(cat, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPTenantKind)))
 		update = true
 	}
 
@@ -127,7 +127,7 @@ func (c *Controller) prepareCAPTenantOperation(ctop *v1alpha1.CAPTenantOperation
 	}
 
 	// copy over the subscription context secret from tenant if any
-	if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning && cat.Annotations[AnnotationSubscriptionContextSecret] != "" {
+	if ctop.Spec.Operation == v1alpha2.CAPTenantOperationTypeProvisioning && cat.Annotations[AnnotationSubscriptionContextSecret] != "" {
 		ctop.Annotations[AnnotationSubscriptionContextSecret] = cat.Annotations[AnnotationSubscriptionContextSecret]
 	}
 
@@ -144,18 +144,18 @@ func (c *Controller) prepareCAPTenantOperation(ctop *v1alpha1.CAPTenantOperation
 	return
 }
 
-func (c *Controller) getCachedCAPTenantFromOwnerReferences(refs []metav1.OwnerReference, namespace string) (*v1alpha1.CAPTenant, error) {
+func (c *Controller) getCachedCAPTenantFromOwnerReferences(refs []metav1.OwnerReference, namespace string) (*v1alpha2.CAPTenant, error) {
 	// get owning CAPTenant
-	owner, ok := getOwnerByKind(refs, v1alpha1.CAPTenantKind)
+	owner, ok := getOwnerByKind(refs, v1alpha2.CAPTenantKind, v1alpha2.Group)
 	if !ok {
-		return nil, fmt.Errorf("could not find %s as owner reference", v1alpha1.CAPTenantKind)
+		return nil, fmt.Errorf("could not find %s as owner reference", v1alpha2.CAPTenantKind)
 	}
 	return c.getCachedCAPTenant(namespace, owner.Name, false)
 }
 
-func (c *Controller) updateCAPTenantOperation(ctx context.Context, ctop *v1alpha1.CAPTenantOperation, requeue bool) (result *ReconcileResult, err error) {
-	var ctopUpdated *v1alpha1.CAPTenantOperation
-	ctopUpdated, err = c.crdClient.SmeV1alpha1().CAPTenantOperations(ctop.Namespace).Update(ctx, ctop, metav1.UpdateOptions{})
+func (c *Controller) updateCAPTenantOperation(ctx context.Context, ctop *v1alpha2.CAPTenantOperation, requeue bool) (result *ReconcileResult, err error) {
+	var ctopUpdated *v1alpha2.CAPTenantOperation
+	ctopUpdated, err = c.crdClient.SmeV1alpha2().CAPTenantOperations(ctop.Namespace).Update(ctx, ctop, metav1.UpdateOptions{})
 	// Update reference to the resource
 	if ctopUpdated != nil {
 		*ctop = *ctopUpdated
@@ -166,7 +166,7 @@ func (c *Controller) updateCAPTenantOperation(ctx context.Context, ctop *v1alpha
 	return
 }
 
-func (c *Controller) handleCAPTenantOperationDeletion(ctx context.Context, ctop *v1alpha1.CAPTenantOperation) (*ReconcileResult, error) {
+func (c *Controller) handleCAPTenantOperationDeletion(ctx context.Context, ctop *v1alpha2.CAPTenantOperation) (*ReconcileResult, error) {
 	// remove finalizer
 	if removeFinalizer(&ctop.Finalizers, FinalizerCAPTenantOperation) {
 		util.LogInfo("Removing finalizer; finished deleting this tenant operation", string(Deleting), ctop, nil, "tenantId", ctop.Spec.TenantId, "version", ctop.Labels[LabelCAVVersion])
@@ -175,7 +175,7 @@ func (c *Controller) handleCAPTenantOperationDeletion(ctx context.Context, ctop 
 	return nil, nil
 }
 
-func (c *Controller) reconcileTenantOperationSteps(ctx context.Context, ctop *v1alpha1.CAPTenantOperation) (result *ReconcileResult, err error) {
+func (c *Controller) reconcileTenantOperationSteps(ctx context.Context, ctop *v1alpha2.CAPTenantOperation) (result *ReconcileResult, err error) {
 	/* NOTE REGARDING STEPS:
 	 * - Initially the the first step (1) is identified and updated in the status
 	 * - the job for the current step is created only in the next pass, which ensures that the current step in the status is always consistent
@@ -193,8 +193,8 @@ func (c *Controller) reconcileTenantOperationSteps(ctx context.Context, ctop *v1
 
 	if ctop.Status.CurrentStep == nil { // set initial step
 		if len(ctop.Spec.Steps) == 0 {
-			err = fmt.Errorf("operation steps missing in %s %s.%s", v1alpha1.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
-			ctop.SetStatusWithReadyCondition(v1alpha1.CAPTenantOperationStateFailed, metav1.ConditionTrue, CAPTenantOperationConditionReasonStepProcessingError, err.Error())
+			err = fmt.Errorf("operation steps missing in %s %s.%s", v1alpha2.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
+			ctop.SetStatusWithReadyCondition(v1alpha2.CAPTenantOperationStateFailed, metav1.ConditionTrue, CAPTenantOperationConditionReasonStepProcessingError, err.Error())
 			return
 		}
 		var initStep uint32 = 1
@@ -226,7 +226,7 @@ func (c *Controller) reconcileTenantOperationSteps(ctx context.Context, ctop *v1
 	return
 }
 
-func (c *Controller) getActiveCAPTenantOperationJob(ctx context.Context, ctop *v1alpha1.CAPTenantOperation) (*batchv1.Job, error) {
+func (c *Controller) getActiveCAPTenantOperationJob(ctx context.Context, ctop *v1alpha2.CAPTenantOperation) (*batchv1.Job, error) {
 	// NOTE: read using label selector from the api server (not the cache)
 	currentStep := ctop.Spec.Steps[*ctop.Status.CurrentStep-1]
 	labelsMap := map[string]string{
@@ -248,14 +248,14 @@ func (c *Controller) getActiveCAPTenantOperationJob(ctx context.Context, ctop *v
 	case 1:
 		return &jobs.Items[0], nil
 	default:
-		return nil, fmt.Errorf("multiple jobs exist for step %v of %s %s.%s", *ctop.Status.CurrentStep, v1alpha1.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
+		return nil, fmt.Errorf("multiple jobs exist for step %v of %s %s.%s", *ctop.Status.CurrentStep, v1alpha2.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
 	}
 }
 
-func (c *Controller) setCAPTenantOperationStatusFromJob(ctop *v1alpha1.CAPTenantOperation, job *batchv1.Job) (result *ReconcileResult) {
+func (c *Controller) setCAPTenantOperationStatusFromJob(ctop *v1alpha2.CAPTenantOperation, job *batchv1.Job) (result *ReconcileResult) {
 	var requeueAfter time.Duration = 1 * time.Second
 	status := struct {
-		state            v1alpha1.CAPTenantOperationState
+		state            v1alpha2.CAPTenantOperationState
 		conditionReason  string
 		conditionStatus  metav1.ConditionStatus
 		conditionMessage string
@@ -273,12 +273,12 @@ func (c *Controller) setCAPTenantOperationStatusFromJob(ctop *v1alpha1.CAPTenant
 		util.LogInfo("Tenant operation job "+job.Name+" completed", string(Processing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 
 		if isFinalStep {
-			status.state = v1alpha1.CAPTenantOperationStateCompleted
+			status.state = v1alpha2.CAPTenantOperationStateCompleted
 			status.conditionStatus = metav1.ConditionTrue
 			ctop.SetStatusCurrentStep(nil, nil)
 			util.LogInfo("Completed all tenant operation job(s) successfully", string(Ready), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 		} else {
-			status.state = v1alpha1.CAPTenantOperationStateProcessing
+			status.state = v1alpha2.CAPTenantOperationStateProcessing
 			status.conditionStatus = metav1.ConditionFalse
 			nxtStep := *ctop.Status.CurrentStep + 1
 			ctop.SetStatusCurrentStep(&nxtStep, nil)
@@ -299,14 +299,14 @@ func (c *Controller) setCAPTenantOperationStatusFromJob(ctop *v1alpha1.CAPTenant
 			processStepCompletion() // NOTE: condition.reason needs to be set to StepCompleted in this case, as this is looked up by the CAPTenant
 		} else {
 			status.conditionReason = CAPTenantOperationConditionReasonStepFailed
-			status.state = v1alpha1.CAPTenantOperationStateFailed
+			status.state = v1alpha2.CAPTenantOperationStateFailed
 			status.conditionStatus = metav1.ConditionTrue
 			ctop.SetStatusCurrentStep(nil, nil)
 		}
 	case JobStateProcessing:
 		status.conditionReason = CAPTenantOperationConditionReasonStepProcessing
 		status.conditionMessage = fmt.Sprintf("step %v/%v : waiting for job %s.%s", *ctop.Status.CurrentStep, len(ctop.Spec.Steps), job.Namespace, job.Name)
-		status.state = v1alpha1.CAPTenantOperationStateProcessing
+		status.state = v1alpha2.CAPTenantOperationStateProcessing
 		status.conditionStatus = metav1.ConditionFalse
 		requeueAfter = 15 * time.Second
 	}
@@ -319,7 +319,7 @@ func (c *Controller) setCAPTenantOperationStatusFromJob(ctop *v1alpha1.CAPTenant
 	return NewReconcileResultWithResource(ResourceCAPTenantOperation, ctop.Name, ctop.Namespace, requeueAfter)
 }
 
-func (c *Controller) getCAPResourcesFromCAPTenantOperation(ctx context.Context, ctop *v1alpha1.CAPTenantOperation) (*cros, error) {
+func (c *Controller) getCAPResourcesFromCAPTenantOperation(ctx context.Context, ctop *v1alpha2.CAPTenantOperation) (*cros, error) {
 	// get owning CAPTenant
 	cat, err := c.getCachedCAPTenantFromOwnerReferences(ctop.OwnerReferences, ctop.Namespace)
 	if err != nil {
@@ -327,9 +327,9 @@ func (c *Controller) getCAPResourcesFromCAPTenantOperation(ctx context.Context, 
 	}
 
 	// get owning CAPApplication
-	owner, ok := getOwnerByKind(cat.OwnerReferences, v1alpha1.CAPApplicationKind)
+	owner, ok := getOwnerByKind(cat.OwnerReferences, v1alpha2.CAPApplicationKind, v1alpha2.Group)
 	if !ok {
-		return nil, fmt.Errorf("%s could not be identified for %s %s.%s", v1alpha1.CAPApplicationKind, v1alpha1.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
+		return nil, fmt.Errorf("%s could not be identified for %s %s.%s", v1alpha2.CAPApplicationKind, v1alpha2.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
 	}
 	ca, err := c.getCachedCAPApplication(cat.Namespace, owner.Name)
 	if err != nil {
@@ -337,14 +337,14 @@ func (c *Controller) getCAPResourcesFromCAPTenantOperation(ctx context.Context, 
 	}
 
 	// get specified CAPApplicationVersion
-	cav, err := c.crdClient.SmeV1alpha1().CAPApplicationVersions(ca.Namespace).Get(ctx, ctop.Spec.CAPApplicationVersionInstance, metav1.GetOptions{})
+	cav, err := c.crdClient.SmeV1alpha2().CAPApplicationVersions(ca.Namespace).Get(ctx, ctop.Spec.CAPApplicationVersionInstance, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
 	// verify status of CAPApplicationVersion
 	if !isCROConditionReady(cav.Status.GenericStatus) {
-		err := fmt.Errorf("%s %s is not %s to be used in %s %s.%s", v1alpha1.CAPApplicationVersionKind, cav.Name, v1alpha1.CAPApplicationVersionStateReady, v1alpha1.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
-		if ctop.Spec.Operation != v1alpha1.CAPTenantOperationTypeDeprovisioning {
+		err := fmt.Errorf("%s %s is not %s to be used in %s %s.%s", v1alpha2.CAPApplicationVersionKind, cav.Name, v1alpha2.CAPApplicationVersionStateReady, v1alpha2.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
+		if ctop.Spec.Operation != v1alpha2.CAPTenantOperationTypeDeprovisioning {
 			return nil, err
 		} else {
 			// In some cases a CAV might get into a non-ready state, but this may not block deprovisioning (e.g. some workloads fail due to issues unrelated to tenant deletion workloads).
@@ -362,7 +362,7 @@ func (c *Controller) getCAPResourcesFromCAPTenantOperation(ctx context.Context, 
 	}, nil
 }
 
-func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, ctop *v1alpha1.CAPTenantOperation) (result *ReconcileResult, err error) {
+func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, ctop *v1alpha2.CAPTenantOperation) (result *ReconcileResult, err error) {
 	relatedResources, err := c.getCAPResourcesFromCAPTenantOperation(ctx, ctop)
 	if err != nil {
 		return nil, err
@@ -372,15 +372,15 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 	step := ctop.Spec.Steps[*ctop.Status.CurrentStep-1]
 	workload := getWorkloadByName(step.Name, relatedResources.CAPApplicationVersion)
 	if workload == nil {
-		return nil, fmt.Errorf("could not find workload %s in %s %s.%s", step.Name, v1alpha1.CAPApplicationVersionKind, relatedResources.CAPApplicationVersion.Namespace, relatedResources.CAPApplicationVersion.Name)
+		return nil, fmt.Errorf("could not find workload %s in %s %s.%s", step.Name, v1alpha2.CAPApplicationVersionKind, relatedResources.CAPApplicationVersion.Namespace, relatedResources.CAPApplicationVersion.Name)
 	}
 	if workload.JobDefinition == nil {
-		return nil, fmt.Errorf("workload %s in %s %s.%s has no job definition", step.Name, v1alpha1.CAPApplicationVersionKind, relatedResources.CAPApplicationVersion.Namespace, relatedResources.CAPApplicationVersion.Name)
+		return nil, fmt.Errorf("workload %s in %s %s.%s has no job definition", step.Name, v1alpha2.CAPApplicationVersionKind, relatedResources.CAPApplicationVersion.Namespace, relatedResources.CAPApplicationVersion.Name)
 	}
 
 	// create VCAP secret from consumed BTP services
 	consumedServiceInfos := getConsumedServiceInfos(getConsumedServiceMap(workload.ConsumedBTPServices), relatedResources.CAPApplication.Spec.BTP.Services)
-	vcapSecretName, err := c.createVCAPSecret(ctop.Name+"-"+strings.ToLower(workload.Name), ctop.Namespace, *metav1.NewControllerRef(ctop, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantOperationKind)), consumedServiceInfos)
+	vcapSecretName, err := c.createVCAPSecret(ctop.Name+"-"+strings.ToLower(workload.Name), ctop.Namespace, *metav1.NewControllerRef(ctop, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPTenantOperationKind)), consumedServiceInfos)
 	if err != nil {
 		return nil, err
 	}
@@ -418,7 +418,7 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 	}
 
 	var job *batchv1.Job
-	if ctop.Spec.Steps[*ctop.Status.CurrentStep-1].Type == v1alpha1.JobTenantOperation {
+	if ctop.Spec.Steps[*ctop.Status.CurrentStep-1].Type == v1alpha2.JobTenantOperation {
 		job, err = c.createTenantOperationJob(ctx, ctop, workload, params)
 	} else { // custom tenant operation
 		job, err = c.createCustomTenantOperationJob(ctx, ctop, workload, params)
@@ -430,7 +430,7 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 
 	msg := fmt.Sprintf("step %v/%v : job %s.%s created", *ctop.Status.CurrentStep, len(ctop.Spec.Steps), job.Namespace, job.Name)
 	util.LogInfo("Tenant operation job "+job.Name+" created successfully", string(Processing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
-	ctop.SetStatusWithReadyCondition(v1alpha1.CAPTenantOperationStateProcessing, metav1.ConditionFalse, CAPTenantOperationConditionReasonStepInitiated, msg)
+	ctop.SetStatusWithReadyCondition(v1alpha2.CAPTenantOperationStateProcessing, metav1.ConditionFalse, CAPTenantOperationConditionReasonStepInitiated, msg)
 	ctop.SetStatusCurrentStep(ctop.Status.CurrentStep, &job.Name)
 	c.Event(ctop, job, corev1.EventTypeNormal, CAPTenantOperationConditionReasonStepInitiated, EventActionCreateJob, msg)
 
@@ -451,7 +451,7 @@ type jobCreateParams struct {
 	tenantType           string
 }
 
-func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {
+func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha2.CAPTenantOperation, workload *v1alpha2.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {
 	// create job for tenant operation (provisioning / upgrade / deprovisioning)
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -459,7 +459,7 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 			Namespace:       ctop.Namespace,
 			Labels:          params.labels,
 			Annotations:     params.annotations,
-			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(ctop, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantOperationKind))},
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(ctop, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPTenantOperationKind))},
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            workload.JobDefinition.BackoffLimit,
@@ -474,7 +474,7 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 					RestartPolicy:                 getRestartPolicy(workload.JobDefinition.RestartPolicy, true),
 					ImagePullSecrets:              params.imagePullSecrets,
 					Containers:                    getContainers(ctop, workload, params),
-					InitContainers:                *updateInitContainers(workload.JobDefinition.InitContainers, getCTOPEnv(params, ctop, v1alpha1.JobTenantOperation), params.vcapSecretName),
+					InitContainers:                *updateInitContainers(workload.JobDefinition.InitContainers, getCTOPEnv(params, ctop, v1alpha2.JobTenantOperation), params.vcapSecretName),
 					Volumes:                       workload.JobDefinition.Volumes,
 					ServiceAccountName:            workload.JobDefinition.ServiceAccountName,
 					SecurityContext:               workload.JobDefinition.PodSecurityContext,
@@ -494,12 +494,12 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 	return c.kubeClient.BatchV1().Jobs(ctop.Namespace).Create(ctx, job, metav1.CreateOptions{})
 }
 
-func getContainers(ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) []corev1.Container {
+func getContainers(ctop *v1alpha2.CAPTenantOperation, workload *v1alpha2.WorkloadDetails, params *jobCreateParams) []corev1.Container {
 	container := &corev1.Container{
 		Name:            workload.Name,
 		Image:           workload.JobDefinition.Image,
 		ImagePullPolicy: workload.JobDefinition.ImagePullPolicy,
-		Env:             append(getCTOPEnv(params, ctop, v1alpha1.JobTenantOperation), workload.JobDefinition.Env...),
+		Env:             append(getCTOPEnv(params, ctop, v1alpha2.JobTenantOperation), workload.JobDefinition.Env...),
 		EnvFrom:         getEnvFrom(params.vcapSecretName),
 		VolumeMounts:    workload.JobDefinition.VolumeMounts,
 		Resources:       workload.JobDefinition.Resources,
@@ -513,7 +513,7 @@ func getContainers(ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.Workloa
 	} else {
 		container.Command = []string{"node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx"} // Use entrypoint for mtxs as the command
 		container.Args = []string{`$(` + EnvCAPOpTenantMtxsOperation + `)`, ctop.Spec.TenantId}
-		if ctop.Spec.Operation == v1alpha1.CAPTenantOperationTypeProvisioning {
+		if ctop.Spec.Operation == v1alpha2.CAPTenantOperationTypeProvisioning {
 			container.Args = append(container.Args, "--body", `$(`+EnvCAPOpSubscriptionPayload+`)`)
 		}
 	}
@@ -521,7 +521,7 @@ func getContainers(ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.Workloa
 	return append([]corev1.Container{}, *container)
 }
 
-func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v1alpha1.CAPTenantOperation, workload *v1alpha1.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {
+func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v1alpha2.CAPTenantOperation, workload *v1alpha2.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {
 	// create job for custom tenant operation
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -529,7 +529,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 			Namespace:       ctop.Namespace,
 			Labels:          params.labels,
 			Annotations:     params.annotations,
-			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(ctop, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantOperationKind))},
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(ctop, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPTenantOperationKind))},
 		},
 		Spec: batchv1.JobSpec{
 			BackoffLimit:            workload.JobDefinition.BackoffLimit,
@@ -558,7 +558,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 							Name:            workload.Name,
 							Image:           workload.JobDefinition.Image,
 							ImagePullPolicy: workload.JobDefinition.ImagePullPolicy,
-							Env:             append(getCTOPEnv(params, ctop, v1alpha1.JobCustomTenantOperation), workload.JobDefinition.Env...),
+							Env:             append(getCTOPEnv(params, ctop, v1alpha2.JobCustomTenantOperation), workload.JobDefinition.Env...),
 							EnvFrom:         getEnvFrom(params.vcapSecretName),
 							VolumeMounts:    workload.JobDefinition.VolumeMounts,
 							Command:         workload.JobDefinition.Command,
@@ -568,7 +568,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 							Lifecycle:       workload.JobDefinition.Lifecycle,
 						},
 					},
-					InitContainers: *updateInitContainers(workload.JobDefinition.InitContainers, getCTOPEnv(params, ctop, v1alpha1.JobCustomTenantOperation), params.vcapSecretName),
+					InitContainers: *updateInitContainers(workload.JobDefinition.InitContainers, getCTOPEnv(params, ctop, v1alpha2.JobCustomTenantOperation), params.vcapSecretName),
 				},
 			},
 		},
@@ -578,7 +578,7 @@ func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v
 	return c.kubeClient.BatchV1().Jobs(ctop.Namespace).Create(ctx, job, metav1.CreateOptions{})
 }
 
-func addCAPTenantOperationLabels(ctop *v1alpha1.CAPTenantOperation, cat *v1alpha1.CAPTenant) (updated bool) {
+func addCAPTenantOperationLabels(ctop *v1alpha2.CAPTenantOperation, cat *v1alpha2.CAPTenant) (updated bool) {
 	if addCommonTenantLabels(&ctop.ObjectMeta, cat) {
 		updated = true
 	}
@@ -605,7 +605,7 @@ func addCAPTenantOperationLabels(ctop *v1alpha1.CAPTenantOperation, cat *v1alpha
 	return updated
 }
 
-func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation, stepType v1alpha1.JobType) []corev1.EnvVar {
+func getCTOPEnv(params *jobCreateParams, ctop *v1alpha2.CAPTenantOperation, stepType v1alpha2.JobType) []corev1.EnvVar {
 	env := []corev1.EnvVar{
 		{Name: EnvCAPOpAppVersion, Value: params.version},
 		{Name: EnvCAPOpTenantId, Value: ctop.Spec.TenantId},
@@ -625,13 +625,13 @@ func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation, step
 		env = append(env, corev1.EnvVar{Name: EnvCAPOpProviderSubDomain, Value: params.providerSubdomain})
 	}
 
-	if stepType == v1alpha1.JobTenantOperation {
+	if stepType == v1alpha2.JobTenantOperation {
 		var operation string
 		switch ctop.Spec.Operation {
-		case v1alpha1.CAPTenantOperationTypeProvisioning:
+		case v1alpha2.CAPTenantOperationTypeProvisioning:
 			operation = "subscribe"
 			env = append(env, corev1.EnvVar{Name: EnvCAPOpSubscriptionPayload, ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: ctop.Annotations[AnnotationSubscriptionContextSecret]}, Key: SubscriptionContext}}})
-		case v1alpha1.CAPTenantOperationTypeUpgrade:
+		case v1alpha2.CAPTenantOperationTypeUpgrade:
 			operation = "upgrade"
 		default: // deprovisioning
 			operation = "unsubscribe"
@@ -643,14 +643,14 @@ func getCTOPEnv(params *jobCreateParams, ctop *v1alpha1.CAPTenantOperation, step
 }
 
 // Collect tenant operation metrics based on the status of the tenant operation
-func collectTenantOperationMetrics(ctop *v1alpha1.CAPTenantOperation) {
+func collectTenantOperationMetrics(ctop *v1alpha2.CAPTenantOperation) {
 	relevantAppIdHash := ctop.Labels[LabelAppIdHash]
 
 	if isCROConditionReady(ctop.Status.GenericStatus) {
 		// Collect/Increment overall completed tenant operation metrics
 		TenantOperations.WithLabelValues(relevantAppIdHash, string(ctop.Spec.Operation)).Inc()
 
-		if ctop.Status.State == v1alpha1.CAPTenantOperationStateFailed {
+		if ctop.Status.State == v1alpha2.CAPTenantOperationStateFailed {
 			// Collect/Increment failed tenant operation metrics with CRO details
 			TenantOperationFailures.WithLabelValues(relevantAppIdHash, string(ctop.Spec.Operation), ctop.Spec.TenantId, ctop.Namespace, ctop.Name).Inc()
 		}

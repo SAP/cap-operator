@@ -14,7 +14,7 @@ import (
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	sprig "github.com/go-task/slim-sprig/v3"
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,7 +40,7 @@ type dnsInfo struct {
 	appId  string
 }
 
-func handleDnsEntries[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, ownerId, subResourceName string, subResourceNamespace string) (err error) {
+func handleDnsEntries[T v1alpha2.DomainEntity](ctx context.Context, c *Controller, dom T, ownerId, subResourceName string, subResourceNamespace string) (err error) {
 	if dnsManager() != dnsManagerGardener {
 		// skip dns entry handling if not using gardener dns manager
 		return nil
@@ -101,7 +101,7 @@ func handleDnsEntries[T v1alpha1.DomainEntity](ctx context.Context, c *Controlle
 				},
 				// Finalizers: []string{FinalizerDomain},
 				OwnerReferences: []metav1.OwnerReference{
-					*metav1.NewControllerRef(metav1.Object(dom), v1alpha1.SchemeGroupVersion.WithKind(dom.GetKind())),
+					*metav1.NewControllerRef(metav1.Object(dom), v1alpha2.SchemeGroupVersion.WithKind(dom.GetKind())),
 				},
 			},
 			Spec: getDnsEntrySpec(info),
@@ -155,7 +155,7 @@ func getDnsEntrySpec(info *dnsInfo) dnsv1alpha1.DNSEntrySpec {
 	}
 }
 
-func getDnsInfo[T v1alpha1.DomainEntity](c *Controller, dom T) (resolvedDNSInfo []*dnsInfo, err error) {
+func getDnsInfo[T v1alpha2.DomainEntity](c *Controller, dom T) (resolvedDNSInfo []*dnsInfo, err error) {
 	dnsTemplates, subdomainInfo, err := getDNSDetails(dom, c)
 	if err != nil {
 		return nil, err
@@ -200,21 +200,21 @@ func getDnsInfo[T v1alpha1.DomainEntity](c *Controller, dom T) (resolvedDNSInfo 
 	return resolvedDNSInfo, err
 }
 
-func getDNSDetails[T v1alpha1.DomainEntity](dom T, c *Controller) (dnsTemplates []v1alpha1.DNSTemplate, subdomainInfo map[string]string, err error) {
-	dnsTemplates = []v1alpha1.DNSTemplate{}
+func getDNSDetails[T v1alpha2.DomainEntity](dom T, c *Controller) (dnsTemplates []v1alpha2.DNSTemplate, subdomainInfo map[string]string, err error) {
+	dnsTemplates = []v1alpha2.DNSTemplate{}
 	collectSubdomains := false
 
 	switch dom.GetSpec().DNSMode {
-	case v1alpha1.DnsModeWildcard:
-		dnsTemplates = append(dnsTemplates, v1alpha1.DNSTemplate{Name: "*.{{.domain}}", Target: "{{.dnsTarget}}"})
-	case v1alpha1.DnsModeSubdomain:
-		dnsTemplates = append(dnsTemplates, v1alpha1.DNSTemplate{Name: "{{.subDomain}}.{{.domain}}", Target: "{{.dnsTarget}}"})
+	case v1alpha2.DnsModeWildcard:
+		dnsTemplates = append(dnsTemplates, v1alpha2.DNSTemplate{Name: "*.{{.domain}}", Target: "{{.dnsTarget}}"})
+	case v1alpha2.DnsModeSubdomain:
+		dnsTemplates = append(dnsTemplates, v1alpha2.DNSTemplate{Name: "{{.subDomain}}.{{.domain}}", Target: "{{.dnsTarget}}"})
 		// If subdomain is used, we need to collect subdomains from applications
 		collectSubdomains = true
-	case v1alpha1.DnsModeCustom:
+	case v1alpha2.DnsModeCustom:
 		dnsTemplates = dom.GetSpec().DNSTemplates
 		// If subdomain is used, we need to collect subdomains from applications
-		collectSubdomains = slices.ContainsFunc(dnsTemplates, func(t v1alpha1.DNSTemplate) bool {
+		collectSubdomains = slices.ContainsFunc(dnsTemplates, func(t v1alpha2.DNSTemplate) bool {
 			return strings.Contains(t.Name, subDomainTemplateVar)
 		})
 	default: // Default is None
@@ -231,7 +231,7 @@ func getDNSDetails[T v1alpha1.DomainEntity](dom T, c *Controller) (dnsTemplates 
 	return dnsTemplates, subdomainInfo, nil
 }
 
-func parseDNSTemplate(tpl *template.Template, dnsTemplate v1alpha1.DNSTemplate, domVars map[string]any) (*dnsInfo, error) {
+func parseDNSTemplate(tpl *template.Template, dnsTemplate v1alpha2.DNSTemplate, domVars map[string]any) (*dnsInfo, error) {
 	// Parse the DNS templates
 	parseTemplate := func(templateString string, templateVars map[string]any) (string, error) {
 		var tmpS strings.Builder
@@ -261,7 +261,7 @@ func parseDNSTemplate(tpl *template.Template, dnsTemplate v1alpha1.DNSTemplate, 
 	return &dns, nil
 }
 
-func collectAppSubdomainInfos[T v1alpha1.DomainEntity](c *Controller, dom T) (subdomains map[string]string, err error) {
+func collectAppSubdomainInfos[T v1alpha2.DomainEntity](c *Controller, dom T) (subdomains map[string]string, err error) {
 	cas, err := getReferencingApplications(c, dom)
 	if err != nil {
 		return nil, err

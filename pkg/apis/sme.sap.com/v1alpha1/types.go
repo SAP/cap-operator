@@ -3,16 +3,15 @@ SPDX-FileCopyrightText: 2026 SAP SE or an SAP affiliate company and cap-operator
 SPDX-License-Identifier: Apache-2.0
 */
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 package v1alpha1
 
 import (
-	certManagermetav1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
-	autoscalingv2 "k8s.io/api/autoscaling/v2"
-	corev1 "k8s.io/api/core/v1"
-	policyv1 "k8s.io/api/policy/v1"
+	v1alpha2 "github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 const (
 	Group                         = "sme.sap.com"
 	Version                       = "v1alpha1"
@@ -34,11 +33,13 @@ const (
 
 // +kubebuilder:resource:shortName=ca
 // +kubebuilder:subresource:status
+// +kubebuilder:deprecatedversion
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPApplication is the schema for capapplications API
 type CAPApplication struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -47,39 +48,12 @@ type CAPApplication struct {
 	Spec CAPApplicationSpec `json:"spec"`
 	// +kubebuilder:validation:Optional
 	// CAPApplication status
-	Status CAPApplicationStatus `json:"status"`
+	Status v1alpha2.CAPApplicationStatus `json:"status"`
 }
-
-type CAPApplicationStatus struct {
-	GenericStatus `json:",inline"`
-	// +kubebuilder:validation:Enum="";Consistent;Processing;Error;Deleting
-	// State of CAPApplication
-	State CAPApplicationState `json:"state"`
-	// Represents whether this is a services only scenario
-	ServicesOnly *bool `json:"servicesOnly,omitempty"`
-	// Hash representing last known application domains
-	DomainSpecHash string `json:"domainSpecHash,omitempty"`
-	// The last time a full reconciliation was completed
-	LastFullReconciliationTime metav1.Time `json:"lastFullReconciliationTime,omitempty"`
-	// Last known application subdomains
-	ObservedSubdomains []string `json:"observedSubdomains,omitempty"`
-}
-
-type CAPApplicationState string
-
-const (
-	// CAPApplication is being reconciled
-	CAPApplicationStateProcessing CAPApplicationState = "Processing"
-	// An error occurred during reconciliation
-	CAPApplicationStateError CAPApplicationState = "Error"
-	// Deletion has been triggered
-	CAPApplicationStateDeleting CAPApplicationState = "Deleting"
-	// CAPApplication has been reconciled and is now consistent
-	CAPApplicationStateConsistent CAPApplicationState = "Consistent"
-)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPApplicationList contains a list of CAPApplication
 type CAPApplicationList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -87,33 +61,16 @@ type CAPApplicationList struct {
 	Items           []CAPApplication `json:"items"`
 }
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPApplicationSpec defines the desired state of CAPApplication
 type CAPApplicationSpec struct {
-	// Reference to `Domain` resources used by the application
-	DomainRefs []DomainRef `json:"domainRefs,omitempty"`
+	// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
+	v1alpha2.CAPApplicationSpec `json:",inline"`
 	// Deprecated: Domains used by the application. Will be removed in future versions, use `DomainRefs` instead
 	Domains ApplicationDomains `json:"domains,omitempty"`
 	// Deprecated: SAP BTP Global Account Identifier where services are entitled for the current application
 	// Will be removed soon, use ProviderSubaccountId instead
 	GlobalAccountId string `json:"globalAccountId,omitempty"`
-	// The subaccount ID in which the application is provided
-	ProviderSubaccountId string `json:"providerSubaccountId"`
-	// Short name for the application (BTP XSAPPNAME)
-	BTPAppName string `json:"btpAppName"`
-	// Deprecated: Provider subaccount where application services are created
-	// Will be removed, consider automating this via BTP / subscription instead!
-	Provider *BTPTenantIdentification `json:"provider,omitempty"`
-	// SAP BTP Services consumed by the application
-	BTP BTP `json:"btp"`
-	// Rollout on Credentials Update may be used to rollout deployments when dependent service credentials are updated
-	RolloutOnCredentialUpdate bool `json:"rolloutOnCredentialUpdate,omitempty"`
-}
-
-// Domain references
-type DomainRef struct {
-	// +kubebuilder:validation:Enum=Domain;ClusterDomain
-	Kind string `json:"kind"`
-	Name string `json:"name"`
 }
 
 // Application domains
@@ -145,107 +102,30 @@ type NameValue struct {
 	Value string `json:"value"`
 }
 
-// Identifies an SAP BTP subaccount (tenant)
-type BTPTenantIdentification struct {
-	// BTP subaccount subdomain
-	SubDomain string `json:"subDomain"`
-	// BTP subaccount Tenant ID
-	TenantId string `json:"tenantId"`
-}
-
-type BTP struct {
-	// Details of BTP Services
-	Services []ServiceInfo `json:"services"`
-}
-
-// Service information
-type ServiceInfo struct {
-	// A unique name of service based on usage in the app (this may be the name of the instance or binding)
-	Name string `json:"name"`
-	// Secret containing service access credentials
-	Secret string `json:"secret"`
-	// Type of service
-	Class string `json:"class"`
-	// SubscriptionDependency may be used to specify whether this service should be part of getDependencies call from subscription service (e.g. saas-registry)
-	SubscriptionDependency *SubscriptionDependency `json:"subscriptionDependency,omitempty"`
-}
-
-// +kubebuilder:validation:Enum=Auto;Always;Never
-type SubscriptionDependency string
-
-const (
-	// Automatically determine if the service needs to be returned in getDependencies call
-	SubscriptionDependencyAuto SubscriptionDependency = "Auto"
-	// Always return the service in getDependencies call
-	SubscriptionDependencyAlways SubscriptionDependency = "Always"
-	// Never return the service in getDependencies call
-	SubscriptionDependencyNever SubscriptionDependency = "Never"
-)
-
-// Custom resource status
-type GenericStatus struct {
-	// Observed generation of the resource where this status was identified
-	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
-	// State expressed as conditions
-	Conditions []metav1.Condition `json:"conditions,omitempty"`
-}
-
-type CAPApplicationStatusConditionType string
-
-const (
-	ConditionTypeAllTenantsReady    CAPApplicationStatusConditionType = "AllTenantsReady"
-	ConditionTypeLatestVersionReady CAPApplicationStatusConditionType = "LatestVersionReady"
-)
-
-type StatusConditionType string
-
-const (
-	ConditionTypeReady StatusConditionType = "Ready"
-)
-
 // +kubebuilder:resource:shortName=cav
 // +kubebuilder:subresource:status
+// +kubebuilder:deprecatedversion
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +kubebuilder:printcolumn:name="Version",type="string",JSONPath=".spec.version"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPApplicationVersion defines the schema for capapplicationversions API
 type CAPApplicationVersion struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	// CAPApplicationVersion spec
-	Spec CAPApplicationVersionSpec `json:"spec"`
+	Spec v1alpha2.CAPApplicationVersionSpec `json:"spec"`
 	// +kubebuilder:validation:Optional
 	// CAPApplicationVersion status
-	Status CAPApplicationVersionStatus `json:"status"`
+	Status v1alpha2.CAPApplicationVersionStatus `json:"status"`
 }
-
-type CAPApplicationVersionStatus struct {
-	GenericStatus `json:",inline"`
-	// +kubebuilder:validation:Enum="";Ready;Error;Processing;Deleting
-	// State of CAPApplicationVersion
-	State CAPApplicationVersionState `json:"state"`
-	// List of finished Content Jobs
-	FinishedJobs []string `json:"finishedJobs,omitempty"`
-}
-
-type CAPApplicationVersionState string
-
-const (
-	// CAPApplicationVersion is being processed
-	CAPApplicationVersionStateProcessing CAPApplicationVersionState = "Processing"
-	// An error occurred during reconciliation
-	CAPApplicationVersionStateError CAPApplicationVersionState = "Error"
-	// Deletion has been triggered
-	CAPApplicationVersionStateDeleting CAPApplicationVersionState = "Deleting"
-	// CAPApplicationVersion is now ready for use (dependent resources have been created)
-	CAPApplicationVersionStateReady CAPApplicationVersionState = "Ready"
-)
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPApplicationVersionList contains a list of CAPApplicationVersion
 type CAPApplicationVersionList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -253,331 +133,9 @@ type CAPApplicationVersionList struct {
 	Items           []CAPApplicationVersion `json:"items"`
 }
 
-// CAPApplicationVersionSpec specifies the desired state of CAPApplicationVersion
-type CAPApplicationVersionSpec struct {
-	// Denotes to which CAPApplication the current version belongs
-	CAPApplicationInstance string `json:"capApplicationInstance"`
-	// Semantic version
-	// +kubebuilder:validation:Pattern=^(0|[1-9]\d*)(\.(0|[1-9]\d*)(\.(0|[1-9]\d*)(-((0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?)?)?$
-	Version string `json:"version"`
-	// Registry secrets used to pull images of the application components
-	RegistrySecrets []string `json:"registrySecrets,omitempty"`
-	// Information about the Workloads
-	// +kubebuilder:validation:MaxItems=100
-	Workloads []WorkloadDetails `json:"workloads"`
-	// Tenant Operations may be used to specify how jobs are sequenced for the different tenant operations
-	TenantOperations *TenantOperations `json:"tenantOperations,omitempty"`
-	// Content Jobs may be used to specify the sequence of content jobs when several jobs exist
-	ContentJobs []string `json:"contentJobs,omitempty"`
-	// Configuration for the service(s) to be exposed (relevant only for 'Service' type deployment workloads)
-	ServiceExposures []ServiceExposure `json:"serviceExposures,omitempty"`
-}
-
-// WorkloadDetails specifies the details of the Workload
-// +kubebuilder:validation:ExactlyOneOf=deploymentDefinition;jobDefinition
-type WorkloadDetails struct {
-	// Name of the workload
-	Name string `json:"name"`
-	// List of BTP services consumed by the current application component workload. These services must be defined in the corresponding CAPApplication.
-	ConsumedBTPServices []string `json:"consumedBTPServices"`
-	// Custom labels for the current workload
-	Labels map[string]string `json:"labels,omitempty"`
-	// Annotations for the current workload, in case of `Deployments` this also get copied over to any `Service` that may be created
-	Annotations map[string]string `json:"annotations,omitempty"`
-	// Definition of a deployment
-	DeploymentDefinition *DeploymentDetails `json:"deploymentDefinition,omitempty"`
-	// Definition of a job
-	JobDefinition *JobDetails `json:"jobDefinition,omitempty"`
-}
-
-// DeploymentDetails specifies the details of the Deployment
-type DeploymentDetails struct {
-	CommonDetails `json:",inline"`
-	// Type of the Deployment
-	Type DeploymentType `json:"type"`
-	// Number of replicas
-	Replicas *int32 `json:"replicas,omitempty"`
-	// Port configuration
-	Ports []Ports `json:"ports,omitempty"`
-	// Liveness probe
-	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty"`
-	// Readiness probe
-	ReadinessProbe *corev1.Probe `json:"readinessProbe,omitempty"`
-	// Startup Probe
-	StartupProbe *corev1.Probe `json:"startupProbe,omitempty"`
-	// Workload monitoring specification
-	Monitoring *WorkloadMonitoring `json:"monitoring,omitempty"`
-	// Pod Disruption Budget may be used to specify the minimum number of available pods for this workload
-	PodDisruptionBudget *policyv1.PodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	// Horizontal Pod Autoscaler may be used to specify the scaling behavior for this workload
-	HorizontalPodAutoscaler *HorizontalPodAutoscalerSpec `json:"horizontalPodAutoscaler,omitempty"`
-	// Stickiness configuration based on istio consistent hashing for the workload. When present, this is used to create a DestinationRule for the workload.
-	Stickiness *Stickiness `json:"stickiness,omitempty"`
-}
-
-type Stickiness struct {
-	// Hash based stickiness configuration.
-	Hash *StickinessHash `json:"hash,omitempty"`
-}
-
-// Loosely based on the options available for consistent hash load balancer in istio (https://istio.io/latest/docs/reference/config/networking/destination-rule/#ConsistentHashLB), but only include the options that make sense for our use case.
-// +kubebuilder:validation:AtMostOneOf=httpHeaderName;httpCookie;useSourceIp;httpQueryParameterName
-type StickinessHash struct {
-	// Hash based on a specific HTTP header.
-	HttpHeaderName string `json:"httpHeaderName,omitempty"`
-	// Hash based on HTTP cookie.
-	HttpCookie *HTTPCookie `json:"httpCookie,omitempty"`
-	// Hash based on the source IP address.
-	// This is applicable for both TCP and HTTP connections.
-	UseSourceIp bool `json:"useSourceIp,omitempty"`
-	// Hash based on a specific HTTP query parameter.
-	HttpQueryParameterName string `json:"httpQueryParameterName,omitempty"`
-}
-
-type HTTPCookie struct {
-	// Name of the cookie.
-	Name string `json:"name,omitempty"`
-	// Path to set for the cookie.
-	Path string `json:"path,omitempty"`
-	// Lifetime of the cookie. If specified, a cookie with the TTL will be
-	// generated if the cookie is not present. If the TTL is present and zero,
-	// the generated cookie will be a session cookie.
-	Ttl *metav1.Duration `json:"ttl,omitempty"`
-	// Additional attributes for the cookie. They will be used when generating a new cookie.
-	Attributes []NameValue `json:"attributes,omitempty"`
-}
-
-// HorizontalPodAutoscalerSpec wraps autoscalingv2.HorizontalPodAutoscalerSpec but gets rid of scaleTargetRef,
-// as the operator always sets it to the deployment created for the workload.
-type HorizontalPodAutoscalerSpec struct {
-	// minReplicas is the lower limit for the number of replicas to which the autoscaler can scale down.
-	// +optional
-	MinReplicas *int32 `json:"minReplicas,omitempty"`
-	// maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale up.
-	MaxReplicas int32 `json:"maxReplicas"`
-	// metrics contains the specifications for which to use to calculate the desired replica count.
-	// +optional
-	Metrics []autoscalingv2.MetricSpec `json:"metrics,omitempty"`
-	// behavior configures the scaling behavior of the target in both Up and Down directions.
-	// +optional
-	Behavior *autoscalingv2.HorizontalPodAutoscalerBehavior `json:"behavior,omitempty"`
-}
-
-// ServiceExposure specifies the details of the VirtualService to be exposed for `Service` type workload(s)
-type ServiceExposure struct {
-	// Subdomain under which the service is exposed (used as the Key for identifying the VirtualService)
-	SubDomain string `json:"subDomain"`
-	// Routes specifies the routing configuration (http match) for the exposed service
-	Routes []Route `json:"routes"`
-}
-
-// Routing configuration (http match) for the exposed service
-type Route struct {
-	// Name of the workload (eventually a service to route requests to); must be a valid workload name (Deployment)
-	WorkloadName string `json:"workloadName"`
-	// Port number used for the service (must be present in the workload/service)
-	Port int32 `json:"port"`
-	// A unique routing path used (as a match/prefix) to route requests to the workload (when omitted, "/" would be used)
-	Path string `json:"path,omitempty"`
-}
-
-// WorkloadMonitoring specifies the metrics related to the workload
-type WorkloadMonitoring struct {
-	// DeletionRules specify the metrics conditions that need to be satisfied for the version to be deleted automatically.
-	// Either a set of metrics based rules can be specified, or a PromQL expression which evaluates to a boolean scalar.
-	DeletionRules *DeletionRules `json:"deletionRules,omitempty"`
-	// Configuration to be used to create ServiceMonitor for the workload service.
-	// If not specified, CAP Operator will not attempt to create a ServiceMonitor for the workload
-	ScrapeConfig *MonitoringConfig `json:"scrapeConfig,omitempty"`
-}
-
-type MonitoringConfig struct {
-	// Interval at which Prometheus scrapes the metrics from the target.
-	ScrapeInterval Duration `json:"interval,omitempty"`
-	// Name of the port (specified on the workload) which will be used by Prometheus server to scrape metrics
-	WorkloadPort string `json:"port"`
-	// HTTP path from which to scrape for metrics.
-	Path string `json:"path,omitempty"`
-	// Timeout after which Prometheus considers the scrape to be failed.
-	Timeout Duration `json:"scrapeTimeout,omitempty"`
-}
-
-// +kubebuilder:validation:ExactlyOneOf=metrics;expression
-type DeletionRules struct {
-	Metrics []MetricRule `json:"metrics,omitempty"`
-	// A promQL expression that evaluates to a scalar boolean (1 or 0).
-	// Example: scalar(sum(avg_over_time(demo_metric{job="cav-demo-app-4-srv-svc",namespace="demo"}[2m]))) <= bool 0.1
-	ScalarExpression *string `json:"expression,omitempty"`
-}
-
-// MetricRule specifies a Prometheus metric and rule which represents a cleanup condition. Metrics of type Gauge and Counter are supported.
-//
-// Rule evaluation for Gauge type metric: The time series data of the metric (restricted to the current workload by setting `job` label as workload service name) is calculated as an average over the specified period.
-// A sum of the calculated average from different time series is then compared to the provided threshold value to determine whether the rule has been satisfied.
-// Evaluation: `sum(avg_over_time(<gauge-metric>{job=<workload-service-name>}[<lookback-duration>])) <= <lower-threshold-value>`
-//
-// Rule evaluation for Counter type metric: The time series data of the metric (restricted to the current workload by setting `job` label as workload service name) is calculated as rate of increase over the specified period.
-// The sum of the calculated rates from different time series is then compared to the provided threshold value to determine whether the rule has been satisfied.
-// Evaluation: `sum(rate(<counter-metric>{job=<workload-service-name>}[<lookback-duration>])) <= <lower-threshold-value>`
-type MetricRule struct {
-	// Prometheus metric. For example `http_request_count`
-	Name string `json:"name"`
-	// Type of Prometheus metric which can be either `Gauge` or `Counter`
-	// +kubebuilder:validation:Enum=Gauge;Counter
-	Type MetricType `json:"type"`
-	// Duration of time series data used for the rule evaluation
-	CalculationPeriod Duration `json:"calculationPeriod"`
-	// The threshold value which is compared against the calculated value. If calculated value is less than or equal to the threshold the rule condition is fulfilled.
-	// +kubebuilder:validation:Format=double
-	ThresholdValue string `json:"thresholdValue"`
-}
-
-// Duration is a valid time duration that can be parsed by Prometheus
-// Supported units: y, w, d, h, m, s, ms
-// Examples: `30s`, `1m`, `1h20m15s`, `15d`
-// +kubebuilder:validation:Pattern="^(0|(([0-9]+)y)?(([0-9]+)w)?(([0-9]+)d)?(([0-9]+)h)?(([0-9]+)m)?(([0-9]+)s)?(([0-9]+)ms)?)$"
-type Duration string
-
-// Type of Prometheus metric
-type MetricType string
-
-const (
-	// Prometheus Metric type Gauge
-	MetricTypeGauge MetricType = "Gauge"
-	// Prometheus Metric type Counter
-	MetricTypeCounter MetricType = "Counter"
-)
-
-// Type of deployment
-type DeploymentType string
-
-const (
-	// CAP backend server deployment type
-	DeploymentCAP DeploymentType = "CAP"
-	// Application router deployment type
-	DeploymentRouter DeploymentType = "Router"
-	// Additional deployment type
-	DeploymentAdditional DeploymentType = "Additional"
-	// Service deployment type
-	DeploymentService DeploymentType = "Service"
-)
-
-// JobDetails specifies the details of the Job
-type JobDetails struct {
-	CommonDetails `json:",inline"`
-	// Type of Job
-	Type JobType `json:"type"`
-	// Specifies the number of retries before marking this job failed.
-	BackoffLimit *int32 `json:"backoffLimit,omitempty"`
-	// Specifies the time after which the job may be cleaned up.
-	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished,omitempty"`
-	// Specifies the duration in seconds for which the job may be continuously active.
-	ActiveDeadlineSeconds *int64 `json:"activeDeadlineSeconds,omitempty"`
-}
-
-// Type of Job
-type JobType string
-
-const (
-	// job for deploying content or configuration to (BTP) services
-	JobContent JobType = "Content"
-	// job for tenant operation e.g. deploying relevant data to a tenant
-	JobTenantOperation JobType = "TenantOperation"
-	// job for custom tenant operation e.g. pre/post hooks for a tenant operation
-	JobCustomTenantOperation JobType = "CustomTenantOperation"
-)
-
-// CommonDetails specifies the common details of the Container/Pod that may be relevant for both Deployments and Jobs
-type CommonDetails struct {
-	// Image info for the container
-	Image string `json:"image"`
-	// Pull policy for the container image
-	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
-	// Entrypoint array for the container
-	Command []string `json:"command,omitempty"`
-	// Arguments to the entrypoint
-	Args []string `json:"args,omitempty"`
-	// Environment Config for the Container
-	Env []corev1.EnvVar `json:"env,omitempty"`
-	// Volume Configuration for the Pod
-	Volumes []corev1.Volume `json:"volumes,omitempty"`
-	// Volume Mount Configuration for the Container
-	VolumeMounts []corev1.VolumeMount `json:"volumeMounts,omitempty"`
-	// Name of the ServiceAccount to use to run the Pod
-	ServiceAccountName string `json:"serviceAccountName,omitempty"`
-	// Resources
-	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
-	// SecurityContext for the Container
-	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
-	// SecurityContext for the Pod
-	PodSecurityContext *corev1.PodSecurityContext `json:"podSecurityContext,omitempty"`
-	// The name of the node to which the Pod should be assigned to. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodename
-	NodeName string `json:"nodeName,omitempty"`
-	// The label selectors using which node for the Pod would be determined. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector
-	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
-	// Priority class name mapping used to prioritize and schedule the Pod. See: https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass
-	PriorityClassName string `json:"priorityClassName,omitempty"`
-	// Affinity/anti-affinity used to provide more constraints for node selection. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity
-	Affinity *corev1.Affinity `json:"affinity,omitempty"`
-	// Tolerations used to schedule the Pod. See: https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
-	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
-	// The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints
-	// Note: As of now, this field only makes sense for Deployment workloads. If/once we support parallel Job workloads, this field may be relevant for Jobs as well.
-	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
-	// List of containers executed before the main container is started
-	InitContainers []corev1.Container `json:"initContainers,omitempty"`
-	// Restart policy for the Pod. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
-	RestartPolicy corev1.RestartPolicy `json:"restartPolicy,omitempty"`
-	//  Optional duration in seconds the pod needs to terminate gracefully. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-flow
-	TerminationGracePeriodSeconds *int64 `json:"terminationGracePeriodSeconds,omitempty"`
-	// Optional actions that the management system should take in response to container lifecycle events. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination
-	Lifecycle *corev1.Lifecycle `json:"lifecycle,omitempty"`
-}
-
-// Configuration of Service Ports for the deployment
-type Ports struct {
-	// App protocol used by the service port
-	AppProtocol *string `json:"appProtocol,omitempty"`
-	// Name of the service port
-	Name string `json:"name"`
-	// +kubebuilder:validation:Enum=Application;Cluster
-	// Network Policy of the service port
-	NetworkPolicy PortNetworkPolicyType `json:"networkPolicy,omitempty"`
-	// The port number used for container and the corresponding service (if any)
-	Port int32 `json:"port"`
-	// Destination name which may be used by the Router deployment to reach this backend service
-	RouterDestinationName string `json:"routerDestinationName,omitempty"`
-}
-
-// Type of NetworkPolicy for the port
-type PortNetworkPolicyType string
-
-const (
-	// Expose the port for the current application versions pod(s) scope
-	PortNetworkPolicyTypeApplication PortNetworkPolicyType = "Application"
-	// Expose the port for any pod(s) in the overall cluster scope
-	PortNetworkPolicyTypeCluster PortNetworkPolicyType = "Cluster"
-)
-
-// Configuration used to sequence tenant related jobs for a given tenant operation
-type TenantOperations struct {
-	// Tenant provisioning steps
-	Provisioning []TenantOperationWorkloadReference `json:"provisioning,omitempty"`
-	// Tenant upgrade steps
-	Upgrade []TenantOperationWorkloadReference `json:"upgrade,omitempty"`
-	// Tenant deprovisioning steps
-	Deprovisioning []TenantOperationWorkloadReference `json:"deprovisioning,omitempty"`
-}
-
-type TenantOperationWorkloadReference struct {
-	// Reference to a specified workload of type 'TenantOperation' or 'CustomTenantOperation'
-	WorkloadName string `json:"workloadName"`
-	// Indicates whether to proceed with remaining operation steps in case of failure. Relevant only for 'CustomTenantOperation'
-	ContinueOnFailure bool `json:"continueOnFailure,omitempty"`
-}
-
 // +kubebuilder:resource:shortName=cat
 // +kubebuilder:subresource:status
+// +kubebuilder:deprecatedversion
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +kubebuilder:printcolumn:name="Subdomain",type="string",JSONPath=".spec.subDomain"
@@ -585,19 +143,21 @@ type TenantOperationWorkloadReference struct {
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPTenant defines the schema for captenants API
 type CAPTenant struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	// CAPTenant spec
-	Spec CAPTenantSpec `json:"spec"`
+	Spec v1alpha2.CAPTenantSpec `json:"spec"`
 	// +kubebuilder:validation:Optional
 	// CAPTenant status
-	Status CAPTenantStatus `json:"status"`
+	Status v1alpha2.CAPTenantStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPTenantList contains a list of CAPTenant
 type CAPTenantList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -605,79 +165,30 @@ type CAPTenantList struct {
 	Items           []CAPTenant `json:"items"`
 }
 
-type CAPTenantStatus struct {
-	GenericStatus `json:",inline"`
-	// +kubebuilder:validation:Enum="";Ready;Provisioning;Upgrading;Deleting;ProvisioningError;UpgradeError
-	// State of CAPTenant
-	State CAPTenantState `json:"state"`
-	// Specifies the current version of the tenant after provisioning or upgrade
-	CurrentCAPApplicationVersionInstance string `json:"currentCAPApplicationVersionInstance,omitempty"`
-	// Previous versions of the tenant (first to last)
-	PreviousCAPApplicationVersions []string `json:"previousCAPApplicationVersions,omitempty"`
-	// The last time a full reconciliation was completed
-	LastFullReconciliationTime metav1.Time `json:"lastFullReconciliationTime,omitempty"`
-}
-
-type CAPTenantState string
-
-const (
-	// Tenant is being provisioned
-	CAPTenantStateProvisioning CAPTenantState = "Provisioning"
-	// Tenant provisioning ended in error
-	CAPTenantStateProvisioningError CAPTenantState = "ProvisioningError"
-	// Tenant is being upgraded
-	CAPTenantStateUpgrading CAPTenantState = "Upgrading"
-	// Tenant upgrade failed
-	CAPTenantStateUpgradeError CAPTenantState = "UpgradeError"
-	// Deletion has been triggered
-	CAPTenantStateDeleting CAPTenantState = "Deleting"
-	// Tenant has been provisioned/upgraded and is now ready for use
-	CAPTenantStateReady CAPTenantState = "Ready"
-)
-
-// CAPTenantSpec defines the desired state of the CAPTenant
-type CAPTenantSpec struct {
-	// Denotes to which CAPApplication the current tenant belongs
-	CAPApplicationInstance string `json:"capApplicationInstance"`
-	// Details of consumer sub-account subscribing to the application
-	BTPTenantIdentification `json:",inline"`
-	// Semver that is used to determine the relevant CAPApplicationVersion that a CAPTenant can be upgraded to (i.e. if it is not already on that version)
-	Version string `json:"version,omitempty"`
-	// +kubebuilder:validation:Enum=always;never
-	// Denotes whether a CAPTenant can be upgraded. One of ('always', 'never')
-	VersionUpgradeStrategy VersionUpgradeStrategyType `json:"versionUpgradeStrategy,omitempty"`
-}
-
-type VersionUpgradeStrategyType string
-
-const (
-	// Always (default)
-	VersionUpgradeStrategyTypeAlways VersionUpgradeStrategyType = "always"
-	// Never
-	VersionUpgradeStrategyTypeNever VersionUpgradeStrategyType = "never"
-)
-
 // +kubebuilder:resource:shortName=ctop
 // +kubebuilder:subresource:status
+// +kubebuilder:deprecatedversion
 // +kubebuilder:printcolumn:name="Operation",type="string",JSONPath=".spec.operation"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPTenantOperation defines the schema for captenantoperations API
 type CAPTenantOperation struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	// CAPTenantOperation spec
-	Spec CAPTenantOperationSpec `json:"spec"`
+	Spec v1alpha2.CAPTenantOperationSpec `json:"spec"`
 	// +kubebuilder:validation:Optional
 	// CAPTenantOperation status
-	Status CAPTenantOperationStatus `json:"status"`
+	Status v1alpha2.CAPTenantOperationStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPTenantOperationList contains a list of CAPTenantOperation
 type CAPTenantOperationList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -685,78 +196,24 @@ type CAPTenantOperationList struct {
 	Items           []CAPTenantOperation `json:"items"`
 }
 
-type CAPTenantOperationSpec struct {
-	// +kubebuilder:validation:Enum=provisioning;deprovisioning;upgrade
-	// Scope of the tenant lifecycle operation. One of 'provisioning', 'deprovisioning' or 'upgrade'
-	Operation CAPTenantOperationType `json:"operation"`
-	// BTP sub-account (tenant) for which request is created
-	BTPTenantIdentification `json:",inline"`
-	// Reference to CAPApplicationVersion for executing the operation
-	CAPApplicationVersionInstance string `json:"capApplicationVersionInstance"`
-	// Steps (jobs) to be executed for the operation to complete
-	Steps []CAPTenantOperationStep `json:"steps"`
-}
-
-type CAPTenantOperationStep struct {
-	// Name of the workload from the referenced CAPApplicationVersion
-	Name string `json:"name"`
-	// +kubebuilder:validation:Enum=CustomTenantOperation;TenantOperation
-	// Type of job. One of 'TenantOperation' or 'CustomTenantOperation'
-	Type JobType `json:"type"`
-	// Indicates whether the operation can continue in case of step failure. Relevant only for type 'CustomTenantOperation'
-	ContinueOnFailure bool `json:"continueOnFailure,omitempty"`
-}
-
-type CAPTenantOperationStatus struct {
-	GenericStatus `json:",inline"`
-	// +kubebuilder:validation:Enum="";Processing;Completed;Failed;Deleting
-	// State of CAPTenantOperation
-	State CAPTenantOperationState `json:"state"`
-	// Current step being processed from the sequence of specified steps
-	CurrentStep *uint32 `json:"currentStep,omitempty"`
-	// Name of the job being executed for the current step
-	ActiveJob *string `json:"activeJob,omitempty"`
-}
-
-type CAPTenantOperationState string
-
-const (
-	// CAPTenantOperation is being processed
-	CAPTenantOperationStateProcessing CAPTenantOperationState = "Processing"
-	// CAPTenantOperation steps have failed
-	CAPTenantOperationStateFailed CAPTenantOperationState = "Failed"
-	// CAPTenantOperation steps completed
-	CAPTenantOperationStateCompleted CAPTenantOperationState = "Completed"
-	// CAPTenantOperation deletion has been triggered
-	CAPTenantOperationStateDeleting CAPTenantOperationState = "Deleting"
-)
-
-type CAPTenantOperationType string
-
-const (
-	// Provision tenant
-	CAPTenantOperationTypeProvisioning CAPTenantOperationType = "provisioning"
-	// Deprovision tenant
-	CAPTenantOperationTypeDeprovisioning CAPTenantOperationType = "deprovisioning"
-	// Upgrade tenant
-	CAPTenantOperationTypeUpgrade CAPTenantOperationType = "upgrade"
-)
-
 // +kubebuilder:resource:shortName=ctout
+// +kubebuilder:deprecatedversion
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPTenantOutput is the schema for captenantoutputs API
 type CAPTenantOutput struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	// CAPTenantOutput spec
-	Spec CAPTenantOutputSpec `json:"spec"`
+	Spec v1alpha2.CAPTenantOutputSpec `json:"spec"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPTenantOutputList contains a list of CAPTenantOutput
 type CAPTenantOutputList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -764,32 +221,30 @@ type CAPTenantOutputList struct {
 	Items           []CAPTenantOutput `json:"items"`
 }
 
-type CAPTenantOutputSpec struct {
-	// +kubebuilder:validation:nullable
-	SubscriptionCallbackData string `json:"subscriptionCallbackData,omitempty"`
-}
-
 // +kubebuilder:resource:shortName=dom
 // +kubebuilder:subresource:status
+// +kubebuilder:deprecatedversion
 // +kubebuilder:printcolumn:name="Domain",type="string",JSONPath=".spec.domain"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // Domain is the schema for domains API
 type Domain struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	// Domains spec
-	Spec DomainSpec `json:"spec"`
+	Spec v1alpha2.DomainSpec `json:"spec"`
 	// +kubebuilder:validation:Optional
 	// Domain status
-	Status DomainStatus `json:"status"`
+	Status v1alpha2.DomainStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // DomainList contains a list of Domain
 type DomainList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -797,117 +252,30 @@ type DomainList struct {
 	Items           []Domain `json:"items"`
 }
 
-type DomainSpec struct {
-	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
-	// Domain used by an application
-	Domain string `json:"domain"`
-	// Selector is the set of labels used to select the ingress pods handling the domain
-	IngressSelector map[string]string `json:"ingressSelector"`
-	// +kubebuilder:default:=Simple
-	// TLS mode for the generated (Istio) Gateway resource. Set this to Mutual when using mTLS with an external gateway.
-	TLSMode TLSMode `json:"tlsMode"`
-	// +kubebuilder:default:=None
-	// DNS mode controls the creation of DNS entries related to the domain
-	DNSMode DNSMode `json:"dnsMode"`
-	// DNS templates allows usage of go templates for generating DNS entries when [DNSMode] is set to `Custom`
-	// +kubebuilder:validation:MaxItems=10
-	DNSTemplates []DNSTemplate `json:"dnsTemplates,omitempty"`
-	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
-	// DNS Target for traffic to this domain
-	DNSTarget string `json:"dnsTarget,omitempty"`
-	// Certificate configuration
-	CertConfig *CertConfig `json:"certConfig,omitempty"`
-}
-
-// DNSTemplate supports the creation of DNS entries using go templates See: https://pkg.go.dev/text/template
-type DNSTemplate struct {
-	// Domain name for which a DNS record will be created
-	Name string `json:"name"`
-	// Target of the DNS record
-	Target string `json:"target"`
-}
-
-type CertConfig struct {
-	// Used to specify additional CA certificate that may be used for verifying client certificates in Mutual TLS mode
-	AdditionalCACertificate string `json:"additionalCACertificate,omitempty"`
-	// CertManager specific configuration for the certificate to be created for the domain
-	CertManager *CertManager `json:"certManager,omitempty"`
-}
-
-type CertManager struct {
-	// Issuer configuration for the certificate
-	IssuerRef certManagermetav1.IssuerReference `json:"issuerRef"`
-}
-
-// +kubebuilder:validation:Enum=Simple;Mutual;OptionalMutual
-type TLSMode string
-
-const (
-	// Simple TLS Mode (Default)
-	TlsModeSimple TLSMode = "Simple"
-	// Mutual TLS Mode
-	TlsModeMutual TLSMode = "Mutual"
-	// Optional Mutual TLS Mode
-	TlsModeOptionalMutual TLSMode = "OptionalMutual"
-)
-
-// +kubebuilder:validation:Enum=None;Wildcard;Subdomain;Custom
-type DNSMode string
-
-const (
-	// No DNS entries will be created (Default)
-	DnsModeNone DNSMode = "None"
-	// Wildcard DNS entry will be created
-	DnsModeWildcard DNSMode = "Wildcard"
-	// A DNS entry will be created for each subdomain specified by the applications using this domain
-	DnsModeSubdomain DNSMode = "Subdomain"
-	// A DNS entry will be created according to configuration in `[DNSTemplate]`
-	DnsModeCustom DNSMode = "Custom"
-)
-
-type DomainStatus struct {
-	GenericStatus `json:",inline"`
-	// State of the Domain
-	State DomainState `json:"state"`
-	// Effective DNS Target identified for this domain
-	DnsTarget string `json:"dnsTarget,omitempty"`
-	// Gateway name used for the domain
-	GatewayName string `json:"gatewayName,omitempty"`
-	// domain observed during last reconciliation
-	ObservedDomain string `json:"observedDomain,omitempty"`
-}
-
-// +kubebuilder:validation:Enum="";Ready;Error;Processing;Deleting
-type DomainState string
-
-const (
-	DomainStateProcessing DomainState = "Processing"
-	DomainStateError      DomainState = "Error"
-	DomainStateDeleting   DomainState = "Deleting"
-	DomainStateReady      DomainState = "Ready"
-)
-
 // +kubebuilder:resource:scope=Cluster,shortName=cdom
 // +kubebuilder:subresource:status
+// +kubebuilder:deprecatedversion
 // +kubebuilder:printcolumn:name="Domain",type="string",JSONPath=".spec.domain"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.state"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // ClusterDomain is the schema for clusterdomains API
 type ClusterDomain struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	// ClusterDomains spec
-	Spec DomainSpec `json:"spec"`
+	Spec v1alpha2.DomainSpec `json:"spec"`
 	// +kubebuilder:validation:Optional
 	// ClusterDomain status
-	Status DomainStatus `json:"status"`
+	Status v1alpha2.DomainStatus `json:"status"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // ClusterDomainList contains a list of ClusterDomain
 type ClusterDomainList struct {
 	metav1.TypeMeta `json:",inline"`

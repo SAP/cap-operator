@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
@@ -66,7 +66,7 @@ const (
 	PropertyFormatJSON PropertyFormat = "json"
 )
 
-func ReadServiceCredentialsFromSecret[T any](serviceInfo *v1alpha1.ServiceInfo, ns string, kubeClient kubernetes.Interface, withMeta bool) (*T, error) {
+func ReadServiceCredentialsFromSecret[T any](serviceInfo *v1alpha2.ServiceInfo, ns string, kubeClient kubernetes.Interface, withMeta bool) (*T, error) {
 	entry, err := CreateVCAPEntryFromSecret(serviceInfo, ns, kubeClient, nil)
 	if err != nil {
 		return nil, err
@@ -83,7 +83,7 @@ func ReadServiceCredentialsFromSecret[T any](serviceInfo *v1alpha1.ServiceInfo, 
 	return ParseJSON[T](serviceCredInfo)
 }
 
-func CreateVCAPEntryFromSecret(serviceInfo *v1alpha1.ServiceInfo, ns string, kubeClient kubernetes.Interface, kubeInformerFactory informers.SharedInformerFactory) (entry map[string]any, err error) {
+func CreateVCAPEntryFromSecret(serviceInfo *v1alpha2.ServiceInfo, ns string, kubeClient kubernetes.Interface, kubeInformerFactory informers.SharedInformerFactory) (entry map[string]any, err error) {
 	var secret *corev1.Secret
 	// Get secret
 	if kubeInformerFactory != nil {
@@ -99,7 +99,7 @@ func CreateVCAPEntryFromSecret(serviceInfo *v1alpha1.ServiceInfo, ns string, kub
 	return createVCAPEntry(secret.Data, serviceInfo)
 }
 
-func createVCAPEntry(data map[string][]byte, si *v1alpha1.ServiceInfo) (entry map[string]any, err error) {
+func createVCAPEntry(data map[string][]byte, si *v1alpha2.ServiceInfo) (entry map[string]any, err error) {
 	if metaBytes, ok := data[".metadata"]; ok { // metadata available from new service binding specification
 		var meta SecretMetadata
 		if err = json.Unmarshal(metaBytes, &meta); err != nil {
@@ -127,7 +127,7 @@ func createVCAPEntry(data map[string][]byte, si *v1alpha1.ServiceInfo) (entry ma
 	return
 }
 
-func createVCAPEntryWithMetadata(data map[string][]byte, meta *SecretMetadata, si *v1alpha1.ServiceInfo) (entry map[string]any, err error) {
+func createVCAPEntryWithMetadata(data map[string][]byte, meta *SecretMetadata, si *v1alpha2.ServiceInfo) (entry map[string]any, err error) {
 	entry = map[string]any{"credentials": map[string]any{}}
 	for i := range meta.MetadataProperties {
 		if entry, err = meta.MetadataProperties[i].move(data, entry); err != nil {

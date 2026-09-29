@@ -7,11 +7,11 @@ metadata:
   name: test-cap-01-cav-v1-content
   namespace: default
   ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
+    - apiVersion: sme.sap.com/v1alpha2
       blockOwnerDeletion: true
       controller: true
       kind: CAPApplicationVersion
-      name: test-cap-01-cav-v1-content
+      name: test-cap-01-cav-v1
       uid: 5e64489b-7346-4984-8617-e8c37338b3d8
   resourceVersion: "150625273"
   uid: afb8bcad-72ce-4567-8337-12fc67ef55acb

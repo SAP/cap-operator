@@ -9,7 +9,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 )
 
 func TestInvalidCAPApplication(t *testing.T) {
@@ -285,7 +285,7 @@ func TestCAPTenantUpgradeOperationCompleted(t *testing.T) {
 }
 
 func TestCAPTenantUpgradeOperationCompletedPreviousVersionsLimited(t *testing.T) {
-	t.Setenv(v1alpha1.EnvMaxTenantVersionHistory, "3")
+	t.Setenv(v1alpha2.EnvMaxTenantVersionHistory, "3")
 	reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
@@ -304,28 +304,6 @@ func TestCAPTenantUpgradeOperationCompletedPreviousVersionsLimited(t *testing.T)
 			backlogItems:      []string{"ERP4SMEPREPWORKAPPPLAT-3206"},
 		},
 	)
-}
-
-func TestCAPTenantUpgradeRequestCompletedIncorrectVirtualServiceOwner(t *testing.T) {
-	err := reconcileTestItem(
-		context.TODO(), t,
-		QueueItem{Key: ResourceCAPTenant, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-provider"}},
-		TestData{
-			description: "captenant upgrade operation completed, existing virtual service owner wrong",
-			initialResources: []string{
-				"testdata/common/domain-ready.yaml",
-				"testdata/common/cluster-domain-ready.yaml",
-				"testdata/common/capapplication.yaml",
-				"testdata/common/capapplicationversion-v1.yaml",
-				"testdata/common/capapplicationversion-v2.yaml",
-				"testdata/captenant/cat-22.initial.yaml",
-			},
-			expectError: true,
-		},
-	)
-	if err.Error() != "invalid owner reference found for VirtualService default.test-cap-01-provider" {
-		t.Error("wrong error message")
-	}
 }
 
 func TestCAPTenantUpgradeRequestCompletedWithDeletionTriggered(t *testing.T) {

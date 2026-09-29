@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
@@ -114,7 +114,7 @@ func createTestClient(kubeInformerFactory informers.SharedInformerFactory) (*fak
 func testCreateVCAPEntryFromSecret(t *testing.T) {
 	type testCase struct {
 		name                 string
-		serviceInfo          *v1alpha1.ServiceInfo
+		serviceInfo          *v1alpha2.ServiceInfo
 		namespace            string
 		expectError          bool
 		errorMsg             string
@@ -126,35 +126,35 @@ func testCreateVCAPEntryFromSecret(t *testing.T) {
 		{
 			name:                 "valid credential secret without metadata",
 			namespace:            "default",
-			serviceInfo:          &v1alpha1.ServiceInfo{Name: "service-a", Secret: "no-meta-credential-key", Class: "xzy"},
+			serviceInfo:          &v1alpha2.ServiceInfo{Name: "service-a", Secret: "no-meta-credential-key", Class: "xzy"},
 			expectedInstanceName: "service-a",
 			expectedLabel:        "xyz",
 		},
 		{
 			name:        "secret not found",
 			namespace:   "another",
-			serviceInfo: &v1alpha1.ServiceInfo{Name: "service-a", Secret: "no-meta-credential-key", Class: "xzy"},
+			serviceInfo: &v1alpha2.ServiceInfo{Name: "service-a", Secret: "no-meta-credential-key", Class: "xzy"},
 			expectError: true,
 			errorMsg:    "secret \"no-meta-credential-key\" not found",
 		},
 		{
 			name:                 "valid credentials (container) with metadata",
 			namespace:            "default",
-			serviceInfo:          &v1alpha1.ServiceInfo{Name: "service-a", Secret: "metadata-with-credential-key", Class: "xzy"},
+			serviceInfo:          &v1alpha2.ServiceInfo{Name: "service-a", Secret: "metadata-with-credential-key", Class: "xzy"},
 			expectedInstanceName: "service-a",
 			expectedLabel:        "xyz",
 		},
 		{
 			name:        "malformed metadata",
 			namespace:   "default",
-			serviceInfo: &v1alpha1.ServiceInfo{Name: "service-a", Secret: "malformed-metadata", Class: "xzy"},
+			serviceInfo: &v1alpha2.ServiceInfo{Name: "service-a", Secret: "malformed-metadata", Class: "xzy"},
 			expectError: true,
 			errorMsg:    "could not parse metadata from secret malformed-metadata: invalid character '/' looking for beginning of value",
 		},
 		{
 			name:                 "valid credentials (multiple properties) with metadata",
 			namespace:            "default",
-			serviceInfo:          &v1alpha1.ServiceInfo{Name: "service-a", Secret: "metadata-with-credential-properties", Class: "xzy"},
+			serviceInfo:          &v1alpha2.ServiceInfo{Name: "service-a", Secret: "metadata-with-credential-properties", Class: "xzy"},
 			expectedInstanceName: "service-a",
 			expectedLabel:        "xyz",
 			expectTags:           true,
@@ -194,7 +194,7 @@ func testReadServiceCredentialsFromSecret(t *testing.T) {
 
 	// test successful read
 	secretName := "metadata-with-credential-key"
-	credentials, err := ReadServiceCredentialsFromSecret[map[string]string](&v1alpha1.ServiceInfo{Name: "service-a", Class: "xyz", Secret: secretName}, "default", c, false)
+	credentials, err := ReadServiceCredentialsFromSecret[map[string]string](&v1alpha2.ServiceInfo{Name: "service-a", Class: "xyz", Secret: secretName}, "default", c, false)
 	if err != nil {
 		t.Errorf("could not read credentials from secret %s", secretName)
 	}
@@ -203,7 +203,7 @@ func testReadServiceCredentialsFromSecret(t *testing.T) {
 	}
 
 	// test with type mismatch
-	_, err = ReadServiceCredentialsFromSecret[[]string](&v1alpha1.ServiceInfo{Name: "service-a", Class: "xyz", Secret: secretName}, "default", c, false)
+	_, err = ReadServiceCredentialsFromSecret[[]string](&v1alpha2.ServiceInfo{Name: "service-a", Class: "xyz", Secret: secretName}, "default", c, false)
 	if err == nil {
 		t.Errorf("expected error when reading credentials as array from secret %s", secretName)
 	}
