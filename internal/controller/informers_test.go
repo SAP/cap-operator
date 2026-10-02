@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
@@ -17,7 +17,7 @@ import (
 
 // secretHandlerFixture builds a controller with the given CAPApplications pre-loaded
 // and attaches a real rolloutManager so the handler can enqueue into it.
-func secretHandlerFixture(cas []*v1alpha1.CAPApplication) *Controller {
+func secretHandlerFixture(cas []*v1alpha2.CAPApplication) *Controller {
 	c := getTestController(testResources{cas: cas})
 	c.rolloutManager = newRolloutManager(c)
 	return c
@@ -144,8 +144,8 @@ func TestController_initializeInformers(t *testing.T) {
 				res = createCaCRO(tt.itemName, false)
 			case ResourceCAPApplicationVersion:
 				ca := createCaCRO(tt.itemName, false)
-				cav := createCavCRO(tt.itemName, v1alpha1.CAPApplicationVersionStateReady, defaultVersion)
-				cav.ObjectMeta.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(ca, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationKind))}
+				cav := createCavCRO(tt.itemName, v1alpha2.CAPApplicationVersionStateReady, defaultVersion)
+				cav.ObjectMeta.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(ca, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPApplicationKind))}
 				res = cav
 			case ResourceCertificate:
 				// set label on a pod to simulate certificate in a different namespace
@@ -191,7 +191,7 @@ func TestController_initializeInformers(t *testing.T) {
 func TestSecretHandler_SameResourceVersion(t *testing.T) {
 	defer deregisterMetrics()
 	ca := buildCA("test-cap-01", true, btpServices())
-	c := secretHandlerFixture([]*v1alpha1.CAPApplication{ca})
+	c := secretHandlerFixture([]*v1alpha2.CAPApplication{ca})
 
 	handler := c.getSecretEventHandlerFuncs()
 	old := secretV("cap-cap-01-uaa-bind-cf", metav1.NamespaceDefault, "1")
@@ -240,7 +240,7 @@ func TestSecretHandler_NoCAPApplicationsInNamespace(t *testing.T) {
 func TestSecretHandler_AllCAsRolloutDisabled(t *testing.T) {
 	defer deregisterMetrics()
 	ca := buildCA("test-cap-01", false /* disabled */, btpServices())
-	c := secretHandlerFixture([]*v1alpha1.CAPApplication{ca})
+	c := secretHandlerFixture([]*v1alpha2.CAPApplication{ca})
 
 	handler := c.getSecretEventHandlerFuncs()
 	old := secretV("cap-cap-01-uaa-bind-cf", metav1.NamespaceDefault, "1")
@@ -259,7 +259,7 @@ func TestSecretHandler_AllCAsRolloutDisabled(t *testing.T) {
 func TestSecretHandler_OneCAWithRolloutEnabled(t *testing.T) {
 	defer deregisterMetrics()
 	ca := buildCA("test-cap-01", true, btpServices())
-	c := secretHandlerFixture([]*v1alpha1.CAPApplication{ca})
+	c := secretHandlerFixture([]*v1alpha2.CAPApplication{ca})
 
 	handler := c.getSecretEventHandlerFuncs()
 	old := secretV("cap-cap-01-uaa-bind-cf", metav1.NamespaceDefault, "1")
@@ -283,7 +283,7 @@ func TestSecretHandler_EnqueuesOnceWithMixedCAs(t *testing.T) {
 	defer deregisterMetrics()
 	caDisabled := buildCA("test-cap-disabled", false, btpServices())
 	caEnabled := buildCA("test-cap-enabled", true, btpServices())
-	c := secretHandlerFixture([]*v1alpha1.CAPApplication{caDisabled, caEnabled})
+	c := secretHandlerFixture([]*v1alpha2.CAPApplication{caDisabled, caEnabled})
 
 	handler := c.getSecretEventHandlerFuncs()
 	old := secretV("cap-cap-01-uaa-bind-cf", metav1.NamespaceDefault, "1")
@@ -322,7 +322,7 @@ func TestSecretHandler_OnlyUpdateFuncWired(t *testing.T) {
 func TestSecretHandler_MultipleDistinctSecrets(t *testing.T) {
 	defer deregisterMetrics()
 	ca := buildCA("test-cap-01", true, btpServices())
-	c := secretHandlerFixture([]*v1alpha1.CAPApplication{ca})
+	c := secretHandlerFixture([]*v1alpha2.CAPApplication{ca})
 
 	handler := c.getSecretEventHandlerFuncs()
 	for i, name := range []string{"secret-a", "secret-b", "secret-c"} {

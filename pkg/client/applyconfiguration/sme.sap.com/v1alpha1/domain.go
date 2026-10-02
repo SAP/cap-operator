@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
+	v1alpha2 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
@@ -16,14 +17,15 @@ import (
 // DomainApplyConfiguration represents a declarative configuration of the Domain type for use
 // with apply.
 //
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // Domain is the schema for domains API
 type DomainApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	// Domains spec
-	Spec *DomainSpecApplyConfiguration `json:"spec,omitempty"`
+	Spec *v1alpha2.DomainSpecApplyConfiguration `json:"spec,omitempty"`
 	// Domain status
-	Status *DomainStatusApplyConfiguration `json:"status,omitempty"`
+	Status *v1alpha2.DomainStatusApplyConfiguration `json:"status,omitempty"`
 }
 
 // Domain constructs a declarative configuration of the Domain type for use with
@@ -200,7 +202,7 @@ func (b *DomainApplyConfiguration) ensureObjectMetaApplyConfigurationExists() {
 // WithSpec sets the Spec field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Spec field is set to the value of the last call.
-func (b *DomainApplyConfiguration) WithSpec(value *DomainSpecApplyConfiguration) *DomainApplyConfiguration {
+func (b *DomainApplyConfiguration) WithSpec(value *v1alpha2.DomainSpecApplyConfiguration) *DomainApplyConfiguration {
 	b.Spec = value
 	return b
 }
@@ -208,7 +210,7 @@ func (b *DomainApplyConfiguration) WithSpec(value *DomainSpecApplyConfiguration)
 // WithStatus sets the Status field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Status field is set to the value of the last call.
-func (b *DomainApplyConfiguration) WithStatus(value *DomainStatusApplyConfiguration) *DomainApplyConfiguration {
+func (b *DomainApplyConfiguration) WithStatus(value *v1alpha2.DomainStatusApplyConfiguration) *DomainApplyConfiguration {
 	b.Status = value
 	return b
 }

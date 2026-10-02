@@ -1,4 +1,4 @@
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPTenant
 metadata:
   deletionTimestamp: "2022-03-22T13:24:38Z"
@@ -16,7 +16,7 @@ metadata:
   name: test-cap-01-provider
   namespace: default
   ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
+    - apiVersion: sme.sap.com/v1alpha2
       blockOwnerDeletion: true
       controller: true
       kind: CAPApplication
@@ -37,7 +37,7 @@ status:
   state: Deleting
   currentCAPApplicationVersionInstance: test-cap-01-cav-v1
 ---
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPTenantOperation
 metadata:
   generateName: test-cap-01-provider-
@@ -55,7 +55,7 @@ metadata:
     sme.sap.com/tenant-operation-type: deprovisioning
     sme.sap.com/tenant-type: provider
   ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
+    - apiVersion: sme.sap.com/v1alpha2
       blockOwnerDeletion: true
       controller: true
       kind: CAPTenant

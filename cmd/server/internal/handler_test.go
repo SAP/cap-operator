@@ -26,7 +26,7 @@ import (
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/sap/cap-operator/internal/util"
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned/fake"
 )
 
@@ -221,8 +221,8 @@ func createTenantSubscriptionContextSecret(subscriptionContext string) runtime.O
 	}
 }
 
-func createCA() *v1alpha1.CAPApplication {
-	return &v1alpha1.CAPApplication{
+func createCA() *v1alpha2.CAPApplication {
+	return &v1alpha2.CAPApplication{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      caName,
 			Namespace: v1.NamespaceDefault,
@@ -230,15 +230,15 @@ func createCA() *v1alpha1.CAPApplication {
 				LabelAppIdHash: sha1Sum(providerSubaccountId, appName),
 			},
 		},
-		Spec: v1alpha1.CAPApplicationSpec{
+		Spec: v1alpha2.CAPApplicationSpec{
 			ProviderSubaccountId: providerSubaccountId,
 			BTPAppName:           appName,
-			Provider: &v1alpha1.BTPTenantIdentification{
+			Provider: &v1alpha2.BTPTenantIdentification{
 				SubDomain: subDomain,
 				TenantId:  tenantId,
 			},
-			BTP: v1alpha1.BTP{
-				Services: []v1alpha1.ServiceInfo{
+			BTP: v1alpha2.BTP{
+				Services: []v1alpha2.ServiceInfo{
 					{
 						Class:  "xsuaa",
 						Name:   "test-xsuaa",
@@ -285,8 +285,8 @@ func createCA() *v1alpha1.CAPApplication {
 	}
 }
 
-func createCAT(ready bool, withProviderSubaccountId ...bool) *v1alpha1.CAPTenant {
-	cat := &v1alpha1.CAPTenant{
+func createCAT(ready bool, withProviderSubaccountId ...bool) *v1alpha2.CAPTenant {
+	cat := &v1alpha2.CAPTenant{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      catName,
 			Namespace: v1.NamespaceDefault,
@@ -298,9 +298,9 @@ func createCAT(ready bool, withProviderSubaccountId ...bool) *v1alpha1.CAPTenant
 				AnnotationSubscriptionContextSecret: subscriptionContextSecretName,
 			},
 		},
-		Spec: v1alpha1.CAPTenantSpec{
+		Spec: v1alpha2.CAPTenantSpec{
 			CAPApplicationInstance: caName,
-			BTPTenantIdentification: v1alpha1.BTPTenantIdentification{
+			BTPTenantIdentification: v1alpha2.BTPTenantIdentification{
 				SubDomain: subDomain,
 				TenantId:  tenantId,
 			},
@@ -311,12 +311,12 @@ func createCAT(ready bool, withProviderSubaccountId ...bool) *v1alpha1.CAPTenant
 		cat.ObjectMeta.Annotations[MetadataSubscriptionGUID] = subscriptionGUID
 	}
 	if ready {
-		cat.Status = v1alpha1.CAPTenantStatus{
-			State:                                v1alpha1.CAPTenantStateReady,
+		cat.Status = v1alpha2.CAPTenantStatus{
+			State:                                v1alpha2.CAPTenantStateReady,
 			CurrentCAPApplicationVersionInstance: "cap-version",
-			GenericStatus: v1alpha1.GenericStatus{
+			GenericStatus: v1alpha2.GenericStatus{
 				Conditions: []v1.Condition{{
-					Type:   string(v1alpha1.ConditionTypeReady),
+					Type:   string(v1alpha2.ConditionTypeReady),
 					Status: "True",
 					Reason: "TenantReady",
 				}},
@@ -326,36 +326,36 @@ func createCAT(ready bool, withProviderSubaccountId ...bool) *v1alpha1.CAPTenant
 	return cat
 }
 
-func createDomain() *v1alpha1.Domain {
-	return &v1alpha1.Domain{
+func createDomain() *v1alpha2.Domain {
+	return &v1alpha2.Domain{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "primary-domain",
 			Namespace: v1.NamespaceDefault,
 		},
-		Spec: v1alpha1.DomainSpec{
+		Spec: v1alpha2.DomainSpec{
 			Domain: "auth.service.local",
 			IngressSelector: map[string]string{
 				"istio": "ingressgateway",
 				"app":   "istio-ingressgateway",
 			},
-			TLSMode:   v1alpha1.TlsModeSimple,
+			TLSMode:   v1alpha2.TlsModeSimple,
 			DNSTarget: "in.service.local",
 		},
 	}
 }
 
-func createClusterDomain() *v1alpha1.ClusterDomain {
-	return &v1alpha1.ClusterDomain{
+func createClusterDomain() *v1alpha2.ClusterDomain {
+	return &v1alpha2.ClusterDomain{
 		ObjectMeta: v1.ObjectMeta{
 			Name: "external-domain",
 		},
-		Spec: v1alpha1.DomainSpec{
+		Spec: v1alpha2.DomainSpec{
 			Domain: "external.service.sap",
 			IngressSelector: map[string]string{
 				"istio": "ingressgateway",
 				"app":   "istio-ingressgateway",
 			},
-			TLSMode:   v1alpha1.TlsModeSimple,
+			TLSMode:   v1alpha2.TlsModeSimple,
 			DNSTarget: "in.service.sap",
 		},
 	}
@@ -575,9 +575,9 @@ func Test_provisioning(t *testing.T) {
 
 	for _, testData := range tests {
 		t.Run(testData.name, func(t *testing.T) {
-			var ca *v1alpha1.CAPApplication
-			var cat *v1alpha1.CAPTenant
-			var ctout *v1alpha1.CAPTenantOutput
+			var ca *v1alpha2.CAPApplication
+			var cat *v1alpha2.CAPTenant
+			var ctout *v1alpha2.CAPTenantOutput
 			runtimeObjs := []runtime.Object{}
 			if testData.existingDomain {
 				runtimeObjs = append(runtimeObjs, createDomain())
@@ -595,13 +595,13 @@ func Test_provisioning(t *testing.T) {
 				}
 				// Update the CA with the correct domainRefs if needed
 				if testData.existingDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "Domain", Name: "primary-domain"}}
+					ca.Spec.DomainRefs = []v1alpha2.DomainRef{{Kind: "Domain", Name: "primary-domain"}}
 				} else if testData.existingClusterDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "ClusterDomain", Name: "external-domain"}}
+					ca.Spec.DomainRefs = []v1alpha2.DomainRef{{Kind: "ClusterDomain", Name: "external-domain"}}
 				} else if testData.invalidDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "Domain", Name: "foo"}}
+					ca.Spec.DomainRefs = []v1alpha2.DomainRef{{Kind: "Domain", Name: "foo"}}
 				} else if testData.invalidClusterDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "ClusterDomain", Name: "foo"}}
+					ca.Spec.DomainRefs = []v1alpha2.DomainRef{{Kind: "ClusterDomain", Name: "foo"}}
 				}
 				runtimeObjs = append(runtimeObjs, ca)
 			}
@@ -610,7 +610,7 @@ func Test_provisioning(t *testing.T) {
 				runtimeObjs = append(runtimeObjs, cat)
 			}
 			if testData.existingTenantOutput {
-				ctout = &v1alpha1.CAPTenantOutput{ObjectMeta: v1.ObjectMeta{Name: catName, Namespace: v1.NamespaceDefault, Labels: map[string]string{LabelTenantId: tenantId}}, Spec: v1alpha1.CAPTenantOutputSpec{SubscriptionCallbackData: "{\"foo3\":\"bar3\"}"}}
+				ctout = &v1alpha2.CAPTenantOutput{ObjectMeta: v1.ObjectMeta{Name: catName, Namespace: v1.NamespaceDefault, Labels: map[string]string{LabelTenantId: tenantId}}, Spec: v1alpha2.CAPTenantOutputSpec{SubscriptionCallbackData: "{\"foo3\":\"bar3\"}"}}
 				runtimeObjs = append(runtimeObjs, ctout)
 			}
 
@@ -835,9 +835,9 @@ func Test_sms_provisioning(t *testing.T) {
 
 	for _, testData := range tests {
 		t.Run(testData.name, func(t *testing.T) {
-			var ca *v1alpha1.CAPApplication
-			var cat *v1alpha1.CAPTenant
-			var ctout *v1alpha1.CAPTenantOutput
+			var ca *v1alpha2.CAPApplication
+			var cat *v1alpha2.CAPTenant
+			var ctout *v1alpha2.CAPTenantOutput
 			runtimeObjs := []runtime.Object{}
 			if testData.existingDomain {
 				runtimeObjs = append(runtimeObjs, createDomain())
@@ -855,13 +855,13 @@ func Test_sms_provisioning(t *testing.T) {
 				}
 				// Update the CA with the correct domainRefs if needed
 				if testData.existingDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "Domain", Name: "primary-domain"}}
+					ca.Spec.DomainRefs = []v1alpha2.DomainRef{{Kind: "Domain", Name: "primary-domain"}}
 				} else if testData.existingClusterDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "ClusterDomain", Name: "external-domain"}}
+					ca.Spec.DomainRefs = []v1alpha2.DomainRef{{Kind: "ClusterDomain", Name: "external-domain"}}
 				} else if testData.invalidDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "Domain", Name: "foo"}}
+					ca.Spec.DomainRefs = []v1alpha2.DomainRef{{Kind: "Domain", Name: "foo"}}
 				} else if testData.invalidClusterDomain {
-					ca.Spec.DomainRefs = []v1alpha1.DomainRef{{Kind: "ClusterDomain", Name: "foo"}}
+					ca.Spec.DomainRefs = []v1alpha2.DomainRef{{Kind: "ClusterDomain", Name: "foo"}}
 				}
 				runtimeObjs = append(runtimeObjs, ca)
 			}
@@ -870,7 +870,7 @@ func Test_sms_provisioning(t *testing.T) {
 				runtimeObjs = append(runtimeObjs, cat)
 			}
 			if testData.existingTenantOutput {
-				ctout = &v1alpha1.CAPTenantOutput{ObjectMeta: v1.ObjectMeta{Name: catName, Namespace: v1.NamespaceDefault, Labels: map[string]string{LabelTenantId: tenantId}}, Spec: v1alpha1.CAPTenantOutputSpec{SubscriptionCallbackData: "{\"foo3\":\"bar3\"}"}}
+				ctout = &v1alpha2.CAPTenantOutput{ObjectMeta: v1.ObjectMeta{Name: catName, Namespace: v1.NamespaceDefault, Labels: map[string]string{LabelTenantId: tenantId}}, Spec: v1alpha2.CAPTenantOutputSpec{SubscriptionCallbackData: "{\"foo3\":\"bar3\"}"}}
 				runtimeObjs = append(runtimeObjs, ctout)
 			}
 
@@ -977,8 +977,8 @@ func Test_deprovisioning(t *testing.T) {
 
 	for _, testData := range tests {
 		t.Run(testData.name, func(t *testing.T) {
-			var ca *v1alpha1.CAPApplication
-			var cat *v1alpha1.CAPTenant
+			var ca *v1alpha2.CAPApplication
+			var cat *v1alpha2.CAPTenant
 			runtimeObjs := []runtime.Object{}
 			if testData.createCROs {
 				ca = createCA()
@@ -1075,8 +1075,8 @@ func Test_sms_deprovisioning(t *testing.T) {
 
 	for _, testData := range tests {
 		t.Run(testData.name, func(t *testing.T) {
-			var ca *v1alpha1.CAPApplication
-			var cat *v1alpha1.CAPTenant
+			var ca *v1alpha2.CAPApplication
+			var cat *v1alpha2.CAPTenant
 			runtimeObjs := []runtime.Object{}
 			if testData.createCROs {
 				ca = createCA()
@@ -1445,7 +1445,7 @@ func TestAppURL(t *testing.T) {
 		payloadSubscriptionDomain string
 		tenantSubdomain           string
 		caAnnotations             map[string]string
-		domainRefs                []v1alpha1.DomainRef
+		domainRefs                []v1alpha2.DomainRef
 		createDomain              bool
 		createClusterDomain       bool
 		expectedURL               string
@@ -1490,7 +1490,7 @@ func TestAppURL(t *testing.T) {
 			name:                      "fallback to primary domain calculation (Domain ref)",
 			payloadSubscriptionDomain: "",
 			tenantSubdomain:           subDomain,
-			domainRefs:                []v1alpha1.DomainRef{{Kind: "Domain", Name: "primary-domain"}},
+			domainRefs:                []v1alpha2.DomainRef{{Kind: "Domain", Name: "primary-domain"}},
 			createDomain:              true,
 			expectedURL:               "https://" + subDomain + ".auth.service.local",
 		},
@@ -1498,7 +1498,7 @@ func TestAppURL(t *testing.T) {
 			name:                      "fallback to primary domain calculation (ClusterDomain ref)",
 			payloadSubscriptionDomain: "",
 			tenantSubdomain:           subDomain,
-			domainRefs:                []v1alpha1.DomainRef{{Kind: "ClusterDomain", Name: "external-domain"}},
+			domainRefs:                []v1alpha2.DomainRef{{Kind: "ClusterDomain", Name: "external-domain"}},
 			createClusterDomain:       true,
 			expectedURL:               "https://" + subDomain + ".external.service.sap",
 		},
@@ -1614,7 +1614,7 @@ func TestGetDependencies(t *testing.T) {
 		invalidURI         bool
 		expectedStatusCode int
 		expectedResponse   []map[string]string
-		caModifier         func(*v1alpha1.CAPApplication)
+		caModifier         func(*v1alpha2.CAPApplication)
 	}{
 		{
 			name:               "Invalid get dependency request - wrong method",
@@ -1651,8 +1651,8 @@ func TestGetDependencies(t *testing.T) {
 			name:               "SubscriptionDependency Always - service included regardless of class",
 			method:             http.MethodGet,
 			expectedStatusCode: http.StatusOK,
-			caModifier: func(ca *v1alpha1.CAPApplication) {
-				dep := v1alpha1.SubscriptionDependencyAlways
+			caModifier: func(ca *v1alpha2.CAPApplication) {
+				dep := v1alpha2.SubscriptionDependencyAlways
 				ca.Spec.BTP.Services[0].SubscriptionDependency = &dep // xsuaa: not auto-qualified, but Always forces inclusion
 			},
 			expectedResponse: []map[string]string{
@@ -1667,8 +1667,8 @@ func TestGetDependencies(t *testing.T) {
 			name:               "SubscriptionDependency Auto - non-qualifying service excluded",
 			method:             http.MethodGet,
 			expectedStatusCode: http.StatusOK,
-			caModifier: func(ca *v1alpha1.CAPApplication) {
-				dep := v1alpha1.SubscriptionDependencyAuto
+			caModifier: func(ca *v1alpha2.CAPApplication) {
+				dep := v1alpha2.SubscriptionDependencyAuto
 				ca.Spec.BTP.Services[0].SubscriptionDependency = &dep // xsuaa: explicit Auto, still not qualified by class/credentials
 			},
 			expectedResponse: []map[string]string{
@@ -1682,8 +1682,8 @@ func TestGetDependencies(t *testing.T) {
 			name:               "SubscriptionDependency Never - service excluded regardless of credentials",
 			method:             http.MethodGet,
 			expectedStatusCode: http.StatusOK,
-			caModifier: func(ca *v1alpha1.CAPApplication) {
-				dep := v1alpha1.SubscriptionDependencyNever
+			caModifier: func(ca *v1alpha2.CAPApplication) {
+				dep := v1alpha2.SubscriptionDependencyNever
 				ca.Spec.BTP.Services[4].SubscriptionDependency = &dep // destination: auto-qualified by class, but Never prevents inclusion
 			},
 			expectedResponse: []map[string]string{
@@ -1749,7 +1749,7 @@ func TestGetSMSDependencies(t *testing.T) {
 		invalidURI         bool
 		expectedStatusCode int
 		expectedResponse   []map[string]string
-		caModifier         func(*v1alpha1.CAPApplication)
+		caModifier         func(*v1alpha2.CAPApplication)
 	}{
 		{
 			name:               "Invalid get SMS dependency request - wrong method",
@@ -1786,8 +1786,8 @@ func TestGetSMSDependencies(t *testing.T) {
 			name:               "SubscriptionDependency Always - service included regardless of class",
 			method:             http.MethodGet,
 			expectedStatusCode: http.StatusOK,
-			caModifier: func(ca *v1alpha1.CAPApplication) {
-				dep := v1alpha1.SubscriptionDependencyAlways
+			caModifier: func(ca *v1alpha2.CAPApplication) {
+				dep := v1alpha2.SubscriptionDependencyAlways
 				ca.Spec.BTP.Services[0].SubscriptionDependency = &dep // xsuaa: not auto-qualified, but Always forces inclusion
 			},
 			expectedResponse: []map[string]string{
@@ -1802,8 +1802,8 @@ func TestGetSMSDependencies(t *testing.T) {
 			name:               "SubscriptionDependency Auto - non-qualifying service excluded",
 			method:             http.MethodGet,
 			expectedStatusCode: http.StatusOK,
-			caModifier: func(ca *v1alpha1.CAPApplication) {
-				dep := v1alpha1.SubscriptionDependencyAuto
+			caModifier: func(ca *v1alpha2.CAPApplication) {
+				dep := v1alpha2.SubscriptionDependencyAuto
 				ca.Spec.BTP.Services[0].SubscriptionDependency = &dep // xsuaa: explicit Auto, still not qualified by class/credentials
 			},
 			expectedResponse: []map[string]string{
@@ -1817,8 +1817,8 @@ func TestGetSMSDependencies(t *testing.T) {
 			name:               "SubscriptionDependency Never - service excluded regardless of credentials",
 			method:             http.MethodGet,
 			expectedStatusCode: http.StatusOK,
-			caModifier: func(ca *v1alpha1.CAPApplication) {
-				dep := v1alpha1.SubscriptionDependencyNever
+			caModifier: func(ca *v1alpha2.CAPApplication) {
+				dep := v1alpha2.SubscriptionDependencyNever
 				ca.Spec.BTP.Services[4].SubscriptionDependency = &dep // destination: auto-qualified by class, but Never prevents inclusion
 			},
 			expectedResponse: []map[string]string{

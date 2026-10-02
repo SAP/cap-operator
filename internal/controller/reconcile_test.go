@@ -27,7 +27,7 @@ import (
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsfake "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/fake"
 	promopFake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned/fake"
 	istionwv1 "istio.io/client-go/pkg/apis/networking/v1"
 	istiofake "istio.io/client-go/pkg/clientset/versioned/fake"
@@ -53,10 +53,10 @@ type ingressResources struct {
 }
 
 type testResources struct {
-	cas             []*v1alpha1.CAPApplication
-	cavs            []*v1alpha1.CAPApplicationVersion
-	cats            []*v1alpha1.CAPTenant
-	ctops           []*v1alpha1.CAPTenantOperation
+	cas             []*v1alpha2.CAPApplication
+	cavs            []*v1alpha2.CAPApplicationVersion
+	cats            []*v1alpha2.CAPTenant
+	ctops           []*v1alpha2.CAPTenantOperation
 	ingressGW       []*ingressResources
 	gateway         *istionwv1.Gateway
 	gardenerCert    *certv1alpha1.Certificate
@@ -65,35 +65,21 @@ type testResources struct {
 	preventStart    bool
 }
 
-func createCaCRO(name string, withFinalizer bool) *v1alpha1.CAPApplication {
-	ca := &v1alpha1.CAPApplication{
+func createCaCRO(name string, withFinalizer bool) *v1alpha2.CAPApplication {
+	ca := &v1alpha2.CAPApplication{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
 		},
-		Spec: v1alpha1.CAPApplicationSpec{
-			Domains: v1alpha1.ApplicationDomains{
-				Primary:   primaryDomain,
-				Secondary: []string{secondaryDomain},
-				IstioIngressGatewayLabels: []v1alpha1.NameValue{
-					{
-						Name:  "istio",
-						Value: "ingressgateway",
-					},
-					{
-						Name:  "app",
-						Value: "istio-ingressgateway",
-					},
-				},
-			},
+		Spec: v1alpha2.CAPApplicationSpec{
 			ProviderSubaccountId: providerSubaccountId,
 			BTPAppName:           btpApplicationName,
-			Provider: &v1alpha1.BTPTenantIdentification{
+			Provider: &v1alpha2.BTPTenantIdentification{
 				SubDomain: providerSubDomain,
 				TenantId:  providerTenantId,
 			},
-			BTP: v1alpha1.BTP{
-				Services: []v1alpha1.ServiceInfo{
+			BTP: v1alpha2.BTP{
+				Services: []v1alpha2.ServiceInfo{
 					{
 						Class:  "xsuaa",
 						Name:   "test-xsuaa",
@@ -136,12 +122,12 @@ func createCaCRO(name string, withFinalizer bool) *v1alpha1.CAPApplication {
 	return ca
 }
 
-func createCavCRO(name string, state v1alpha1.CAPApplicationVersionState, version string) *v1alpha1.CAPApplicationVersion {
+func createCavCRO(name string, state v1alpha2.CAPApplicationVersionState, version string) *v1alpha2.CAPApplicationVersion {
 	status := metav1.ConditionFalse
-	if state == v1alpha1.CAPApplicationVersionStateReady || state == v1alpha1.CAPApplicationVersionStateDeleting {
+	if state == v1alpha2.CAPApplicationVersionStateReady || state == v1alpha2.CAPApplicationVersionStateDeleting {
 		status = metav1.ConditionTrue
 	}
-	return &v1alpha1.CAPApplicationVersion{
+	return &v1alpha2.CAPApplicationVersion{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: metav1.NamespaceDefault,
@@ -149,19 +135,19 @@ func createCavCRO(name string, state v1alpha1.CAPApplicationVersionState, versio
 				LabelOwnerIdentifierHash: sha1Sum(metav1.NamespaceDefault, caCroName),
 			},
 		},
-		Spec: v1alpha1.CAPApplicationVersionSpec{
+		Spec: v1alpha2.CAPApplicationVersionSpec{
 			CAPApplicationInstance: caCroName,
 			Version:                version,
-			Workloads: []v1alpha1.WorkloadDetails{
+			Workloads: []v1alpha2.WorkloadDetails{
 				{
 					Name: "cap-backend-server",
 					ConsumedBTPServices: []string{
 						"test-xsuaa",
 						"test-saas",
 					},
-					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						Type: v1alpha1.DeploymentCAP,
-						CommonDetails: v1alpha1.CommonDetails{
+					DeploymentDefinition: &v1alpha2.DeploymentDetails{
+						Type: v1alpha2.DeploymentCAP,
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "test://image",
 						},
 					},
@@ -169,20 +155,20 @@ func createCavCRO(name string, state v1alpha1.CAPApplicationVersionState, versio
 				{
 					Name:                "app-router",
 					ConsumedBTPServices: []string{},
-					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						CommonDetails: v1alpha1.CommonDetails{
+					DeploymentDefinition: &v1alpha2.DeploymentDetails{
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "test://image",
 						},
 					},
 				},
 			},
 		},
-		Status: v1alpha1.CAPApplicationVersionStatus{
-			GenericStatus: v1alpha1.GenericStatus{
+		Status: v1alpha2.CAPApplicationVersionStatus{
+			GenericStatus: v1alpha2.GenericStatus{
 				Conditions: []metav1.Condition{
 					{
 						Status: status,
-						Type:   string(v1alpha1.ConditionTypeReady),
+						Type:   string(v1alpha2.ConditionTypeReady),
 					},
 				},
 			},
@@ -203,20 +189,20 @@ func generateMetaObjName(obj any) {
 	}
 }
 
-func createCatCRO(caName string, tenantType string, withFinalizers bool) *v1alpha1.CAPTenant {
-	cat := &v1alpha1.CAPTenant{
+func createCatCRO(caName string, tenantType string, withFinalizers bool) *v1alpha2.CAPTenant {
+	cat := &v1alpha2.CAPTenant{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      strings.Join([]string{caName, tenantType}, "-"),
 			Namespace: metav1.NamespaceDefault,
 		},
-		Spec: v1alpha1.CAPTenantSpec{
+		Spec: v1alpha2.CAPTenantSpec{
 			CAPApplicationInstance:  caCroName,
-			BTPTenantIdentification: v1alpha1.BTPTenantIdentification{},
+			BTPTenantIdentification: v1alpha2.BTPTenantIdentification{},
 			Version:                 defaultVersion,
 		},
-		Status: v1alpha1.CAPTenantStatus{
+		Status: v1alpha2.CAPTenantStatus{
 			CurrentCAPApplicationVersionInstance: cavCroName,
-			GenericStatus:                        v1alpha1.GenericStatus{},
+			GenericStatus:                        v1alpha2.GenericStatus{},
 		},
 	}
 
@@ -300,25 +286,25 @@ func getTestController(resources testResources) *Controller {
 
 	for _, ca := range resources.cas {
 		if ca != nil {
-			c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Informer().GetIndexer().Add(ca)
+			c.crdInformerFactory.Sme().V1alpha2().CAPApplications().Informer().GetIndexer().Add(ca)
 		}
 	}
 
 	for _, cav := range resources.cavs {
 		if cav != nil {
-			c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Informer().GetIndexer().Add(cav)
+			c.crdInformerFactory.Sme().V1alpha2().CAPApplicationVersions().Informer().GetIndexer().Add(cav)
 		}
 	}
 
 	for _, cat := range resources.cats {
 		if cat != nil {
-			c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Informer().GetIndexer().Add(cat)
+			c.crdInformerFactory.Sme().V1alpha2().CAPTenants().Informer().GetIndexer().Add(cat)
 		}
 	}
 
 	for _, ctop := range resources.ctops {
 		if ctop != nil {
-			c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Informer().GetIndexer().Add(ctop)
+			c.crdInformerFactory.Sme().V1alpha2().CAPTenantOperations().Informer().GetIndexer().Add(ctop)
 		}
 	}
 
@@ -371,7 +357,7 @@ func TestMain(m *testing.M) {
 func TestGetLatestReadyCAPApplicationVersion(t *testing.T) {
 	tests := []struct {
 		testName        string
-		status          v1alpha1.CAPApplicationVersionState
+		status          v1alpha2.CAPApplicationVersionState
 		number          int
 		expectedVersion string
 	}{
@@ -383,19 +369,19 @@ func TestGetLatestReadyCAPApplicationVersion(t *testing.T) {
 		},
 		{
 			testName:        "when getLatestReadyCAPApplicationVersion() is called with one CAV in ready state",
-			status:          v1alpha1.CAPApplicationVersionStateReady,
+			status:          v1alpha2.CAPApplicationVersionStateReady,
 			number:          1,
 			expectedVersion: "0.0.1",
 		},
 		{
 			testName:        "when getLatestReadyCAPApplicationVersion() is called with one CAV in processing (not ready) state",
-			status:          v1alpha1.CAPApplicationVersionStateProcessing,
+			status:          v1alpha2.CAPApplicationVersionStateProcessing,
 			number:          9,
 			expectedVersion: "",
 		},
 		{
 			testName:        "when getLatestReadyCAPApplicationVersion() is called with multiple CAVs in ready states",
-			status:          v1alpha1.CAPApplicationVersionStateReady,
+			status:          v1alpha2.CAPApplicationVersionStateReady,
 			number:          18,
 			expectedVersion: "0.9.0",
 		},
@@ -409,16 +395,16 @@ func TestGetLatestReadyCAPApplicationVersion(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
 			ca := createCaCRO(caCroName, true)
-			var cavs []*v1alpha1.CAPApplicationVersion
+			var cavs []*v1alpha2.CAPApplicationVersion
 
 			for i := 1; i <= test.number; i++ {
-				var state v1alpha1.CAPApplicationVersionState
+				var state v1alpha2.CAPApplicationVersionState
 				// for mixed states - mark the latest versions in processing (not-ready) state
 				if test.status == "mixed" {
 					if i > 9 {
-						state = v1alpha1.CAPApplicationVersionStateProcessing
+						state = v1alpha2.CAPApplicationVersionStateProcessing
 					} else {
-						state = v1alpha1.CAPApplicationVersionStateReady
+						state = v1alpha2.CAPApplicationVersionStateReady
 					}
 				} else {
 					state = test.status
@@ -440,13 +426,13 @@ func TestGetLatestReadyCAPApplicationVersion(t *testing.T) {
 			defer deregisterMetrics()
 
 			c := getTestController(testResources{
-				cas:  []*v1alpha1.CAPApplication{ca},
+				cas:  []*v1alpha2.CAPApplication{ca},
 				cavs: cavs,
 			})
 
 			latestCav, err := c.getLatestReadyCAPApplicationVersion(ca, false)
 
-			if test.status == v1alpha1.CAPApplicationVersionStateReady || test.status == "mixed" {
+			if test.status == v1alpha2.CAPApplicationVersionStateReady || test.status == "mixed" {
 				if err != nil {
 					t.Fatal("Error should not be thrown")
 				}
@@ -504,19 +490,19 @@ func TestGetLatestCAPApplicationVersion(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.testName, func(t *testing.T) {
 			ca := createCaCRO(caCroName, true)
-			var cavs []*v1alpha1.CAPApplicationVersion
+			var cavs []*v1alpha2.CAPApplicationVersion
 
 			for i := 1; i <= test.number; i++ {
-				var state v1alpha1.CAPApplicationVersionState
+				var state v1alpha2.CAPApplicationVersionState
 				// for mixed states - mark the latest versions in processing (not-ready) state
 				if test.status == "mixed" {
 					if i > 9 {
-						state = v1alpha1.CAPApplicationVersionStateProcessing
+						state = v1alpha2.CAPApplicationVersionStateProcessing
 					} else {
-						state = v1alpha1.CAPApplicationVersionStateReady
+						state = v1alpha2.CAPApplicationVersionStateReady
 					}
 				} else {
-					state = v1alpha1.CAPApplicationVersionStateReady
+					state = v1alpha2.CAPApplicationVersionStateReady
 				}
 
 				indexString := strconv.Itoa(i)
@@ -535,7 +521,7 @@ func TestGetLatestCAPApplicationVersion(t *testing.T) {
 			defer deregisterMetrics()
 
 			c := getTestController(testResources{
-				cas:  []*v1alpha1.CAPApplication{ca},
+				cas:  []*v1alpha2.CAPApplication{ca},
 				cavs: cavs,
 			})
 

@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
+	v1alpha2 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
@@ -16,14 +17,15 @@ import (
 // CAPApplicationVersionApplyConfiguration represents a declarative configuration of the CAPApplicationVersion type for use
 // with apply.
 //
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPApplicationVersion defines the schema for capapplicationversions API
 type CAPApplicationVersionApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	// CAPApplicationVersion spec
-	Spec *CAPApplicationVersionSpecApplyConfiguration `json:"spec,omitempty"`
+	Spec *v1alpha2.CAPApplicationVersionSpecApplyConfiguration `json:"spec,omitempty"`
 	// CAPApplicationVersion status
-	Status *CAPApplicationVersionStatusApplyConfiguration `json:"status,omitempty"`
+	Status *v1alpha2.CAPApplicationVersionStatusApplyConfiguration `json:"status,omitempty"`
 }
 
 // CAPApplicationVersion constructs a declarative configuration of the CAPApplicationVersion type for use with
@@ -200,7 +202,7 @@ func (b *CAPApplicationVersionApplyConfiguration) ensureObjectMetaApplyConfigura
 // WithSpec sets the Spec field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Spec field is set to the value of the last call.
-func (b *CAPApplicationVersionApplyConfiguration) WithSpec(value *CAPApplicationVersionSpecApplyConfiguration) *CAPApplicationVersionApplyConfiguration {
+func (b *CAPApplicationVersionApplyConfiguration) WithSpec(value *v1alpha2.CAPApplicationVersionSpecApplyConfiguration) *CAPApplicationVersionApplyConfiguration {
 	b.Spec = value
 	return b
 }
@@ -208,7 +210,7 @@ func (b *CAPApplicationVersionApplyConfiguration) WithSpec(value *CAPApplication
 // WithStatus sets the Status field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Status field is set to the value of the last call.
-func (b *CAPApplicationVersionApplyConfiguration) WithStatus(value *CAPApplicationVersionStatusApplyConfiguration) *CAPApplicationVersionApplyConfiguration {
+func (b *CAPApplicationVersionApplyConfiguration) WithStatus(value *v1alpha2.CAPApplicationVersionStatusApplyConfiguration) *CAPApplicationVersionApplyConfiguration {
 	b.Status = value
 	return b
 }

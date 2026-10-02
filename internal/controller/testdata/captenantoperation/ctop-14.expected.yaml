@@ -1,4 +1,4 @@
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPTenantOperation
 metadata:
   name: test-cap-01-provider-abcd
@@ -16,7 +16,7 @@ metadata:
     sme.sap.com/cav-version: 8.9.10
     sme.sap.com/tenant-type: provider
   ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
+    - apiVersion: sme.sap.com/v1alpha2
       blockOwnerDeletion: true
       controller: true
       kind: CAPTenant

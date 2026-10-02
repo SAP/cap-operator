@@ -109,10 +109,9 @@ Create the `Domain` and `ClusterDomain` resources manually (see sections above),
 <br>
 
 ### Mutation Webhook
-A mutation webhook ensures consistency: if a `CAPApplication` is submitted with a `domains` section, the webhook converts it to `Domain`/`ClusterDomain` resources and populates `domainRefs` automatically.
 
 {{% alert color="warning" title="Warning" %}}
-The webhook rejects updates that reintroduce the deprecated `domains` section. If you add or modify the `domains` section in your manifest, the webhook rejects the change and provides an error message instructing you to use `domainRefs` instead.
+The mutating webhook has been removed as of [v0.37.0](https://github.com/SAP/cap-operator/releases/tag/v0.37.0)
 {{% /alert %}}
 
 ### Automatic Migration (v0.15.0 – v0.25.0)

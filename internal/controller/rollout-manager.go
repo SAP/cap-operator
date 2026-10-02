@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/sap/cap-operator/internal/util"
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	appsv1 "k8s.io/api/apps/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -152,7 +152,7 @@ func (m *rolloutManager) Start(ctx context.Context) {
 
 // enqueue namespace/secrets from all relevant CAs (RolloutOnCredentialUpdate=true), to potentially handle missed updates (e.g. during a crash)
 func (m *rolloutManager) enqueuePendingRollouts() error {
-	cas, err := m.ctrl.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister().List(labels.Everything())
+	cas, err := m.ctrl.crdInformerFactory.Sme().V1alpha2().CAPApplications().Lister().List(labels.Everything())
 	if err != nil {
 		return fmt.Errorf("error listing CAPApplications for startup rollout check: %w", err)
 	}
@@ -187,7 +187,7 @@ func (m *rolloutManager) processNamespace(ctx context.Context, namespace string,
 		return nil
 	}
 
-	cas, err := m.ctrl.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister().CAPApplications(namespace).List(labels.Everything())
+	cas, err := m.ctrl.crdInformerFactory.Sme().V1alpha2().CAPApplications().Lister().CAPApplications(namespace).List(labels.Everything())
 	if err != nil {
 		return fmt.Errorf("error listing CAPApplications in namespace %s: %w", namespace, err)
 	}
@@ -208,7 +208,7 @@ func (m *rolloutManager) processNamespace(ctx context.Context, namespace string,
 }
 
 // returns the set of BTP service names in the CA that refer to the provided affected secrets.
-func btpServicesForSecrets(ca *v1alpha1.CAPApplication, affectedSecrets map[string]struct{}) map[string]struct{} {
+func btpServicesForSecrets(ca *v1alpha2.CAPApplication, affectedSecrets map[string]struct{}) map[string]struct{} {
 	result := map[string]struct{}{}
 	for _, serviceInfo := range ca.Spec.BTP.Services {
 		if _, ok := affectedSecrets[serviceInfo.Secret]; ok {
@@ -219,7 +219,7 @@ func btpServicesForSecrets(ca *v1alpha1.CAPApplication, affectedSecrets map[stri
 }
 
 // triggers processing of all relevant CAVs for the CA
-func (m *rolloutManager) processAffectedApplication(ctx context.Context, ca *v1alpha1.CAPApplication, affectedServiceNames map[string]struct{}) error {
+func (m *rolloutManager) processAffectedApplication(ctx context.Context, ca *v1alpha2.CAPApplication, affectedServiceNames map[string]struct{}) error {
 	relevantCAVs, err := m.ctrl.collectRelevantCAVs(ca)
 	if err != nil {
 		return fmt.Errorf("error collecting CAVs for %s: %w", ca.Name, err)
@@ -234,8 +234,8 @@ func (m *rolloutManager) processAffectedApplication(ctx context.Context, ca *v1a
 }
 
 // collects all affected deployment workloads and rolls out those that consume at least one of the affected BTP services.
-func (m *rolloutManager) processAffectedVersion(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, affectedServiceNames map[string]struct{}) error {
-	ownerRef := *metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind))
+func (m *rolloutManager) processAffectedVersion(ctx context.Context, ca *v1alpha2.CAPApplication, cav *v1alpha2.CAPApplicationVersion, affectedServiceNames map[string]struct{}) error {
+	ownerRef := *metav1.NewControllerRef(cav, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPApplicationVersionKind))
 	for i := range cav.Spec.Workloads {
 		workload := &cav.Spec.Workloads[i]
 		if workload.DeploymentDefinition == nil || !workloadConsumesAffectedService(workload, affectedServiceNames) {
@@ -250,7 +250,7 @@ func (m *rolloutManager) processAffectedVersion(ctx context.Context, ca *v1alpha
 }
 
 // reports whether the workload consumes any service from affectedServiceNames
-func workloadConsumesAffectedService(workload *v1alpha1.WorkloadDetails, affectedServiceNames map[string]struct{}) bool {
+func workloadConsumesAffectedService(workload *v1alpha2.WorkloadDetails, affectedServiceNames map[string]struct{}) bool {
 	for _, svcName := range workload.ConsumedBTPServices {
 		if _, ok := affectedServiceNames[svcName]; ok {
 			return true
@@ -260,8 +260,8 @@ func workloadConsumesAffectedService(workload *v1alpha1.WorkloadDetails, affecte
 }
 
 // returns the latest ready CAV plus all ready CAVs currently in use by tenants.
-func (c *Controller) collectRelevantCAVs(ca *v1alpha1.CAPApplication) (map[string]*v1alpha1.CAPApplicationVersion, error) {
-	relevantCAVs := map[string]*v1alpha1.CAPApplicationVersion{}
+func (c *Controller) collectRelevantCAVs(ca *v1alpha2.CAPApplication) (map[string]*v1alpha2.CAPApplicationVersion, error) {
+	relevantCAVs := map[string]*v1alpha2.CAPApplicationVersion{}
 
 	latestCav, err := c.getLatestReadyCAPApplicationVersion(ca, true)
 	if err != nil {
@@ -278,20 +278,20 @@ func (c *Controller) collectRelevantCAVs(ca *v1alpha1.CAPApplication) (map[strin
 }
 
 // appends all ready CAVs referenced by ready tenants of the CA into the provided map.
-func (c *Controller) addTenantCAVs(ca *v1alpha1.CAPApplication, relevantCAVs map[string]*v1alpha1.CAPApplicationVersion) error {
+func (c *Controller) addTenantCAVs(ca *v1alpha2.CAPApplication, relevantCAVs map[string]*v1alpha2.CAPApplicationVersion) error {
 	tenants, err := c.getRelevantTenantsForCA(ca)
 	if err != nil {
 		return err
 	}
 	for _, tenant := range tenants {
-		if tenant.Status.State != v1alpha1.CAPTenantStateReady || tenant.Status.CurrentCAPApplicationVersionInstance == "" {
+		if tenant.Status.State != v1alpha2.CAPTenantStateReady || tenant.Status.CurrentCAPApplicationVersionInstance == "" {
 			continue
 		}
 		cavName := tenant.Status.CurrentCAPApplicationVersionInstance
 		if _, seen := relevantCAVs[cavName]; seen {
 			continue
 		}
-		cav, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(ca.Namespace).Get(cavName)
+		cav, err := c.crdInformerFactory.Sme().V1alpha2().CAPApplicationVersions().Lister().CAPApplicationVersions(ca.Namespace).Get(cavName)
 		if err != nil {
 			util.LogError(err, "error getting CAPApplicationVersion for credential rollout", "controller", ca, nil, "application", ca.Name, "version", cavName)
 			continue
@@ -305,7 +305,7 @@ func (c *Controller) addTenantCAVs(ca *v1alpha1.CAPApplication, relevantCAVs map
 
 // rotates the VCAP secret used by the affected deployment workload and updates the deployment's envFrom reference to trigger a
 // Kubernetes rollout with fresh credentials.
-func (c *Controller) rolloutWorkloadDeployment(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, workload *v1alpha1.WorkloadDetails, ownerRef metav1.OwnerReference) error {
+func (c *Controller) rolloutWorkloadDeployment(ctx context.Context, ca *v1alpha2.CAPApplication, cav *v1alpha2.CAPApplicationVersion, workload *v1alpha2.WorkloadDetails, ownerRef metav1.OwnerReference) error {
 	deploymentName := getWorkloadName(cav.Name, workload.Name)
 
 	deployment, err := c.kubeClient.AppsV1().Deployments(cav.Namespace).Get(ctx, deploymentName, metav1.GetOptions{})

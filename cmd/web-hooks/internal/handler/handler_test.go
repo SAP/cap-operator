@@ -8,6 +8,7 @@ package handler
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,7 +16,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	fakeCrdClient "github.com/sap/cap-operator/pkg/client/clientset/versioned/fake"
 	admissionv1 "k8s.io/api/admission/v1"
 	policyv1 "k8s.io/api/policy/v1"
@@ -46,31 +47,35 @@ const (
 	consumedBTPServicesUpdate
 	versionUpdate
 	imageUpdate
-	domainsUpdate
-	useDomains
 	providerSubaccountIdUpdate
 	btpAppNameUpdate
 	duplicateAppIdentifier
 )
 
-func createCaCRO(serviceOnlyScenario ...bool) *v1alpha1.CAPApplication {
-	provider := &v1alpha1.BTPTenantIdentification{}
+type testReader struct{}
+
+func (tr *testReader) Read(_ []byte) (n int, err error) {
+	return 0, errors.New("test error")
+}
+
+func createCaCRO(serviceOnlyScenario ...bool) *v1alpha2.CAPApplication {
+	provider := &v1alpha2.BTPTenantIdentification{}
 	isServicesOnly := false
 	if serviceOnlyScenario == nil || !serviceOnlyScenario[0] {
-		provider = &v1alpha1.BTPTenantIdentification{
+		provider = &v1alpha2.BTPTenantIdentification{
 			SubDomain: subDomain,
 			TenantId:  tenantId,
 		}
 	} else {
 		isServicesOnly = serviceOnlyScenario[0]
 	}
-	return &v1alpha1.CAPApplication{
+	return &v1alpha2.CAPApplication{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      caName,
 			Namespace: metav1.NamespaceDefault,
 		},
-		Spec: v1alpha1.CAPApplicationSpec{
-			DomainRefs: []v1alpha1.DomainRef{
+		Spec: v1alpha2.CAPApplicationSpec{
+			DomainRefs: []v1alpha2.DomainRef{
 				{
 					Kind: "Domain",
 					Name: "primaryDomain",
@@ -83,8 +88,8 @@ func createCaCRO(serviceOnlyScenario ...bool) *v1alpha1.CAPApplication {
 			ProviderSubaccountId: "providerSubaccountId",
 			BTPAppName:           "btpApplicationName",
 			Provider:             provider,
-			BTP: v1alpha1.BTP{
-				Services: []v1alpha1.ServiceInfo{
+			BTP: v1alpha2.BTP{
+				Services: []v1alpha2.ServiceInfo{
 					{
 						Class:  "xsuaa",
 						Name:   "test-xsuaa",
@@ -118,8 +123,8 @@ func createCaCRO(serviceOnlyScenario ...bool) *v1alpha1.CAPApplication {
 				},
 			},
 		},
-		Status: v1alpha1.CAPApplicationStatus{
-			State:        v1alpha1.CAPApplicationStateConsistent,
+		Status: v1alpha2.CAPApplicationStatus{
+			State:        v1alpha2.CAPApplicationStateConsistent,
 			ServicesOnly: &isServicesOnly,
 		},
 	}
@@ -141,10 +146,8 @@ func getHttpRequest(operation admissionv1.Operation, crdType string, crdName str
 
 func createAdmissionRequest(operation admissionv1.Operation, crdType string, crdName string, change updateType) (*admissionv1.AdmissionReview, error) {
 	admissionReview := &admissionv1.AdmissionReview{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       crdType,
-			APIVersion: apiVersion,
-		},
+		Kind:       crdType,
+		APIVersion: apiVersion,
 		Request: &admissionv1.AdmissionRequest{
 			Name: crdName,
 			Kind: metav1.GroupVersionKind{
@@ -161,23 +164,19 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 
 	switch crdType {
 
-	case v1alpha1.CAPApplicationKind:
-		crd := &v1alpha1.CAPApplication{}
-		crd = &v1alpha1.CAPApplication{
-			TypeMeta: metav1.TypeMeta{
-				Kind: crdType,
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      caName,
-				Namespace: metav1.NamespaceDefault,
-			},
-			Spec: v1alpha1.CAPApplicationSpec{
-				Provider: &v1alpha1.BTPTenantIdentification{
+	case v1alpha2.CAPApplicationKind:
+		crd := &v1alpha2.CAPApplication{}
+		crd = &v1alpha2.CAPApplication{
+			Kind:      crdType,
+			Name:      caName,
+			Namespace: metav1.NamespaceDefault,
+			Spec: v1alpha2.CAPApplicationSpec{
+				Provider: &v1alpha2.BTPTenantIdentification{
 					SubDomain: subDomain,
 					TenantId:  tenantId,
 				},
-				BTP: v1alpha1.BTP{},
-				DomainRefs: []v1alpha1.DomainRef{
+				BTP: v1alpha2.BTP{},
+				DomainRefs: []v1alpha2.DomainRef{
 					{
 						Kind: "Domain",
 						Name: "primaryDomain",
@@ -207,10 +206,6 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 				// new object has no provider, old object has provider
 				crd.Spec.Provider = nil
 				rawBytes, err = json.Marshal(crd)
-			case domainsUpdate:
-				crd.Spec.DomainRefs = []v1alpha1.DomainRef{}
-				crd.Spec.Domains = v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}}
-				rawBytes, err = json.Marshal(crd)
 			case providerSubaccountIdUpdate:
 				// old and new both have the identifiers set, but providerSubaccountId differs
 				crd.Spec.ProviderSubaccountId = "providerSubaccountId"
@@ -239,21 +234,15 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 			}
 		}
 
-		if operation == admissionv1.Create && change == useDomains && err == nil {
-			crd.Spec.DomainRefs = []v1alpha1.DomainRef{}
-			crd.Spec.Domains = v1alpha1.ApplicationDomains{Primary: "primaryDomain", IstioIngressGatewayLabels: []v1alpha1.NameValue{{Name: "foo", Value: "bar"}}}
-			rawBytes, err = json.Marshal(crd)
-		}
-
 		if operation == admissionv1.Create && change == duplicateAppIdentifier && err == nil {
 			crd.Spec.ProviderSubaccountId = "providerSubaccountId"
 			crd.Spec.BTPAppName = "btpApplicationName"
 			rawBytes, err = json.Marshal(crd)
 		}
-	case v1alpha1.CAPApplicationVersionKind:
-		crd := &v1alpha1.CAPApplicationVersion{}
+	case v1alpha2.CAPApplicationVersionKind:
+		crd := &v1alpha2.CAPApplicationVersion{}
 
-		crd = &v1alpha1.CAPApplicationVersion{
+		crd = &v1alpha2.CAPApplicationVersion{
 			TypeMeta: metav1.TypeMeta{
 				Kind: crdType,
 			},
@@ -261,15 +250,15 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 				Name:      crdName,
 				Namespace: metav1.NamespaceDefault,
 			},
-			Spec: v1alpha1.CAPApplicationVersionSpec{
+			Spec: v1alpha2.CAPApplicationVersionSpec{
 				CAPApplicationInstance: caName,
-				Workloads: []v1alpha1.WorkloadDetails{
+				Workloads: []v1alpha2.WorkloadDetails{
 					{
 						Name:                "cap-backend",
 						ConsumedBTPServices: []string{},
-						DeploymentDefinition: &v1alpha1.DeploymentDetails{
-							Type: v1alpha1.DeploymentCAP,
-							CommonDetails: v1alpha1.CommonDetails{
+						DeploymentDefinition: &v1alpha2.DeploymentDetails{
+							Type: v1alpha2.DeploymentCAP,
+							CommonDetails: v1alpha2.CommonDetails{
 								Image: "foo",
 							},
 						},
@@ -277,9 +266,9 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 					{
 						Name:                "cap-router",
 						ConsumedBTPServices: []string{},
-						DeploymentDefinition: &v1alpha1.DeploymentDetails{
-							Type: v1alpha1.DeploymentRouter,
-							CommonDetails: v1alpha1.CommonDetails{
+						DeploymentDefinition: &v1alpha2.DeploymentDetails{
+							Type: v1alpha2.DeploymentRouter,
+							CommonDetails: v1alpha2.CommonDetails{
 								Image: "foo",
 							},
 						},
@@ -287,9 +276,9 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 					{
 						Name:                "content",
 						ConsumedBTPServices: []string{},
-						JobDefinition: &v1alpha1.JobDetails{
-							Type: v1alpha1.JobContent,
-							CommonDetails: v1alpha1.CommonDetails{
+						JobDefinition: &v1alpha2.JobDetails{
+							Type: v1alpha2.JobContent,
+							CommonDetails: v1alpha2.CommonDetails{
 								Image: "foo",
 							},
 						},
@@ -297,9 +286,9 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 					{
 						Name:                "tenant-op",
 						ConsumedBTPServices: []string{},
-						JobDefinition: &v1alpha1.JobDetails{
-							Type: v1alpha1.JobTenantOperation,
-							CommonDetails: v1alpha1.CommonDetails{
+						JobDefinition: &v1alpha2.JobDetails{
+							Type: v1alpha2.JobTenantOperation,
+							CommonDetails: v1alpha2.CommonDetails{
 								Image: "foo",
 							},
 						},
@@ -327,9 +316,9 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 			}
 			rawBytesOld, err = json.Marshal(crdOld)
 		}
-	case v1alpha1.CAPTenantKind:
-		crd := &v1alpha1.CAPTenant{}
-		crd = &v1alpha1.CAPTenant{
+	case v1alpha2.CAPTenantKind:
+		crd := &v1alpha2.CAPTenant{}
+		crd = &v1alpha2.CAPTenant{
 			TypeMeta: metav1.TypeMeta{
 				Kind: crdType,
 			},
@@ -340,11 +329,11 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 					LabelTenantType: ProviderTenantType,
 				},
 			},
-			Spec: v1alpha1.CAPTenantSpec{
+			Spec: v1alpha2.CAPTenantSpec{
 				CAPApplicationInstance: caName,
 			},
-			Status: v1alpha1.CAPTenantStatus{
-				State: v1alpha1.CAPTenantStateReady,
+			Status: v1alpha2.CAPTenantStatus{
+				State: v1alpha2.CAPTenantStateReady,
 			},
 		}
 
@@ -358,8 +347,8 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 			}
 		}
 	case "Dummy":
-		admissionReview.Kind = v1alpha1.CAPApplicationVersionKind
-		admissionReview.Request.Kind.Kind = v1alpha1.CAPApplicationVersionKind
+		admissionReview.Kind = v1alpha2.CAPApplicationVersionKind
+		admissionReview.Request.Kind.Kind = v1alpha2.CAPApplicationVersionKind
 		rawBytes, err = json.Marshal(`{}`)
 	}
 
@@ -464,36 +453,36 @@ func TestCavAndCatValidity(t *testing.T) {
 	}{
 		{
 			operation: admissionv1.Update,
-			crdType:   v1alpha1.CAPApplicationVersionKind,
+			crdType:   v1alpha2.CAPApplicationVersionKind,
 		},
 		{
 			operation: admissionv1.Create,
-			crdType:   v1alpha1.CAPApplicationVersionKind,
+			crdType:   v1alpha2.CAPApplicationVersionKind,
 		},
 		{
 			operation: admissionv1.Delete,
-			crdType:   v1alpha1.CAPApplicationVersionKind,
+			crdType:   v1alpha2.CAPApplicationVersionKind,
 		},
 		{
 			operation: admissionv1.Connect,
-			crdType:   v1alpha1.CAPApplicationVersionKind,
+			crdType:   v1alpha2.CAPApplicationVersionKind,
 		},
 		{
 			operation: admissionv1.Update,
-			crdType:   v1alpha1.CAPTenantKind,
+			crdType:   v1alpha2.CAPTenantKind,
 		},
 		{
 			operation: admissionv1.Create,
-			crdType:   v1alpha1.CAPTenantKind,
+			crdType:   v1alpha2.CAPTenantKind,
 		},
 		{
 			operation:    admissionv1.Delete,
-			crdType:      v1alpha1.CAPTenantKind,
+			crdType:      v1alpha2.CAPTenantKind,
 			backlogItems: []string{"ERP4SMEPREPWORKAPPPLAT-2520"},
 		},
 		{
 			operation: admissionv1.Connect,
-			crdType:   v1alpha1.CAPTenantKind,
+			crdType:   v1alpha2.CAPTenantKind,
 		},
 	}
 	for _, test := range tests {
@@ -501,7 +490,7 @@ func TestCavAndCatValidity(t *testing.T) {
 		testName := strings.Join(append(nameParts, test.backlogItems...), " ")
 		t.Run(testName, func(t *testing.T) {
 			crdName := cavName
-			if test.crdType == v1alpha1.CAPTenantKind {
+			if test.crdType == v1alpha2.CAPTenantKind {
 				crdName = catName
 			}
 
@@ -518,8 +507,8 @@ func TestCavAndCatValidity(t *testing.T) {
 			universalDeserializer.Decode(bytes, nil, &admissionReview)
 
 			var errorMessage string
-			if test.operation == admissionv1.Delete && test.crdType == v1alpha1.CAPTenantKind {
-				errorMessage = fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s or remove it's provider section instead to delete this tenant", InvalidationMessage, v1alpha1.CAPTenantKind, catName, v1alpha1.CAPApplicationKind, Ca.Name, v1alpha1.CAPApplicationKind)
+			if test.operation == admissionv1.Delete && test.crdType == v1alpha2.CAPTenantKind {
+				errorMessage = fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s or remove it's provider section instead to delete this tenant", InvalidationMessage, v1alpha2.CAPTenantKind, catName, v1alpha2.CAPApplicationKind, Ca.Name, v1alpha2.CAPApplicationKind)
 				if admissionReview.Response.Allowed ||
 					admissionReview.Response.UID != uid ||
 					admissionReview.APIVersion != apiVersion ||
@@ -548,17 +537,17 @@ func TestCavAndCatInvalidityNoApp(t *testing.T) {
 	}{
 		{
 			operation: admissionv1.Create,
-			crdType:   v1alpha1.CAPApplicationVersionKind,
+			crdType:   v1alpha2.CAPApplicationVersionKind,
 		},
 		{
 			operation: admissionv1.Create,
-			crdType:   v1alpha1.CAPTenantKind,
+			crdType:   v1alpha2.CAPTenantKind,
 		},
 	}
 	for _, test := range tests {
 		t.Run("Testing "+test.crdType+" invalidity with no CAPApp for operation "+string(test.operation), func(t *testing.T) {
 			crdName := cavName
-			if test.crdType == v1alpha1.CAPTenantKind {
+			if test.crdType == v1alpha2.CAPTenantKind {
 				crdName = catName
 			}
 
@@ -575,7 +564,7 @@ func TestCavAndCatInvalidityNoApp(t *testing.T) {
 			if admissionReview.Response.Allowed ||
 				admissionReview.Response.UID != uid ||
 				admissionReview.APIVersion != apiVersion ||
-				admissionReview.Response.Result.Message != fmt.Sprintf("%s %s no valid %s found for: %s.%s", InvalidationMessage, admissionReview.Kind, v1alpha1.CAPApplicationKind, metav1.NamespaceDefault, crdName) {
+				admissionReview.Response.Result.Message != fmt.Sprintf("%s %s no valid %s found for: %s.%s", InvalidationMessage, admissionReview.Kind, v1alpha2.CAPApplicationKind, metav1.NamespaceDefault, crdName) {
 				t.Fatal("validation response error")
 			}
 		})
@@ -596,39 +585,39 @@ func TestCavAndCatInvaliditySpecChange(t *testing.T) {
 	}{
 		{
 			operation:  admissionv1.Update,
-			crdType:    v1alpha1.CAPApplicationVersionKind,
+			crdType:    v1alpha2.CAPApplicationVersionKind,
 			changeType: appInstanceUpdate,
 		},
 		{
 			operation:  admissionv1.Update,
-			crdType:    v1alpha1.CAPApplicationVersionKind,
+			crdType:    v1alpha2.CAPApplicationVersionKind,
 			changeType: registrySecretsUpdate,
 		},
 		{
 			operation:  admissionv1.Update,
-			crdType:    v1alpha1.CAPApplicationVersionKind,
+			crdType:    v1alpha2.CAPApplicationVersionKind,
 			changeType: consumedBTPServicesUpdate,
 		},
 		{
 			operation:  admissionv1.Update,
-			crdType:    v1alpha1.CAPApplicationVersionKind,
+			crdType:    v1alpha2.CAPApplicationVersionKind,
 			changeType: versionUpdate,
 		},
 		{
 			operation:  admissionv1.Update,
-			crdType:    v1alpha1.CAPApplicationVersionKind,
+			crdType:    v1alpha2.CAPApplicationVersionKind,
 			changeType: imageUpdate,
 		},
 		{
 			operation:  admissionv1.Update,
-			crdType:    v1alpha1.CAPTenantKind,
+			crdType:    v1alpha2.CAPTenantKind,
 			changeType: appInstanceUpdate,
 		},
 	}
 	for _, test := range tests {
 		t.Run("Testing "+test.crdType+" invalidity with CAPApp instance change for operation "+string(test.operation), func(t *testing.T) {
 			crdName := cavName
-			if test.crdType == v1alpha1.CAPTenantKind {
+			if test.crdType == v1alpha2.CAPTenantKind {
 				crdName = catName
 			}
 
@@ -645,7 +634,7 @@ func TestCavAndCatInvaliditySpecChange(t *testing.T) {
 			universalDeserializer.Decode(bytes, nil, &admissionReview)
 
 			expectedMessage := fmt.Sprintf("%s %s spec cannot be modified for: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, crdName)
-			if test.crdType == v1alpha1.CAPTenantKind {
+			if test.crdType == v1alpha2.CAPTenantKind {
 				expectedMessage = fmt.Sprintf("%s %s capApplicationInstance value cannot be modified for: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, crdName)
 			}
 
@@ -682,7 +671,7 @@ func TestCaValidity(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run("Testing CAPApplication validity for operation "+string(test.operation), func(t *testing.T) {
-			request, recorder := getHttpRequest(test.operation, v1alpha1.CAPApplicationKind, caName, noUpdate, t)
+			request, recorder := getHttpRequest(test.operation, v1alpha2.CAPApplicationKind, caName, noUpdate, t)
 
 			wh.Validate(recorder, request)
 
@@ -730,7 +719,7 @@ func TestCaProviderUpdateValidity(t *testing.T) {
 			wh := &WebhookHandler{
 				CrdClient: fakeCrdClient.NewSimpleClientset(),
 			}
-			request, recorder := getHttpRequest(admissionv1.Update, v1alpha1.CAPApplicationKind, caName, test.update, t)
+			request, recorder := getHttpRequest(admissionv1.Update, v1alpha2.CAPApplicationKind, caName, test.update, t)
 
 			wh.Validate(recorder, request)
 
@@ -747,70 +736,20 @@ func TestCaProviderUpdateValidity(t *testing.T) {
 				t.Fatal("validation response error")
 			}
 			if !test.allowed {
-				expectedMessage := fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, metav1.NamespaceDefault, caName)
+				expectedMessage := fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha2.CAPApplicationKind, metav1.NamespaceDefault, caName)
 				if admissionReview.Response.Result.Message != expectedMessage {
-					t.Fatal("unexpected error message: ", admissionReview.Response.Result.Message)
+					t.Fatal("unexpected error message: ", admissionReview.Response.Result.Message, "expected: ", expectedMessage)
 				}
 			}
 		})
 	}
 }
 
-func TestCaInvalidity(t *testing.T) {
-	tests := []struct {
-		operation admissionv1.Operation
-		update    updateType
-	}{
-		{
-			operation: admissionv1.Update,
-			update:    domainsUpdate,
-		},
-		{
-			operation: admissionv1.Create,
-			update:    useDomains,
-		},
-	}
-	for _, test := range tests {
-		t.Run("Testing CAPApplication invalidity for operation "+string(test.operation), func(t *testing.T) {
-			var crdObjects []runtime.Object
-
-			wh := &WebhookHandler{
-				CrdClient: fakeCrdClient.NewSimpleClientset(crdObjects...),
-			}
-
-			request, recorder := getHttpRequest(test.operation, v1alpha1.CAPApplicationKind, caName, test.update, t)
-
-			wh.Validate(recorder, request)
-
-			admissionReview := admissionv1.AdmissionReview{}
-			bytes, err := io.ReadAll(recorder.Body)
-			if err != nil {
-				t.Fatal("io read error")
-			}
-			universalDeserializer.Decode(bytes, nil, &admissionReview)
-
-			var errorMessage string
-			if test.update == domainsUpdate || test.update == useDomains {
-				errorMessage = fmt.Sprintf("%s %s domains are deprecated. Use domainRefs instead in: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, caName)
-			}
-
-			if admissionReview.Response.Allowed ||
-				admissionReview.Response.UID != uid ||
-				admissionReview.APIVersion != apiVersion ||
-				admissionReview.Response.Result.Message != errorMessage {
-				t.Fatal("validation response error")
-			}
-		})
-	}
-}
-
-func createExistingCa(name string) *v1alpha1.CAPApplication {
-	return &v1alpha1.CAPApplication{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: metav1.NamespaceDefault,
-		},
-		Spec: v1alpha1.CAPApplicationSpec{
+func createExistingCa(name string) *v1alpha2.CAPApplication {
+	return &v1alpha2.CAPApplication{
+		Name:      name,
+		Namespace: metav1.NamespaceDefault,
+		Spec: v1alpha2.CAPApplicationSpec{
 			ProviderSubaccountId: "providerSubaccountId",
 			BTPAppName:           "btpApplicationName",
 		},
@@ -822,7 +761,7 @@ func TestCaAppIdentifierValidity(t *testing.T) {
 		name            string
 		operation       admissionv1.Operation
 		update          updateType
-		existingCa      *v1alpha1.CAPApplication
+		existingCa      *v1alpha2.CAPApplication
 		allowed         bool
 		expectedMessage string
 	}{
@@ -831,14 +770,14 @@ func TestCaAppIdentifierValidity(t *testing.T) {
 			operation:       admissionv1.Update,
 			update:          providerSubaccountIdUpdate,
 			allowed:         false,
-			expectedMessage: fmt.Sprintf("%s %s providerSubaccountId cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, metav1.NamespaceDefault, caName),
+			expectedMessage: fmt.Sprintf("%s %s providerSubaccountId cannot be changed for: %s.%s", InvalidationMessage, v1alpha2.CAPApplicationKind, metav1.NamespaceDefault, caName),
 		},
 		{
 			name:            "changing btpAppName once set is not allowed",
 			operation:       admissionv1.Update,
 			update:          btpAppNameUpdate,
 			allowed:         false,
-			expectedMessage: fmt.Sprintf("%s %s btpAppName cannot be changed for: %s.%s", InvalidationMessage, v1alpha1.CAPApplicationKind, metav1.NamespaceDefault, caName),
+			expectedMessage: fmt.Sprintf("%s %s btpAppName cannot be changed for: %s.%s", InvalidationMessage, v1alpha2.CAPApplicationKind, metav1.NamespaceDefault, caName),
 		},
 		{
 			name:            "creating an app with an already existing providerSubaccountId and btpAppName combination is not allowed",
@@ -846,7 +785,7 @@ func TestCaAppIdentifierValidity(t *testing.T) {
 			update:          duplicateAppIdentifier,
 			existingCa:      createExistingCa("otherCa"),
 			allowed:         false,
-			expectedMessage: fmt.Sprintf("%s %s %s already exists in namespace %s with the same providerSubaccountId %s and btpAppName %s", InvalidationMessage, v1alpha1.CAPApplicationKind, "otherCa", metav1.NamespaceDefault, "providerSubaccountId", "btpApplicationName"),
+			expectedMessage: fmt.Sprintf("%s %s %s already exists in namespace %s with the same providerSubaccountId %s and btpAppName %s", InvalidationMessage, v1alpha2.CAPApplicationKind, "otherCa", metav1.NamespaceDefault, "providerSubaccountId", "btpApplicationName"),
 		},
 		{
 			name:       "creating an app with a unique providerSubaccountId and btpAppName combination is allowed",
@@ -873,7 +812,7 @@ func TestCaAppIdentifierValidity(t *testing.T) {
 				CrdClient: fakeCrdClient.NewSimpleClientset(crdObjects...),
 			}
 
-			request, recorder := getHttpRequest(test.operation, v1alpha1.CAPApplicationKind, caName, test.update, t)
+			request, recorder := getHttpRequest(test.operation, v1alpha2.CAPApplicationKind, caName, test.update, t)
 
 			wh.Validate(recorder, request)
 
@@ -1036,28 +975,28 @@ func TestCavInvalidity(t *testing.T) {
 		nameParts := []string{"Testing CAPApplicationVersion invalidity for operation " + string(test.operation) + "; "}
 		testName := strings.Join(append(nameParts, test.backlogItems...), " ")
 		t.Run(testName, func(t *testing.T) {
-			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.CAPApplicationVersionKind, caName, noUpdate)
+			admissionReview, err := createAdmissionRequest(test.operation, v1alpha2.CAPApplicationVersionKind, caName, noUpdate)
 			if err != nil {
 				t.Fatal("admission review error")
 			}
 
-			crd := &v1alpha1.CAPApplicationVersion{
+			crd := &v1alpha2.CAPApplicationVersion{
 				TypeMeta: metav1.TypeMeta{
-					Kind: v1alpha1.CAPApplicationVersionKind,
+					Kind: v1alpha2.CAPApplicationVersionKind,
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      cavName,
 					Namespace: metav1.NamespaceDefault,
 				},
-				Spec: v1alpha1.CAPApplicationVersionSpec{
+				Spec: v1alpha2.CAPApplicationVersionSpec{
 					CAPApplicationInstance: caName,
-					Workloads: []v1alpha1.WorkloadDetails{
+					Workloads: []v1alpha2.WorkloadDetails{
 						{
 							Name:                "cap-backend",
 							ConsumedBTPServices: []string{},
-							DeploymentDefinition: &v1alpha1.DeploymentDetails{
-								Type: v1alpha1.DeploymentCAP,
-								CommonDetails: v1alpha1.CommonDetails{
+							DeploymentDefinition: &v1alpha2.DeploymentDetails{
+								Type: v1alpha2.DeploymentCAP,
+								CommonDetails: v1alpha2.CommonDetails{
 									Image: "foo",
 								},
 							},
@@ -1065,9 +1004,9 @@ func TestCavInvalidity(t *testing.T) {
 						{
 							Name:                "cap-router",
 							ConsumedBTPServices: []string{},
-							DeploymentDefinition: &v1alpha1.DeploymentDetails{
-								Type: v1alpha1.DeploymentRouter,
-								CommonDetails: v1alpha1.CommonDetails{
+							DeploymentDefinition: &v1alpha2.DeploymentDetails{
+								Type: v1alpha2.DeploymentRouter,
+								CommonDetails: v1alpha2.CommonDetails{
 									Image: "foo",
 								},
 							},
@@ -1075,9 +1014,9 @@ func TestCavInvalidity(t *testing.T) {
 						{
 							Name:                "content",
 							ConsumedBTPServices: []string{},
-							JobDefinition: &v1alpha1.JobDetails{
-								Type: v1alpha1.JobContent,
-								CommonDetails: v1alpha1.CommonDetails{
+							JobDefinition: &v1alpha2.JobDetails{
+								Type: v1alpha2.JobContent,
+								CommonDetails: v1alpha2.CommonDetails{
 									Image: "foo",
 								},
 							},
@@ -1085,9 +1024,9 @@ func TestCavInvalidity(t *testing.T) {
 						{
 							Name:                "tenant-op",
 							ConsumedBTPServices: []string{},
-							JobDefinition: &v1alpha1.JobDetails{
-								Type: v1alpha1.JobTenantOperation,
-								CommonDetails: v1alpha1.CommonDetails{
+							JobDefinition: &v1alpha2.JobDetails{
+								Type: v1alpha2.JobTenantOperation,
+								CommonDetails: v1alpha2.CommonDetails{
 									Image: "foo",
 								},
 							},
@@ -1097,12 +1036,12 @@ func TestCavInvalidity(t *testing.T) {
 			}
 
 			if test.duplicateWorkloadName == true {
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
 					Name:                "cap-backend",
 					ConsumedBTPServices: []string{},
-					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						Type: v1alpha1.DeploymentAdditional,
-						CommonDetails: v1alpha1.CommonDetails{
+					DeploymentDefinition: &v1alpha2.DeploymentDetails{
+						Type: v1alpha2.DeploymentAdditional,
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "foo",
 						},
 					},
@@ -1113,171 +1052,171 @@ func TestCavInvalidity(t *testing.T) {
 				crd.Spec.Workloads[2].JobDefinition.Type = "invalid"
 			} else if test.onlyOneCAPTypeAllowed == true {
 				// add additional workload of type CAP
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
 					Name:                "cap-backend-2",
 					ConsumedBTPServices: []string{},
-					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						Type: v1alpha1.DeploymentCAP,
-						CommonDetails: v1alpha1.CommonDetails{
+					DeploymentDefinition: &v1alpha2.DeploymentDetails{
+						Type: v1alpha2.DeploymentCAP,
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "foo",
 						},
 					},
 				})
 			} else if test.onlyOneRouterTypeAllowed == true {
 				// add additional workload of type Router
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
 					Name:                "cap-router-2",
 					ConsumedBTPServices: []string{},
-					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						Type: v1alpha1.DeploymentRouter,
-						CommonDetails: v1alpha1.CommonDetails{
+					DeploymentDefinition: &v1alpha2.DeploymentDetails{
+						Type: v1alpha2.DeploymentRouter,
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "foo",
 						},
 					},
 				})
 			} else if test.duplicatePortName == true {
-				crd.Spec.Workloads[0].DeploymentDefinition.Ports = []v1alpha1.Ports{
+				crd.Spec.Workloads[0].DeploymentDefinition.Ports = []v1alpha2.Ports{
 					{Name: "port-1", RouterDestinationName: "port-1-dest", Port: 4000}, {Name: "port-1", Port: 4004},
 				}
 			} else if test.duplicatePortNumber == true {
-				crd.Spec.Workloads[0].DeploymentDefinition.Ports = []v1alpha1.Ports{
+				crd.Spec.Workloads[0].DeploymentDefinition.Ports = []v1alpha2.Ports{
 					{Name: "port-1", RouterDestinationName: "port-1-dest", Port: 4000}, {Name: "port-2", Port: 4000},
 				}
 			} else if test.routerDestNameCAPChk == true {
-				crd.Spec.Workloads[0].DeploymentDefinition.Ports = []v1alpha1.Ports{
+				crd.Spec.Workloads[0].DeploymentDefinition.Ports = []v1alpha2.Ports{
 					{Name: "port-1", Port: 4000}, {Name: "port-2", Port: 4004},
 				}
 			} else if test.routerDestNameRouterChk == true {
-				crd.Spec.Workloads[1].DeploymentDefinition.Ports = []v1alpha1.Ports{
+				crd.Spec.Workloads[1].DeploymentDefinition.Ports = []v1alpha2.Ports{
 					{Name: "port-1", RouterDestinationName: "port-1-dest", Port: 4000}, {Name: "port-2", Port: 4004},
 				}
 			} else if test.customTenantOpWithoutSequence == true {
 				// add workload of type custom tenant operation
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
 					Name:                "custom-tenant-operation",
 					ConsumedBTPServices: []string{},
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobCustomTenantOperation,
-						CommonDetails: v1alpha1.CommonDetails{
+					JobDefinition: &v1alpha2.JobDetails{
+						Type: v1alpha2.JobCustomTenantOperation,
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "foo",
 						},
 					},
 				})
 			} else if test.tenantOperationSequenceInvalid == true {
 				// add workload of type custom tenant operation
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
 					Name:                "custom-tenant-operation",
 					ConsumedBTPServices: []string{},
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobCustomTenantOperation,
-						CommonDetails: v1alpha1.CommonDetails{
+					JobDefinition: &v1alpha2.JobDetails{
+						Type: v1alpha2.JobCustomTenantOperation,
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "foo",
 						},
 					},
 				})
 
-				crd.Spec.TenantOperations = &v1alpha1.TenantOperations{
-					Provisioning: []v1alpha1.TenantOperationWorkloadReference{
+				crd.Spec.TenantOperations = &v1alpha2.TenantOperations{
+					Provisioning: []v1alpha2.TenantOperationWorkloadReference{
 						{WorkloadName: "custom-tenant-operation"},
 					},
-					Deprovisioning: []v1alpha1.TenantOperationWorkloadReference{
+					Deprovisioning: []v1alpha2.TenantOperationWorkloadReference{
 						{WorkloadName: "custom-tenant-operation"},
 					},
-					Upgrade: []v1alpha1.TenantOperationWorkloadReference{
+					Upgrade: []v1alpha2.TenantOperationWorkloadReference{
 						{WorkloadName: "custom-tenant-operation"},
 					},
 				}
 			} else if test.invalidWorkloadInTenantOpSeq == true {
-				crd.Spec.TenantOperations = &v1alpha1.TenantOperations{
-					Provisioning: []v1alpha1.TenantOperationWorkloadReference{
+				crd.Spec.TenantOperations = &v1alpha2.TenantOperations{
+					Provisioning: []v1alpha2.TenantOperationWorkloadReference{
 						{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 					},
-					Deprovisioning: []v1alpha1.TenantOperationWorkloadReference{
+					Deprovisioning: []v1alpha2.TenantOperationWorkloadReference{
 						{WorkloadName: "tenant-op"},
 					},
-					Upgrade: []v1alpha1.TenantOperationWorkloadReference{
+					Upgrade: []v1alpha2.TenantOperationWorkloadReference{
 						{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 					},
 				}
 			} else if test.missingTenantOpInSeqProvisioning == true || test.missingTenantOpInSeqUpgrade == true || test.missingTenantOpInSeqDeprovisioning == true {
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
 					Name:                "custom-tenant-operation",
 					ConsumedBTPServices: []string{},
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobCustomTenantOperation,
-						CommonDetails: v1alpha1.CommonDetails{
+					JobDefinition: &v1alpha2.JobDetails{
+						Type: v1alpha2.JobCustomTenantOperation,
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "foo",
 						},
 					},
 				})
 
 				if test.missingTenantOpInSeqProvisioning == true {
-					crd.Spec.TenantOperations = &v1alpha1.TenantOperations{
-						Provisioning: []v1alpha1.TenantOperationWorkloadReference{
+					crd.Spec.TenantOperations = &v1alpha2.TenantOperations{
+						Provisioning: []v1alpha2.TenantOperationWorkloadReference{
 							{WorkloadName: "custom-tenant-operation"},
 						},
-						Deprovisioning: []v1alpha1.TenantOperationWorkloadReference{
+						Deprovisioning: []v1alpha2.TenantOperationWorkloadReference{
 							{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 						},
-						Upgrade: []v1alpha1.TenantOperationWorkloadReference{
+						Upgrade: []v1alpha2.TenantOperationWorkloadReference{
 							{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 						},
 					}
 				} else if test.missingTenantOpInSeqUpgrade == true {
-					crd.Spec.TenantOperations = &v1alpha1.TenantOperations{
-						Provisioning: []v1alpha1.TenantOperationWorkloadReference{
+					crd.Spec.TenantOperations = &v1alpha2.TenantOperations{
+						Provisioning: []v1alpha2.TenantOperationWorkloadReference{
 							{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 						},
-						Deprovisioning: []v1alpha1.TenantOperationWorkloadReference{
+						Deprovisioning: []v1alpha2.TenantOperationWorkloadReference{
 							{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 						},
-						Upgrade: []v1alpha1.TenantOperationWorkloadReference{
+						Upgrade: []v1alpha2.TenantOperationWorkloadReference{
 							{WorkloadName: "custom-tenant-operation"},
 						},
 					}
 				} else if test.missingTenantOpInSeqDeprovisioning == true {
-					crd.Spec.TenantOperations = &v1alpha1.TenantOperations{
-						Provisioning: []v1alpha1.TenantOperationWorkloadReference{
+					crd.Spec.TenantOperations = &v1alpha2.TenantOperations{
+						Provisioning: []v1alpha2.TenantOperationWorkloadReference{
 							{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 						},
-						Deprovisioning: []v1alpha1.TenantOperationWorkloadReference{
+						Deprovisioning: []v1alpha2.TenantOperationWorkloadReference{
 							{WorkloadName: "custom-tenant-operation"},
 						},
-						Upgrade: []v1alpha1.TenantOperationWorkloadReference{
+						Upgrade: []v1alpha2.TenantOperationWorkloadReference{
 							{WorkloadName: "tenant-op"}, {WorkloadName: "custom-tenant-operation"},
 						},
 					}
 				}
 			} else if test.multipleContentJobsWithNoOrder == true {
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
 					Name:                "content-2",
 					ConsumedBTPServices: []string{},
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobContent,
-						CommonDetails: v1alpha1.CommonDetails{
+					JobDefinition: &v1alpha2.JobDetails{
+						Type: v1alpha2.JobContent,
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "foo",
 						},
 					},
 				})
 			} else if test.missingContentJobinContentJobs == true {
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
 					Name:                "content-2",
 					ConsumedBTPServices: []string{},
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobContent,
-						CommonDetails: v1alpha1.CommonDetails{
+					JobDefinition: &v1alpha2.JobDetails{
+						Type: v1alpha2.JobContent,
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "foo",
 						},
 					},
 				})
 				crd.Spec.ContentJobs = append(crd.Spec.ContentJobs, "content")
 			} else if test.invalidJobinContentJobs == true {
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
 					Name:                "content-2",
 					ConsumedBTPServices: []string{},
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobContent,
-						CommonDetails: v1alpha1.CommonDetails{
+					JobDefinition: &v1alpha2.JobDetails{
+						Type: v1alpha2.JobContent,
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "foo",
 						},
 					},
@@ -1311,48 +1250,48 @@ func TestCavInvalidity(t *testing.T) {
 
 			var errorMessage string
 			if test.duplicateWorkloadName == true {
-				errorMessage = fmt.Sprintf("%s %s duplicate workload name: cap-backend", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s duplicate workload name: cap-backend", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.invalidDeploymentType == true {
-				errorMessage = fmt.Sprintf("%s %s invalid deployment definition type. Only supported - CAP, Router, Additional and Service", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s invalid deployment definition type. Only supported - CAP, Router, Additional and Service", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.invalidJobType == true {
-				errorMessage = fmt.Sprintf("%s %s invalid job definition type. Only supported - Content, TenantOperation and CustomTenantOperation", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s invalid job definition type. Only supported - Content, TenantOperation and CustomTenantOperation", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.onlyOneCAPTypeAllowed == true {
-				errorMessage = fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.DeploymentCAP, 2, v1alpha1.DeploymentCAP)
+				errorMessage = fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, v1alpha2.CAPApplicationVersionKind, v1alpha2.DeploymentCAP, 2, v1alpha2.DeploymentCAP)
 			} else if test.onlyOneRouterTypeAllowed == true {
-				errorMessage = fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.DeploymentRouter, 2, v1alpha1.DeploymentRouter)
+				errorMessage = fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, v1alpha2.CAPApplicationVersionKind, v1alpha2.DeploymentRouter, 2, v1alpha2.DeploymentRouter)
 			} else if test.duplicatePortName == true {
-				errorMessage = fmt.Sprintf("%s %s duplicate port name: port-1 in workload - cap-backend", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s duplicate port name: port-1 in workload - cap-backend", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.duplicatePortNumber == true {
-				errorMessage = fmt.Sprintf("%s %s duplicate port number: 4000 in workload - cap-backend", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s duplicate port number: 4000 in workload - cap-backend", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.routerDestNameCAPChk == true {
-				errorMessage = fmt.Sprintf("%s %s routerDestinationName not defined in port configuration of workload - cap-backend", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s routerDestinationName not defined in port configuration of workload - cap-backend", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.routerDestNameRouterChk == true {
-				errorMessage = fmt.Sprintf("%s %s routerDestinationName should not be defined for workload of type Router - cap-router", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s routerDestinationName should not be defined for workload of type Router - cap-router", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.customTenantOpWithoutSequence == true {
-				errorMessage = fmt.Sprintf("%s %s - If a jobDefinition of type CustomTenantOperation is part of the workloads, then spec.tenantOperations must be specified", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s - If a jobDefinition of type CustomTenantOperation is part of the workloads, then spec.tenantOperations must be specified", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.tenantOperationSequenceInvalid == true {
-				errorMessage = fmt.Sprintf("%s %s workload tenant operation tenant-op is not specified in spec.tenantOperations", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s workload tenant operation tenant-op is not specified in spec.tenantOperations", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.invalidWorkloadInTenantOpSeq == true {
-				errorMessage = fmt.Sprintf("%s %s custom-tenant-operation specified in spec.tenantOperations is not a valid workload of type TenantOperation or CustomTenantOperation", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s custom-tenant-operation specified in spec.tenantOperations is not a valid workload of type TenantOperation or CustomTenantOperation", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.missingTenantOpInSeqProvisioning == true {
-				errorMessage = fmt.Sprintf("%s %s - No tenant operation specified in spec.tenantOperation.provisioning", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s - No tenant operation specified in spec.tenantOperation.provisioning", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.missingTenantOpInSeqUpgrade == true {
-				errorMessage = fmt.Sprintf("%s %s - No tenant operation specified in spec.tenantOperation.upgrade", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s - No tenant operation specified in spec.tenantOperation.upgrade", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.missingTenantOpInSeqDeprovisioning == true {
-				errorMessage = fmt.Sprintf("%s %s - No tenant operation specified in spec.tenantOperation.deprovisioning", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s - No tenant operation specified in spec.tenantOperation.deprovisioning", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.multipleContentJobsWithNoOrder == true {
-				errorMessage = fmt.Sprintf("%s %s if there are more than one content job, contentJobs should be defined", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s if there are more than one content job, contentJobs should be defined", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.missingContentJobinContentJobs == true {
-				errorMessage = fmt.Sprintf("%s %s content job content-2 is not specified as part of ContentJobs", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s content job content-2 is not specified as part of ContentJobs", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.invalidJobinContentJobs == true {
-				errorMessage = fmt.Sprintf("%s %s job dummy specified as part of ContentJobs is not a valid content job", InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+				errorMessage = fmt.Sprintf("%s %s job dummy specified as part of ContentJobs is not a valid content job", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.invalidWorkloadName == true {
-				errorMessage = fmt.Sprintf("%s %s Invalid workload name: %s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, "WrongWorkloadName")
+				errorMessage = fmt.Sprintf("%s %s Invalid workload name: %s", InvalidationMessage, v1alpha2.CAPApplicationVersionKind, "WrongWorkloadName")
 			} else if test.longDeploymentWorkloadName == true {
 				errorMessage = fmt.Sprintf(
 					"%s %s Derived service name '%s' (length %d) exceeds max limit of %d characters. Please shorten CAPApplicationVersion name '%s' or workload name '%s'.",
 					InvalidationMessage,
-					v1alpha1.CAPApplicationVersionKind,
+					v1alpha2.CAPApplicationVersionKind,
 					crd.Name+"-"+"extralongworkloadnamecontainingmorethan64characters"+"-svc",
 					len(crd.Name+"-"+"extralongworkloadnamecontainingmorethan64characters"+"-svc"),
 					63,
@@ -1363,7 +1302,7 @@ func TestCavInvalidity(t *testing.T) {
 				errorMessage = fmt.Sprintf(
 					"%s %s Derived content job pod name '%s' (length %d) exceeds max limit of %d characters. Please shorten CAPApplicationVersion name '%s' or workload name '%s'.",
 					InvalidationMessage,
-					v1alpha1.CAPApplicationVersionKind,
+					v1alpha2.CAPApplicationVersionKind,
 					crd.Name+"-"+"extralongcontentworkloadnamecontainingmorethan64characters"+"-q4m9c",
 					len(crd.Name+"-"+"extralongcontentworkloadnamecontainingmorethan64characters"+"-q4m9c"),
 					63,
@@ -1417,28 +1356,28 @@ func TestCavInvalidityServiceScenario(t *testing.T) {
 		nameParts := []string{"Testing CAPApplicationVersion invalidity for operation " + string(test.operation) + "; "}
 		testName := strings.Join(append(nameParts, test.backlogItems...), " ")
 		t.Run(testName, func(t *testing.T) {
-			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.CAPApplicationVersionKind, caName, noUpdate)
+			admissionReview, err := createAdmissionRequest(test.operation, v1alpha2.CAPApplicationVersionKind, caName, noUpdate)
 			if err != nil {
 				t.Fatal("admission review error")
 			}
 
-			crd := &v1alpha1.CAPApplicationVersion{
+			crd := &v1alpha2.CAPApplicationVersion{
 				TypeMeta: metav1.TypeMeta{
-					Kind: v1alpha1.CAPApplicationVersionKind,
+					Kind: v1alpha2.CAPApplicationVersionKind,
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      cavName,
 					Namespace: metav1.NamespaceDefault,
 				},
-				Spec: v1alpha1.CAPApplicationVersionSpec{
+				Spec: v1alpha2.CAPApplicationVersionSpec{
 					CAPApplicationInstance: caName,
-					Workloads: []v1alpha1.WorkloadDetails{
+					Workloads: []v1alpha2.WorkloadDetails{
 						{
 							Name:                "cap-backend",
 							ConsumedBTPServices: []string{},
-							DeploymentDefinition: &v1alpha1.DeploymentDetails{
-								Type: v1alpha1.DeploymentCAP,
-								CommonDetails: v1alpha1.CommonDetails{
+							DeploymentDefinition: &v1alpha2.DeploymentDetails{
+								Type: v1alpha2.DeploymentCAP,
+								CommonDetails: v1alpha2.CommonDetails{
 									Image: "foo",
 								},
 							},
@@ -1446,9 +1385,9 @@ func TestCavInvalidityServiceScenario(t *testing.T) {
 						{
 							Name:                "cap-router",
 							ConsumedBTPServices: []string{},
-							DeploymentDefinition: &v1alpha1.DeploymentDetails{
-								Type: v1alpha1.DeploymentRouter,
-								CommonDetails: v1alpha1.CommonDetails{
+							DeploymentDefinition: &v1alpha2.DeploymentDetails{
+								Type: v1alpha2.DeploymentRouter,
+								CommonDetails: v1alpha2.CommonDetails{
 									Image: "foo",
 								},
 							},
@@ -1456,9 +1395,9 @@ func TestCavInvalidityServiceScenario(t *testing.T) {
 						{
 							Name:                "content",
 							ConsumedBTPServices: []string{},
-							JobDefinition: &v1alpha1.JobDetails{
-								Type: v1alpha1.JobContent,
-								CommonDetails: v1alpha1.CommonDetails{
+							JobDefinition: &v1alpha2.JobDetails{
+								Type: v1alpha2.JobContent,
+								CommonDetails: v1alpha2.CommonDetails{
 									Image: "foo",
 								},
 							},
@@ -1470,46 +1409,46 @@ func TestCavInvalidityServiceScenario(t *testing.T) {
 			if test.onlyServiceWorkloads == true {
 				for _, workload := range crd.Spec.Workloads {
 					if workload.DeploymentDefinition != nil {
-						workload.DeploymentDefinition.Type = v1alpha1.DeploymentService
+						workload.DeploymentDefinition.Type = v1alpha2.DeploymentService
 					}
 				}
 
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
 					Name:                "tenant-operation",
 					ConsumedBTPServices: []string{},
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobTenantOperation,
-						CommonDetails: v1alpha1.CommonDetails{
+					JobDefinition: &v1alpha2.JobDetails{
+						Type: v1alpha2.JobTenantOperation,
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "foo",
 						},
 					},
 				})
 
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
 					Name:                "custom-tenant-operation",
 					ConsumedBTPServices: []string{},
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobCustomTenantOperation,
-						CommonDetails: v1alpha1.CommonDetails{
+					JobDefinition: &v1alpha2.JobDetails{
+						Type: v1alpha2.JobCustomTenantOperation,
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "foo",
 						},
 					},
 				})
 			} else if test.serviceExposureWrongWorkloadName == true {
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
 					Name:                "service-1",
 					ConsumedBTPServices: []string{},
-					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						Type: v1alpha1.DeploymentService,
-						CommonDetails: v1alpha1.CommonDetails{
+					DeploymentDefinition: &v1alpha2.DeploymentDetails{
+						Type: v1alpha2.DeploymentService,
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "foo",
 						},
 					},
 				})
 
-				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha2.ServiceExposure{
 					SubDomain: "svc-subdomain",
-					Routes: []v1alpha1.Route{
+					Routes: []v1alpha2.Route{
 						{
 							WorkloadName: "wrong-name",
 							Port:         4004,
@@ -1518,15 +1457,15 @@ func TestCavInvalidityServiceScenario(t *testing.T) {
 					},
 				})
 			} else if test.duplicateSubDomainInServiceExposure == true {
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
 					Name:                "service-1",
 					ConsumedBTPServices: []string{},
-					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						Type: v1alpha1.DeploymentService,
-						CommonDetails: v1alpha1.CommonDetails{
+					DeploymentDefinition: &v1alpha2.DeploymentDetails{
+						Type: v1alpha2.DeploymentService,
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "foo",
 						},
-						Ports: []v1alpha1.Ports{
+						Ports: []v1alpha2.Ports{
 							{
 								Name: "port-1",
 								Port: 4004,
@@ -1535,9 +1474,9 @@ func TestCavInvalidityServiceScenario(t *testing.T) {
 					},
 				})
 
-				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha2.ServiceExposure{
 					SubDomain: "svc-subdomain",
-					Routes: []v1alpha1.Route{
+					Routes: []v1alpha2.Route{
 						{
 							WorkloadName: "service-1",
 							Port:         4004,
@@ -1546,9 +1485,9 @@ func TestCavInvalidityServiceScenario(t *testing.T) {
 					},
 				})
 
-				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha2.ServiceExposure{
 					SubDomain: "svc-subdomain",
-					Routes: []v1alpha1.Route{
+					Routes: []v1alpha2.Route{
 						{
 							WorkloadName: "service-1",
 							Port:         4004,
@@ -1556,20 +1495,20 @@ func TestCavInvalidityServiceScenario(t *testing.T) {
 					},
 				})
 			} else if test.portMissingInServiceExposure == true {
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha1.WorkloadDetails{
+				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
 					Name:                "service-1",
 					ConsumedBTPServices: []string{},
-					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						Type: v1alpha1.DeploymentService,
-						CommonDetails: v1alpha1.CommonDetails{
+					DeploymentDefinition: &v1alpha2.DeploymentDetails{
+						Type: v1alpha2.DeploymentService,
+						CommonDetails: v1alpha2.CommonDetails{
 							Image: "foo",
 						},
 					},
 				})
 
-				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha2.ServiceExposure{
 					SubDomain: "svc-subdomain",
-					Routes: []v1alpha1.Route{
+					Routes: []v1alpha2.Route{
 						{
 							WorkloadName: "service-1",
 							Port:         4004,
@@ -1578,9 +1517,9 @@ func TestCavInvalidityServiceScenario(t *testing.T) {
 					},
 				})
 
-				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha1.ServiceExposure{
+				crd.Spec.ServiceExposures = append(crd.Spec.ServiceExposures, v1alpha2.ServiceExposure{
 					SubDomain: "svc-subdomain",
-					Routes: []v1alpha1.Route{
+					Routes: []v1alpha2.Route{
 						{
 							WorkloadName: "service-1",
 							Port:         4004,
@@ -1609,13 +1548,13 @@ func TestCavInvalidityServiceScenario(t *testing.T) {
 
 			var errorMessage string
 			if test.onlyServiceWorkloads == true {
-				errorMessage = fmt.Sprintf(TenantOpJobWorkloadCountErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, v1alpha1.JobTenantOperation, v1alpha1.JobCustomTenantOperation)
+				errorMessage = fmt.Sprintf(TenantOpJobWorkloadCountErr, InvalidationMessage, v1alpha2.CAPApplicationVersionKind, v1alpha2.JobTenantOperation, v1alpha2.JobCustomTenantOperation)
 			} else if test.serviceExposureWrongWorkloadName == true {
-				errorMessage = fmt.Sprintf(ServiceExposureWorkloadNameErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].Routes[0].WorkloadName, crd.Spec.ServiceExposures[0].SubDomain)
+				errorMessage = fmt.Sprintf(ServiceExposureWorkloadNameErr, InvalidationMessage, v1alpha2.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].Routes[0].WorkloadName, crd.Spec.ServiceExposures[0].SubDomain)
 			} else if test.duplicateSubDomainInServiceExposure == true {
-				errorMessage = fmt.Sprintf(DuplicateServiceExposureSubDomainErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].SubDomain)
+				errorMessage = fmt.Sprintf(DuplicateServiceExposureSubDomainErr, InvalidationMessage, v1alpha2.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].SubDomain)
 			} else if test.portMissingInServiceExposure == true {
-				errorMessage = fmt.Sprintf(ServiceExposurePortErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].Routes[0].Port, crd.Spec.ServiceExposures[0].Routes[0].WorkloadName, crd.Spec.ServiceExposures[0].SubDomain)
+				errorMessage = fmt.Sprintf(ServiceExposurePortErr, InvalidationMessage, v1alpha2.CAPApplicationVersionKind, crd.Spec.ServiceExposures[0].Routes[0].Port, crd.Spec.ServiceExposures[0].Routes[0].WorkloadName, crd.Spec.ServiceExposures[0].SubDomain)
 			}
 
 			if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
@@ -1649,30 +1588,30 @@ func TestCavPDBScenario(t *testing.T) {
 	for _, test := range tests {
 		testName := "Testing CAPApplicationVersion for " + test.name
 		t.Run(testName, func(t *testing.T) {
-			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.CAPApplicationVersionKind, caName, noUpdate)
+			admissionReview, err := createAdmissionRequest(test.operation, v1alpha2.CAPApplicationVersionKind, caName, noUpdate)
 			if err != nil {
 				t.Fatal("admission review error")
 			}
 
 			minAvailable := intstr.FromInt(1)
 
-			crd := &v1alpha1.CAPApplicationVersion{
+			crd := &v1alpha2.CAPApplicationVersion{
 				TypeMeta: metav1.TypeMeta{
-					Kind: v1alpha1.CAPApplicationVersionKind,
+					Kind: v1alpha2.CAPApplicationVersionKind,
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      cavName,
 					Namespace: metav1.NamespaceDefault,
 				},
-				Spec: v1alpha1.CAPApplicationVersionSpec{
+				Spec: v1alpha2.CAPApplicationVersionSpec{
 					CAPApplicationInstance: caName,
-					Workloads: []v1alpha1.WorkloadDetails{
+					Workloads: []v1alpha2.WorkloadDetails{
 						{
 							Name:                "cap-backend",
 							ConsumedBTPServices: []string{},
-							DeploymentDefinition: &v1alpha1.DeploymentDetails{
-								Type: v1alpha1.DeploymentCAP,
-								CommonDetails: v1alpha1.CommonDetails{
+							DeploymentDefinition: &v1alpha2.DeploymentDetails{
+								Type: v1alpha2.DeploymentCAP,
+								CommonDetails: v1alpha2.CommonDetails{
 									Image: "foo",
 								},
 								PodDisruptionBudget: &policyv1.PodDisruptionBudgetSpec{
@@ -1683,9 +1622,9 @@ func TestCavPDBScenario(t *testing.T) {
 						{
 							Name:                "cap-router",
 							ConsumedBTPServices: []string{},
-							DeploymentDefinition: &v1alpha1.DeploymentDetails{
-								Type: v1alpha1.DeploymentRouter,
-								CommonDetails: v1alpha1.CommonDetails{
+							DeploymentDefinition: &v1alpha2.DeploymentDetails{
+								Type: v1alpha2.DeploymentRouter,
+								CommonDetails: v1alpha2.CommonDetails{
 									Image: "foo",
 								},
 								PodDisruptionBudget: &policyv1.PodDisruptionBudgetSpec{
@@ -1696,9 +1635,9 @@ func TestCavPDBScenario(t *testing.T) {
 						{
 							Name:                "content",
 							ConsumedBTPServices: []string{},
-							JobDefinition: &v1alpha1.JobDetails{
-								Type: v1alpha1.JobContent,
-								CommonDetails: v1alpha1.CommonDetails{
+							JobDefinition: &v1alpha2.JobDetails{
+								Type: v1alpha2.JobContent,
+								CommonDetails: v1alpha2.CommonDetails{
 									Image: "foo",
 								},
 							},
@@ -1706,9 +1645,9 @@ func TestCavPDBScenario(t *testing.T) {
 						{
 							Name:                "tenant-op",
 							ConsumedBTPServices: []string{},
-							JobDefinition: &v1alpha1.JobDetails{
-								Type: v1alpha1.JobTenantOperation,
-								CommonDetails: v1alpha1.CommonDetails{
+							JobDefinition: &v1alpha2.JobDetails{
+								Type: v1alpha2.JobTenantOperation,
+								CommonDetails: v1alpha2.CommonDetails{
 									Image: "foo",
 								},
 							},
@@ -1745,7 +1684,7 @@ func TestCavPDBScenario(t *testing.T) {
 
 			var errorMessage string
 			if test.pdbWithSelectors == true {
-				errorMessage = fmt.Sprintf("%s %s selector must not be specified for podDisrptionBudget config in workload - %s", InvalidationMessage, v1alpha1.CAPApplicationVersionKind, crd.Spec.Workloads[0].Name)
+				errorMessage = fmt.Sprintf("%s %s selector must not be specified for podDisrptionBudget config in workload - %s", InvalidationMessage, v1alpha2.CAPApplicationVersionKind, crd.Spec.Workloads[0].Name)
 
 				if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != errorMessage {
 					t.Fatal("validation response error")
@@ -1789,16 +1728,16 @@ func TestCtoutInvalidity(t *testing.T) {
 				CrdClient: fakeCrdClient.NewSimpleClientset(crdObjects...),
 			}
 
-			ctout := &v1alpha1.CAPTenantOutput{
+			ctout := &v1alpha2.CAPTenantOutput{
 				TypeMeta: metav1.TypeMeta{
-					Kind: v1alpha1.CAPTenantOutputKind,
+					Kind: v1alpha2.CAPTenantOutputKind,
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "some-ctout",
 					Namespace: metav1.NamespaceDefault,
 					Labels:    map[string]string{},
 				},
-				Spec: v1alpha1.CAPTenantOutputSpec{
+				Spec: v1alpha2.CAPTenantOutputSpec{
 					SubscriptionCallbackData: `{"supportUsers":[{"name":"user_t1", "email":"usert1@foo.com"},{"name":"user_t2", "email":"usert2@foo.com"}]}`,
 				},
 			}
@@ -1807,7 +1746,7 @@ func TestCtoutInvalidity(t *testing.T) {
 				ctout.Labels[LabelTenantId] = "some-tenant-id"
 			}
 
-			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.CAPTenantOutputKind, ctout.Name, noUpdate)
+			admissionReview, err := createAdmissionRequest(test.operation, v1alpha2.CAPTenantOutputKind, ctout.Name, noUpdate)
 			if err != nil {
 				t.Fatal("admission review error")
 			}
@@ -1831,11 +1770,11 @@ func TestCtoutInvalidity(t *testing.T) {
 			universalDeserializer.Decode(bytes, nil, &admissionReviewRes)
 
 			if test.labelPresent {
-				if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != fmt.Sprintf("%s %s label %s on CAP tenant output %s does not contain a valid tenant ID", InvalidationMessage, v1alpha1.CAPTenantOutputKind, LabelTenantId, "some-ctout") {
+				if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != fmt.Sprintf("%s %s label %s on CAP tenant output %s does not contain a valid tenant ID", InvalidationMessage, v1alpha2.CAPTenantOutputKind, LabelTenantId, "some-ctout") {
 					t.Fatal("validation response error")
 				}
 			} else {
-				if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != fmt.Sprintf("%s %s label %s missing on CAP tenant output %s", InvalidationMessage, v1alpha1.CAPTenantOutputKind, LabelTenantId, "some-ctout") {
+				if admissionReviewRes.Response.Allowed || admissionReviewRes.Response.Result.Message != fmt.Sprintf("%s %s label %s missing on CAP tenant output %s", InvalidationMessage, v1alpha2.CAPTenantOutputKind, LabelTenantId, "some-ctout") {
 					t.Fatal("validation response error")
 				}
 			}
@@ -1867,11 +1806,11 @@ func TestClusterDomainInvalidity(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run("Testing ClusterDomain invalidity during "+string(test.operation), func(t *testing.T) {
-			clusterDomain := &v1alpha1.ClusterDomain{
+			clusterDomain := &v1alpha2.ClusterDomain{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "cluster-domain",
 				},
-				Spec: v1alpha1.DomainSpec{
+				Spec: v1alpha2.DomainSpec{
 					Domain: "foo-cluster-domain.com",
 					IngressSelector: map[string]string{
 						"app":   "istio-ingressgateway",
@@ -1879,12 +1818,12 @@ func TestClusterDomainInvalidity(t *testing.T) {
 					},
 				},
 			}
-			domain := &v1alpha1.Domain{
+			domain := &v1alpha2.Domain{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "domain",
 					Namespace: metav1.NamespaceDefault,
 				},
-				Spec: v1alpha1.DomainSpec{
+				Spec: v1alpha2.DomainSpec{
 					Domain: "foo-domain.com",
 					IngressSelector: map[string]string{
 						"app":   "istio-ingressgateway",
@@ -1897,7 +1836,7 @@ func TestClusterDomainInvalidity(t *testing.T) {
 				CrdClient: fakeCrdClient.NewSimpleClientset(clusterDomain, domain),
 			}
 
-			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.ClusterDomainKind, clusterDomain.Name, noUpdate)
+			admissionReview, err := createAdmissionRequest(test.operation, v1alpha2.ClusterDomainKind, clusterDomain.Name, noUpdate)
 			if err != nil {
 				t.Fatal("admission review error")
 			}
@@ -1930,9 +1869,9 @@ func TestClusterDomainInvalidity(t *testing.T) {
 
 			var errorMessage string
 			if test.duplicateClusterDomain {
-				errorMessage = fmt.Sprintf("%s %s %s already exist with domain %s", InvalidationMessage, v1alpha1.ClusterDomainKind, clusterDomain.Name, clusterDomain.Spec.Domain)
+				errorMessage = fmt.Sprintf("%s %s %s already exist with domain %s", InvalidationMessage, v1alpha2.ClusterDomainKind, clusterDomain.Name, clusterDomain.Spec.Domain)
 			} else if test.duplicateDomain {
-				errorMessage = fmt.Sprintf("%s %s %s already exist in namespace %s with domain %s", InvalidationMessage, v1alpha1.DomainKind, domain.Name, domain.Namespace, domain.Spec.Domain)
+				errorMessage = fmt.Sprintf("%s %s %s already exist in namespace %s with domain %s", InvalidationMessage, v1alpha2.DomainKind, domain.Name, domain.Namespace, domain.Spec.Domain)
 			}
 
 			if test.duplicateClusterDomain || test.duplicateDomain {
@@ -1968,11 +1907,11 @@ func TestDomainInvalidity(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run("Testing Domain invalidity during "+string(test.operation), func(t *testing.T) {
-			clusterDomain := &v1alpha1.ClusterDomain{
+			clusterDomain := &v1alpha2.ClusterDomain{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "cluster-domain",
 				},
-				Spec: v1alpha1.DomainSpec{
+				Spec: v1alpha2.DomainSpec{
 					Domain: "foo-cluster-domain.com",
 					IngressSelector: map[string]string{
 						"app":   "istio-ingressgateway",
@@ -1980,12 +1919,12 @@ func TestDomainInvalidity(t *testing.T) {
 					},
 				},
 			}
-			domain := &v1alpha1.Domain{
+			domain := &v1alpha2.Domain{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "domain",
 					Namespace: metav1.NamespaceDefault,
 				},
-				Spec: v1alpha1.DomainSpec{
+				Spec: v1alpha2.DomainSpec{
 					Domain: "foo-domain.com",
 					IngressSelector: map[string]string{
 						"app":   "istio-ingressgateway",
@@ -1998,7 +1937,7 @@ func TestDomainInvalidity(t *testing.T) {
 				CrdClient: fakeCrdClient.NewSimpleClientset(clusterDomain, domain),
 			}
 
-			admissionReview, err := createAdmissionRequest(test.operation, v1alpha1.DomainKind, domain.Name, noUpdate)
+			admissionReview, err := createAdmissionRequest(test.operation, v1alpha2.DomainKind, domain.Name, noUpdate)
 			if err != nil {
 				t.Fatal("admission review error")
 			}
@@ -2031,9 +1970,9 @@ func TestDomainInvalidity(t *testing.T) {
 
 			var errorMessage string
 			if test.duplicateClusterDomain {
-				errorMessage = fmt.Sprintf("%s %s %s already exist with domain %s", InvalidationMessage, v1alpha1.ClusterDomainKind, clusterDomain.Name, clusterDomain.Spec.Domain)
+				errorMessage = fmt.Sprintf("%s %s %s already exist with domain %s", InvalidationMessage, v1alpha2.ClusterDomainKind, clusterDomain.Name, clusterDomain.Spec.Domain)
 			} else if test.duplicateDomain {
-				errorMessage = fmt.Sprintf("%s %s %s already exist in namespace %s with domain %s", InvalidationMessage, v1alpha1.DomainKind, domain.Name, domain.Namespace, domain.Spec.Domain)
+				errorMessage = fmt.Sprintf("%s %s %s already exist in namespace %s with domain %s", InvalidationMessage, v1alpha2.DomainKind, domain.Name, domain.Namespace, domain.Spec.Domain)
 			}
 
 			if test.duplicateClusterDomain || test.duplicateDomain {
@@ -2070,7 +2009,7 @@ func TestProviderTenantDeletionWithCAProvider(t *testing.T) {
 				CrdClient: fakeCrdClient.NewSimpleClientset(Ca),
 			}
 
-			request, recorder := getHttpRequest(admissionv1.Delete, v1alpha1.CAPTenantKind, catName, noUpdate, t)
+			request, recorder := getHttpRequest(admissionv1.Delete, v1alpha2.CAPTenantKind, catName, noUpdate, t)
 			wh.Validate(recorder, request)
 
 			admissionReview := admissionv1.AdmissionReview{}
@@ -2086,7 +2025,7 @@ func TestProviderTenantDeletionWithCAProvider(t *testing.T) {
 				}
 			} else {
 				expectedMessage := fmt.Sprintf("%s provider %s %s cannot be deleted when a consistent %s %s exists. Delete the %s or remove it's provider section instead to delete this tenant",
-					InvalidationMessage, v1alpha1.CAPTenantKind, catName, v1alpha1.CAPApplicationKind, Ca.Name, v1alpha1.CAPApplicationKind)
+					InvalidationMessage, v1alpha2.CAPTenantKind, catName, v1alpha2.CAPApplicationKind, Ca.Name, v1alpha2.CAPApplicationKind)
 				if admissionReview.Response.Allowed || admissionReview.Response.UID != uid || admissionReview.Response.Result.Message != expectedMessage {
 					t.Fatalf("expected deletion to be denied with message %q but got allowed=%v message=%q",
 						expectedMessage, admissionReview.Response.Allowed, admissionReview.Response.Result.Message)
@@ -2104,34 +2043,34 @@ func TestCavMissingTenantOperation(t *testing.T) {
 		CrdClient: fakeCrdClient.NewSimpleClientset(Ca),
 	}
 
-	admissionReview, err := createAdmissionRequest(admissionv1.Create, v1alpha1.CAPApplicationVersionKind, caName, noUpdate)
+	admissionReview, err := createAdmissionRequest(admissionv1.Create, v1alpha2.CAPApplicationVersionKind, caName, noUpdate)
 	if err != nil {
 		t.Fatal("admission review error")
 	}
 
-	crd := &v1alpha1.CAPApplicationVersion{
+	crd := &v1alpha2.CAPApplicationVersion{
 		TypeMeta: metav1.TypeMeta{
-			Kind: v1alpha1.CAPApplicationVersionKind,
+			Kind: v1alpha2.CAPApplicationVersionKind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cavName,
 			Namespace: metav1.NamespaceDefault,
 		},
-		Spec: v1alpha1.CAPApplicationVersionSpec{
+		Spec: v1alpha2.CAPApplicationVersionSpec{
 			CAPApplicationInstance: caName,
-			Workloads: []v1alpha1.WorkloadDetails{
+			Workloads: []v1alpha2.WorkloadDetails{
 				{
 					Name: "cap-backend",
-					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						Type:          v1alpha1.DeploymentCAP,
-						CommonDetails: v1alpha1.CommonDetails{Image: "foo"},
+					DeploymentDefinition: &v1alpha2.DeploymentDetails{
+						Type:          v1alpha2.DeploymentCAP,
+						CommonDetails: v1alpha2.CommonDetails{Image: "foo"},
 					},
 				},
 				{
 					Name: "cap-router",
-					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						Type:          v1alpha1.DeploymentRouter,
-						CommonDetails: v1alpha1.CommonDetails{Image: "foo"},
+					DeploymentDefinition: &v1alpha2.DeploymentDetails{
+						Type:          v1alpha2.DeploymentRouter,
+						CommonDetails: v1alpha2.CommonDetails{Image: "foo"},
 					},
 				},
 				// no TenantOperation job workload defined
@@ -2151,7 +2090,7 @@ func TestCavMissingTenantOperation(t *testing.T) {
 	bodyBytes, _ := io.ReadAll(recorder.Body)
 	universalDeserializer.Decode(bodyBytes, nil, &resp)
 
-	expected := fmt.Sprintf(TenantOpMissingErr, InvalidationMessage, v1alpha1.CAPApplicationVersionKind)
+	expected := fmt.Sprintf(TenantOpMissingErr, InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 	if resp.Response.Allowed || resp.Response.Result.Message != expected {
 		t.Fatalf("expected denied with %q, got allowed=%v message=%q", expected, resp.Response.Allowed, resp.Response.Result.Message)
 	}
@@ -2163,13 +2102,13 @@ func TestCtoutDeleteAllowed(t *testing.T) {
 		CrdClient: fakeCrdClient.NewSimpleClientset(),
 	}
 
-	admissionReview, err := createAdmissionRequest(admissionv1.Delete, v1alpha1.CAPTenantOutputKind, "some-ctout", noUpdate)
+	admissionReview, err := createAdmissionRequest(admissionv1.Delete, v1alpha2.CAPTenantOutputKind, "some-ctout", noUpdate)
 	if err != nil {
 		t.Fatal("admission review error")
 	}
 	// For Delete, OldObject is set by createAdmissionRequest's switch only for known kinds; build payload manually
-	ctout := &v1alpha1.CAPTenantOutput{
-		TypeMeta:   metav1.TypeMeta{Kind: v1alpha1.CAPTenantOutputKind},
+	ctout := &v1alpha2.CAPTenantOutput{
+		TypeMeta:   metav1.TypeMeta{Kind: v1alpha2.CAPTenantOutputKind},
 		ObjectMeta: metav1.ObjectMeta{Name: "some-ctout", Namespace: metav1.NamespaceDefault},
 	}
 	rawBytes, _ := json.Marshal(ctout)
@@ -2224,23 +2163,23 @@ func TestIsServicesOnlyWithNilStatus(t *testing.T) {
 	tests := []struct {
 		name         string
 		hasProvider  bool
-		workloads    []v1alpha1.WorkloadDetails
+		workloads    []v1alpha2.WorkloadDetails
 		expectedSvcs bool
 	}{
 		{
 			name:        "no provider, no tenant-op job -> services only",
 			hasProvider: false,
-			workloads: []v1alpha1.WorkloadDetails{
+			workloads: []v1alpha2.WorkloadDetails{
 				{
 					Name: "svc",
-					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						Type: v1alpha1.DeploymentService,
+					DeploymentDefinition: &v1alpha2.DeploymentDetails{
+						Type: v1alpha2.DeploymentService,
 					},
 				},
 				{
 					Name: "content",
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobContent,
+					JobDefinition: &v1alpha2.JobDetails{
+						Type: v1alpha2.JobContent,
 					},
 				},
 			},
@@ -2249,11 +2188,11 @@ func TestIsServicesOnlyWithNilStatus(t *testing.T) {
 		{
 			name:        "has tenant-op job -> not services only",
 			hasProvider: false,
-			workloads: []v1alpha1.WorkloadDetails{
+			workloads: []v1alpha2.WorkloadDetails{
 				{
 					Name: "tenant-op",
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobTenantOperation,
+					JobDefinition: &v1alpha2.JobDetails{
+						Type: v1alpha2.JobTenantOperation,
 					},
 				},
 			},
@@ -2262,11 +2201,11 @@ func TestIsServicesOnlyWithNilStatus(t *testing.T) {
 		{
 			name:        "has provider -> not services only",
 			hasProvider: true,
-			workloads: []v1alpha1.WorkloadDetails{
+			workloads: []v1alpha2.WorkloadDetails{
 				{
 					Name: "content",
-					JobDefinition: &v1alpha1.JobDetails{
-						Type: v1alpha1.JobContent,
+					JobDefinition: &v1alpha2.JobDetails{
+						Type: v1alpha2.JobContent,
 					},
 				},
 			},
@@ -2276,15 +2215,15 @@ func TestIsServicesOnlyWithNilStatus(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ca := &v1alpha1.CAPApplication{
-				Spec: v1alpha1.CAPApplicationSpec{},
+			ca := &v1alpha2.CAPApplication{
+				Spec: v1alpha2.CAPApplicationSpec{},
 				// Status.ServicesOnly explicitly nil
 			}
 			if test.hasProvider {
-				ca.Spec.Provider = &v1alpha1.BTPTenantIdentification{SubDomain: subDomain, TenantId: tenantId}
+				ca.Spec.Provider = &v1alpha2.BTPTenantIdentification{SubDomain: subDomain, TenantId: tenantId}
 			}
-			cav := &v1alpha1.CAPApplicationVersion{
-				Spec: v1alpha1.CAPApplicationVersionSpec{Workloads: test.workloads},
+			cav := &v1alpha2.CAPApplicationVersion{
+				Spec: v1alpha2.CAPApplicationVersionSpec{Workloads: test.workloads},
 			}
 			if got := IsServicesOnly(ca, cav); got != test.expectedSvcs {
 				t.Fatalf("IsServicesOnly: expected %v, got %v", test.expectedSvcs, got)
@@ -2310,15 +2249,15 @@ func TestValidateMalformedObject(t *testing.T) {
 		operation admissionv1.Operation
 		objField  string // "object" or "oldObject"
 	}{
-		{name: "CAPApplication create malformed", kind: v1alpha1.CAPApplicationKind, operation: admissionv1.Create, objField: "object"},
-		{name: "CAPApplication update malformed old", kind: v1alpha1.CAPApplicationKind, operation: admissionv1.Update, objField: "oldObject"},
-		{name: "CAPApplicationVersion create malformed", kind: v1alpha1.CAPApplicationVersionKind, operation: admissionv1.Create, objField: "object"},
-		{name: "CAPApplicationVersion update malformed old", kind: v1alpha1.CAPApplicationVersionKind, operation: admissionv1.Update, objField: "oldObject"},
-		{name: "CAPTenant create malformed", kind: v1alpha1.CAPTenantKind, operation: admissionv1.Create, objField: "object"},
-		{name: "CAPTenant update malformed old", kind: v1alpha1.CAPTenantKind, operation: admissionv1.Update, objField: "oldObject"},
-		{name: "CAPTenantOutput create malformed", kind: v1alpha1.CAPTenantOutputKind, operation: admissionv1.Create, objField: "object"},
-		{name: "ClusterDomain create malformed", kind: v1alpha1.ClusterDomainKind, operation: admissionv1.Create, objField: "object"},
-		{name: "Domain create malformed", kind: v1alpha1.DomainKind, operation: admissionv1.Create, objField: "object"},
+		{name: "CAPApplication create malformed", kind: v1alpha2.CAPApplicationKind, operation: admissionv1.Create, objField: "object"},
+		{name: "CAPApplication update malformed old", kind: v1alpha2.CAPApplicationKind, operation: admissionv1.Update, objField: "oldObject"},
+		{name: "CAPApplicationVersion create malformed", kind: v1alpha2.CAPApplicationVersionKind, operation: admissionv1.Create, objField: "object"},
+		{name: "CAPApplicationVersion update malformed old", kind: v1alpha2.CAPApplicationVersionKind, operation: admissionv1.Update, objField: "oldObject"},
+		{name: "CAPTenant create malformed", kind: v1alpha2.CAPTenantKind, operation: admissionv1.Create, objField: "object"},
+		{name: "CAPTenant update malformed old", kind: v1alpha2.CAPTenantKind, operation: admissionv1.Update, objField: "oldObject"},
+		{name: "CAPTenantOutput create malformed", kind: v1alpha2.CAPTenantOutputKind, operation: admissionv1.Create, objField: "object"},
+		{name: "ClusterDomain create malformed", kind: v1alpha2.ClusterDomainKind, operation: admissionv1.Create, objField: "object"},
+		{name: "Domain create malformed", kind: v1alpha2.DomainKind, operation: admissionv1.Create, objField: "object"},
 	}
 
 	for _, test := range tests {
@@ -2365,49 +2304,49 @@ func TestValidateTenantOperationsWithExplicitSpecTenantOperations(t *testing.T) 
 		CrdClient: fakeCrdClient.NewSimpleClientset(Ca),
 	}
 
-	cav := &v1alpha1.CAPApplicationVersion{
-		TypeMeta: metav1.TypeMeta{Kind: v1alpha1.CAPApplicationVersionKind},
+	cav := &v1alpha2.CAPApplicationVersion{
+		TypeMeta: metav1.TypeMeta{Kind: v1alpha2.CAPApplicationVersionKind},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cavName,
 			Namespace: metav1.NamespaceDefault,
 		},
-		Spec: v1alpha1.CAPApplicationVersionSpec{
+		Spec: v1alpha2.CAPApplicationVersionSpec{
 			CAPApplicationInstance: caName,
-			Workloads: []v1alpha1.WorkloadDetails{
+			Workloads: []v1alpha2.WorkloadDetails{
 				{
 					Name: "cap-backend",
-					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						Type:          v1alpha1.DeploymentCAP,
-						CommonDetails: v1alpha1.CommonDetails{Image: "foo"},
-						Ports: []v1alpha1.Ports{
+					DeploymentDefinition: &v1alpha2.DeploymentDetails{
+						Type:          v1alpha2.DeploymentCAP,
+						CommonDetails: v1alpha2.CommonDetails{Image: "foo"},
+						Ports: []v1alpha2.Ports{
 							{Name: "p1", RouterDestinationName: "p1-dest", Port: 4004},
 						},
 					},
 				},
 				{
 					Name: "cap-router",
-					DeploymentDefinition: &v1alpha1.DeploymentDetails{
-						Type:          v1alpha1.DeploymentRouter,
-						CommonDetails: v1alpha1.CommonDetails{Image: "foo"},
+					DeploymentDefinition: &v1alpha2.DeploymentDetails{
+						Type:          v1alpha2.DeploymentRouter,
+						CommonDetails: v1alpha2.CommonDetails{Image: "foo"},
 					},
 				},
 				{
 					Name: "tenant-op",
-					JobDefinition: &v1alpha1.JobDetails{
-						Type:          v1alpha1.JobTenantOperation,
-						CommonDetails: v1alpha1.CommonDetails{Image: "foo"},
+					JobDefinition: &v1alpha2.JobDetails{
+						Type:          v1alpha2.JobTenantOperation,
+						CommonDetails: v1alpha2.CommonDetails{Image: "foo"},
 					},
 				},
 			},
-			TenantOperations: &v1alpha1.TenantOperations{
-				Provisioning:   []v1alpha1.TenantOperationWorkloadReference{{WorkloadName: "tenant-op"}},
-				Deprovisioning: []v1alpha1.TenantOperationWorkloadReference{{WorkloadName: "tenant-op"}},
-				Upgrade:        []v1alpha1.TenantOperationWorkloadReference{{WorkloadName: "tenant-op"}},
+			TenantOperations: &v1alpha2.TenantOperations{
+				Provisioning:   []v1alpha2.TenantOperationWorkloadReference{{WorkloadName: "tenant-op"}},
+				Deprovisioning: []v1alpha2.TenantOperationWorkloadReference{{WorkloadName: "tenant-op"}},
+				Upgrade:        []v1alpha2.TenantOperationWorkloadReference{{WorkloadName: "tenant-op"}},
 			},
 		},
 	}
 
-	admissionReview, err := createAdmissionRequest(admissionv1.Create, v1alpha1.CAPApplicationVersionKind, caName, noUpdate)
+	admissionReview, err := createAdmissionRequest(admissionv1.Create, v1alpha2.CAPApplicationVersionKind, caName, noUpdate)
 	if err != nil {
 		t.Fatal("admission review error")
 	}
@@ -2439,10 +2378,10 @@ func TestClusterDomainAndDomainNonCreateUpdateOps(t *testing.T) {
 		kind      string
 		operation admissionv1.Operation
 	}{
-		{kind: v1alpha1.ClusterDomainKind, operation: admissionv1.Delete},
-		{kind: v1alpha1.ClusterDomainKind, operation: admissionv1.Connect},
-		{kind: v1alpha1.DomainKind, operation: admissionv1.Delete},
-		{kind: v1alpha1.DomainKind, operation: admissionv1.Connect},
+		{kind: v1alpha2.ClusterDomainKind, operation: admissionv1.Delete},
+		{kind: v1alpha2.ClusterDomainKind, operation: admissionv1.Connect},
+		{kind: v1alpha2.DomainKind, operation: admissionv1.Delete},
+		{kind: v1alpha2.DomainKind, operation: admissionv1.Connect},
 	}
 
 	for _, test := range tests {

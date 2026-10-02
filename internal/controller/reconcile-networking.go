@@ -14,7 +14,7 @@ import (
 	"strings"
 
 	"github.com/sap/cap-operator/internal/util"
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	"google.golang.org/protobuf/types/known/durationpb"
 	networkingv1 "istio.io/api/networking/v1"
 	istionwv1 "istio.io/client-go/pkg/apis/networking/v1"
@@ -40,7 +40,7 @@ const (
 
 // This region is for handling DestinationRule creation for stickiness based on the configuration in CAPApplicationVersion.
 // #region Destination Rule for stickiness
-func (c *Controller) handleDestinationRule(ctx context.Context, drName string, stickiness *v1alpha1.Stickiness, cav *v1alpha1.CAPApplicationVersion) (err error) {
+func (c *Controller) handleDestinationRule(ctx context.Context, drName string, stickiness *v1alpha2.Stickiness, cav *v1alpha2.CAPApplicationVersion) (err error) {
 	drSpec := getDestinationRuleFromConfig(drName, cav.Namespace, stickiness)
 	if drSpec == nil {
 		// if no valid stickiness configuration is found, ignore creation
@@ -54,7 +54,7 @@ func (c *Controller) handleDestinationRule(ctx context.Context, drName string, s
 				Name:            drName,
 				Namespace:       cav.Namespace,
 				Labels:          map[string]string{},
-				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(cav, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationVersionKind))},
+				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(cav, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPApplicationVersionKind))},
 			},
 			Spec: *drSpec.DeepCopy(),
 		}
@@ -66,7 +66,7 @@ func (c *Controller) handleDestinationRule(ctx context.Context, drName string, s
 	return err
 }
 
-func getDestinationRuleFromConfig(drName, namespace string, stickiness *v1alpha1.Stickiness) *networkingv1.DestinationRule {
+func getDestinationRuleFromConfig(drName, namespace string, stickiness *v1alpha2.Stickiness) *networkingv1.DestinationRule {
 	if stickiness.Hash == nil {
 		return nil
 	}
@@ -131,7 +131,7 @@ func getDestinationRuleFromConfig(drName, namespace string, stickiness *v1alpha1
 
 // #endregion
 
-func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (err error) {
+func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha2.CAPTenant, cavName string, ca *v1alpha2.CAPApplication) (err error) {
 	var (
 		reason, message string
 		vsModified      bool
@@ -168,7 +168,7 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 	return
 }
 
-func (c *Controller) reconcileTenantVirtualService(ctx context.Context, cat *v1alpha1.CAPTenant, cavName string, ca *v1alpha1.CAPApplication) (modified bool, err error) {
+func (c *Controller) reconcileTenantVirtualService(ctx context.Context, cat *v1alpha2.CAPTenant, cavName string, ca *v1alpha2.CAPApplication) (modified bool, err error) {
 	var (
 		create, update bool
 		vs             *istionwv1.VirtualService
@@ -181,7 +181,7 @@ func (c *Controller) reconcileTenantVirtualService(ctx context.Context, cat *v1a
 				Name:            cat.Name, // keep the same name as CAPTenant to avoid duplicates
 				Namespace:       cat.Namespace,
 				Labels:          map[string]string{},
-				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(cat, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind))},
+				OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(cat, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPTenantKind))},
 			},
 		}
 		create = true
@@ -205,9 +205,9 @@ func (c *Controller) reconcileTenantVirtualService(ctx context.Context, cat *v1a
 	return create || update, err
 }
 
-func (c *Controller) getUpdatedTenantVirtualServiceObject(cat *v1alpha1.CAPTenant, vs *istionwv1.VirtualService, cavName string, ca *v1alpha1.CAPApplication) (modified bool, err error) {
+func (c *Controller) getUpdatedTenantVirtualServiceObject(cat *v1alpha2.CAPTenant, vs *istionwv1.VirtualService, cavName string, ca *v1alpha2.CAPApplication) (modified bool, err error) {
 	// verify owner reference
-	modified, err = c.enforceTenantResourceOwnership(&vs.ObjectMeta, &vs.TypeMeta, cat)
+	modified, err = c.enforceTenantResourceOwnership(&vs.ObjectMeta, cat)
 	if err != nil {
 		return modified, err
 	}
@@ -264,16 +264,16 @@ func (c *Controller) getUpdatedTenantVirtualServiceObject(cat *v1alpha1.CAPTenan
 	return modified, err
 }
 
-func (c *Controller) getVirtualServiceHttpRoutes(cat *v1alpha1.CAPTenant, currentCavName string, headers *networkingv1.Headers) ([]*networkingv1.HTTPRoute, error) {
+func (c *Controller) getVirtualServiceHttpRoutes(cat *v1alpha2.CAPTenant, currentCavName string, headers *networkingv1.Headers) ([]*networkingv1.HTTPRoute, error) {
 	type prevCavInfo struct {
-		cav  *v1alpha1.CAPApplicationVersion
+		cav  *v1alpha2.CAPApplicationVersion
 		dest *networkingv1.Destination
 	}
 
 	// Get all previous CAVs (skip any that are missing or have no router port info)
 	var prevCavs []prevCavInfo
 	for _, prevCavName := range cat.Status.PreviousCAPApplicationVersions {
-		prevCav, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(prevCavName)
+		prevCav, err := c.crdInformerFactory.Sme().V1alpha2().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(prevCavName)
 		if err != nil {
 			continue
 		}
@@ -289,7 +289,7 @@ func (c *Controller) getVirtualServiceHttpRoutes(cat *v1alpha1.CAPTenant, curren
 	if err != nil {
 		return nil, err
 	}
-	currentCav, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(currentCavName)
+	currentCav, err := c.crdInformerFactory.Sme().V1alpha2().CAPApplicationVersions().Lister().CAPApplicationVersions(cat.Namespace).Get(currentCavName)
 	if err != nil {
 		return nil, err
 	}
@@ -414,7 +414,7 @@ func expiredCookie(cavName string) string {
 	return sessionCookie(cavName) + ";Max-Age=0"
 }
 
-func (c *Controller) updateVirtualServiceSpecFromDomainReferences(spec *networkingv1.VirtualService, subdomain string, ca *v1alpha1.CAPApplication) error {
+func (c *Controller) updateVirtualServiceSpecFromDomainReferences(spec *networkingv1.VirtualService, subdomain string, ca *v1alpha2.CAPApplication) error {
 	doms, cdoms, err := fetchDomainResourcesFromCache(c, ca.Spec.DomainRefs, ca.Namespace)
 	if err != nil {
 		return err
@@ -433,7 +433,7 @@ func (c *Controller) updateVirtualServiceSpecFromDomainReferences(spec *networki
 	return nil
 }
 
-func (c *Controller) reconcileServiceNetworking(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (err error) {
+func (c *Controller) reconcileServiceNetworking(ctx context.Context, ca *v1alpha2.CAPApplication, cav *v1alpha2.CAPApplicationVersion) (err error) {
 	var (
 		reason, message string
 		vsModified      bool
@@ -466,8 +466,8 @@ func (c *Controller) reconcileServiceNetworking(ctx context.Context, ca *v1alpha
 	return
 }
 
-func (c *Controller) reconcileServiceVirtualServices(ctx context.Context, cav *v1alpha1.CAPApplicationVersion, ca *v1alpha1.CAPApplication) (modified bool, err error) {
-	ownerHash := sha1Sum(v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
+func (c *Controller) reconcileServiceVirtualServices(ctx context.Context, cav *v1alpha2.CAPApplicationVersion, ca *v1alpha2.CAPApplication) (modified bool, err error) {
+	ownerHash := sha1Sum(v1alpha2.CAPApplicationKind, ca.Namespace, ca.Name)
 	labelSelector := labels.SelectorFromSet(map[string]string{LabelOwnerIdentifierHash: ownerHash}).String()
 
 	vsList, err := c.istioClient.NetworkingV1().VirtualServices(ca.Namespace).List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
@@ -475,7 +475,7 @@ func (c *Controller) reconcileServiceVirtualServices(ctx context.Context, cav *v
 		return
 	}
 
-	ownerRef := *metav1.NewControllerRef(ca, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationKind))
+	ownerRef := *metav1.NewControllerRef(ca, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPApplicationKind))
 	aFoundIndex := []int{}
 
 	for _, serviceExposure := range cav.Spec.ServiceExposures {
@@ -503,7 +503,7 @@ func (c *Controller) reconcileServiceVirtualServices(ctx context.Context, cav *v
 	return modified, err
 }
 
-func (c *Controller) modifyServiceExposure(ctx context.Context, vsList *istionwv1.VirtualServiceList, serviceExposure v1alpha1.ServiceExposure, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, ownerHash string, ownerRef metav1.OwnerReference) (iIndex int, modified bool, err error) {
+func (c *Controller) modifyServiceExposure(ctx context.Context, vsList *istionwv1.VirtualServiceList, serviceExposure v1alpha2.ServiceExposure, ca *v1alpha2.CAPApplication, cav *v1alpha2.CAPApplicationVersion, ownerHash string, ownerRef metav1.OwnerReference) (iIndex int, modified bool, err error) {
 	var (
 		create, update bool
 		vs             *istionwv1.VirtualService
@@ -548,13 +548,11 @@ func (c *Controller) modifyServiceExposure(ctx context.Context, vsList *istionwv
 	return
 }
 
-func (c *Controller) getUpdatedServiceVirtualServiceObject(vs *istionwv1.VirtualService, serviceExposure v1alpha1.ServiceExposure, ownerRef metav1.OwnerReference, ca *v1alpha1.CAPApplication, cavName string) (modified bool, err error) {
+func (c *Controller) getUpdatedServiceVirtualServiceObject(vs *istionwv1.VirtualService, serviceExposure v1alpha2.ServiceExposure, ownerRef metav1.OwnerReference, ca *v1alpha2.CAPApplication, cavName string) (modified bool, err error) {
 	// update owner reference
-	if owner, ok := getOwnerByKind(vs.OwnerReferences, v1alpha1.CAPApplicationKind); !ok {
+	if _, ok := getOwnerByObject(vs.OwnerReferences, v1alpha2.CAPApplicationKind, ca); !ok {
 		vs.OwnerReferences = append(vs.OwnerReferences, ownerRef)
 		modified = true
-	} else if owner.Name != ca.Name {
-		return false, fmt.Errorf("invalid owner reference found for %s %s.%s", vs.Kind, vs.Namespace, vs.Name)
 	}
 
 	headers, err := getNetworkingHeaders(ca)
@@ -605,7 +603,7 @@ func (c *Controller) getUpdatedServiceVirtualServiceObject(vs *istionwv1.Virtual
 	return modified, err
 }
 
-func getNetworkingHeaders(ca *v1alpha1.CAPApplication) (nwHeaders *networkingv1.Headers, err error) {
+func getNetworkingHeaders(ca *v1alpha2.CAPApplication) (nwHeaders *networkingv1.Headers, err error) {
 	extractHeaders := func(annotation string) (headerOps *networkingv1.Headers_HeaderOperations, err error) {
 		headers := map[string]string{}
 		headersJson := ca.Annotations[annotation]

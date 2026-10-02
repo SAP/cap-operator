@@ -687,7 +687,7 @@ func TestVersionCleanupEvaluation(t *testing.T) {
 			}
 
 			// verify version deletion
-			_, err := c.crdClient.SmeV1alpha1().CAPApplicationVersions("default").Get(context.TODO(), tt.evaluatedVersion, v1.GetOptions{})
+			_, err := c.crdClient.SmeV1alpha2().CAPApplicationVersions("default").Get(context.TODO(), tt.evaluatedVersion, v1.GetOptions{})
 			if tt.expectCleanup {
 				if err == nil || !errors.IsNotFound(err) {
 					t.Errorf("expected version %s to be deleted", tt.evaluatedVersion)
@@ -733,7 +733,7 @@ func TestVersionCleanupEvaluation_NoPrometheus_NoDeletionRules(t *testing.T) {
 	}
 
 	// v1 must have been deleted.
-	_, err := c.crdClient.SmeV1alpha1().CAPApplicationVersions("default").Get(context.TODO(), "test-cap-01-cav-v1", v1.GetOptions{})
+	_, err := c.crdClient.SmeV1alpha2().CAPApplicationVersions("default").Get(context.TODO(), "test-cap-01-cav-v1", v1.GetOptions{})
 	if err == nil || !errors.IsNotFound(err) {
 		t.Errorf("expected version test-cap-01-cav-v1 to be deleted when it has no deletion rules and Prometheus is unavailable")
 	}
@@ -769,7 +769,7 @@ func TestVersionCleanupEvaluation_NoPrometheus_WithDeletionRules(t *testing.T) {
 	}
 
 	// v1 must NOT have been deleted.
-	_, err := c.crdClient.SmeV1alpha1().CAPApplicationVersions("default").Get(context.TODO(), "test-cap-01-cav-v1", v1.GetOptions{})
+	_, err := c.crdClient.SmeV1alpha2().CAPApplicationVersions("default").Get(context.TODO(), "test-cap-01-cav-v1", v1.GetOptions{})
 	if err != nil {
 		t.Errorf("expected version test-cap-01-cav-v1 to still exist when deletion rules cannot be evaluated: %v", err)
 	}
@@ -808,7 +808,7 @@ func TestVersionCleanupEvaluation_PromUnreachable(t *testing.T) {
 			t.Errorf("expected zero requeues for CAV with deletion rules when Prometheus is unreachable, got %d", o.queue.NumRequeues(item))
 		}
 
-		_, err := c.crdClient.SmeV1alpha1().CAPApplicationVersions("default").Get(context.TODO(), "test-cap-01-cav-v1", v1.GetOptions{})
+		_, err := c.crdClient.SmeV1alpha2().CAPApplicationVersions("default").Get(context.TODO(), "test-cap-01-cav-v1", v1.GetOptions{})
 		if err != nil {
 			t.Errorf("expected version test-cap-01-cav-v1 to still exist: %v", err)
 		}
@@ -839,7 +839,7 @@ func TestVersionCleanupEvaluation_PromUnreachable(t *testing.T) {
 			t.Errorf("expected zero requeues for CAV without deletion rules, got %d", o.queue.NumRequeues(item))
 		}
 
-		_, err := c.crdClient.SmeV1alpha1().CAPApplicationVersions("default").Get(context.TODO(), "test-cap-01-cav-v1", v1.GetOptions{})
+		_, err := c.crdClient.SmeV1alpha2().CAPApplicationVersions("default").Get(context.TODO(), "test-cap-01-cav-v1", v1.GetOptions{})
 		if err == nil || !errors.IsNotFound(err) {
 			t.Errorf("expected version test-cap-01-cav-v1 to be deleted when it has no deletion rules")
 		}
