@@ -8,6 +8,7 @@ SPDX-License-Identifier: Apache-2.0
 package v1alpha1
 
 import (
+	v1alpha2 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
@@ -16,12 +17,13 @@ import (
 // CAPTenantOutputApplyConfiguration represents a declarative configuration of the CAPTenantOutput type for use
 // with apply.
 //
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPTenantOutput is the schema for captenantoutputs API
 type CAPTenantOutputApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
 	// CAPTenantOutput spec
-	Spec *CAPTenantOutputSpecApplyConfiguration `json:"spec,omitempty"`
+	Spec *v1alpha2.CAPTenantOutputSpecApplyConfiguration `json:"spec,omitempty"`
 }
 
 // CAPTenantOutput constructs a declarative configuration of the CAPTenantOutput type for use with
@@ -198,7 +200,7 @@ func (b *CAPTenantOutputApplyConfiguration) ensureObjectMetaApplyConfigurationEx
 // WithSpec sets the Spec field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Spec field is set to the value of the last call.
-func (b *CAPTenantOutputApplyConfiguration) WithSpec(value *CAPTenantOutputSpecApplyConfiguration) *CAPTenantOutputApplyConfiguration {
+func (b *CAPTenantOutputApplyConfiguration) WithSpec(value *v1alpha2.CAPTenantOutputSpecApplyConfiguration) *CAPTenantOutputApplyConfiguration {
 	b.Spec = value
 	return b
 }

@@ -1,4 +1,4 @@
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPTenant
 metadata:
   finalizers:
@@ -6,7 +6,6 @@ metadata:
   annotations:
     sme.sap.com/app-identifier: pro-subacc-id.test-cap-01
     sme.sap.com/owner-identifier: default.test-cap-01
-    sme.sap.com/subscription-context-secret: test-cap-01-gen
   labels:
     sme.sap.com/app-identifier-hash: 8de67d2d3734797789af01ba68df94b31dda0357
     sme.sap.com/btp-tenant-id: tenant-id-for-provider
@@ -16,7 +15,7 @@ metadata:
   name: test-cap-01-provider
   namespace: default
   ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
+    - apiVersion: sme.sap.com/v1alpha2
       blockOwnerDeletion: true
       controller: true
       kind: CAPApplication

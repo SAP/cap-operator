@@ -29,7 +29,122 @@ spec:
     - jsonPath: .status.currentCAPApplicationVersionInstance
       name: Current Version
       type: string
+    deprecated: true
     name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            type: string
+          kind:
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              capApplicationInstance:
+                type: string
+              subDomain:
+                type: string
+              tenantId:
+                type: string
+              version:
+                type: string
+              versionUpgradeStrategy:
+                enum:
+                - always
+                - never
+                type: string
+            required:
+            - capApplicationInstance
+            - subDomain
+            - tenantId
+            type: object
+          status:
+            properties:
+              conditions:
+                items:
+                  properties:
+                    lastTransitionTime:
+                      format: date-time
+                      type: string
+                    message:
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              currentCAPApplicationVersionInstance:
+                type: string
+              lastFullReconciliationTime:
+                format: date-time
+                type: string
+              observedGeneration:
+                format: int64
+                type: integer
+              previousCAPApplicationVersions:
+                items:
+                  type: string
+                type: array
+              state:
+                enum:
+                - ""
+                - Ready
+                - Provisioning
+                - Upgrading
+                - Deleting
+                - ProvisioningError
+                - UpgradeError
+                type: string
+            required:
+            - state
+            type: object
+        required:
+        - metadata
+        - spec
+        type: object
+    served: true
+    storage: false
+    subresources:
+      status: {}
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.state
+      name: State
+      type: string
+    - jsonPath: .spec.subDomain
+      name: Subdomain
+      type: string
+    - jsonPath: .status.currentCAPApplicationVersionInstance
+      name: Current Version
+      type: string
+    name: v1alpha2
     schema:
       openAPIV3Schema:
         properties:

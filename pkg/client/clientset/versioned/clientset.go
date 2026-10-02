@@ -12,6 +12,7 @@ import (
 	http "net/http"
 
 	smev1alpha1 "github.com/sap/cap-operator/pkg/client/clientset/versioned/typed/sme.sap.com/v1alpha1"
+	smev1alpha2 "github.com/sap/cap-operator/pkg/client/clientset/versioned/typed/sme.sap.com/v1alpha2"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -20,17 +21,24 @@ import (
 type Interface interface {
 	Discovery() discovery.DiscoveryInterfaces
 	SmeV1alpha1() smev1alpha1.SmeV1alpha1Interface
+	SmeV1alpha2() smev1alpha2.SmeV1alpha2Interface
 }
 
 // Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
 	smeV1alpha1 *smev1alpha1.SmeV1alpha1Client
+	smeV1alpha2 *smev1alpha2.SmeV1alpha2Client
 }
 
 // SmeV1alpha1 retrieves the SmeV1alpha1Client
 func (c *Clientset) SmeV1alpha1() smev1alpha1.SmeV1alpha1Interface {
 	return c.smeV1alpha1
+}
+
+// SmeV1alpha2 retrieves the SmeV1alpha2Client
+func (c *Clientset) SmeV1alpha2() smev1alpha2.SmeV1alpha2Interface {
+	return c.smeV1alpha2
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -81,6 +89,10 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 	if err != nil {
 		return nil, err
 	}
+	cs.smeV1alpha2, err = smev1alpha2.NewForConfigAndClient(&configShallowCopy, httpClient)
+	if err != nil {
+		return nil, err
+	}
 
 	cs.DiscoveryClient, err = discovery.NewDiscoveryClientForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
@@ -103,6 +115,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
 	cs.smeV1alpha1 = smev1alpha1.New(c)
+	cs.smeV1alpha2 = smev1alpha2.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

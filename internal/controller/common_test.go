@@ -34,7 +34,7 @@ import (
 	monv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promopFake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	promopScheme "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/scheme"
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	copfake "github.com/sap/cap-operator/pkg/client/clientset/versioned/fake"
 	smeScheme "github.com/sap/cap-operator/pkg/client/clientset/versioned/scheme"
 	istiometav1alpha1 "istio.io/api/meta/v1alpha1"
@@ -61,14 +61,16 @@ import (
 
 var gvrKindMap map[string]string = map[string]string{
 	"dnsentries.dns.gardener.cloud/v1alpha1":      "DNSEntry",
-	"captenantoutputs.sme.sap.com/v1alpha1":       "CAPTenantOutput",
-	"captenantoperations.sme.sap.com/v1alpha1":    "CAPTenantOperation",
-	"captenants.sme.sap.com/v1alpha1":             "CAPTenant",
-	"capapplications.sme.sap.com/v1alpha1":        "CAPApplication",
-	"capapplicationversions.sme.sap.com/v1alpha1": "CAPApplicationVersion",
-	"domains.sme.sap.com/v1alpha1":                "Domain",
-	"clusterdomains.sme.sap.com/v1alpha1":         "ClusterDomain",
+	"captenantoutputs.sme.sap.com/v1alpha2":       "CAPTenantOutput",
+	"captenantoperations.sme.sap.com/v1alpha2":    "CAPTenantOperation",
+	"captenants.sme.sap.com/v1alpha2":             "CAPTenant",
+	"capapplications.sme.sap.com/v1alpha2":        "CAPApplication",
+	"capapplicationversions.sme.sap.com/v1alpha2": "CAPApplicationVersion",
+	"domains.sme.sap.com/v1alpha2":                "Domain",
+	"clusterdomains.sme.sap.com/v1alpha2":         "ClusterDomain",
 	"servicemonitors.monitoring.coreos.com/v1":    "ServiceMonitor",
+	"subscriptionproviders.sme.sap.com/v1alpha2":  "SubscriptionProvider",
+	"subscriptions.sme.sap.com/v1alpha2":          "Subscription",
 }
 
 var createKindMap map[string]int
@@ -160,17 +162,19 @@ var removeStatusTimestampHandler k8stesting.ReactionFunc = func(action k8stestin
 		}
 
 		switch cro := obj.(type) {
-		case *v1alpha1.CAPApplication:
+		case *v1alpha2.CAPApplication:
 			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
-		case *v1alpha1.CAPApplicationVersion:
+		case *v1alpha2.CAPApplicationVersion:
 			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
-		case *v1alpha1.CAPTenant:
+		case *v1alpha2.CAPTenant:
 			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
-		case *v1alpha1.CAPTenantOperation:
+		case *v1alpha2.CAPTenantOperation:
 			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
-		case *v1alpha1.Domain:
+		case *v1alpha2.Domain:
 			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
-		case *v1alpha1.ClusterDomain:
+		case *v1alpha2.ClusterDomain:
+			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
+		case *v1alpha2.Subscription:
 			cro.Status.Conditions = adjustConditions(cro.Status.Conditions)
 		}
 	}
@@ -363,6 +367,8 @@ func reconcileTestItem(ctx context.Context, t *testing.T, item QueueItem, data T
 			requeue, err = c.reconcileDomain(ctx, item, data.attempts)
 		case ResourceClusterDomain:
 			requeue, err = c.reconcileClusterDomain(ctx, item, data.attempts)
+		case ResourceSubscription:
+			requeue, err = c.reconcileSubscription(ctx, item, data.attempts)
 		default:
 			t.Error("unidentified queue item for testing")
 		}
@@ -576,25 +582,29 @@ func addInitialObjectToStore(resource []byte, c *Controller) error {
 			fakeClient.Tracker().Create(schema.GroupVersionResource{Group: "networking.istio.io", Version: "v1", Resource: "destinationrules"}, obj, metaObj.GetNamespace())
 			err = c.istioInformerFactory.Networking().V1().DestinationRules().Informer().GetIndexer().Add(obj)
 		}
-	case *v1alpha1.CAPApplication, *v1alpha1.CAPApplicationVersion, *v1alpha1.CAPTenant, *v1alpha1.CAPTenantOperation, *v1alpha1.Domain, *v1alpha1.ClusterDomain:
+	case *v1alpha2.CAPApplication, *v1alpha2.CAPApplicationVersion, *v1alpha2.CAPTenant, *v1alpha2.CAPTenantOperation, *v1alpha2.Domain, *v1alpha2.ClusterDomain, *v1alpha2.SubscriptionProvider, *v1alpha2.Subscription:
 		fakeClient, ok := c.crdClient.(*copfake.Clientset)
 		if !ok {
 			return fmt.Errorf("controller is not using a fake clientset")
 		}
 		fakeClient.Tracker().Add(obj)
 		switch obj.(type) {
-		case *v1alpha1.CAPApplication:
-			err = c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Informer().GetIndexer().Add(obj)
-		case *v1alpha1.CAPApplicationVersion:
-			err = c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Informer().GetIndexer().Add(obj)
-		case *v1alpha1.CAPTenant:
-			err = c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Informer().GetIndexer().Add(obj)
-		case *v1alpha1.CAPTenantOperation:
-			err = c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Informer().GetIndexer().Add(obj)
-		case *v1alpha1.Domain:
-			err = c.crdInformerFactory.Sme().V1alpha1().Domains().Informer().GetIndexer().Add(obj)
-		case *v1alpha1.ClusterDomain:
-			err = c.crdInformerFactory.Sme().V1alpha1().ClusterDomains().Informer().GetIndexer().Add(obj)
+		case *v1alpha2.CAPApplication:
+			err = c.crdInformerFactory.Sme().V1alpha2().CAPApplications().Informer().GetIndexer().Add(obj)
+		case *v1alpha2.CAPApplicationVersion:
+			err = c.crdInformerFactory.Sme().V1alpha2().CAPApplicationVersions().Informer().GetIndexer().Add(obj)
+		case *v1alpha2.CAPTenant:
+			err = c.crdInformerFactory.Sme().V1alpha2().CAPTenants().Informer().GetIndexer().Add(obj)
+		case *v1alpha2.CAPTenantOperation:
+			err = c.crdInformerFactory.Sme().V1alpha2().CAPTenantOperations().Informer().GetIndexer().Add(obj)
+		case *v1alpha2.Domain:
+			err = c.crdInformerFactory.Sme().V1alpha2().Domains().Informer().GetIndexer().Add(obj)
+		case *v1alpha2.ClusterDomain:
+			err = c.crdInformerFactory.Sme().V1alpha2().ClusterDomains().Informer().GetIndexer().Add(obj)
+		case *v1alpha2.SubscriptionProvider:
+			err = c.crdInformerFactory.Sme().V1alpha2().SubscriptionProviders().Informer().GetIndexer().Add(obj)
+		case *v1alpha2.Subscription:
+			err = c.crdInformerFactory.Sme().V1alpha2().Subscriptions().Informer().GetIndexer().Add(obj)
 		}
 	case *monv1.ServiceMonitor:
 		fakeClient, ok := c.promClient.(*promopFake.Clientset)
@@ -649,21 +659,25 @@ func compareExpectedWithStore(t *testing.T, resource []byte, c *Controller) erro
 		case *istionwv1.Gateway:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("gateways"), mo.GetNamespace(), mo.GetName())
 		}
-	case *v1alpha1.CAPApplication, *v1alpha1.CAPApplicationVersion, *v1alpha1.CAPTenant, *v1alpha1.CAPTenantOperation, *v1alpha1.Domain, *v1alpha1.ClusterDomain:
+	case *v1alpha2.CAPApplication, *v1alpha2.CAPApplicationVersion, *v1alpha2.CAPTenant, *v1alpha2.CAPTenantOperation, *v1alpha2.Domain, *v1alpha2.ClusterDomain, *v1alpha2.SubscriptionProvider, *v1alpha2.Subscription:
 		fakeClient := c.crdClient.(*copfake.Clientset)
 		switch expected.(type) {
-		case *v1alpha1.CAPApplication:
+		case *v1alpha2.CAPApplication:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("capapplications"), mo.GetNamespace(), mo.GetName())
-		case *v1alpha1.CAPApplicationVersion:
+		case *v1alpha2.CAPApplicationVersion:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("capapplicationversions"), mo.GetNamespace(), mo.GetName())
-		case *v1alpha1.CAPTenant:
+		case *v1alpha2.CAPTenant:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("captenants"), mo.GetNamespace(), mo.GetName())
-		case *v1alpha1.CAPTenantOperation:
+		case *v1alpha2.CAPTenantOperation:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("captenantoperations"), mo.GetNamespace(), mo.GetName())
-		case *v1alpha1.Domain:
+		case *v1alpha2.Domain:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("domains"), mo.GetNamespace(), mo.GetName())
-		case *v1alpha1.ClusterDomain:
+		case *v1alpha2.ClusterDomain:
 			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("clusterdomains"), metav1.NamespaceAll, mo.GetName())
+		case *v1alpha2.SubscriptionProvider:
+			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("subscriptionproviders"), mo.GetNamespace(), mo.GetName())
+		case *v1alpha2.Subscription:
+			actual, err = fakeClient.Tracker().Get(gvk.GroupVersion().WithResource("subscriptions"), mo.GetNamespace(), mo.GetName())
 		}
 	case *monv1.ServiceMonitor:
 		fakeClient := c.promClient.(*promopFake.Clientset)

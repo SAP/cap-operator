@@ -9,11 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var serviceInfos = []v1alpha1.ServiceInfo{
+var serviceInfos = []v1alpha2.ServiceInfo{
 	{
 		Class:  "xsuaa",
 		Name:   "test-xsuaa",
@@ -57,7 +57,7 @@ func execTestsWithBLI(t *testing.T, name string, backlogItems []string, test fun
 
 func TestGetXSUAAInfoMissingService(t *testing.T) {
 	execTestsWithBLI(t, "Check that no uaa info is returned when no uaa service is present", []string{"ERP4SMEPREPWORKAPPPLAT-3773"}, func(t *testing.T) {
-		res := GetXSUAAInfo([]v1alpha1.ServiceInfo{}, &v1alpha1.CAPApplication{})
+		res := GetXSUAAInfo([]v1alpha2.ServiceInfo{}, &v1alpha2.CAPApplication{})
 
 		if res != nil {
 			t.Error("unexpected uaa info")
@@ -67,7 +67,7 @@ func TestGetXSUAAInfoMissingService(t *testing.T) {
 func TestGetXSUAAInfoWithoutAnnotation(t *testing.T) {
 	execTestsWithBLI(t, "Check that the 1st uaa info is returned with CA with no annotation is present", []string{"ERP4SMEPREPWORKAPPPLAT-3773"}, func(t *testing.T) {
 		// CA without "sme.sap.com/primary-xsuaa" annotation
-		ca := v1alpha1.CAPApplication{}
+		ca := v1alpha2.CAPApplication{}
 
 		res := GetXSUAAInfo(serviceInfos, &ca)
 
@@ -80,7 +80,7 @@ func TestGetXSUAAInfoWithoutAnnotation(t *testing.T) {
 func TestGetXSUAAInfoWithAnnotation(t *testing.T) {
 	execTestsWithBLI(t, "Check that the right uaa info is returned for CA with annotation present", []string{"ERP4SMEPREPWORKAPPPLAT-3773"}, func(t *testing.T) {
 		// CA without "sme.sap.com/primary-xsuaa" annotation
-		ca := v1alpha1.CAPApplication{
+		ca := v1alpha2.CAPApplication{
 			ObjectMeta: v1.ObjectMeta{
 				Annotations: map[string]string{
 					AnnotationPrimaryXSUAA: "test-xsuaa2",

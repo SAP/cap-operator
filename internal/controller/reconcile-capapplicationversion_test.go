@@ -916,7 +916,7 @@ func TestCAV_ServicesOnlyError(t *testing.T) {
 			expectError:  true,
 			mockErrorForResources: []ResourceAction{
 				{Verb: "create", Group: "apps", Version: "v1", Resource: "deployments", Namespace: "default", Name: "*"},
-				{Verb: "update", Group: "sme.sap.com", Version: "v1alpha1", Resource: "capapplicationversions", Namespace: "default", Name: "*"},
+				{Verb: "update", Group: "sme.sap.com", Version: "v1alpha2", Resource: "capapplicationversions", Namespace: "default", Name: "*"},
 			},
 		},
 	)

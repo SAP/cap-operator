@@ -13,7 +13,7 @@ metadata:
   name: test-cap-01-primary-gen
   namespace: default
   ownerReferences:
-  - apiVersion: sme.sap.com/v1alpha1
+  - apiVersion: sme.sap.com/v1alpha2
     blockOwnerDeletion: true
     controller: true
     kind: Domain

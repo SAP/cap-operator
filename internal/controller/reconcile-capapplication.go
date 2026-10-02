@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/sap/cap-operator/internal/util"
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	corev1 "k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,13 +32,14 @@ const (
 )
 
 const (
-	EventActionProcessingSecrets        = "ProcessingSecrets"
-	EventActionProviderTenantProcessing = "ProviderTenantProcessing"
-	EventActionCheckForVersion          = "CheckForVersion"
+	EventActionProcessingSecrets              = "ProcessingSecrets"
+	EventActionProviderTenantProcessing       = "ProviderTenantProcessing"
+	EventActionSubscriptionProviderProcessing = "SubscriptionProviderProcessing"
+	EventActionCheckForVersion                = "CheckForVersion"
 )
 
 func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem, _ int) (result *ReconcileResult, err error) {
-	cached, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister().CAPApplications(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
+	cached, err := c.crdInformerFactory.Sme().V1alpha2().CAPApplications().Lister().CAPApplications(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
 	if err != nil {
 		return nil, handleOperatorResourceErrors(err)
 	}
@@ -46,7 +47,7 @@ func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem
 
 	// Set Error state and return when there is no ProviderSubaccountId
 	if ca.Spec.ProviderSubaccountId == "" {
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "MissingProviderSubaccountId", "set providerSubaccountId and restart CAP Operator controller to be able to use this app")
+		ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateError, metav1.ConditionFalse, "MissingProviderSubaccountId", "set providerSubaccountId and restart CAP Operator controller to be able to use this app")
 		c.updateCAPApplicationStatus(ctx, ca)
 		return
 	}
@@ -77,7 +78,7 @@ func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem
 
 	if genChanged := (ca.Status.State == "Consistent" && ca.Status.ObservedGeneration != ca.Generation); ca.Status.State == "" || genChanged {
 		reason, message := getCAReason(genChanged)
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, reason, message)
+		ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateProcessing, metav1.ConditionFalse, reason, message)
 		result = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0)
 	} else {
 		result, err = c.handleCAPApplicationDependentResources(ctx, ca)
@@ -87,7 +88,7 @@ func (c *Controller) reconcileCAPApplication(ctx context.Context, item QueueItem
 	return
 }
 
-func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context, ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
+func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context, ca *v1alpha2.CAPApplication) (requeue *ReconcileResult, err error) {
 	var processing bool
 	defer func() {
 		if processing {
@@ -118,18 +119,24 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 	}
 	if cav == nil {
 		processing = true
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, "WaitingForReadyCAPApplicationVersion", "")
+		ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateProcessing, metav1.ConditionFalse, "WaitingForReadyCAPApplicationVersion", "")
 		// Update additional condition `LatestVersionReady` to False
-		ca.SetStatusCondition(string(v1alpha1.ConditionTypeLatestVersionReady), metav1.ConditionFalse, "WaitingForReadyCAPApplicationVersion", "")
+		ca.SetStatusCondition(string(v1alpha2.ConditionTypeLatestVersionReady), metav1.ConditionFalse, "WaitingForReadyCAPApplicationVersion", "")
 		return
 	}
 	// Check if this is a services only scenario and update the Status accordingly
 	if err = c.checkServicesOnly(ca, cav); err != nil {
 		// Update additional condition `LatestVersionReady` to False with error from checkServicesOnly
-		ca.SetStatusCondition(string(v1alpha1.ConditionTypeLatestVersionReady), metav1.ConditionFalse, "WaitingForReadyCAPApplicationVersion", err.Error())
+		ca.SetStatusCondition(string(v1alpha2.ConditionTypeLatestVersionReady), metav1.ConditionFalse, "WaitingForReadyCAPApplicationVersion", err.Error())
 		return
 	}
 	// We can already update LatestVersionReady to "true" at this point in time, but as this method is called several times, we do not do it here (during initial Provisioning as CA itself is may not be Consistent)
+
+	// Create/Update SubscriptionProvider resource for non services only scenario if not already created
+	if err = c.resolveSubscriptionProvider(ctx, ca); err != nil {
+		ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateError, metav1.ConditionFalse, "SubscriptionProviderError", err.Error())
+		return
+	}
 
 	// step 4 - validate provider tenant, create if not available
 	if processing, err = c.reconcileCAPApplicationProviderTenant(ctx, ca, cav); err != nil || processing {
@@ -140,20 +147,20 @@ func (c *Controller) handleCAPApplicationDependentResources(ctx context.Context,
 	return nil, c.reconcileServiceNetworking(ctx, ca, cav)
 }
 
-func (c *Controller) verifyApplicationConsistent(ca *v1alpha1.CAPApplication) {
-	if ca.Status.State != v1alpha1.CAPApplicationStateConsistent {
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateConsistent, metav1.ConditionTrue, "VersionExists", "")
+func (c *Controller) verifyApplicationConsistent(ca *v1alpha2.CAPApplication) {
+	if ca.Status.State != v1alpha2.CAPApplicationStateConsistent {
+		ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateConsistent, metav1.ConditionTrue, "VersionExists", "")
 		// Update additional condition `LatestVersionReady` to True
-		ca.SetStatusCondition(string(v1alpha1.ConditionTypeLatestVersionReady), metav1.ConditionTrue, "VersionExists", "")
+		ca.SetStatusCondition(string(v1alpha2.ConditionTypeLatestVersionReady), metav1.ConditionTrue, "VersionExists", "")
 		// No tenants for services only scenario
 		if !ca.IsServicesOnly() {
 			// Update additional condition `AllTenantsReady` to True
-			ca.SetStatusCondition(string(v1alpha1.ConditionTypeAllTenantsReady), metav1.ConditionTrue, string(v1alpha1.ConditionTypeAllTenantsReady), "")
+			ca.SetStatusCondition(string(v1alpha2.ConditionTypeAllTenantsReady), metav1.ConditionTrue, string(v1alpha2.ConditionTypeAllTenantsReady), "")
 		}
 	}
 }
 
-func (c *Controller) checkNewCavAndTenantReconcile(ctx context.Context, ca *v1alpha1.CAPApplication, readyCav *v1alpha1.CAPApplicationVersion, latestCav *v1alpha1.CAPApplicationVersion) (*ReconcileResult, error) {
+func (c *Controller) checkNewCavAndTenantReconcile(ctx context.Context, ca *v1alpha2.CAPApplication, readyCav *v1alpha2.CAPApplicationVersion, latestCav *v1alpha2.CAPApplicationVersion) (*ReconcileResult, error) {
 	// No tenants for services only scenario
 	if ca.IsServicesOnly() {
 		return nil, nil
@@ -161,12 +168,12 @@ func (c *Controller) checkNewCavAndTenantReconcile(ctx context.Context, ca *v1al
 
 	// Reset ready Condition and Reason for Tenant check AllTenantsReady --> True
 	readyCondition := metav1.ConditionTrue
-	readyReason := string(v1alpha1.ConditionTypeAllTenantsReady)
+	readyReason := string(v1alpha2.ConditionTypeAllTenantsReady)
 
 	// Get all relevant tenants
 	tenants, err := c.getRelevantTenantsForCA(ca)
 	if err != nil || len(tenants) == 0 {
-		ca.SetStatusCondition(string(v1alpha1.ConditionTypeAllTenantsReady), readyCondition, readyReason, "")
+		ca.SetStatusCondition(string(v1alpha2.ConditionTypeAllTenantsReady), readyCondition, readyReason, "")
 		return nil, err
 	}
 	checkDone := false
@@ -182,34 +189,34 @@ func (c *Controller) checkNewCavAndTenantReconcile(ctx context.Context, ca *v1al
 			updated = true
 		}
 		// When a Tenant state is not Ready -or- when version of tenant (with VersionUpgradeStrategy = always) does not match the latest CAV version --> AllTenantsReady = False
-		if !checkDone && (updated || (tenant.Status.State != v1alpha1.CAPTenantStateReady || (tenant.Spec.VersionUpgradeStrategy == v1alpha1.VersionUpgradeStrategyTypeAlways && latestCav.Spec.Version != tenant.Spec.Version))) {
+		if !checkDone && (updated || (tenant.Status.State != v1alpha2.CAPTenantStateReady || (tenant.Spec.VersionUpgradeStrategy == v1alpha2.VersionUpgradeStrategyTypeAlways && latestCav.Spec.Version != tenant.Spec.Version))) {
 			readyCondition = metav1.ConditionFalse
 			readyReason = "NotAllTenantsReady"
 			checkDone = true
 		}
 	}
 	// Update `AllTenantsReady` status condition
-	ca.SetStatusCondition(string(v1alpha1.ConditionTypeAllTenantsReady), readyCondition, readyReason, "")
+	ca.SetStatusCondition(string(v1alpha2.ConditionTypeAllTenantsReady), readyCondition, readyReason, "")
 
 	if updated {
 		msg := fmt.Sprintf("new version %s.%s was used to trigger tenant upgrades", readyCav.Namespace, readyCav.Name)
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, CAPApplicationEventNewCAVTriggeredTenantUpgrade, msg)
+		ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateProcessing, metav1.ConditionFalse, CAPApplicationEventNewCAVTriggeredTenantUpgrade, msg)
 		c.Event(ca, nil, corev1.EventTypeNormal, CAPApplicationEventNewCAVTriggeredTenantUpgrade, EventActionCheckForVersion, msg)
 	}
 	return result, nil
 }
 
-func (c *Controller) checkForTenantVersionUpgradeAndReconcile(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, tenant *v1alpha1.CAPTenant, result *ReconcileResult) (bool, error) {
+func (c *Controller) checkForTenantVersionUpgradeAndReconcile(ctx context.Context, ca *v1alpha2.CAPApplication, cav *v1alpha2.CAPApplicationVersion, tenant *v1alpha2.CAPTenant, result *ReconcileResult) (bool, error) {
 	// This is done to reconcile tenant networking which may be needed for session affinity
 	if result != nil && tenant.Status.CurrentCAPApplicationVersionInstance != "" {
 		result.AddResource(ResourceCAPTenant, tenant.Name, tenant.Namespace, 1)
 	}
 
-	if tenant.Spec.VersionUpgradeStrategy == v1alpha1.VersionUpgradeStrategyTypeNever {
+	if tenant.Spec.VersionUpgradeStrategy == v1alpha2.VersionUpgradeStrategyTypeNever {
 		// Skip non relevant tenants
 		return false, nil
 	}
-	if tenant.Status.State == v1alpha1.CAPTenantStateProvisioning || tenant.Status.State == v1alpha1.CAPTenantStateUpgrading || tenant.Status.State == v1alpha1.CAPTenantStateDeleting {
+	if tenant.Status.State == v1alpha2.CAPTenantStateProvisioning || tenant.Status.State == v1alpha2.CAPTenantStateUpgrading || tenant.Status.State == v1alpha2.CAPTenantStateDeleting {
 		// Skip tenants that are not ready or not in processing or not in error
 		return false, nil
 	}
@@ -222,8 +229,8 @@ func (c *Controller) checkForTenantVersionUpgradeAndReconcile(ctx context.Contex
 		// update CAPTenant Spec to point to the latest version
 		cat.Spec.Version = cav.Spec.Version
 		// Trigger update on CAPTenant (modifies Generation) --> which would reconcile the tenant
-		if _, err := c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Update(ctx, cat, metav1.UpdateOptions{}); err != nil {
-			return false, fmt.Errorf("could not update %s %s.%s: %w", v1alpha1.CAPTenantKind, cat.Namespace, cat.Name, err)
+		if _, err := c.crdClient.SmeV1alpha2().CAPTenants(ca.Namespace).Update(ctx, cat, metav1.UpdateOptions{}); err != nil {
+			return false, fmt.Errorf("could not update %s %s.%s: %w", v1alpha2.CAPTenantKind, cat.Namespace, cat.Name, err)
 		}
 		c.Event(tenant, ca, corev1.EventTypeNormal, CAPTenantEventAutoVersionUpdate, EventActionUpgrade, fmt.Sprintf("version updated to %s for initiating tenant upgrade", cav.Spec.Version))
 		return true, nil
@@ -231,7 +238,7 @@ func (c *Controller) checkForTenantVersionUpgradeAndReconcile(ctx context.Contex
 	return false, nil
 }
 
-func (c *Controller) checkAdditionalConditions(ctx context.Context, ca *v1alpha1.CAPApplication, result *ReconcileResult, err error) (*ReconcileResult, error) {
+func (c *Controller) checkAdditionalConditions(ctx context.Context, ca *v1alpha2.CAPApplication, result *ReconcileResult, err error) (*ReconcileResult, error) {
 	// In case of explicit Reconcile or errors return back with the original result
 	if result != nil || err != nil {
 		return result, err
@@ -243,7 +250,7 @@ func (c *Controller) checkAdditionalConditions(ctx context.Context, ca *v1alpha1
 	// Check and update additional status conditions
 	// Set ready Condition and Reason for Version check LatestVersionNotReady = True
 	readyCondition := metav1.ConditionTrue
-	readyReason := string(v1alpha1.ConditionTypeLatestVersionReady)
+	readyReason := string(v1alpha2.ConditionTypeLatestVersionReady)
 
 	// Get latest CAV (incl. ones that may not be ready)
 	cav, err := c.getLatestCAPApplicationVersion(ca)
@@ -252,7 +259,7 @@ func (c *Controller) checkAdditionalConditions(ctx context.Context, ca *v1alpha1
 		return nil, err
 	}
 	// When the latest CAV is not Ready --> LatestVersionNotReady = False
-	if cav.Status.State != v1alpha1.CAPApplicationVersionStateReady {
+	if cav.Status.State != v1alpha2.CAPApplicationVersionStateReady {
 		readyCondition = metav1.ConditionFalse
 		readyReason = "LatestVersionNotReady"
 		// Get the latest Ready CAV for the tenant
@@ -263,13 +270,13 @@ func (c *Controller) checkAdditionalConditions(ctx context.Context, ca *v1alpha1
 	}
 
 	// Update `LatestVersionReady` status condition
-	ca.SetStatusCondition(string(v1alpha1.ConditionTypeLatestVersionReady), readyCondition, readyReason, "")
+	ca.SetStatusCondition(string(v1alpha2.ConditionTypeLatestVersionReady), readyCondition, readyReason, "")
 
 	return c.checkNewCavAndTenantReconcile(ctx, ca, readyCav, cav)
 }
 
-func (c *Controller) updateCAPApplication(ctx context.Context, ca *v1alpha1.CAPApplication) error {
-	caUpdated, err := c.crdClient.SmeV1alpha1().CAPApplications(ca.Namespace).Update(ctx, ca, metav1.UpdateOptions{})
+func (c *Controller) updateCAPApplication(ctx context.Context, ca *v1alpha2.CAPApplication) error {
+	caUpdated, err := c.crdClient.SmeV1alpha2().CAPApplications(ca.Namespace).Update(ctx, ca, metav1.UpdateOptions{})
 	// Update reference to the resource
 	if caUpdated != nil {
 		*ca = *caUpdated
@@ -277,11 +284,11 @@ func (c *Controller) updateCAPApplication(ctx context.Context, ca *v1alpha1.CAPA
 	return err
 }
 
-func (c *Controller) updateCAPApplicationStatus(ctx context.Context, ca *v1alpha1.CAPApplication) error {
+func (c *Controller) updateCAPApplicationStatus(ctx context.Context, ca *v1alpha2.CAPApplication) error {
 	if isDeletionImminent(&ca.ObjectMeta) {
 		return nil
 	}
-	caUpdated, err := c.crdClient.SmeV1alpha1().CAPApplications(ca.Namespace).UpdateStatus(ctx, ca, metav1.UpdateOptions{})
+	caUpdated, err := c.crdClient.SmeV1alpha2().CAPApplications(ca.Namespace).UpdateStatus(ctx, ca, metav1.UpdateOptions{})
 	// update reference to the resource
 	if caUpdated != nil {
 		*ca = *caUpdated
@@ -289,7 +296,7 @@ func (c *Controller) updateCAPApplicationStatus(ctx context.Context, ca *v1alpha
 	return err
 }
 
-func (c *Controller) observeCAPApplicationSubdomains(ca *v1alpha1.CAPApplication, result *ReconcileResult) (*ReconcileResult, error) {
+func (c *Controller) observeCAPApplicationSubdomains(ca *v1alpha2.CAPApplication, result *ReconcileResult) (*ReconcileResult, error) {
 	mapSubDomains := map[string]struct{}{}
 
 	// Get all versions and tenants
@@ -322,7 +329,7 @@ func (c *Controller) observeCAPApplicationSubdomains(ca *v1alpha1.CAPApplication
 	return result, nil
 }
 
-func (c *Controller) getCachedApplicationResources(ca *v1alpha1.CAPApplication) (versions []*v1alpha1.CAPApplicationVersion, tenants []*v1alpha1.CAPTenant, err error) {
+func (c *Controller) getCachedApplicationResources(ca *v1alpha2.CAPApplication) (versions []*v1alpha2.CAPApplicationVersion, tenants []*v1alpha2.CAPTenant, err error) {
 	versions, err = c.getCachedCAPApplicationVersions(ca)
 	if err != nil {
 		return nil, nil, err
@@ -334,29 +341,29 @@ func (c *Controller) getCachedApplicationResources(ca *v1alpha1.CAPApplication) 
 	return versions, tenants, nil
 }
 
-func addDomainReferencesToReconcileResult(refs []v1alpha1.DomainRef, result *ReconcileResult, namespace string) {
+func addDomainReferencesToReconcileResult(refs []v1alpha2.DomainRef, result *ReconcileResult, namespace string) {
 	for _, ref := range refs {
 		switch ref.Kind {
-		case v1alpha1.DomainKind:
+		case v1alpha2.DomainKind:
 			result.AddResource(ResourceDomain, ref.Name, namespace, 0)
-		case v1alpha1.ClusterDomainKind:
+		case v1alpha2.ClusterDomainKind:
 			result.AddResource(ResourceClusterDomain, ref.Name, corev1.NamespaceAll, 0)
 		}
 	}
 }
 
-func (c *Controller) validateSecrets(ca *v1alpha1.CAPApplication) (bool, error) {
+func (c *Controller) validateSecrets(ca *v1alpha2.CAPApplication) (bool, error) {
 	err := c.checkSecretsExist(ca.Spec.BTP.Services, ca.Namespace)
 
 	if err == nil {
 		return false, nil
 	} else if !k8sErrors.IsNotFound(err) {
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProcessingSecretsError", err.Error())
+		ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateError, metav1.ConditionFalse, "ProcessingSecretsError", err.Error())
 		return false, err
 	}
 
 	// waiting for secrets
-	message := fmt.Sprintf("waiting for secrets to get ready for %s %s.%s; %s", v1alpha1.CAPApplicationKind, ca.Name, ca.Namespace, err.Error())
+	message := fmt.Sprintf("waiting for secrets to get ready for %s %s.%s; %s", v1alpha2.CAPApplicationKind, ca.Name, ca.Namespace, err.Error())
 
 	util.LogInfo(message, string(Processing), ca, nil)
 	c.Event(ca, nil, corev1.EventTypeWarning, CAPApplicationEventMissingSecrets, EventActionProcessingSecrets, message)
@@ -364,10 +371,10 @@ func (c *Controller) validateSecrets(ca *v1alpha1.CAPApplication) (bool, error) 
 	return true, nil
 }
 
-func (c *Controller) getRelevantTenantsForCA(ca *v1alpha1.CAPApplication) ([]*v1alpha1.CAPTenant, error) {
+func (c *Controller) getRelevantTenantsForCA(ca *v1alpha2.CAPApplication) ([]*v1alpha2.CAPTenant, error) {
 	// No tenants for services only scenario
 	if ca.IsServicesOnly() {
-		return []*v1alpha1.CAPTenant{}, nil
+		return []*v1alpha2.CAPTenant{}, nil
 	}
 	tenantLabels := map[string]string{}
 	tenantLabels[LabelAppIdHash] = sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
@@ -376,20 +383,20 @@ func (c *Controller) getRelevantTenantsForCA(ca *v1alpha1.CAPApplication) ([]*v1
 	if err != nil {
 		return nil, err
 	}
-	return c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(ca.Namespace).List(tenantsSelector)
+	return c.crdInformerFactory.Sme().V1alpha2().CAPTenants().Lister().CAPTenants(ca.Namespace).List(tenantsSelector)
 
 }
 
-func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion) (bool, error) {
+func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, ca *v1alpha2.CAPApplication, cav *v1alpha2.CAPApplicationVersion) (bool, error) {
 	// No tenants for services only scenario or if Provider is explicitly set to empty
 	if ca.IsServicesOnly() || ca.IsProviderEmpty() {
 		return false, nil
 	}
 	providerTenantName := strings.Join([]string{ca.Name, TenantTypeProvider}, "-")
-	tenant, err := c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(ca.Namespace).Get(providerTenantName)
+	tenant, err := c.crdInformerFactory.Sme().V1alpha2().CAPTenants().Lister().CAPTenants(ca.Namespace).Get(providerTenantName)
 	if err != nil {
 		if !k8sErrors.IsNotFound(err) {
-			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
+			ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
 			return false, err
 		}
 
@@ -399,108 +406,58 @@ func (c *Controller) reconcileCAPApplicationProviderTenant(ctx context.Context, 
 	}
 	if !isCROConditionReady(tenant.Status.GenericStatus) {
 		// Upgrade errors also handled
-		if tenant.Status.State == v1alpha1.CAPTenantStateProvisioningError || tenant.Status.State == v1alpha1.CAPTenantStateUpgradeError {
-			err = fmt.Errorf("provider %s in state %s for %s %s.%s", v1alpha1.CAPTenantKind, tenant.Status.State, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
-			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
+		if tenant.Status.State == v1alpha2.CAPTenantStateProvisioningError || tenant.Status.State == v1alpha2.CAPTenantStateUpgradeError {
+			err = fmt.Errorf("provider %s in state %s for %s %s.%s", v1alpha2.CAPTenantKind, tenant.Status.State, v1alpha2.CAPApplicationKind, ca.Namespace, ca.Name)
+			ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
 			return false, err
 		}
 
-		msg := fmt.Sprintf("provider %v not ready for %v %v.%v; waiting for it to be ready", v1alpha1.CAPTenantKind, v1alpha1.CAPApplicationKind, ca.Namespace, ca.Name)
+		msg := fmt.Sprintf("provider %v not ready for %v %v.%v; waiting for it to be ready", v1alpha2.CAPTenantKind, v1alpha2.CAPApplicationKind, ca.Namespace, ca.Name)
 		util.LogInfo("Waiting for provider tenant to be ready", string(Processing), ca, tenant, "tenantId", ca.Spec.Provider.TenantId)
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, EventActionProviderTenantProcessing, msg)
+		ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateProcessing, metav1.ConditionFalse, EventActionProviderTenantProcessing, msg)
 		return true, nil
 	}
 
 	return false, nil
 }
 
-func (c *Controller) createProviderTenant(ctx context.Context, ca *v1alpha1.CAPApplication, version string, providerTenantName string) (tenant *v1alpha1.CAPTenant, err error) {
-	providerSubaccountId := ca.Spec.ProviderSubaccountId
-	tenantLabels := map[string]string{
-		LabelTenantId: ca.Spec.Provider.TenantId,
-	}
-
-	globalAccountGUID := ca.Spec.GlobalAccountId
-	if globalAccountGUID == "" {
-		globalAccountGUID = ca.Annotations[AnnotationGlobalAccountId]
-	}
-
-	// Create a secret with the provider subscription context (dervied from the spec of CAPApplication)
-	secret, err := c.kubeClient.CoreV1().Secrets(ca.Namespace).Create(context.TODO(), &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: providerTenantName + "-",
-			Namespace:    ca.Namespace,
-			Labels:       tenantLabels,
-		},
-		StringData: map[string]string{
-			SubscriptionContext: `{
-					"subscriptionAppName": "` + ca.Spec.BTPAppName + `",
-					"subscribedTenantId": "` + ca.Spec.Provider.TenantId + `",
-					"subscribedSubaccountId": "` + providerSubaccountId + `",
-					"subscribedSubdomain": "` + ca.Spec.Provider.SubDomain + `",
-					"globalAccountGUID": "` + globalAccountGUID + `"
-				}`,
-		},
-	}, metav1.CreateOptions{})
-	if err != nil {
-		util.LogError(err, "Error creating tenant subscription context secret", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
-		return
-	}
-
+func (c *Controller) createProviderTenant(ctx context.Context, ca *v1alpha2.CAPApplication, version string, providerTenantName string) (tenant *v1alpha2.CAPTenant, err error) {
 	// Create provider tenant
 	util.LogInfo("Creating provider tenant", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
-	annotations := map[string]string{
-		AnnotationSubscriptionContextSecret: secret.Name, // Store the secret name in the tenant annotation
-	}
+
 	labels := map[string]string{
 		LabelTenantType: TenantTypeProvider,
 		LabelTenantId:   ca.Spec.Provider.TenantId,
+		LabelAppIdHash:  sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName),
 	}
 
-	labels[LabelAppIdHash] = sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
-
-	if tenant, err = c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Create(
-		ctx, &v1alpha1.CAPTenant{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        providerTenantName,
-				Namespace:   ca.Namespace,
-				Annotations: annotations,
-				Labels:      labels,
-			},
-			Spec: v1alpha1.CAPTenantSpec{
+	if tenant, err = c.crdClient.SmeV1alpha2().CAPTenants(ca.Namespace).Create(
+		ctx, &v1alpha2.CAPTenant{
+			Name:      providerTenantName,
+			Namespace: ca.Namespace,
+			Labels:    labels,
+			Spec: v1alpha2.CAPTenantSpec{
 				CAPApplicationInstance: ca.Name,
-				BTPTenantIdentification: v1alpha1.BTPTenantIdentification{
+				BTPTenantIdentification: v1alpha2.BTPTenantIdentification{
 					SubDomain: ca.Spec.Provider.SubDomain,
 					TenantId:  ca.Spec.Provider.TenantId,
 				},
 				Version: version,
 			},
 		}, metav1.CreateOptions{}); err != nil {
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
+		ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
 		return
-	}
-	if tenant != nil {
-		secret.OwnerReferences = []metav1.OwnerReference{
-			*metav1.NewControllerRef(tenant, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind)),
-		}
-		_, err = c.kubeClient.CoreV1().Secrets(tenant.Namespace).Update(context.TODO(), secret, metav1.UpdateOptions{})
-		if err != nil {
-			util.LogError(err, "Error updating tenant subscription context secret", string(Processing), ca, nil, "tenantId", ca.Spec.Provider.TenantId)
-			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProviderTenantError", err.Error())
-			return
-		}
 	}
 	c.Event(ca, tenant, corev1.EventTypeNormal, CAPApplicationEventProviderTenantCreated, EventActionProviderTenantProcessing, fmt.Sprintf("created provider tenant %s.%s", tenant.Namespace, tenant.Name))
 	return
 }
 
-func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alpha1.CAPApplication) (*ReconcileResult, error) {
+func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alpha2.CAPApplication) (*ReconcileResult, error) {
 	var err error
 
 	util.LogInfo("Attempting to delete application", string(Deleting), ca, nil)
-	if ca.Status.State != v1alpha1.CAPApplicationStateDeleting {
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateDeleting, metav1.ConditionFalse, "DeleteTriggered", "")
+	if ca.Status.State != v1alpha2.CAPApplicationStateDeleting {
+		ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateDeleting, metav1.ConditionFalse, "DeleteTriggered", "")
 		return NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 0), nil
 	}
 
@@ -521,7 +478,7 @@ func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alp
 	// delete CAPApplication
 	if removeFinalizer(&ca.Finalizers, FinalizerCAPApplication) {
 		// requeue domain references for cleanup
-		var outdatedRefs []v1alpha1.DomainRef
+		var outdatedRefs []v1alpha2.DomainRef
 		json.Unmarshal([]byte(ca.Status.DomainSpecHash), &outdatedRefs) // ignore errors (considering older versions)
 		var requeue *ReconcileResult
 		if outdatedRefs != nil {
@@ -536,7 +493,7 @@ func (c *Controller) handleCAPApplicationDeletion(ctx context.Context, ca *v1alp
 	return nil, nil
 }
 
-func (c *Controller) checkTenants(ca *v1alpha1.CAPApplication) (bool, error) {
+func (c *Controller) checkTenants(ca *v1alpha2.CAPApplication) (bool, error) {
 	ignoredTenants := 0
 	tenants, err := c.getRelevantTenantsForCA(ca)
 	if err != nil {
@@ -546,7 +503,7 @@ func (c *Controller) checkTenants(ca *v1alpha1.CAPApplication) (bool, error) {
 	// Automatically delete the provider tenant on deleting CAPApplication.
 	for _, tenant := range tenants {
 		if tenantType, ok := tenant.Labels[LabelTenantType]; ok && tenantType == TenantTypeProvider {
-			c.crdClient.SmeV1alpha1().CAPTenants(ca.Namespace).Delete(context.TODO(), tenant.Name, metav1.DeleteOptions{})
+			c.crdClient.SmeV1alpha2().CAPTenants(ca.Namespace).Delete(context.TODO(), tenant.Name, metav1.DeleteOptions{})
 			ignoredTenants = 1
 			break
 		}
@@ -557,7 +514,7 @@ func (c *Controller) checkTenants(ca *v1alpha1.CAPApplication) (bool, error) {
 	if tenantsExist {
 		util.LogInfo("Dependent tenants found", string(Deleting), ca, nil, "tenantCount", len(tenants))
 		if len(tenants) > ignoredTenants {
-			ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateDeleting, metav1.ConditionFalse, "TenantsExist", "Delete all tenants (e.g. by unsubscribing to the app) before deleting this application")
+			ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateDeleting, metav1.ConditionFalse, "TenantsExist", "Delete all tenants (e.g. by unsubscribing to the app) before deleting this application")
 		}
 	} else {
 		util.LogInfo("No dependent tenants found, proceeding with deletion", string(Deleting), ca, nil)
@@ -566,7 +523,7 @@ func (c *Controller) checkTenants(ca *v1alpha1.CAPApplication) (bool, error) {
 	return tenantsExist, nil
 }
 
-func (c *Controller) prepareCAPApplication(ca *v1alpha1.CAPApplication) (update bool) {
+func (c *Controller) prepareCAPApplication(ca *v1alpha2.CAPApplication) (update bool) {
 	// Do nothing when object is deleted
 	if ca.DeletionTimestamp != nil {
 		return false
@@ -591,7 +548,7 @@ func (c *Controller) prepareCAPApplication(ca *v1alpha1.CAPApplication) (update 
 	return update
 }
 
-func (c *Controller) areApplicationDomainReferencesReady(ca *v1alpha1.CAPApplication) (bool, error) {
+func (c *Controller) areApplicationDomainReferencesReady(ca *v1alpha2.CAPApplication) (bool, error) {
 	// check if all domain references are ready
 	doms, cdoms, err := fetchDomainResourcesFromCache(c, ca.Spec.DomainRefs, ca.Namespace)
 	if err != nil {
@@ -604,40 +561,40 @@ func (c *Controller) areApplicationDomainReferencesReady(ca *v1alpha1.CAPApplica
 	return areDomainResourcesReady(cdoms)
 }
 
-func (c *Controller) reconcileApplicationDomainReferences(ca *v1alpha1.CAPApplication) (requeue *ReconcileResult, err error) {
+func (c *Controller) reconcileApplicationDomainReferences(ca *v1alpha2.CAPApplication) (requeue *ReconcileResult, err error) {
 	// (1) fetch referenced domain resources
 	var (
-		doms  []*v1alpha1.Domain
-		cdoms []*v1alpha1.ClusterDomain
+		doms  []*v1alpha2.Domain
+		cdoms []*v1alpha2.ClusterDomain
 	)
 	doms, cdoms, err = fetchDomainResourcesFromCache(c, ca.Spec.DomainRefs, ca.Namespace)
 	if k8sErrors.IsNotFound(err) {
 		// ignore error and wait for domain resources to be created
 		c.Event(ca, nil, corev1.EventTypeWarning, CAPApplicationEventMissingDomainReferences, EventActionProcessingDomainResources, err.Error())
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateProcessing, metav1.ConditionFalse, "ProcessingDomainReferences", "Waiting for all domain references to be created")
+		ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateProcessing, metav1.ConditionFalse, "ProcessingDomainReferences", "Waiting for all domain references to be created")
 		requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 5*time.Second)
 		return requeue, nil
 	} else if err != nil {
-		ca.SetStatusWithReadyCondition(v1alpha1.CAPApplicationStateError, metav1.ConditionFalse, "ProcessingDomainReferences", err.Error())
+		ca.SetStatusWithReadyCondition(v1alpha2.CAPApplicationStateError, metav1.ConditionFalse, "ProcessingDomainReferences", err.Error())
 		return nil, err
 	}
 
 	// (2) check and wait till all referenced domain resources are ready
-	setNotReady := func(state v1alpha1.CAPApplicationState, msg string) {
+	setNotReady := func(state v1alpha2.CAPApplicationState, msg string) {
 		ca.SetStatusWithReadyCondition(state, metav1.ConditionFalse, "ProcessingDomainReferences", msg)
 		requeue = NewReconcileResultWithResource(ResourceCAPApplication, ca.Name, ca.Namespace, 5*time.Second)
 	}
 
 	setStatus := func(r bool, e error) bool {
 		var (
-			s v1alpha1.CAPApplicationState
+			s v1alpha2.CAPApplicationState
 			m string
 		)
 		if e != nil {
-			s = v1alpha1.CAPApplicationStateError
+			s = v1alpha2.CAPApplicationStateError
 			m = e.Error()
 		} else if !r {
-			s = v1alpha1.CAPApplicationStateProcessing
+			s = v1alpha2.CAPApplicationStateProcessing
 			m = "Waiting for domain references to be ready"
 		} else {
 			return false
@@ -687,7 +644,7 @@ func (c *Controller) reconcileApplicationDomainReferences(ca *v1alpha1.CAPApplic
 	return
 }
 
-func (c *Controller) addApplicationResourcesToReconcileResult(ca *v1alpha1.CAPApplication, requeue *ReconcileResult) error {
+func (c *Controller) addApplicationResourcesToReconcileResult(ca *v1alpha2.CAPApplication, requeue *ReconcileResult) error {
 	versions, tenants, err := c.getCachedApplicationResources(ca)
 	if err != nil {
 		return err
@@ -709,7 +666,7 @@ func (c *Controller) addApplicationResourcesToReconcileResult(ca *v1alpha1.CAPAp
 }
 
 // Collect service operation metrics based on the status of the CAV
-func collectServiceOperationMetrics(ca *v1alpha1.CAPApplication, cav *v1alpha1.CAPApplicationVersion, err error) {
+func collectServiceOperationMetrics(ca *v1alpha2.CAPApplication, cav *v1alpha2.CAPApplicationVersion, err error) {
 	appIdHash := ca.Labels[LabelAppIdHash]
 
 	// Collect/Increment overall completed service operation metrics

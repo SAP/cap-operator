@@ -7,29 +7,23 @@ SPDX-License-Identifier: Apache-2.0
 
 package v1alpha1
 
+import (
+	v1alpha2 "github.com/sap/cap-operator/pkg/client/applyconfiguration/sme.sap.com/v1alpha2"
+)
+
 // CAPApplicationSpecApplyConfiguration represents a declarative configuration of the CAPApplicationSpec type for use
 // with apply.
 //
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPApplicationSpec defines the desired state of CAPApplication
 type CAPApplicationSpecApplyConfiguration struct {
-	// Reference to `Domain` resources used by the application
-	DomainRefs []DomainRefApplyConfiguration `json:"domainRefs,omitempty"`
+	// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
+	v1alpha2.CAPApplicationSpecApplyConfiguration `json:""`
 	// Deprecated: Domains used by the application. Will be removed in future versions, use `DomainRefs` instead
 	Domains *ApplicationDomainsApplyConfiguration `json:"domains,omitempty"`
 	// Deprecated: SAP BTP Global Account Identifier where services are entitled for the current application
 	// Will be removed soon, use ProviderSubaccountId instead
 	GlobalAccountId *string `json:"globalAccountId,omitempty"`
-	// The subaccount ID in which the application is provided
-	ProviderSubaccountId *string `json:"providerSubaccountId,omitempty"`
-	// Short name for the application (BTP XSAPPNAME)
-	BTPAppName *string `json:"btpAppName,omitempty"`
-	// Deprecated: Provider subaccount where application services are created
-	// Will be removed, consider automating this via BTP / subscription instead!
-	Provider *BTPTenantIdentificationApplyConfiguration `json:"provider,omitempty"`
-	// SAP BTP Services consumed by the application
-	BTP *BTPApplyConfiguration `json:"btp,omitempty"`
-	// Rollout on Credentials Update may be used to rollout deployments when dependent service credentials are updated
-	RolloutOnCredentialUpdate *bool `json:"rolloutOnCredentialUpdate,omitempty"`
 }
 
 // CAPApplicationSpecApplyConfiguration constructs a declarative configuration of the CAPApplicationSpec type for use with
@@ -41,13 +35,53 @@ func CAPApplicationSpec() *CAPApplicationSpecApplyConfiguration {
 // WithDomainRefs adds the given value to the DomainRefs field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the DomainRefs field.
-func (b *CAPApplicationSpecApplyConfiguration) WithDomainRefs(values ...*DomainRefApplyConfiguration) *CAPApplicationSpecApplyConfiguration {
+func (b *CAPApplicationSpecApplyConfiguration) WithDomainRefs(values ...*v1alpha2.DomainRefApplyConfiguration) *CAPApplicationSpecApplyConfiguration {
 	for i := range values {
 		if values[i] == nil {
 			panic("nil value passed to WithDomainRefs")
 		}
-		b.DomainRefs = append(b.DomainRefs, *values[i])
+		b.CAPApplicationSpecApplyConfiguration.DomainRefs = append(b.CAPApplicationSpecApplyConfiguration.DomainRefs, *values[i])
 	}
+	return b
+}
+
+// WithProviderSubaccountId sets the ProviderSubaccountId field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ProviderSubaccountId field is set to the value of the last call.
+func (b *CAPApplicationSpecApplyConfiguration) WithProviderSubaccountId(value string) *CAPApplicationSpecApplyConfiguration {
+	b.CAPApplicationSpecApplyConfiguration.ProviderSubaccountId = &value
+	return b
+}
+
+// WithBTPAppName sets the BTPAppName field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the BTPAppName field is set to the value of the last call.
+func (b *CAPApplicationSpecApplyConfiguration) WithBTPAppName(value string) *CAPApplicationSpecApplyConfiguration {
+	b.CAPApplicationSpecApplyConfiguration.BTPAppName = &value
+	return b
+}
+
+// WithProvider sets the Provider field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Provider field is set to the value of the last call.
+func (b *CAPApplicationSpecApplyConfiguration) WithProvider(value *v1alpha2.BTPTenantIdentificationApplyConfiguration) *CAPApplicationSpecApplyConfiguration {
+	b.CAPApplicationSpecApplyConfiguration.Provider = value
+	return b
+}
+
+// WithBTP sets the BTP field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the BTP field is set to the value of the last call.
+func (b *CAPApplicationSpecApplyConfiguration) WithBTP(value *v1alpha2.BTPApplyConfiguration) *CAPApplicationSpecApplyConfiguration {
+	b.CAPApplicationSpecApplyConfiguration.BTP = value
+	return b
+}
+
+// WithRolloutOnCredentialUpdate sets the RolloutOnCredentialUpdate field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the RolloutOnCredentialUpdate field is set to the value of the last call.
+func (b *CAPApplicationSpecApplyConfiguration) WithRolloutOnCredentialUpdate(value bool) *CAPApplicationSpecApplyConfiguration {
+	b.CAPApplicationSpecApplyConfiguration.RolloutOnCredentialUpdate = &value
 	return b
 }
 
@@ -64,45 +98,5 @@ func (b *CAPApplicationSpecApplyConfiguration) WithDomains(value *ApplicationDom
 // If called multiple times, the GlobalAccountId field is set to the value of the last call.
 func (b *CAPApplicationSpecApplyConfiguration) WithGlobalAccountId(value string) *CAPApplicationSpecApplyConfiguration {
 	b.GlobalAccountId = &value
-	return b
-}
-
-// WithProviderSubaccountId sets the ProviderSubaccountId field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the ProviderSubaccountId field is set to the value of the last call.
-func (b *CAPApplicationSpecApplyConfiguration) WithProviderSubaccountId(value string) *CAPApplicationSpecApplyConfiguration {
-	b.ProviderSubaccountId = &value
-	return b
-}
-
-// WithBTPAppName sets the BTPAppName field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the BTPAppName field is set to the value of the last call.
-func (b *CAPApplicationSpecApplyConfiguration) WithBTPAppName(value string) *CAPApplicationSpecApplyConfiguration {
-	b.BTPAppName = &value
-	return b
-}
-
-// WithProvider sets the Provider field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Provider field is set to the value of the last call.
-func (b *CAPApplicationSpecApplyConfiguration) WithProvider(value *BTPTenantIdentificationApplyConfiguration) *CAPApplicationSpecApplyConfiguration {
-	b.Provider = value
-	return b
-}
-
-// WithBTP sets the BTP field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the BTP field is set to the value of the last call.
-func (b *CAPApplicationSpecApplyConfiguration) WithBTP(value *BTPApplyConfiguration) *CAPApplicationSpecApplyConfiguration {
-	b.BTP = value
-	return b
-}
-
-// WithRolloutOnCredentialUpdate sets the RolloutOnCredentialUpdate field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the RolloutOnCredentialUpdate field is set to the value of the last call.
-func (b *CAPApplicationSpecApplyConfiguration) WithRolloutOnCredentialUpdate(value bool) *CAPApplicationSpecApplyConfiguration {
-	b.RolloutOnCredentialUpdate = &value
 	return b
 }

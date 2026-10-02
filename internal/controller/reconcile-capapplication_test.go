@@ -455,11 +455,11 @@ func TestProviderTenantCreationError(t *testing.T) {
 			},
 			expectedResources:     "testdata/capapplication/ca-43.expected.yaml",
 			expectError:           true,
-			mockErrorForResources: []ResourceAction{{Verb: "create", Group: "sme.sap.com", Version: "v1alpha1", Resource: "captenants", Namespace: "*", Name: "*"}},
+			mockErrorForResources: []ResourceAction{{Verb: "create", Group: "sme.sap.com", Version: "v1alpha2", Resource: "captenants", Namespace: "*", Name: "*"}},
 		},
 	)
 
-	if err.Error() != "mocked api error (captenants.sme.sap.com/v1alpha1)" {
+	if err.Error() != "mocked api error (captenants.sme.sap.com/v1alpha2)" {
 		t.Error("Wrong error message")
 	}
 }

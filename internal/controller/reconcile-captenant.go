@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/sap/cap-operator/internal/util"
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -19,16 +19,16 @@ import (
 )
 
 type IdentifiedCAPTenantOperations struct {
-	active    []*v1alpha1.CAPTenantOperation
-	processed []*v1alpha1.CAPTenantOperation
+	active    []*v1alpha2.CAPTenantOperation
+	processed []*v1alpha2.CAPTenantOperation
 }
 
 type CAPTenantOperationTypeSelector string
 
-type CAPTenantStateHandlerFunc func(ctx context.Context, c *Controller, cat *v1alpha1.CAPTenant, target StateCondition, ctop *v1alpha1.CAPTenantOperation) (*ReconcileResult, error)
+type CAPTenantStateHandlerFunc func(ctx context.Context, c *Controller, cat *v1alpha2.CAPTenant, target StateCondition, ctop *v1alpha2.CAPTenantOperation) (*ReconcileResult, error)
 
 type StateCondition struct {
-	state           v1alpha1.CAPTenantState
+	state           v1alpha2.CAPTenantState
 	conditionReason string
 	conditionStatus metav1.ConditionStatus
 }
@@ -46,9 +46,9 @@ type StatusInfo struct {
 
 const (
 	CAPTenantOperationTypeSelectorAll            CAPTenantOperationTypeSelector = "All"
-	CAPTenantOperationTypeSelectorUpgrade        CAPTenantOperationTypeSelector = CAPTenantOperationTypeSelector(v1alpha1.CAPTenantOperationTypeUpgrade)
-	CAPTenantOperationTypeSelectorProvisioning   CAPTenantOperationTypeSelector = CAPTenantOperationTypeSelector(v1alpha1.CAPTenantOperationTypeProvisioning)
-	CAPTenantOperationTypeSelectorDeprovisioning CAPTenantOperationTypeSelector = CAPTenantOperationTypeSelector(v1alpha1.CAPTenantOperationTypeDeprovisioning)
+	CAPTenantOperationTypeSelectorUpgrade        CAPTenantOperationTypeSelector = CAPTenantOperationTypeSelector(v1alpha2.CAPTenantOperationTypeUpgrade)
+	CAPTenantOperationTypeSelectorProvisioning   CAPTenantOperationTypeSelector = CAPTenantOperationTypeSelector(v1alpha2.CAPTenantOperationTypeProvisioning)
+	CAPTenantOperationTypeSelectorDeprovisioning CAPTenantOperationTypeSelector = CAPTenantOperationTypeSelector(v1alpha2.CAPTenantOperationTypeDeprovisioning)
 )
 
 const (
@@ -76,78 +76,78 @@ const (
 
 const tenantOperationTimeout = 30 * time.Second
 
-var operationTypeMsgMap = map[v1alpha1.CAPTenantOperationType]string{
-	v1alpha1.CAPTenantOperationTypeProvisioning:   string(Provisioning),
-	v1alpha1.CAPTenantOperationTypeUpgrade:        string(Upgrading),
-	v1alpha1.CAPTenantOperationTypeDeprovisioning: string(Deprovisioning),
+var operationTypeMsgMap = map[v1alpha2.CAPTenantOperationType]string{
+	v1alpha2.CAPTenantOperationTypeProvisioning:   string(Provisioning),
+	v1alpha2.CAPTenantOperationTypeUpgrade:        string(Upgrading),
+	v1alpha2.CAPTenantOperationTypeDeprovisioning: string(Deprovisioning),
 }
 
 // maps tenant operation types (and their status) to CAPTenant status changes
-var TenantOperationStatusMap = map[v1alpha1.CAPTenantOperationType]StatusInfo{
-	v1alpha1.CAPTenantOperationTypeProvisioning: {
+var TenantOperationStatusMap = map[v1alpha2.CAPTenantOperationType]StatusInfo{
+	v1alpha2.CAPTenantOperationTypeProvisioning: {
 		failed: TargetStateHandler{
-			target:  StateCondition{state: v1alpha1.CAPTenantStateProvisioningError, conditionReason: CAPTenantEventProvisioningFailed, conditionStatus: metav1.ConditionFalse},
+			target:  StateCondition{state: v1alpha2.CAPTenantStateProvisioningError, conditionReason: CAPTenantEventProvisioningFailed, conditionStatus: metav1.ConditionFalse},
 			handler: handleFailingTenantOperation,
 		},
 		completed: TargetStateHandler{
-			target:  StateCondition{state: v1alpha1.CAPTenantStateReady, conditionReason: CAPTenantEventProvisioningCompleted, conditionStatus: metav1.ConditionTrue},
+			target:  StateCondition{state: v1alpha2.CAPTenantStateReady, conditionReason: CAPTenantEventProvisioningCompleted, conditionStatus: metav1.ConditionTrue},
 			handler: handleCompletedProvisioningUpgradeOperation,
 		},
 		processing: TargetStateHandler{
-			target:  StateCondition{state: v1alpha1.CAPTenantStateProvisioning, conditionReason: CAPTenantEventProvisioningOperationCreated, conditionStatus: metav1.ConditionFalse},
+			target:  StateCondition{state: v1alpha2.CAPTenantStateProvisioning, conditionReason: CAPTenantEventProvisioningOperationCreated, conditionStatus: metav1.ConditionFalse},
 			handler: handleWaitingForTenantOperation,
 		},
 	},
-	v1alpha1.CAPTenantOperationTypeUpgrade: { // NOTE: during upgrades the ready condition status remains "True" as the tenant is in use
+	v1alpha2.CAPTenantOperationTypeUpgrade: { // NOTE: during upgrades the ready condition status remains "True" as the tenant is in use
 		failed: TargetStateHandler{
-			target:  StateCondition{state: v1alpha1.CAPTenantStateUpgradeError, conditionReason: CAPTenantEventUpgradeFailed, conditionStatus: metav1.ConditionTrue},
+			target:  StateCondition{state: v1alpha2.CAPTenantStateUpgradeError, conditionReason: CAPTenantEventUpgradeFailed, conditionStatus: metav1.ConditionTrue},
 			handler: handleFailingTenantOperation,
 		},
 		completed: TargetStateHandler{
-			target:  StateCondition{state: v1alpha1.CAPTenantStateReady, conditionReason: CAPTenantEventUpgradeCompleted, conditionStatus: metav1.ConditionTrue},
+			target:  StateCondition{state: v1alpha2.CAPTenantStateReady, conditionReason: CAPTenantEventUpgradeCompleted, conditionStatus: metav1.ConditionTrue},
 			handler: handleCompletedProvisioningUpgradeOperation,
 		},
 		processing: TargetStateHandler{
-			target:  StateCondition{state: v1alpha1.CAPTenantStateUpgrading, conditionReason: CAPTenantEventUpgradeOperationCreated, conditionStatus: metav1.ConditionTrue},
+			target:  StateCondition{state: v1alpha2.CAPTenantStateUpgrading, conditionReason: CAPTenantEventUpgradeOperationCreated, conditionStatus: metav1.ConditionTrue},
 			handler: handleWaitingForTenantOperation,
 		},
 	},
-	v1alpha1.CAPTenantOperationTypeDeprovisioning: {
+	v1alpha2.CAPTenantOperationTypeDeprovisioning: {
 		failed: TargetStateHandler{
-			target:  StateCondition{state: v1alpha1.CAPTenantStateDeleting, conditionReason: CAPTenantEventDeprovisioningFailed, conditionStatus: metav1.ConditionFalse},
+			target:  StateCondition{state: v1alpha2.CAPTenantStateDeleting, conditionReason: CAPTenantEventDeprovisioningFailed, conditionStatus: metav1.ConditionFalse},
 			handler: handleFailingTenantOperation,
 		},
 		completed: TargetStateHandler{
-			target:  StateCondition{state: v1alpha1.CAPTenantStateDeleting, conditionReason: CAPTenantEventDeprovisioningCompleted, conditionStatus: metav1.ConditionFalse},
+			target:  StateCondition{state: v1alpha2.CAPTenantStateDeleting, conditionReason: CAPTenantEventDeprovisioningCompleted, conditionStatus: metav1.ConditionFalse},
 			handler: removeTenantFinalizers,
 		},
 		processing: TargetStateHandler{
-			target:  StateCondition{state: v1alpha1.CAPTenantStateDeleting, conditionReason: CAPTenantEventDeprovisioningOperationCreated, conditionStatus: metav1.ConditionFalse},
+			target:  StateCondition{state: v1alpha2.CAPTenantStateDeleting, conditionReason: CAPTenantEventDeprovisioningOperationCreated, conditionStatus: metav1.ConditionFalse},
 			handler: handleWaitingForTenantOperation,
 		},
 	},
 }
 
-func getTenantReconcileResultConsideringDeletion(cat *v1alpha1.CAPTenant, fallback *ReconcileResult) *ReconcileResult {
-	if cat.DeletionTimestamp != nil && cat.Status.State != v1alpha1.CAPTenantStateDeleting {
+func getTenantReconcileResultConsideringDeletion(cat *v1alpha2.CAPTenant, fallback *ReconcileResult) *ReconcileResult {
+	if cat.DeletionTimestamp != nil && cat.Status.State != v1alpha2.CAPTenantStateDeleting {
 		return NewReconcileResultWithResource(ResourceCAPTenant, cat.Name, cat.Namespace, tenantOperationTimeout)
 	}
 	return fallback
 }
 
-var handleWaitingForTenantOperation = func(ctx context.Context, c *Controller, cat *v1alpha1.CAPTenant, target StateCondition, ctop *v1alpha1.CAPTenantOperation) (*ReconcileResult, error) {
+var handleWaitingForTenantOperation = func(ctx context.Context, c *Controller, cat *v1alpha2.CAPTenant, target StateCondition, ctop *v1alpha2.CAPTenantOperation) (*ReconcileResult, error) {
 	// NOTE: not returning a requeue item is ok, as changes in CAPTenantOperation status will queue the item via the informer
 	util.LogInfo("Waiting for tenant operation to complete", operationTypeMsgMap[ctop.Spec.Operation], cat, ctop, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
-	cat.SetStatusWithReadyCondition(target.state, target.conditionStatus, target.conditionReason, fmt.Sprintf("waiting for %s %s.%s of type %s to complete", v1alpha1.CAPTenantOperationKind, ctop.Namespace, ctop.Name, ctop.Spec.Operation))
+	cat.SetStatusWithReadyCondition(target.state, target.conditionStatus, target.conditionReason, fmt.Sprintf("waiting for %s %s.%s of type %s to complete", v1alpha2.CAPTenantOperationKind, ctop.Namespace, ctop.Name, ctop.Spec.Operation))
 	return NewReconcileResultWithResource(ResourceCAPTenant, cat.Name, cat.Namespace, tenantOperationTimeout), nil // requeue while the tenant operation is being processed
 }
 
-var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *Controller, cat *v1alpha1.CAPTenant, target StateCondition, ctop *v1alpha1.CAPTenantOperation) (*ReconcileResult, error) {
+var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *Controller, cat *v1alpha2.CAPTenant, target StateCondition, ctop *v1alpha2.CAPTenantOperation) (*ReconcileResult, error) {
 	util.LogInfo("Tenant operation successfully completed", operationTypeMsgMap[ctop.Spec.Operation], cat, ctop, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
-	message := fmt.Sprintf("%s %s.%s successfully completed", v1alpha1.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
+	message := fmt.Sprintf("%s %s.%s successfully completed", v1alpha2.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
 	c.Event(cat, ctop, corev1.EventTypeNormal, target.conditionReason, string(target.state), message)
 
-	ca, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister().CAPApplications(cat.Namespace).Get(cat.Spec.CAPApplicationInstance)
+	ca, err := c.crdInformerFactory.Sme().V1alpha2().CAPApplications().Lister().CAPApplications(cat.Namespace).Get(cat.Spec.CAPApplicationInstance)
 	if err != nil {
 		return nil, err
 	}
@@ -179,16 +179,16 @@ var handleCompletedProvisioningUpgradeOperation = func(ctx context.Context, c *C
 	return getTenantReconcileResultConsideringDeletion(cat, nil), nil
 }
 
-var handleFailingTenantOperation = func(ctx context.Context, c *Controller, cat *v1alpha1.CAPTenant, target StateCondition, ctop *v1alpha1.CAPTenantOperation) (*ReconcileResult, error) {
+var handleFailingTenantOperation = func(ctx context.Context, c *Controller, cat *v1alpha2.CAPTenant, target StateCondition, ctop *v1alpha2.CAPTenantOperation) (*ReconcileResult, error) {
 	var (
 		message string
 		related runtime.Object = nil
 	)
 	if ctop == nil {
-		message = fmt.Sprintf("Could not identify %s for tenant state %s", v1alpha1.CAPTenantOperationKind, cat.Status.State)
+		message = fmt.Sprintf("Could not identify %s for tenant state %s", v1alpha2.CAPTenantOperationKind, cat.Status.State)
 		util.LogInfo(message, string(Processing), cat, nil, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 	} else {
-		message = fmt.Sprintf("%s %s.%s failed", v1alpha1.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
+		message = fmt.Sprintf("%s %s.%s failed", v1alpha2.CAPTenantOperationKind, ctop.Namespace, ctop.Name)
 		util.LogInfo("Tenant operation failed", operationTypeMsgMap[ctop.Spec.Operation], cat, ctop, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
 		related = ctop
 	}
@@ -198,9 +198,9 @@ var handleFailingTenantOperation = func(ctx context.Context, c *Controller, cat 
 	return getTenantReconcileResultConsideringDeletion(cat, nil), nil
 }
 
-var removeTenantFinalizers = func(ctx context.Context, c *Controller, cat *v1alpha1.CAPTenant, target StateCondition, ctop *v1alpha1.CAPTenantOperation) (*ReconcileResult, error) {
+var removeTenantFinalizers = func(ctx context.Context, c *Controller, cat *v1alpha2.CAPTenant, target StateCondition, ctop *v1alpha2.CAPTenantOperation) (*ReconcileResult, error) {
 	if ctop != nil {
-		c.Event(cat, ctop, corev1.EventTypeNormal, target.conditionReason, string(target.state), fmt.Sprintf("%s of %s %s.%s successfully completed; attempting to remove finalizers", ctop.Spec.Operation, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name))
+		c.Event(cat, ctop, corev1.EventTypeNormal, target.conditionReason, string(target.state), fmt.Sprintf("%s of %s %s.%s successfully completed; attempting to remove finalizers", ctop.Spec.Operation, v1alpha2.CAPTenantKind, cat.Namespace, cat.Name))
 	}
 
 	// remove known finalizer
@@ -212,7 +212,7 @@ var removeTenantFinalizers = func(ctx context.Context, c *Controller, cat *v1alp
 }
 
 func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, _ int) (requeue *ReconcileResult, err error) {
-	cached, err := c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Lister().CAPTenants(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
+	cached, err := c.crdInformerFactory.Sme().V1alpha2().CAPTenants().Lister().CAPTenants(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
 	if err != nil {
 		return nil, handleOperatorResourceErrors(err)
 	}
@@ -258,9 +258,9 @@ func (c *Controller) reconcileCAPTenant(ctx context.Context, item QueueItem, _ i
 	return
 }
 
-func (c *Controller) updateCAPTenant(ctx context.Context, cat *v1alpha1.CAPTenant, requeue bool) (result *ReconcileResult, err error) {
-	var catUpdated *v1alpha1.CAPTenant
-	catUpdated, err = c.crdClient.SmeV1alpha1().CAPTenants(cat.Namespace).Update(ctx, cat, metav1.UpdateOptions{})
+func (c *Controller) updateCAPTenant(ctx context.Context, cat *v1alpha2.CAPTenant, requeue bool) (result *ReconcileResult, err error) {
+	var catUpdated *v1alpha2.CAPTenant
+	catUpdated, err = c.crdClient.SmeV1alpha2().CAPTenants(cat.Namespace).Update(ctx, cat, metav1.UpdateOptions{})
 	// Update reference to the resource
 	if catUpdated != nil {
 		*cat = *catUpdated
@@ -271,7 +271,7 @@ func (c *Controller) updateCAPTenant(ctx context.Context, cat *v1alpha1.CAPTenan
 	return
 }
 
-func findLatestCreatedTenantOperation(ops []*v1alpha1.CAPTenantOperation, selector CAPTenantOperationTypeSelector) (latest *v1alpha1.CAPTenantOperation) {
+func findLatestCreatedTenantOperation(ops []*v1alpha2.CAPTenantOperation, selector CAPTenantOperationTypeSelector) (latest *v1alpha2.CAPTenantOperation) {
 	for _, op := range ops {
 		// workaround to fix pointer resolution after loop -> https://stackoverflow.com/questions/45967305/copying-the-address-of-a-loop-variable-in-go
 		ctop := op
@@ -286,8 +286,8 @@ func findLatestCreatedTenantOperation(ops []*v1alpha1.CAPTenantOperation, select
 	return latest
 }
 
-func findCAPTenantOperationTypeFromProcessingState(state v1alpha1.CAPTenantState) v1alpha1.CAPTenantOperationType {
-	var opType v1alpha1.CAPTenantOperationType
+func findCAPTenantOperationTypeFromProcessingState(state v1alpha2.CAPTenantState) v1alpha2.CAPTenantOperationType {
+	var opType v1alpha2.CAPTenantOperationType
 	for k, v := range TenantOperationStatusMap {
 		if v.processing.target.state == state {
 			opType = k
@@ -297,7 +297,7 @@ func findCAPTenantOperationTypeFromProcessingState(state v1alpha1.CAPTenantState
 	return opType
 }
 
-func isTenantOperationConditionFailed(ctop *v1alpha1.CAPTenantOperation) bool {
+func isTenantOperationConditionFailed(ctop *v1alpha2.CAPTenantOperation) bool {
 	ready := ctop.Status.GenericStatus.Conditions[0]
 	// NOTE: check reason != StepCompleted, instead of == StepFailed (operation could fail because of multiple reasons)
 	if ready.Status == metav1.ConditionTrue && ready.Reason != CAPTenantOperationConditionReasonStepCompleted {
@@ -306,7 +306,7 @@ func isTenantOperationConditionFailed(ctop *v1alpha1.CAPTenantOperation) bool {
 	return false
 }
 
-func (c *Controller) handleTenantOperationsForCAPTenant(ctx context.Context, cat *v1alpha1.CAPTenant) (*ReconcileResult, error) {
+func (c *Controller) handleTenantOperationsForCAPTenant(ctx context.Context, cat *v1alpha2.CAPTenant) (*ReconcileResult, error) {
 	ops, err := c.getCAPTenantOperationsByType(cat, CAPTenantOperationTypeSelectorAll)
 	if err != nil {
 		return nil, err
@@ -323,7 +323,7 @@ func (c *Controller) handleTenantOperationsForCAPTenant(ctx context.Context, cat
 	}
 
 	// [2] look for operations which have recently finished and set status accordingly
-	if cat.Status.State == v1alpha1.CAPTenantStateProvisioning || cat.Status.State == v1alpha1.CAPTenantStateUpgrading || cat.Status.State == v1alpha1.CAPTenantStateDeleting {
+	if cat.Status.State == v1alpha2.CAPTenantStateProvisioning || cat.Status.State == v1alpha2.CAPTenantStateUpgrading || cat.Status.State == v1alpha2.CAPTenantStateDeleting {
 		opType := findCAPTenantOperationTypeFromProcessingState(cat.Status.State)
 		ctop := findLatestCreatedTenantOperation(ops.processed, CAPTenantOperationTypeSelector(opType))
 		var targetInfo TargetStateHandler
@@ -341,14 +341,14 @@ func (c *Controller) handleTenantOperationsForCAPTenant(ctx context.Context, cat
 	return c.handleNewTenantOperations(ctx, cat, ops)
 }
 
-func (c *Controller) handleNewTenantOperations(ctx context.Context, cat *v1alpha1.CAPTenant, ops *IdentifiedCAPTenantOperations) (*ReconcileResult, error) {
+func (c *Controller) handleNewTenantOperations(ctx context.Context, cat *v1alpha2.CAPTenant, ops *IdentifiedCAPTenantOperations) (*ReconcileResult, error) {
 	// (1)) process deletion when Deletion timestamp is set
 	if cat.DeletionTimestamp != nil {
 		if cat.Status.CurrentCAPApplicationVersionInstance == "" {
 			// there is no valid version so far -> deprovisioning is not required
-			return removeTenantFinalizers(ctx, c, cat, TenantOperationStatusMap[v1alpha1.CAPTenantOperationTypeDeprovisioning].completed.target, nil)
+			return removeTenantFinalizers(ctx, c, cat, TenantOperationStatusMap[v1alpha2.CAPTenantOperationTypeDeprovisioning].completed.target, nil)
 		} else {
-			return c.triggerTenantOperation(ctx, cat, v1alpha1.CAPTenantOperationTypeDeprovisioning)
+			return c.triggerTenantOperation(ctx, cat, v1alpha2.CAPTenantOperationTypeDeprovisioning)
 		}
 	}
 
@@ -359,24 +359,24 @@ func (c *Controller) handleNewTenantOperations(ctx context.Context, cat *v1alpha
 
 	// (3) start provisioning when there is no current version
 	if cat.Status.CurrentCAPApplicationVersionInstance == "" {
-		return c.triggerTenantOperation(ctx, cat, v1alpha1.CAPTenantOperationTypeProvisioning)
+		return c.triggerTenantOperation(ctx, cat, v1alpha2.CAPTenantOperationTypeProvisioning)
 	}
 
 	// (4) check for newer version to upgrade
 	return c.tryForTenantUpgrade(ctx, cat)
 }
 
-func (c *Controller) isNewTenantOperationRequired(ctx context.Context, cat *v1alpha1.CAPTenant, ops *IdentifiedCAPTenantOperations) (bool, error) {
-	if cat.Status.State != v1alpha1.CAPTenantStateProvisioningError && cat.Status.State != v1alpha1.CAPTenantStateUpgradeError {
+func (c *Controller) isNewTenantOperationRequired(ctx context.Context, cat *v1alpha2.CAPTenant, ops *IdentifiedCAPTenantOperations) (bool, error) {
+	if cat.Status.State != v1alpha2.CAPTenantStateProvisioningError && cat.Status.State != v1alpha2.CAPTenantStateUpgradeError {
 		return true, nil
 	}
 
 	// find existing operation (processed) - there can be no active operations at this point in the code (active operations have already been considered)
-	var opType v1alpha1.CAPTenantOperationType
-	if cat.Status.State == v1alpha1.CAPTenantStateProvisioningError {
-		opType = v1alpha1.CAPTenantOperationTypeProvisioning
+	var opType v1alpha2.CAPTenantOperationType
+	if cat.Status.State == v1alpha2.CAPTenantStateProvisioningError {
+		opType = v1alpha2.CAPTenantOperationTypeProvisioning
 	} else {
-		opType = v1alpha1.CAPTenantOperationTypeUpgrade
+		opType = v1alpha2.CAPTenantOperationTypeUpgrade
 	}
 	ctop := findLatestCreatedTenantOperation(ops.processed, CAPTenantOperationTypeSelector(opType))
 	if ctop == nil {
@@ -394,7 +394,7 @@ func (c *Controller) isNewTenantOperationRequired(ctx context.Context, cat *v1al
 }
 
 // create a CAPTenantOperation instance of a specific type (provisioning/deprovisioning/upgrade)
-func (c *Controller) createCAPTenantOperation(ctx context.Context, cat *v1alpha1.CAPTenant, opType v1alpha1.CAPTenantOperationType) (*v1alpha1.CAPTenantOperation, error) {
+func (c *Controller) createCAPTenantOperation(ctx context.Context, cat *v1alpha2.CAPTenant, opType v1alpha2.CAPTenantOperationType) (*v1alpha2.CAPTenantOperation, error) {
 	// delete all previous tenant operations of the current type
 	labelsMap := map[string]string{
 		LabelOwnerIdentifierHash: sha1Sum(cat.Namespace, cat.Name),
@@ -405,9 +405,9 @@ func (c *Controller) createCAPTenantOperation(ctx context.Context, cat *v1alpha1
 	if err != nil {
 		return nil, err
 	}
-	err = c.crdClient.SmeV1alpha1().CAPTenantOperations(cat.Namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: selector.String()})
+	err = c.crdClient.SmeV1alpha2().CAPTenantOperations(cat.Namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
-		return nil, fmt.Errorf("deletion of previous %ss of type %s failed: %s", v1alpha1.CAPTenantOperationKind, opType, err.Error())
+		return nil, fmt.Errorf("deletion of previous %ss of type %s failed: %s", v1alpha2.CAPTenantOperationKind, opType, err.Error())
 	}
 
 	// get CAPApplicationVersion to be used for the TenantOperation job
@@ -429,26 +429,26 @@ func (c *Controller) createCAPTenantOperation(ctx context.Context, cat *v1alpha1
 	}
 
 	// create CAPTenantOperation
-	ctop := &v1alpha1.CAPTenantOperation{
+	ctop := &v1alpha2.CAPTenantOperation{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:       cat.Namespace,
 			GenerateName:    cat.Name + "-",
-			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(cat, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind))},
+			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(cat, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPTenantKind))},
 			Finalizers:      []string{FinalizerCAPTenantOperation},
 		},
-		Spec: v1alpha1.CAPTenantOperationSpec{
+		Spec: v1alpha2.CAPTenantOperationSpec{
 			Operation:                     opType,
-			BTPTenantIdentification:       v1alpha1.BTPTenantIdentification{SubDomain: cat.Spec.SubDomain, TenantId: cat.Spec.TenantId},
+			BTPTenantIdentification:       v1alpha2.BTPTenantIdentification{SubDomain: cat.Spec.SubDomain, TenantId: cat.Spec.TenantId},
 			CAPApplicationVersionInstance: cav.Name,
 			Steps:                         steps,
 		},
 	}
 	addCAPTenantOperationLabels(ctop, cat) // NOTE: this is very important to do here as subsequent reconciliation of tenant will be inconsistent otherwise
 	util.LogInfo("Creating tenant operation", operationTypeMsgMap[opType], cat, ctop, "tenantId", cat.Spec.TenantId, "version", cat.Spec.Version)
-	return c.crdClient.SmeV1alpha1().CAPTenantOperations(cat.Namespace).Create(ctx, ctop, metav1.CreateOptions{})
+	return c.crdClient.SmeV1alpha2().CAPTenantOperations(cat.Namespace).Create(ctx, ctop, metav1.CreateOptions{})
 }
 
-func (c *Controller) cleanUpTenantOutputs(ctx context.Context, cat *v1alpha1.CAPTenant) error {
+func (c *Controller) cleanUpTenantOutputs(ctx context.Context, cat *v1alpha2.CAPTenant) error {
 	// delete all tenant outputs for this tenant
 	selector, err := labels.ValidatedSelectorFromSet(map[string]string{
 		LabelTenantId: cat.Spec.TenantId,
@@ -456,22 +456,22 @@ func (c *Controller) cleanUpTenantOutputs(ctx context.Context, cat *v1alpha1.CAP
 	if err != nil {
 		return err
 	}
-	err = c.crdClient.SmeV1alpha1().CAPTenantOutputs(cat.Namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: selector.String()})
+	err = c.crdClient.SmeV1alpha2().CAPTenantOutputs(cat.Namespace).DeleteCollection(ctx, metav1.DeleteOptions{}, metav1.ListOptions{LabelSelector: selector.String()})
 	if err != nil {
 		return fmt.Errorf("deletion of cap tenant outputs failed: %s", err.Error())
 	}
 	return nil
 }
 
-func deriveStepsForTenantOperation(cav *v1alpha1.CAPApplicationVersion, opType v1alpha1.CAPTenantOperationType) (steps []v1alpha1.CAPTenantOperationStep, err error) {
+func deriveStepsForTenantOperation(cav *v1alpha2.CAPApplicationVersion, opType v1alpha2.CAPTenantOperationType) (steps []v1alpha2.CAPTenantOperationStep, err error) {
 	defaultSteps := func() {
 		// if there are no specified steps, add only one step of type TenantOperation
-		workload := getRelevantJob(v1alpha1.JobTenantOperation, cav)
+		workload := getRelevantJob(v1alpha2.JobTenantOperation, cav)
 		if workload == nil {
 			// cannot proceed further without an identified workload
-			err = fmt.Errorf("could not find workload of type %s in %s %s.%s", v1alpha1.JobTenantOperation, v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name)
+			err = fmt.Errorf("could not find workload of type %s in %s %s.%s", v1alpha2.JobTenantOperation, v1alpha2.CAPApplicationVersionKind, cav.Namespace, cav.Name)
 		} else {
-			steps = []v1alpha1.CAPTenantOperationStep{{Name: workload.Name, Type: v1alpha1.JobTenantOperation}}
+			steps = []v1alpha2.CAPTenantOperationStep{{Name: workload.Name, Type: v1alpha2.JobTenantOperation}}
 		}
 	}
 
@@ -480,13 +480,13 @@ func deriveStepsForTenantOperation(cav *v1alpha1.CAPApplicationVersion, opType v
 		return
 	}
 
-	var ops []v1alpha1.TenantOperationWorkloadReference
+	var ops []v1alpha2.TenantOperationWorkloadReference
 	switch opType {
-	case v1alpha1.CAPTenantOperationTypeProvisioning:
+	case v1alpha2.CAPTenantOperationTypeProvisioning:
 		ops = cav.Spec.TenantOperations.Provisioning
-	case v1alpha1.CAPTenantOperationTypeDeprovisioning:
+	case v1alpha2.CAPTenantOperationTypeDeprovisioning:
 		ops = cav.Spec.TenantOperations.Deprovisioning
-	case v1alpha1.CAPTenantOperationTypeUpgrade:
+	case v1alpha2.CAPTenantOperationTypeUpgrade:
 		ops = cav.Spec.TenantOperations.Upgrade
 	}
 
@@ -495,30 +495,30 @@ func deriveStepsForTenantOperation(cav *v1alpha1.CAPApplicationVersion, opType v
 		return
 	}
 
-	steps = []v1alpha1.CAPTenantOperationStep{}
+	steps = []v1alpha2.CAPTenantOperationStep{}
 	addedTenantOperationJob := false
 	for _, entry := range ops {
 		workload := getWorkloadByName(entry.WorkloadName, cav)
 		switch workload.JobDefinition.Type {
-		case v1alpha1.JobTenantOperation:
+		case v1alpha2.JobTenantOperation:
 			addedTenantOperationJob = true
 			fallthrough
-		case v1alpha1.JobCustomTenantOperation:
+		case v1alpha2.JobCustomTenantOperation:
 			// continuing the tenant operation on failure is not possible for tenant operation jobs
-			continueOnFailure := (workload.JobDefinition.Type != v1alpha1.JobTenantOperation) && entry.ContinueOnFailure
-			steps = append(steps, v1alpha1.CAPTenantOperationStep{Name: entry.WorkloadName, Type: workload.JobDefinition.Type, ContinueOnFailure: continueOnFailure})
+			continueOnFailure := (workload.JobDefinition.Type != v1alpha2.JobTenantOperation) && entry.ContinueOnFailure
+			steps = append(steps, v1alpha2.CAPTenantOperationStep{Name: entry.WorkloadName, Type: workload.JobDefinition.Type, ContinueOnFailure: continueOnFailure})
 		default:
 			continue // ignore all other types (even if specified)
 		}
 	}
 	if !addedTenantOperationJob { // ensure step of type TenantOperation is added
-		return nil, fmt.Errorf("specified steps for operation %s does not contain a step of type %s", opType, v1alpha1.JobTenantOperation)
+		return nil, fmt.Errorf("specified steps for operation %s does not contain a step of type %s", opType, v1alpha2.JobTenantOperation)
 	}
 	return
 }
 
 // trigger CAPTenantOperation creation and change status of tenant
-func (c *Controller) triggerTenantOperation(ctx context.Context, cat *v1alpha1.CAPTenant, opType v1alpha1.CAPTenantOperationType) (*ReconcileResult, error) {
+func (c *Controller) triggerTenantOperation(ctx context.Context, cat *v1alpha2.CAPTenant, opType v1alpha2.CAPTenantOperationType) (*ReconcileResult, error) {
 	// Create CAPTenantOperation
 	ctop, err := c.createCAPTenantOperation(ctx, cat, opType)
 	if err != nil {
@@ -527,11 +527,11 @@ func (c *Controller) triggerTenantOperation(ctx context.Context, cat *v1alpha1.C
 
 	// call status handler
 	targetInfo := TenantOperationStatusMap[opType].processing
-	c.Event(cat, ctop, corev1.EventTypeNormal, targetInfo.target.conditionReason, string(targetInfo.target.state), fmt.Sprintf("%s %s.%s of type %s created", v1alpha1.CAPTenantOperationKind, ctop.Namespace, ctop.Name, ctop.Spec.Operation))
+	c.Event(cat, ctop, corev1.EventTypeNormal, targetInfo.target.conditionReason, string(targetInfo.target.state), fmt.Sprintf("%s %s.%s of type %s created", v1alpha2.CAPTenantOperationKind, ctop.Namespace, ctop.Name, ctop.Spec.Operation))
 	return targetInfo.handler(ctx, c, cat, targetInfo.target, ctop)
 }
 
-func (c *Controller) getCAPTenantOperationsByType(cat *v1alpha1.CAPTenant, operationTypeSelector CAPTenantOperationTypeSelector) (*IdentifiedCAPTenantOperations, error) {
+func (c *Controller) getCAPTenantOperationsByType(cat *v1alpha2.CAPTenant, operationTypeSelector CAPTenantOperationTypeSelector) (*IdentifiedCAPTenantOperations, error) {
 	labelsMap := map[string]string{
 		LabelOwnerIdentifierHash: sha1Sum(cat.Namespace, cat.Name),
 	}
@@ -544,12 +544,12 @@ func (c *Controller) getCAPTenantOperationsByType(cat *v1alpha1.CAPTenant, opera
 	}
 
 	// Check if tenant operations already exist via cache
-	ops, err := c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Lister().CAPTenantOperations(cat.Namespace).List(selector)
+	ops, err := c.crdInformerFactory.Sme().V1alpha2().CAPTenantOperations().Lister().CAPTenantOperations(cat.Namespace).List(selector)
 	if err != nil {
 		return nil, err
 	}
 
-	var results = IdentifiedCAPTenantOperations{active: []*v1alpha1.CAPTenantOperation{}, processed: []*v1alpha1.CAPTenantOperation{}}
+	var results = IdentifiedCAPTenantOperations{active: []*v1alpha2.CAPTenantOperation{}, processed: []*v1alpha2.CAPTenantOperation{}}
 	for _, ctop := range ops {
 		if isCROConditionReady(ctop.Status.GenericStatus) {
 			results.processed = append(results.processed, ctop)
@@ -561,13 +561,13 @@ func (c *Controller) getCAPTenantOperationsByType(cat *v1alpha1.CAPTenant, opera
 	return &results, nil
 }
 
-func (c *Controller) getCAPApplicationVersionForTenantOperationType(ctx context.Context, cat *v1alpha1.CAPTenant, opType v1alpha1.CAPTenantOperationType) (*v1alpha1.CAPApplicationVersion, error) {
+func (c *Controller) getCAPApplicationVersionForTenantOperationType(ctx context.Context, cat *v1alpha2.CAPTenant, opType v1alpha2.CAPTenantOperationType) (*v1alpha2.CAPApplicationVersion, error) {
 	// get owning CAPApplication
 	ca, _ := c.getCachedCAPApplication(cat.Namespace, cat.Spec.CAPApplicationInstance)
 
 	// get CAPApplication version
 	switch opType {
-	case v1alpha1.CAPTenantOperationTypeProvisioning, v1alpha1.CAPTenantOperationTypeUpgrade: // for provisioning or upgrade - use the relevant CAPApplicationVersion
+	case v1alpha2.CAPTenantOperationTypeProvisioning, v1alpha2.CAPTenantOperationTypeUpgrade: // for provisioning or upgrade - use the relevant CAPApplicationVersion
 		// get relevant CAPApplicationVersion
 		cav, err := c.getRelevantCAPApplicationVersion(ca, cat.Spec.Version)
 		if err != nil {
@@ -575,13 +575,13 @@ func (c *Controller) getCAPApplicationVersionForTenantOperationType(ctx context.
 		}
 		util.LogInfo("Identified application version", operationTypeMsgMap[opType], cat, nil, "tenantId", cat.Spec.TenantId, "version", cav.Spec.Version)
 		return cav, nil
-	case v1alpha1.CAPTenantOperationTypeDeprovisioning: // for deletion - use the current CAPApplicationVersion (from status)
+	case v1alpha2.CAPTenantOperationTypeDeprovisioning: // for deletion - use the current CAPApplicationVersion (from status)
 		if cat.Status.CurrentCAPApplicationVersionInstance == "" {
-			err := fmt.Errorf("cannot identify %s for %s %s.%s", v1alpha1.CAPApplicationVersionKind, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name)
+			err := fmt.Errorf("cannot identify %s for %s %s.%s", v1alpha2.CAPApplicationVersionKind, v1alpha2.CAPTenantKind, cat.Namespace, cat.Name)
 			util.LogError(err, "Cannot identify application version", string(Deprovisioning), cat, nil, "tenantId", cat.Spec.TenantId)
 			return nil, err
 		}
-		cav, err := c.crdClient.SmeV1alpha1().CAPApplicationVersions(cat.Namespace).Get(ctx, cat.Status.CurrentCAPApplicationVersionInstance, metav1.GetOptions{})
+		cav, err := c.crdClient.SmeV1alpha2().CAPApplicationVersions(cat.Namespace).Get(ctx, cat.Status.CurrentCAPApplicationVersionInstance, metav1.GetOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -590,60 +590,20 @@ func (c *Controller) getCAPApplicationVersionForTenantOperationType(ctx context.
 			// In some cases a CAV might get into a non-ready state, but this may not block deprovisioning (e.g. some workloads fail due to issues unrelated to tenant deletion workloads).
 			// Hence, we just log this as an error and attempt to proceed with the deprovisioning.
 			// This is however just a best-case scenario - if the CAV is not ready due to issues also affecting the tenant workloads (e.g. container image not available), the deprovisioning might still fail!
-			err := fmt.Errorf("%s %s.%s is not %s to be used for %s", v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name, v1alpha1.CAPApplicationVersionStateReady, opType)
+			err := fmt.Errorf("%s %s.%s is not %s to be used for %s", v1alpha2.CAPApplicationVersionKind, cav.Namespace, cav.Name, v1alpha2.CAPApplicationVersionStateReady, opType)
 			util.LogError(err, "Attempting to delete, despite version not being ready", string(Deprovisioning), cat, cav, "tenantId", cat.Spec.TenantId, "version", cav.Spec.Version)
 		}
 		// verify owner reference
 		if cav.Spec.CAPApplicationInstance != ca.Name {
-			return nil, fmt.Errorf("found deviating owner references for %s %s.%s and %s %s.%s", v1alpha1.CAPApplicationVersionKind, cav.Namespace, cav.Name, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name)
+			return nil, fmt.Errorf("found deviating owner references for %s %s.%s and %s %s.%s", v1alpha2.CAPApplicationVersionKind, cav.Namespace, cav.Name, v1alpha2.CAPTenantKind, cat.Namespace, cat.Name)
 		}
 		return cav, nil
 	}
-	return nil, fmt.Errorf("unknown error when resolving %s for %s %s.%s", v1alpha1.CAPApplicationVersionKind, v1alpha1.CAPTenantKind, cat.Namespace, cat.Name)
+	return nil, fmt.Errorf("unknown error when resolving %s for %s %s.%s", v1alpha2.CAPApplicationVersionKind, v1alpha2.CAPTenantKind, cat.Namespace, cat.Name)
 }
 
-func addCAPTenantLabels(cat *v1alpha1.CAPTenant, ca *v1alpha1.CAPApplication) (updated bool) {
-	appMetadata := appMetadataIdentifiers{
-		providerSubaccountId: ca.Spec.ProviderSubaccountId,
-		appName:              ca.Spec.BTPAppName,
-		ownerInfo: &ownerInfo{
-			ownerNamespace:  ca.Namespace,
-			ownerName:       ca.Name,
-			ownerGeneration: ca.Generation,
-		},
-	}
-	if updateLabelAnnotationMetadata(&cat.ObjectMeta, &appMetadata) {
-		updated = true
-	}
-	if _, ok := cat.ObjectMeta.Labels[LabelTenantId]; !ok {
-		cat.ObjectMeta.Labels[LabelTenantId] = cat.Spec.TenantId
-		updated = true
-	}
-	return updated
-}
-
-func (c *Controller) prepareCAPTenant(cat *v1alpha1.CAPTenant) (update bool, err error) {
+func (c *Controller) prepareCAPTenant(cat *v1alpha2.CAPTenant) (update bool, err error) {
 	// Do nothing when object is deleted
-	if cat.DeletionTimestamp != nil {
-		return false, nil
-	}
-	ca, err := c.getCachedCAPApplication(cat.Namespace, cat.Spec.CAPApplicationInstance)
-	if err != nil {
-		msg := fmt.Sprintf("invalid %s reference", v1alpha1.CAPApplicationKind)
-		c.Event(cat, nil, corev1.EventTypeWarning, CAPTenantEventInvalidReference, EventActionPrepare, msg)
-		return false, err
-	}
-
-	// create owner reference - CAPApplication
-	if _, ok := getOwnerByKind(cat.OwnerReferences, v1alpha1.CAPApplicationKind); !ok {
-		cat.OwnerReferences = append(cat.OwnerReferences, *metav1.NewControllerRef(ca, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPApplicationKind)))
-		update = true
-	}
-
-	if addCAPTenantLabels(cat, ca) {
-		update = true
-	}
-
 	if cat.DeletionTimestamp == nil {
 		// set finalizers if not added
 		if cat.Finalizers == nil {
@@ -653,12 +613,13 @@ func (c *Controller) prepareCAPTenant(cat *v1alpha1.CAPTenant) (update bool, err
 			update = true
 		}
 	}
+
 	return update, nil
 }
 
-func (c *Controller) tryForTenantUpgrade(ctx context.Context, cat *v1alpha1.CAPTenant) (*ReconcileResult, error) {
+func (c *Controller) tryForTenantUpgrade(ctx context.Context, cat *v1alpha2.CAPTenant) (*ReconcileResult, error) {
 	// try for upgrade only when upgrade strategy is not 'never'
-	if cat.Spec.VersionUpgradeStrategy == v1alpha1.VersionUpgradeStrategyTypeNever {
+	if cat.Spec.VersionUpgradeStrategy == v1alpha2.VersionUpgradeStrategyTypeNever {
 		return nil, nil
 	}
 
@@ -676,13 +637,13 @@ func (c *Controller) tryForTenantUpgrade(ctx context.Context, cat *v1alpha1.CAPT
 	// compare with current version
 	if cat.Status.CurrentCAPApplicationVersionInstance != cav.Name {
 		// update status of the CAPTenant - ready for upgrade
-		return c.triggerTenantOperation(ctx, cat, v1alpha1.CAPTenantOperationTypeUpgrade)
+		return c.triggerTenantOperation(ctx, cat, v1alpha2.CAPTenantOperationTypeUpgrade)
 	}
 
 	return nil, nil
 }
 
-func (c *Controller) updateCAPTenantStatus(ctx context.Context, cat *v1alpha1.CAPTenant) error {
+func (c *Controller) updateCAPTenantStatus(ctx context.Context, cat *v1alpha2.CAPTenant) error {
 	if isDeletionImminent(&cat.ObjectMeta) {
 		return nil
 	}
@@ -691,7 +652,7 @@ func (c *Controller) updateCAPTenantStatus(ctx context.Context, cat *v1alpha1.CA
 		// initialize conditions - with processing status
 		cat.SetStatusWithReadyCondition(cat.Status.State, metav1.ConditionFalse, CAPTenantEventProcessingStarted, "")
 	}
-	catUpdated, err := c.crdClient.SmeV1alpha1().CAPTenants(cat.Namespace).UpdateStatus(ctx, cat, metav1.UpdateOptions{})
+	catUpdated, err := c.crdClient.SmeV1alpha2().CAPTenants(cat.Namespace).UpdateStatus(ctx, cat, metav1.UpdateOptions{})
 	// update reference to the resource
 	if catUpdated != nil {
 		*cat = *catUpdated
@@ -699,18 +660,16 @@ func (c *Controller) updateCAPTenantStatus(ctx context.Context, cat *v1alpha1.CA
 	return err
 }
 
-func (*Controller) enforceTenantResourceOwnership(objMeta *metav1.ObjectMeta, typeMeta *metav1.TypeMeta, cat *v1alpha1.CAPTenant) (bool, error) {
+func (*Controller) enforceTenantResourceOwnership(objMeta *metav1.ObjectMeta, cat *v1alpha2.CAPTenant) (bool, error) {
 	var update bool
 	// verify owner references
-	if owner, ok := getOwnerByKind(objMeta.OwnerReferences, v1alpha1.CAPTenantKind); !ok {
+	if _, ok := getOwnerByObject(objMeta.OwnerReferences, v1alpha2.CAPTenantKind, cat); !ok {
 		// set owner reference
 		if objMeta.OwnerReferences == nil {
 			objMeta.OwnerReferences = []metav1.OwnerReference{}
 		}
-		objMeta.OwnerReferences = append(objMeta.OwnerReferences, *metav1.NewControllerRef(cat, v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.CAPTenantKind)))
+		objMeta.OwnerReferences = append(objMeta.OwnerReferences, *metav1.NewControllerRef(cat, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPTenantKind)))
 		update = true
-	} else if owner.Name != cat.Name {
-		return false, fmt.Errorf("invalid owner reference found for %s %s.%s", typeMeta.Kind, objMeta.Namespace, objMeta.Name)
 	}
 
 	if addCommonTenantLabels(objMeta, cat) {
@@ -720,7 +679,7 @@ func (*Controller) enforceTenantResourceOwnership(objMeta *metav1.ObjectMeta, ty
 	return update, nil
 }
 
-func addCommonTenantLabels(objMeta *metav1.ObjectMeta, cat *v1alpha1.CAPTenant) (updated bool) {
+func addCommonTenantLabels(objMeta *metav1.ObjectMeta, cat *v1alpha2.CAPTenant) (updated bool) {
 	appMetadata := appMetadataIdentifiers{
 		ownerInfo: &ownerInfo{
 			ownerNamespace:  cat.Namespace,

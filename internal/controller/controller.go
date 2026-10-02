@@ -21,7 +21,7 @@ import (
 	gardenerDNS "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned"
 	gardenerDNSInformers "github.com/gardener/external-dns-management/pkg/client/dns/informers/externalversions"
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned"
-	v1alpha1scheme "github.com/sap/cap-operator/pkg/client/clientset/versioned/scheme"
+	v1alpha2scheme "github.com/sap/cap-operator/pkg/client/clientset/versioned/scheme"
 	crdInformers "github.com/sap/cap-operator/pkg/client/informers/externalversions"
 	"golang.org/x/time/rate"
 	istio "istio.io/client-go/pkg/clientset/versioned"
@@ -87,6 +87,7 @@ func NewController(client kubernetes.Interface, crdClient versioned.Interface, i
 		ResourceCAPTenantOperation:    workqueue.NewTypedRateLimitingQueueWithConfig(customRateLimiter(), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceCAPTenantOperation]}),
 		ResourceDomain:                workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceDomain]}),
 		ResourceClusterDomain:         workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[QueueItem](), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceClusterDomain]}),
+		ResourceSubscription:          workqueue.NewTypedRateLimitingQueueWithConfig(customRateLimiter(), workqueue.TypedRateLimitingQueueConfig[QueueItem]{Name: KindMap[ResourceSubscription]}),
 	}
 
 	// Use 30mins as the default Resync interval for kube / proprietary  resources
@@ -115,7 +116,7 @@ func NewController(client kubernetes.Interface, crdClient versioned.Interface, i
 	// initialize event recorder
 	scheme := runtime.NewScheme()
 	kubescheme.AddToScheme(scheme)
-	v1alpha1scheme.AddToScheme(scheme)
+	v1alpha2scheme.AddToScheme(scheme)
 	istioscheme.AddToScheme(scheme)
 	eventBroadcaster := events.NewBroadcaster(&events.EventSinkImpl{Interface: client.EventsV1()})
 	eventBroadcaster.StartLogging(klog.Background())
@@ -247,6 +248,10 @@ func (c *Controller) Start(ctx context.Context) {
 func getConcurrencyForResource(key int) int {
 	concurrency, ok := DefaultConcurrentReconciles[key]
 	if !ok {
+		// If no explicit mapping is found for Subscription, use the tenant configuration
+		if key == ResourceSubscription {
+			return getConcurrencyForResource(ResourceCAPTenant)
+		}
 		concurrency = DefaultReconcile // default concurrency
 	}
 	return concurrency
@@ -310,6 +315,8 @@ func (c *Controller) processQueueItem(ctx context.Context, key, workerId int) er
 		result, err = c.reconcileDomain(ctx, item, attempts)
 	case ResourceClusterDomain:
 		result, err = c.reconcileClusterDomain(ctx, item, attempts)
+	case ResourceSubscription:
+		result, err = c.reconcileSubscription(ctx, item, attempts)
 	default:
 		err = errors.New("unidentified queue item")
 		skipItem = true
