@@ -30,7 +30,8 @@ import (
 )
 
 const (
-	App = "app"
+	App                = "app"
+	ContentErrorReason = "ErrorInContentDeploymentJob"
 )
 
 const (
@@ -145,7 +146,7 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 	// Handle Content job
 	err := c.handleContentDeployJob(ctx, ca, cav)
 	if err != nil {
-		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInContentDeploymentJob", Message: err.Error()})
+		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorDeployingContent", Message: err.Error()})
 		return nil, err
 	}
 
@@ -206,7 +207,6 @@ func (c *Controller) processWorkloads(ctx context.Context, ca *v1alpha1.CAPAppli
 		return NewReconcileResultWithResource(ResourceCAPApplicationVersion, cav.Name, cav.Namespace, 10*time.Second), nil
 	} else if err != nil {
 		util.LogError(err, "Workload(s) in error status", string(Error), cav, nil, "version", cav.Spec.Version)
-		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInWorkloadStatus", Message: err.Error()})
 		return nil, err
 	}
 
@@ -1145,18 +1145,26 @@ func isExposedWorkload(workloadDetails v1alpha1.WorkloadDetails, cav *v1alpha1.C
 	)
 }
 
-func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alpha1.CAPApplicationVersion) (bool, error) {
-	// Once the cav goes into Error state, we should not check the jobs again in the next reconciliation loop
-	// because it could happen that the job can get deleted meanwhile and we won't be able
+func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alpha1.CAPApplicationVersion) (processing bool, err error) {
+	// Always Update the CAV Status in case of Error with ContentDeploymentJob
+	defer func() {
+		if err != nil {
+			c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: ContentErrorReason, Message: err.Error()})
+		}
+	}()
+
+	// Once the cav goes into Error state due to content job, we should not check the jobs again in the next
+	// reconciliation loop because it could happen that the job can get deleted meanwhile and we won't be able
 	// to determine the state of the job correctly.
-	if len(cav.Status.Conditions) > 0 && cav.Status.Conditions[0].Reason == "ErrorInContentDeploymentJob" {
-		return false, fmt.Errorf("%s", cav.Status.Conditions[0].Message)
+	if len(cav.Status.Conditions) > 0 && cav.Status.Conditions[0].Reason == ContentErrorReason {
+		err = fmt.Errorf("%s", cav.Status.Conditions[0].Message)
+		return
 	}
 
 	for _, contentJobName := range getContentJobInOrder(cav) {
 		job := getContentJobName(contentJobName, cav)
 
-		if processing, err := c.processContentJob(ctx, cav, job); processing || err != nil {
+		if processing, err = c.processContentJob(ctx, cav, job); processing || err != nil {
 			return processing, err
 		}
 	}
@@ -1165,7 +1173,7 @@ func (c *Controller) checkContentWorkloadStatus(ctx context.Context, cav *v1alph
 	if cav.Status.State != v1alpha1.CAPApplicationVersionStateReady {
 		util.LogInfo("Content job(s) completed", string(Processing), cav, nil, "version", cav.Spec.Version)
 	}
-	return false, nil
+	return
 }
 
 func (c *Controller) processContentJob(ctx context.Context, cav *v1alpha1.CAPApplicationVersion, job string) (bool, error) {
@@ -1183,9 +1191,7 @@ func (c *Controller) processContentJob(ctx context.Context, cav *v1alpha1.CAPApp
 	}
 
 	if numOfFinishedJobsBeforeUpd != len(cav.Status.FinishedJobs) {
-		if err := c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ReadyForProcessing"}); err != nil {
-			return false, err
-		}
+		c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateProcessing, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ReadyForProcessing"})
 	}
 
 	// If the job is still running, set processing to true
@@ -1217,6 +1223,7 @@ func (c *Controller) checkOverallWorkloadStatus(ctx context.Context, overallDepl
 				// if the deployment has replica failure, return error
 				err := fmt.Errorf("%s", condition.Message)
 				util.LogError(err, "Error in deployment", string(Processing), cav, deployment, "version", cav.Spec.Version)
+				c.updateCAPApplicationVersionStatus(ctx, cav, v1alpha1.CAPApplicationVersionStateError, metav1.Condition{Type: string(v1alpha1.ConditionTypeReady), Status: "False", Reason: "ErrorInWorkloadStatus", Message: err.Error()})
 				return false, err
 			}
 		}
