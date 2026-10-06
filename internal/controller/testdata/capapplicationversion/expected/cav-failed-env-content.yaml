@@ -63,7 +63,7 @@ spec:
         type: TenantOperation
 status:
   conditions:
-    - reason: ErrorInContentDeploymentJob
+    - reason: ErrorDeployingContent
       message: "invalid env configuration for workload: content-job, remove entry: CAPOP_APP_VERSION from configuration"
       observedGeneration: 1
       status: "False"
