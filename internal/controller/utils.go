@@ -65,7 +65,7 @@ func getOwnerByObject(owners []metav1.OwnerReference, kind string, owningObj met
 	if ok && o.Name == owningObj.GetName() && o.UID == owningObj.GetUID() {
 		return o, ok
 	}
-	return o, false
+	return nil, false
 }
 
 func getOwnerFromObjectMetadata(objectMeta metav1.Object, dependentKind string) (NamespacedResourceKey, bool) {

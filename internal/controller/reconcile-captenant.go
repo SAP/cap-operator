@@ -602,48 +602,8 @@ func (c *Controller) getCAPApplicationVersionForTenantOperationType(ctx context.
 	return nil, fmt.Errorf("unknown error when resolving %s for %s %s.%s", v1alpha2.CAPApplicationVersionKind, v1alpha2.CAPTenantKind, cat.Namespace, cat.Name)
 }
 
-func addCAPTenantLabels(cat *v1alpha2.CAPTenant, ca *v1alpha2.CAPApplication) (updated bool) {
-	appMetadata := appMetadataIdentifiers{
-		providerSubaccountId: ca.Spec.ProviderSubaccountId,
-		appName:              ca.Spec.BTPAppName,
-		ownerInfo: &ownerInfo{
-			ownerNamespace:  ca.Namespace,
-			ownerName:       ca.Name,
-			ownerGeneration: ca.Generation,
-		},
-	}
-	if updateLabelAnnotationMetadata(&cat.ObjectMeta, &appMetadata) {
-		updated = true
-	}
-	if _, ok := cat.ObjectMeta.Labels[LabelTenantId]; !ok {
-		cat.ObjectMeta.Labels[LabelTenantId] = cat.Spec.TenantId
-		updated = true
-	}
-	return updated
-}
-
 func (c *Controller) prepareCAPTenant(cat *v1alpha2.CAPTenant) (update bool, err error) {
 	// Do nothing when object is deleted
-	if cat.DeletionTimestamp != nil {
-		return false, nil
-	}
-	ca, err := c.getCachedCAPApplication(cat.Namespace, cat.Spec.CAPApplicationInstance)
-	if err != nil {
-		msg := fmt.Sprintf("invalid %s reference", v1alpha2.CAPApplicationKind)
-		c.Event(cat, nil, corev1.EventTypeWarning, CAPTenantEventInvalidReference, EventActionPrepare, msg)
-		return false, err
-	}
-
-	// create owner reference - CAPApplication
-	if _, ok := getOwnerByObject(cat.OwnerReferences, v1alpha2.CAPApplicationKind, ca); !ok {
-		cat.OwnerReferences = append(cat.OwnerReferences, *metav1.NewControllerRef(ca, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPApplicationKind)))
-		update = true
-	}
-
-	if addCAPTenantLabels(cat, ca) {
-		update = true
-	}
-
 	if cat.DeletionTimestamp == nil {
 		// set finalizers if not added
 		if cat.Finalizers == nil {
@@ -653,6 +613,7 @@ func (c *Controller) prepareCAPTenant(cat *v1alpha2.CAPTenant) (update bool, err
 			update = true
 		}
 	}
+
 	return update, nil
 }
 
