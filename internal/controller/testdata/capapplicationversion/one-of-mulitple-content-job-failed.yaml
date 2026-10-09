@@ -7,7 +7,7 @@ metadata:
   name: test-cap-01-cav-v1-content-job-1
   namespace: default
   ownerReferences:
-    - apiVersion: sme.sap.com/v1alpha1
+    - apiVersion: sme.sap.com/v1alpha2
       blockOwnerDeletion: true
       controller: true
       kind: CAPApplicationVersion

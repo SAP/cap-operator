@@ -1,4 +1,4 @@
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplication
 metadata:
   generation: 2

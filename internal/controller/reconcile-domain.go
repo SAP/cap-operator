@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/sap/cap-operator/internal/util"
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	"golang.org/x/sync/errgroup"
 	networkingv1 "istio.io/api/networking/v1"
 	istionwv1 "istio.io/client-go/pkg/apis/networking/v1"
@@ -37,7 +37,7 @@ const (
 )
 
 func (c *Controller) reconcileDomain(ctx context.Context, item QueueItem, _ int) (result *ReconcileResult, err error) {
-	lister := c.crdInformerFactory.Sme().V1alpha1().Domains().Lister()
+	lister := c.crdInformerFactory.Sme().V1alpha2().Domains().Lister()
 	cached, err := lister.Domains(item.ResourceKey.Namespace).Get(item.ResourceKey.Name)
 	if err != nil {
 		return nil, handleOperatorResourceErrors(err)
@@ -62,7 +62,7 @@ func (c *Controller) reconcileDomain(ctx context.Context, item QueueItem, _ int)
 }
 
 func (c *Controller) reconcileClusterDomain(ctx context.Context, item QueueItem, _ int) (result *ReconcileResult, err error) {
-	lister := c.crdInformerFactory.Sme().V1alpha1().ClusterDomains().Lister()
+	lister := c.crdInformerFactory.Sme().V1alpha2().ClusterDomains().Lister()
 	cached, err := lister.ClusterDomains(corev1.NamespaceAll).Get(item.ResourceKey.Name)
 	if err != nil {
 		return nil, handleOperatorResourceErrors(err)
@@ -86,8 +86,8 @@ func (c *Controller) reconcileClusterDomain(ctx context.Context, item QueueItem,
 	return reconcileDomainEntity(ctx, c, dom, util.GetNamespace())
 }
 
-func (c *Controller) updateDomain(ctx context.Context, dom *v1alpha1.Domain) error {
-	domUpdated, err := c.crdClient.SmeV1alpha1().Domains(dom.Namespace).Update(ctx, dom, metav1.UpdateOptions{})
+func (c *Controller) updateDomain(ctx context.Context, dom *v1alpha2.Domain) error {
+	domUpdated, err := c.crdClient.SmeV1alpha2().Domains(dom.Namespace).Update(ctx, dom, metav1.UpdateOptions{})
 	// Update reference to the resource
 	if domUpdated != nil {
 		*dom = *domUpdated
@@ -95,11 +95,11 @@ func (c *Controller) updateDomain(ctx context.Context, dom *v1alpha1.Domain) err
 	return err
 }
 
-func (c *Controller) updateDomainStatus(ctx context.Context, dom *v1alpha1.Domain) error {
+func (c *Controller) updateDomainStatus(ctx context.Context, dom *v1alpha2.Domain) error {
 	if isDeletionImminent(&dom.ObjectMeta) {
 		return nil
 	}
-	domUpdated, err := c.crdClient.SmeV1alpha1().Domains(dom.Namespace).UpdateStatus(ctx, dom, metav1.UpdateOptions{})
+	domUpdated, err := c.crdClient.SmeV1alpha2().Domains(dom.Namespace).UpdateStatus(ctx, dom, metav1.UpdateOptions{})
 	// update reference to the resource
 	if domUpdated != nil {
 		*dom = *domUpdated
@@ -107,8 +107,8 @@ func (c *Controller) updateDomainStatus(ctx context.Context, dom *v1alpha1.Domai
 	return err
 }
 
-func (c *Controller) updateClusterDomain(ctx context.Context, dom *v1alpha1.ClusterDomain) error {
-	domUpdated, err := c.crdClient.SmeV1alpha1().ClusterDomains(corev1.NamespaceAll).Update(ctx, dom, metav1.UpdateOptions{})
+func (c *Controller) updateClusterDomain(ctx context.Context, dom *v1alpha2.ClusterDomain) error {
+	domUpdated, err := c.crdClient.SmeV1alpha2().ClusterDomains(corev1.NamespaceAll).Update(ctx, dom, metav1.UpdateOptions{})
 	// Update reference to the resource
 	if domUpdated != nil {
 		*dom = *domUpdated
@@ -116,11 +116,11 @@ func (c *Controller) updateClusterDomain(ctx context.Context, dom *v1alpha1.Clus
 	return err
 }
 
-func (c *Controller) updateClusterDomainStatus(ctx context.Context, dom *v1alpha1.ClusterDomain) error {
+func (c *Controller) updateClusterDomainStatus(ctx context.Context, dom *v1alpha2.ClusterDomain) error {
 	if isDeletionImminent(&dom.ObjectMeta) {
 		return nil
 	}
-	domUpdated, err := c.crdClient.SmeV1alpha1().ClusterDomains(corev1.NamespaceAll).UpdateStatus(ctx, dom, metav1.UpdateOptions{})
+	domUpdated, err := c.crdClient.SmeV1alpha2().ClusterDomains(corev1.NamespaceAll).UpdateStatus(ctx, dom, metav1.UpdateOptions{})
 	// update reference to the resource
 	if domUpdated != nil {
 		*dom = *domUpdated
@@ -128,7 +128,7 @@ func (c *Controller) updateClusterDomainStatus(ctx context.Context, dom *v1alpha
 	return err
 }
 
-func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, subResourceNamespace string) (result *ReconcileResult, err error) {
+func reconcileDomainEntity[T v1alpha2.DomainEntity](ctx context.Context, c *Controller, dom T, subResourceNamespace string) (result *ReconcileResult, err error) {
 	// Check if the domain resource is being deleted
 	if dom.GetMetadata().DeletionTimestamp != nil {
 		return handleDomainResourceDeletion(ctx, c, dom)
@@ -136,16 +136,16 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 
 	if dom.GetStatus().State == "" {
 		// When no status state is set, we set it to processing state first and requeue for processing.
-		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateProcessing, metav1.ConditionFalse, "Processing", "Processing domain resources")
+		dom.SetStatusWithReadyCondition(v1alpha2.DomainStateProcessing, metav1.ConditionFalse, "Processing", "Processing domain resources")
 		return NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0), nil
-	} else if dom.GetStatus().State != v1alpha1.DomainStateProcessing {
+	} else if dom.GetStatus().State != v1alpha2.DomainStateProcessing {
 		// If not in processing state, we set it to processing state first and continue without requeuing. This ensures Error scenarios (if any) stay rate limited.
-		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateProcessing, metav1.ConditionFalse, "Processing", "Processing domain resources")
+		dom.SetStatusWithReadyCondition(v1alpha2.DomainStateProcessing, metav1.ConditionFalse, "Processing", "Processing domain resources")
 	}
 
 	defer func() {
 		if err != nil {
-			dom.SetStatusWithReadyCondition(v1alpha1.DomainStateError, metav1.ConditionFalse, "ProcessingError", err.Error())
+			dom.SetStatusWithReadyCondition(v1alpha2.DomainStateError, metav1.ConditionFalse, "ProcessingError", err.Error())
 		}
 	}()
 
@@ -159,12 +159,12 @@ func reconcileDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Cont
 	}
 
 	// Resource is ready, so we can set the status to ready
-	dom.SetStatusWithReadyCondition(v1alpha1.DomainStateReady, metav1.ConditionTrue, "Ready", "Domain resources are ready")
+	dom.SetStatusWithReadyCondition(v1alpha2.DomainStateReady, metav1.ConditionTrue, "Ready", "Domain resources are ready")
 	return
 
 }
 
-func checkDomainResourcesReady[T v1alpha1.DomainEntity](ctx context.Context, dom T, c *Controller) (result *ReconcileResult, err error) {
+func checkDomainResourcesReady[T v1alpha2.DomainEntity](ctx context.Context, dom T, c *Controller) (result *ReconcileResult, err error) {
 	var message string
 	var resource string
 	ready := false
@@ -198,7 +198,7 @@ func checkDomainResourcesReady[T v1alpha1.DomainEntity](ctx context.Context, dom
 	return
 }
 
-func processDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, subResourceNamespace string) (result *ReconcileResult, err error) {
+func processDomainEntity[T v1alpha2.DomainEntity](ctx context.Context, c *Controller, dom T, subResourceNamespace string) (result *ReconcileResult, err error) {
 	// check for duplicate domains
 	if result, err = handleDuplicateDomainHosts(c, dom); err != nil || result != nil {
 		return
@@ -258,24 +258,24 @@ func processDomainEntity[T v1alpha1.DomainEntity](ctx context.Context, c *Contro
 	return
 }
 
-func handleDuplicateDomainHosts[T v1alpha1.DomainEntity](c *Controller, dom T) (requeue *ReconcileResult, err error) {
+func handleDuplicateDomainHosts[T v1alpha2.DomainEntity](c *Controller, dom T) (requeue *ReconcileResult, err error) {
 	grp := errgroup.Group{}
 	var (
-		doms  []*v1alpha1.Domain
-		cdoms []*v1alpha1.ClusterDomain
+		doms  []*v1alpha2.Domain
+		cdoms []*v1alpha2.ClusterDomain
 	)
 	selector := labels.SelectorFromSet(labels.Set{
 		LabelDomainHostHash: sha1Sum(dom.GetSpec().Domain),
 	})
 	grp.Go(func() (err error) {
-		doms, err = c.crdInformerFactory.Sme().V1alpha1().Domains().Lister().List(selector)
+		doms, err = c.crdInformerFactory.Sme().V1alpha2().Domains().Lister().List(selector)
 		if err != nil && !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to list domains: %w", err)
 		}
 		return nil
 	})
 	grp.Go(func() (err error) {
-		cdoms, err = c.crdInformerFactory.Sme().V1alpha1().ClusterDomains().Lister().List(selector)
+		cdoms, err = c.crdInformerFactory.Sme().V1alpha2().ClusterDomains().Lister().List(selector)
 		if err != nil && !errors.IsNotFound(err) {
 			return fmt.Errorf("failed to list cluster domains: %w", err)
 		}
@@ -288,7 +288,7 @@ func handleDuplicateDomainHosts[T v1alpha1.DomainEntity](c *Controller, dom T) (
 		// there are other domains with the same host
 		// (1) set current domain to error state
 		msg := "Identical domain host is specified in another Domain/ClusterDomain resource"
-		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateError, metav1.ConditionFalse, "DuplicateDomainHost", msg)
+		dom.SetStatusWithReadyCondition(v1alpha2.DomainStateError, metav1.ConditionFalse, "DuplicateDomainHost", msg)
 		c.Event(runtime.Object(dom), nil, corev1.EventTypeWarning, DomainEventDuplicateDomainHost, EventActionProcessingDomainResources, msg)
 
 		// (2) requeue the other domain for setting error state and wait to retry reconciling the current domain resource
@@ -300,17 +300,17 @@ func handleDuplicateDomainHosts[T v1alpha1.DomainEntity](c *Controller, dom T) (
 	return
 }
 
-func addDuplicateDomainResourcesToQueue[T v1alpha1.DomainEntity, E v1alpha1.DomainEntity](dom T, s []E, requeue *ReconcileResult) {
+func addDuplicateDomainResourcesToQueue[T v1alpha2.DomainEntity, E v1alpha2.DomainEntity](dom T, s []E, requeue *ReconcileResult) {
 	for i := range s {
 		if dom.GetKind() != s[i].GetKind() || dom.GetNamespace() != s[i].GetNamespace() || dom.GetName() != s[i].GetName() {
-			if s[i].GetStatus().State == v1alpha1.DomainStateReady {
+			if s[i].GetStatus().State == v1alpha2.DomainStateReady {
 				requeue.AddResource(getResourceKeyFromKind(s[i]), s[i].GetName(), s[i].GetNamespace(), 0)
 			}
 		}
 	}
 }
 
-func notifyReferencingApplications[T v1alpha1.DomainEntity](c *Controller, dom T, requeue *ReconcileResult) (*ReconcileResult, error) {
+func notifyReferencingApplications[T v1alpha2.DomainEntity](c *Controller, dom T, requeue *ReconcileResult) (*ReconcileResult, error) {
 	cas, err := getReferencingApplications(c, dom)
 	if err != nil {
 		return nil, err
@@ -338,7 +338,7 @@ func notifyReferencingApplications[T v1alpha1.DomainEntity](c *Controller, dom T
 	return requeue, nil
 }
 
-func prepareDomainEntity[T v1alpha1.DomainEntity](dom T) (update bool) {
+func prepareDomainEntity[T v1alpha2.DomainEntity](dom T) (update bool) {
 	// Do nothing when object is deleted
 	if dom.GetMetadata().DeletionTimestamp != nil {
 		return false
@@ -367,7 +367,7 @@ func prepareDomainEntity[T v1alpha1.DomainEntity](dom T) (update bool) {
 	return update
 }
 
-func handleDomainGateway[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, credentialName, name, namespace, ownerId string) (err error) {
+func handleDomainGateway[T v1alpha2.DomainEntity](ctx context.Context, c *Controller, dom T, credentialName, name, namespace, ownerId string) (err error) {
 	// create a gateway selector from specified labels
 	selector := labels.SelectorFromSet(labels.Set{
 		LabelOwnerIdentifierHash: sha1Sum(ownerId),
@@ -390,7 +390,7 @@ func handleDomainGateway[T v1alpha1.DomainEntity](ctx context.Context, c *Contro
 	}
 
 	hostPrefix := "*/*."
-	if dom.GetKind() == v1alpha1.DomainKind {
+	if dom.GetKind() == v1alpha2.DomainKind {
 		hostPrefix = "./*."
 	}
 	gatewaySpec := &networkingv1.Gateway{
@@ -429,7 +429,7 @@ func handleDomainGateway[T v1alpha1.DomainEntity](ctx context.Context, c *Contro
 					AnnotationOwnerIdentifier: ownerId,
 				},
 				OwnerReferences: []metav1.OwnerReference{
-					*metav1.NewControllerRef(metav1.Object(dom), v1alpha1.SchemeGroupVersion.WithKind(dom.GetKind())),
+					*metav1.NewControllerRef(metav1.Object(dom), v1alpha2.SchemeGroupVersion.WithKind(dom.GetKind())),
 				},
 			},
 			Spec: *gatewaySpec.DeepCopy(),
@@ -448,7 +448,7 @@ func handleDomainGateway[T v1alpha1.DomainEntity](ctx context.Context, c *Contro
 	return
 }
 
-func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, credentialNamespace, name, namespace, ownerId string) (credentialName string, err error) {
+func handleDomainCertificate[T v1alpha2.DomainEntity](ctx context.Context, c *Controller, dom T, credentialNamespace, name, namespace, ownerId string) (credentialName string, err error) {
 	h := CreateCertificateManager(c)
 
 	credentialName = h.GetCredentialName(namespace, name)
@@ -479,7 +479,7 @@ func handleDomainCertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Co
 	return credentialName, h.handleCertificate(ctx, info)
 }
 
-func handleAdditionalCACertificate[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, credentialName, credentialNamespace string, ownerId string) error {
+func handleAdditionalCACertificate[T v1alpha2.DomainEntity](ctx context.Context, c *Controller, dom T, credentialName, credentialNamespace string, ownerId string) error {
 	secretName := fmt.Sprintf("%s-cacert", credentialName)
 
 	// Try to get the existing secret
@@ -534,7 +534,7 @@ func handleAdditionalCACertificate[T v1alpha1.DomainEntity](ctx context.Context,
 	})
 }
 
-func extractAdditionalCACert[T v1alpha1.DomainEntity](dom T) string {
+func extractAdditionalCACert[T v1alpha2.DomainEntity](dom T) string {
 	if dom.GetSpec().CertConfig != nil {
 		return dom.GetSpec().CertConfig.AdditionalCACertificate
 	}
@@ -562,7 +562,7 @@ func createAdditionalCACertificateSecret(ctx context.Context, c *Controller, nam
 }
 
 // #region Ingress Gateway Info
-func getIngressInfo[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T) (ingGwInfo *ingressGatewayInfo, err error) {
+func getIngressInfo[T v1alpha2.DomainEntity](ctx context.Context, c *Controller, dom T) (ingGwInfo *ingressGatewayInfo, err error) {
 	// create ingress gateway selector from specified labels
 	ingressLabelSelector, err := labels.ValidatedSelectorFromSet(dom.GetSpec().IngressSelector)
 	if err != nil {
@@ -621,7 +621,7 @@ func getIngressInfo[T v1alpha1.DomainEntity](ctx context.Context, c *Controller,
 	return &ingressGatewayInfo{Namespace: namespace, DNSTarget: dnsTarget}, nil
 }
 
-func getDNSTargetFromIngressLoadbalancerService[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, namespace string, relevantPodNames map[string]struct{}, dom T) (string, error) {
+func getDNSTargetFromIngressLoadbalancerService[T v1alpha2.DomainEntity](ctx context.Context, c *Controller, namespace string, relevantPodNames map[string]struct{}, dom T) (string, error) {
 	loadbalancerServices, err := c.getLoadBalancerServices(ctx, namespace)
 	if err != nil {
 		return "", err
@@ -695,33 +695,33 @@ func getDNSTarget(ingressGWSvc *corev1.Service) string {
 
 //#endregion
 
-func formOwnerIdFromDomain[T v1alpha1.DomainEntity](dom T) string {
+func formOwnerIdFromDomain[T v1alpha2.DomainEntity](dom T) string {
 	ownerId := dom.GetKind()
-	if ownerId == v1alpha1.DomainKind {
+	if ownerId == v1alpha2.DomainKind {
 		ownerId = ownerId + "." + dom.GetNamespace()
 	}
 	ownerId = ownerId + "." + dom.GetName()
 	return ownerId
 }
 
-func getResourceKeyFromKind[T v1alpha1.DomainEntity](dom T) int {
+func getResourceKeyFromKind[T v1alpha2.DomainEntity](dom T) int {
 	switch dom.GetKind() {
-	case v1alpha1.DomainKind:
+	case v1alpha2.DomainKind:
 		return ResourceDomain
 	default:
 		return ResourceClusterDomain
 	}
 }
 
-func getReferencingApplications[T v1alpha1.DomainEntity](c *Controller, dom T) ([]*v1alpha1.CAPApplication, error) {
-	cas, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister().List(labels.Everything())
+func getReferencingApplications[T v1alpha2.DomainEntity](c *Controller, dom T) ([]*v1alpha2.CAPApplication, error) {
+	cas, err := c.crdInformerFactory.Sme().V1alpha2().CAPApplications().Lister().List(labels.Everything())
 	if err != nil {
 		return nil, fmt.Errorf("failed to list CAPApplications: %w", err)
 	}
-	sources := []*v1alpha1.CAPApplication{}
+	sources := []*v1alpha2.CAPApplication{}
 	for i := range cas {
 		ca := cas[i]
-		if dom.GetKind() == v1alpha1.DomainKind && ca.Namespace != dom.GetNamespace() {
+		if dom.GetKind() == v1alpha2.DomainKind && ca.Namespace != dom.GetNamespace() {
 			continue // skip application if it is not in the same namespace
 		}
 		if len(ca.Spec.DomainRefs) == 0 {
@@ -742,7 +742,7 @@ func getReferencingApplications[T v1alpha1.DomainEntity](c *Controller, dom T) (
 	return sources, nil
 }
 
-func handleDomainNetworkPolicies[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, ownerId, subResourceName string) (err error) {
+func handleDomainNetworkPolicies[T v1alpha2.DomainEntity](ctx context.Context, c *Controller, dom T, ownerId, subResourceName string) (err error) {
 	cas, err := getReferencingApplications(c, dom)
 	if err != nil {
 		return err
@@ -796,7 +796,7 @@ func handleDomainNetworkPolicies[T v1alpha1.DomainEntity](ctx context.Context, c
 	return updGrp.Wait()
 }
 
-func handleDomainNetworkPolicyForNamespace[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T, ownerId, subResourceName, namespace string, netpol *k8snwv1.NetworkPolicy) (err error) {
+func handleDomainNetworkPolicyForNamespace[T v1alpha2.DomainEntity](ctx context.Context, c *Controller, dom T, ownerId, subResourceName, namespace string, netpol *k8snwv1.NetworkPolicy) (err error) {
 	spec := k8snwv1.NetworkPolicySpec{
 		PolicyTypes: []k8snwv1.PolicyType{k8snwv1.PolicyTypeIngress},
 		PodSelector: metav1.LabelSelector{ // to workload pods managed by the operator
@@ -838,7 +838,7 @@ func handleDomainNetworkPolicyForNamespace[T v1alpha1.DomainEntity](ctx context.
 					AnnotationOwnerIdentifier: ownerId,
 				},
 				OwnerReferences: []metav1.OwnerReference{
-					*metav1.NewControllerRef(metav1.Object(dom), v1alpha1.SchemeGroupVersion.WithKind(dom.GetKind())),
+					*metav1.NewControllerRef(metav1.Object(dom), v1alpha2.SchemeGroupVersion.WithKind(dom.GetKind())),
 				},
 			},
 			Spec: spec,
@@ -853,19 +853,19 @@ func handleDomainNetworkPolicyForNamespace[T v1alpha1.DomainEntity](ctx context.
 	return err
 }
 
-func fetchDomainResourcesFromCache(c *Controller, refs []v1alpha1.DomainRef, namespace string) ([]*v1alpha1.Domain, []*v1alpha1.ClusterDomain, error) {
-	doms := []*v1alpha1.Domain{}
-	cdoms := []*v1alpha1.ClusterDomain{}
+func fetchDomainResourcesFromCache(c *Controller, refs []v1alpha2.DomainRef, namespace string) ([]*v1alpha2.Domain, []*v1alpha2.ClusterDomain, error) {
+	doms := []*v1alpha2.Domain{}
+	cdoms := []*v1alpha2.ClusterDomain{}
 	for _, ref := range refs {
 		switch ref.Kind {
-		case v1alpha1.DomainKind:
-			dom, err := c.crdInformerFactory.Sme().V1alpha1().Domains().Lister().Domains(namespace).Get(ref.Name)
+		case v1alpha2.DomainKind:
+			dom, err := c.crdInformerFactory.Sme().V1alpha2().Domains().Lister().Domains(namespace).Get(ref.Name)
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to get domain %s.%s: %w", namespace, ref.Name, err)
 			}
 			doms = append(doms, dom)
-		case v1alpha1.ClusterDomainKind:
-			cdom, err := c.crdInformerFactory.Sme().V1alpha1().ClusterDomains().Lister().ClusterDomains(corev1.NamespaceAll).Get(ref.Name)
+		case v1alpha2.ClusterDomainKind:
+			cdom, err := c.crdInformerFactory.Sme().V1alpha2().ClusterDomains().Lister().ClusterDomains(corev1.NamespaceAll).Get(ref.Name)
 			if err != nil {
 				return nil, nil, fmt.Errorf("failed to get cluster domain %s: %w", ref.Name, err)
 			}
@@ -876,7 +876,7 @@ func fetchDomainResourcesFromCache(c *Controller, refs []v1alpha1.DomainRef, nam
 	return doms, cdoms, nil
 }
 
-func getDomainHosts[T v1alpha1.DomainEntity](s []T, subdomain string) []string {
+func getDomainHosts[T v1alpha2.DomainEntity](s []T, subdomain string) []string {
 	hosts := []string{}
 	for _, dom := range s {
 		v := dom.GetSpec().Domain
@@ -888,12 +888,12 @@ func getDomainHosts[T v1alpha1.DomainEntity](s []T, subdomain string) []string {
 	return hosts
 }
 
-func getDomainGatewayReferences[T v1alpha1.DomainEntity](s []T) []string {
+func getDomainGatewayReferences[T v1alpha2.DomainEntity](s []T) []string {
 	gateways := []string{}
 
 	for _, dom := range s {
 		if dom.GetStatus().GatewayName != "" {
-			if dom.GetKind() == v1alpha1.DomainKind {
+			if dom.GetKind() == v1alpha2.DomainKind {
 				gateways = append(gateways, dom.GetStatus().GatewayName)
 			} else {
 				// for ClusterDomain, the gateway name is prefixed with the operator namespace
@@ -904,13 +904,13 @@ func getDomainGatewayReferences[T v1alpha1.DomainEntity](s []T) []string {
 	return gateways
 }
 
-func areDomainResourcesReady[T v1alpha1.DomainEntity](doms []T) (bool, error) {
+func areDomainResourcesReady[T v1alpha2.DomainEntity](doms []T) (bool, error) {
 	if len(doms) == 0 {
 		return true, nil
 	}
 	for _, dom := range doms {
 		s := dom.GetStatus()
-		if s.State == v1alpha1.DomainStateError {
+		if s.State == v1alpha2.DomainStateError {
 			return false, fmt.Errorf("%s in state %s: %s", formOwnerIdFromDomain(dom), s.State, dom.GetStatusReadyConditionMessage())
 		}
 		if !isCROConditionReady(s.GenericStatus) {
@@ -920,7 +920,7 @@ func areDomainResourcesReady[T v1alpha1.DomainEntity](doms []T) (bool, error) {
 	return true, nil
 }
 
-func deleteDomainCertificates[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, _ T, ownerId string) error {
+func deleteDomainCertificates[T v1alpha2.DomainEntity](ctx context.Context, c *Controller, _ T, ownerId string) error {
 	selector := labels.SelectorFromSet(labels.Set{
 		LabelOwnerIdentifierHash: sha1Sum(ownerId),
 	})
@@ -939,7 +939,7 @@ func deleteDomainCertificates[T v1alpha1.DomainEntity](ctx context.Context, c *C
 	return nil
 }
 
-func deleteAdditionalCACertificateSecret[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, _ T, ownerId string) error {
+func deleteAdditionalCACertificateSecret[T v1alpha2.DomainEntity](ctx context.Context, c *Controller, _ T, ownerId string) error {
 	selector := labels.SelectorFromSet(labels.Set{
 		LabelOwnerIdentifierHash: sha1Sum(ownerId),
 	})
@@ -966,7 +966,7 @@ func deleteAdditionalCACertificateSecret[T v1alpha1.DomainEntity](ctx context.Co
 	return nil
 }
 
-func handleDomainResourceDeletion[T v1alpha1.DomainEntity](ctx context.Context, c *Controller, dom T) (*ReconcileResult, error) {
+func handleDomainResourceDeletion[T v1alpha2.DomainEntity](ctx context.Context, c *Controller, dom T) (*ReconcileResult, error) {
 	cas, err := getReferencingApplications(c, dom)
 	if err != nil {
 		return nil, err
@@ -981,13 +981,13 @@ func handleDomainResourceDeletion[T v1alpha1.DomainEntity](ctx context.Context, 
 
 	if len(cas) > 0 {
 		// keep ready condition intact - block deletion
-		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateDeleting, readyStatus, "DeletionBlocked", "deletion blocked by referencing applications")
+		dom.SetStatusWithReadyCondition(v1alpha2.DomainStateDeleting, readyStatus, "DeletionBlocked", "deletion blocked by referencing applications")
 		// requeue to attempt after a delay
 		return NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 30*time.Second), nil
 	}
 
-	if dom.GetStatus().State != v1alpha1.DomainStateDeleting || readyStatus == metav1.ConditionTrue {
-		dom.SetStatusWithReadyCondition(v1alpha1.DomainStateDeleting, metav1.ConditionFalse, "Deleting", "deleting domain resources")
+	if dom.GetStatus().State != v1alpha2.DomainStateDeleting || readyStatus == metav1.ConditionTrue {
+		dom.SetStatusWithReadyCondition(v1alpha2.DomainStateDeleting, metav1.ConditionFalse, "Deleting", "deleting domain resources")
 		return NewReconcileResultWithResource(getResourceKeyFromKind(dom), dom.GetName(), dom.GetNamespace(), 0), nil
 	}
 
@@ -1005,9 +1005,9 @@ func handleDomainResourceDeletion[T v1alpha1.DomainEntity](ctx context.Context, 
 	// remove finalizer from domain
 	if removeFinalizer(&dom.GetMetadata().Finalizers, FinalizerDomain) {
 		switch v := any(dom).(type) {
-		case *v1alpha1.Domain:
+		case *v1alpha2.Domain:
 			err = c.updateDomain(ctx, v)
-		case *v1alpha1.ClusterDomain:
+		case *v1alpha2.ClusterDomain:
 			err = c.updateClusterDomain(ctx, v)
 
 		}
@@ -1016,7 +1016,7 @@ func handleDomainResourceDeletion[T v1alpha1.DomainEntity](ctx context.Context, 
 	return nil, err
 }
 
-func createDomainMap[T v1alpha1.DomainEntity](doms []T, in map[string]string) (out map[string]string) {
+func createDomainMap[T v1alpha2.DomainEntity](doms []T, in map[string]string) (out map[string]string) {
 	out = in
 	if out == nil {
 		out = map[string]string{}
@@ -1027,15 +1027,15 @@ func createDomainMap[T v1alpha1.DomainEntity](doms []T, in map[string]string) (o
 	return
 }
 
-func convertOwnerIdsToDomainReferences(ownerIds []string) (refs []v1alpha1.DomainRef) {
-	refs = []v1alpha1.DomainRef{}
+func convertOwnerIdsToDomainReferences(ownerIds []string) (refs []v1alpha2.DomainRef) {
+	refs = []v1alpha2.DomainRef{}
 	for _, id := range ownerIds {
 		parts := strings.Split(id, ".")
 		switch len(parts) {
 		case 2:
-			refs = append(refs, v1alpha1.DomainRef{Kind: parts[0], Name: parts[1]})
+			refs = append(refs, v1alpha2.DomainRef{Kind: parts[0], Name: parts[1]})
 		default: // case 3:
-			refs = append(refs, v1alpha1.DomainRef{Kind: parts[0], Name: parts[2]})
+			refs = append(refs, v1alpha2.DomainRef{Kind: parts[0], Name: parts[2]})
 		}
 	}
 	return

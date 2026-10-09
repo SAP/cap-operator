@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha1"
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -39,12 +39,12 @@ const defaultDependantDelay = 3 * time.Second
 
 var (
 	KindMap = map[int]string{
-		ResourceCAPApplication:        v1alpha1.CAPApplicationKind,
-		ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind,
-		ResourceCAPTenant:             v1alpha1.CAPTenantKind,
-		ResourceCAPTenantOperation:    v1alpha1.CAPTenantOperationKind,
-		ResourceDomain:                v1alpha1.DomainKind,
-		ResourceClusterDomain:         v1alpha1.ClusterDomainKind,
+		ResourceCAPApplication:        v1alpha2.CAPApplicationKind,
+		ResourceCAPApplicationVersion: v1alpha2.CAPApplicationVersionKind,
+		ResourceCAPTenant:             v1alpha2.CAPTenantKind,
+		ResourceCAPTenantOperation:    v1alpha2.CAPTenantOperationKind,
+		ResourceDomain:                v1alpha2.DomainKind,
+		ResourceClusterDomain:         v1alpha2.ClusterDomainKind,
 	}
 )
 
@@ -54,18 +54,18 @@ type NamespacedResourceKey struct {
 }
 
 var QueueMapping map[int]map[int]string = map[int]map[int]string{
-	ResourceCAPApplication:        {ResourceCAPApplication: v1alpha1.CAPApplicationKind},
-	ResourceCAPApplicationVersion: {ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind, ResourceCAPApplication: v1alpha1.CAPApplicationKind},
-	ResourceCAPTenant:             {ResourceCAPTenant: v1alpha1.CAPTenantKind, ResourceCAPApplication: v1alpha1.CAPApplicationKind},
-	ResourceCAPTenantOperation:    {ResourceCAPTenantOperation: v1alpha1.CAPTenantOperationKind, ResourceCAPTenant: v1alpha1.CAPTenantKind},
-	ResourceDomain:                {ResourceDomain: v1alpha1.DomainKind},
-	ResourceClusterDomain:         {ResourceClusterDomain: v1alpha1.ClusterDomainKind},
-	ResourceJob:                   {ResourceCAPTenantOperation: v1alpha1.CAPTenantOperationKind, ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
-	ResourceGateway:               {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
-	ResourceCertificate:           {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
-	ResourceDNSEntry:              {ResourceDomain: v1alpha1.DomainKind, ResourceClusterDomain: v1alpha1.ClusterDomainKind},
-	ResourceVirtualService:        {ResourceCAPTenant: v1alpha1.CAPTenantKind},
-	ResourceDestinationRule:       {ResourceCAPApplicationVersion: v1alpha1.CAPApplicationVersionKind},
+	ResourceCAPApplication:        {ResourceCAPApplication: v1alpha2.CAPApplicationKind},
+	ResourceCAPApplicationVersion: {ResourceCAPApplicationVersion: v1alpha2.CAPApplicationVersionKind, ResourceCAPApplication: v1alpha2.CAPApplicationKind},
+	ResourceCAPTenant:             {ResourceCAPTenant: v1alpha2.CAPTenantKind, ResourceCAPApplication: v1alpha2.CAPApplicationKind},
+	ResourceCAPTenantOperation:    {ResourceCAPTenantOperation: v1alpha2.CAPTenantOperationKind, ResourceCAPTenant: v1alpha2.CAPTenantKind},
+	ResourceDomain:                {ResourceDomain: v1alpha2.DomainKind},
+	ResourceClusterDomain:         {ResourceClusterDomain: v1alpha2.ClusterDomainKind},
+	ResourceJob:                   {ResourceCAPTenantOperation: v1alpha2.CAPTenantOperationKind, ResourceCAPApplicationVersion: v1alpha2.CAPApplicationVersionKind},
+	ResourceGateway:               {ResourceDomain: v1alpha2.DomainKind, ResourceClusterDomain: v1alpha2.ClusterDomainKind},
+	ResourceCertificate:           {ResourceDomain: v1alpha2.DomainKind, ResourceClusterDomain: v1alpha2.ClusterDomainKind},
+	ResourceDNSEntry:              {ResourceDomain: v1alpha2.DomainKind, ResourceClusterDomain: v1alpha2.ClusterDomainKind},
+	ResourceVirtualService:        {ResourceCAPTenant: v1alpha2.CAPTenantKind},
+	ResourceDestinationRule:       {ResourceCAPApplicationVersion: v1alpha2.CAPApplicationVersionKind},
 }
 
 type QueueItem struct {
@@ -119,32 +119,32 @@ func (c *Controller) getEventHandlerFuncsForResource(res int) cache.ResourceEven
 }
 
 func (c *Controller) registerCAPApplicationListeners() {
-	c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Informer().
+	c.crdInformerFactory.Sme().V1alpha2().CAPApplications().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceCAPApplication))
 }
 
 func (c *Controller) registerCAPApplicationVersionListeners() {
-	c.crdInformerFactory.Sme().V1alpha1().CAPApplicationVersions().Informer().
+	c.crdInformerFactory.Sme().V1alpha2().CAPApplicationVersions().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceCAPApplicationVersion))
 }
 
 func (c *Controller) registerCAPTenantListeners() {
-	c.crdInformerFactory.Sme().V1alpha1().CAPTenants().Informer().
+	c.crdInformerFactory.Sme().V1alpha2().CAPTenants().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceCAPTenant))
 }
 
 func (c *Controller) registerCAPTenantOperationListeners() {
-	c.crdInformerFactory.Sme().V1alpha1().CAPTenantOperations().Informer().
+	c.crdInformerFactory.Sme().V1alpha2().CAPTenantOperations().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceCAPTenantOperation))
 }
 
 func (c *Controller) registerClusterDomainListeners() {
-	c.crdInformerFactory.Sme().V1alpha1().ClusterDomains().Informer().
+	c.crdInformerFactory.Sme().V1alpha2().ClusterDomains().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceClusterDomain))
 }
 
 func (c *Controller) registerDomainListeners() {
-	c.crdInformerFactory.Sme().V1alpha1().Domains().Informer().
+	c.crdInformerFactory.Sme().V1alpha2().Domains().Informer().
 		AddEventHandler(c.getEventHandlerFuncsForResource(ResourceDomain))
 }
 
@@ -197,7 +197,7 @@ func (c *Controller) getSecretEventHandlerFuncs() cache.ResourceEventHandlerFunc
 				return // no relevant changes
 			}
 			secretNS := new.GetNamespace()
-			cas, err := c.crdInformerFactory.Sme().V1alpha1().CAPApplications().Lister().CAPApplications(secretNS).List(labels.Everything())
+			cas, err := c.crdInformerFactory.Sme().V1alpha2().CAPApplications().Lister().CAPApplications(secretNS).List(labels.Everything())
 			if err != nil {
 				klog.ErrorS(err, "error retrieving applications", "informers", "rollout-manager")
 			}
@@ -261,7 +261,7 @@ func determineQueueItem(dependentKey int, sourceKey int, oldObj metav1.Object, n
 	if newObj == nil {
 		obj = oldObj
 	}
-	if owner, ok := getOwnerByKind(obj.GetOwnerReferences(), dependentKind); ok {
+	if owner, ok := getOwnerByKind(obj.GetOwnerReferences(), dependentKind, v1alpha2.Group); ok {
 		klog.InfoS(queuing, "namespace", obj.GetNamespace(), "name", owner.Name, "kind", dependentKind)
 		return &QueueItem{Key: dependentKey, ResourceKey: NamespacedResourceKey{Name: owner.Name, Namespace: obj.GetNamespace()}}
 	} else if owner, ok := getOwnerFromObjectMetadata(obj, dependentKind); ok {
