@@ -429,13 +429,16 @@ func evaluateWorkloadForCleanup(ctx context.Context, cav NamespacedResourceKey, 
 
 func executePromQL(ctx context.Context, promapi promv1.API, query string) (prommodel.Value, error) {
 	// klog.InfoS("executing prometheus query", "query", query)
-	result, warnings, err := promapi.Query(ctx, query, time.Now())
+	result, warnings, infos, err := promapi.Query(ctx, query, time.Now())
 	if err != nil {
 		klog.ErrorS(err, "prometheus query error", "query", query)
 		return nil, err
 	}
 	if len(warnings) > 0 {
 		klog.InfoS(fmt.Sprintf("query %s returned warnings [%s]", query, strings.Join(warnings, ", ")))
+	}
+	if len(infos) > 0 {
+		klog.InfoS(fmt.Sprintf("query %s returned infos [%s]", query, strings.Join(infos, ", ")))
 	}
 	klog.InfoS(fmt.Sprintf("query %s returned result: %v", query, result))
 	return result, nil
