@@ -13,7 +13,7 @@ When `tlsMode` is set to `Mutual` or `OptionalMutual` on a `Domain` or `ClusterD
 The operator stores the certificate as a Kubernetes `Secret` (key: `ca.crt`) in the Istio Ingress Gateway namespace, where Istio reads it.
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: ClusterDomain          # also applies to Domain
 metadata:
   name: cap-example-domain

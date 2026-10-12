@@ -9,10 +9,10 @@ description: >
 
 An important lifecycle aspect of operating multi-tenant CAP applications is the tenant upgrade process. With CAP Operator, tenant upgrades can be fully automated by providing a new `CAPApplicationVersion` custom resource.
 
-As covered in [initial deployment](../deploying-application), the `CAPApplicationVersion` resource describes the workloads of an application version, including the container image and services consumed by each component. To upgrade the application, create a new `CAPApplicationVersion` with updated `image` values for each component and a higher semantic version in the `version` field. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
+As covered in [initial deployment](../deploying-application), the `CAPApplicationVersion` resource describes the workloads of an application version, including the container image and services consumed by each component. To upgrade the application, create a new `CAPApplicationVersion` with updated `image` values for each component and a higher semantic version in the `version` field. See [API Reference](../../reference/#sme.sap.com/v1alpha2.CAPApplicationVersion).
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplicationVersion
 metadata:
   name: cav-cap-app-01-2
@@ -97,7 +97,7 @@ The CAP Operator controller reacts to the new `CAPApplicationVersion` resource b
 `CAPTenant` reconciliation changes the tenant state to `Upgrading` and creates a `CAPTenantOperation` resource of type upgrade.
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPTenantOperation
 metadata:
   name: cap-app-01-provider-fgdfg
@@ -124,7 +124,7 @@ When the `CAPTenantOperation` completes successfully, the `VirtualService` manag
 You can optionally enable Version Affinity for multi-tenant applications by adding the annotation `sme.sap.com/enable-version-affinity: "true"` to the `CAPApplication` resource. With this experimental feature, users remain on their currently active `CAPApplicationVersion` during an upgrade until their session expires or they log out.
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplication
 metadata:
   name: test-ca-01
@@ -144,7 +144,7 @@ spec:
 By default, CAP Operator recognizes `logout` and `logoff` as logout endpoints. If your application uses a different endpoint, specify it using the `sme.sap.com/logout-endpoint` annotation on your `CAPApplicationVersion` resource (without a leading slash).
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplicationVersion
 metadata:
   name: cav-cap-app-01-2

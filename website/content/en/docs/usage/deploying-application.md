@@ -24,7 +24,7 @@ Deploying a multi-tenant CAP application involves defining several key resources
 Create the `CAPApplication` and `CAPApplicationVersion` resources in the same namespace. This allows CAP Operator to manage all associated runtime components. For external traffic management, define either a `Domain` or `ClusterDomain` resource.
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: Domain
 metadata:
   namespace: cap-app-01
@@ -38,10 +38,10 @@ spec:
   dnsMode: Wildcard
 ```
 
-The `ClusterDomain` resource is cluster-scoped and suited for global or shared domain configurations — for example, when multiple applications share the same external domain. See [API Reference](../../reference/#sme.sap.com/v1alpha1.ClusterDomain).
+The `ClusterDomain` resource is cluster-scoped and suited for global or shared domain configurations — for example, when multiple applications share the same external domain. See [API Reference](../../reference/#sme.sap.com/v1alpha2.ClusterDomain).
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: ClusterDomain
 metadata:
   name: common-external-domain
@@ -54,10 +54,10 @@ spec:
   dnsMode: Subdomain
 ```
 
-The `CAPApplication` resource describes the high-level attributes of an application: the SAP BTP account where it is hosted, the consumed SAP BTP services, and references to `Domain` and `ClusterDomain` resources. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplication).
+The `CAPApplication` resource describes the high-level attributes of an application: the SAP BTP account where it is hosted, the consumed SAP BTP services, and references to `Domain` and `ClusterDomain` resources. See [API Reference](../../reference/#sme.sap.com/v1alpha2.CAPApplication).
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplication
 metadata:
   name: cap-app-01
@@ -95,10 +95,10 @@ spec:
   providerSubaccountId: provider-subaccount-id
 ```
 
-The `CAPApplicationVersion` describes the components of an application version, including the container images to use and the services consumed by each component. It must be created in the same namespace as the `CAPApplication` and must reference it. See [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplicationVersion).
+The `CAPApplicationVersion` describes the components of an application version, including the container images to use and the services consumed by each component. It must be created in the same namespace as the `CAPApplication` and must reference it. See [API Reference](../../reference/#sme.sap.com/v1alpha2.CAPApplicationVersion).
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplicationVersion
 metadata:
   name: cav-cap-app-01-1

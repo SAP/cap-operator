@@ -25,7 +25,7 @@ Enabling `rolloutOnCredentialUpdate` on a `CAPApplication` resource instructs CA
 Set `rolloutOnCredentialUpdate: true` in the `CAPApplication` spec:
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplication
 metadata:
   name: cap-app-01
@@ -50,7 +50,7 @@ spec:
   providerSubaccountId: provider-subaccount-id
 ```
 
-The field is optional and defaults to `false`. See the [API Reference](../../reference/#sme.sap.com/v1alpha1.CAPApplication) for the full spec.
+The field is optional and defaults to `false`. See the [API Reference](../../reference/#sme.sap.com/v1alpha2.CAPApplication) for the full spec.
 
 ## How It Works
 

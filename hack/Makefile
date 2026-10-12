@@ -26,7 +26,7 @@ types: ## Generate Types.
 
 .PHONY: gen-api-docs
 gen-api-docs: gen-crd-api-reference-docs ## Generate API docu.
-	$(API_DOCS) -config api-reference/config.json -template-dir api-reference/template -api-dir $(SRC)/$(PKG)/sme.sap.com/v1alpha1 -out-file $(SRC)/website/includes/api-reference.html
+	$(API_DOCS) -config api-reference/config.json -template-dir api-reference/template -api-dir $(SRC)/$(PKG)/sme.sap.com/v1alpha2 -out-file $(SRC)/website/includes/api-reference.html
 
 .PHONY: gen-helm-docs
 gen-helm-docs: helm-docs ## Generate helm doc.

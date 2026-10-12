@@ -57,7 +57,7 @@ parameters:
 When using multiple [SAP Authorization and Trust Management Service](https://help.sap.com/docs/authorization-and-trust-management-service?locale=en-US) instances in the application (for example, one for `application` and another for `apiaccess`), set the primary instance using the annotation `sme.sap.com/primary-xsuaa` with the `name` of the service instance:
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplication
 metadata:
   annotations:

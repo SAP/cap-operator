@@ -11,7 +11,7 @@ description: >
 A `Domain` resource is namespace-scoped. All sub-resources — Gateway, DNSEntry, and (with Gardener certificate manager) the Certificate — are created in the same namespace as the `Domain`.
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: Domain
 metadata:
   namespace: cap-app-01

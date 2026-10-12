@@ -10,7 +10,7 @@ description: >
 Here's an example of a fully configured `CAPApplication`:
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplication
 metadata:
   name: cap-app

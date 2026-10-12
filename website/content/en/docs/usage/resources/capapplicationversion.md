@@ -10,7 +10,7 @@ description: >
 The `CAPApplicationVersion` has the following high-level structure:
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplicationVersion
 metadata:
   name: cav-cap-app-v1
@@ -208,7 +208,7 @@ The port configurations are mandatory and cannot be omitted.
 ### Full Example
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplicationVersion
 metadata:
   name: cav-cap-app-v1
@@ -373,10 +373,10 @@ spec:
     - ui-content
 ```
 > NOTE:
-> The CAP Operator [workloads](../../../reference/#sme.sap.com/v1alpha1.WorkloadDetails) support several configurations (drawn from the [Kubernetes API](https://kubernetes.io/docs/reference/using-api/)), which can be found in the API reference:
-> - [Common API reference](../../../reference/#sme.sap.com/v1alpha1.CommonDetails) for generic container configuration
-> - [Deployment API reference](../../../reference/#sme.sap.com/v1alpha1.DeploymentDetails) for deployment-specific configuration
-> - [Job API reference](../../../reference/#sme.sap.com/v1alpha1.JobDetails) for job-specific configuration
+> The CAP Operator [workloads](../../../reference/#sme.sap.com/v1alpha2.WorkloadDetails) support several configurations (drawn from the [Kubernetes API](https://kubernetes.io/docs/reference/using-api/)), which can be found in the API reference:
+> - [Common API reference](../../../reference/#sme.sap.com/v1alpha2.CommonDetails) for generic container configuration
+> - [Deployment API reference](../../../reference/#sme.sap.com/v1alpha2.DeploymentDetails) for deployment-specific configuration
+> - [Job API reference](../../../reference/#sme.sap.com/v1alpha2.JobDetails) for job-specific configuration
 >
 > The supported configurations are intentionally kept minimal to keep the overall API simple, covering only the most commonly used options.
 

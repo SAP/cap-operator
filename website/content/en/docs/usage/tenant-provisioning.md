@@ -10,7 +10,7 @@ description: >
 In CAP Operator, a valid tenant for an application is represented by the `CAPTenant` resource. It references the `CAPApplication` it belongs to and specifies the details of the SAP BTP subaccount that represents the tenant.
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPTenant
 metadata:
   name: cap-app-01-consumer
@@ -34,7 +34,7 @@ Tenant provisioning begins when a consumer subaccount subscribes to the applicat
 The controller, observing the new `CAPTenant`, initiates the provisioning process by creating a `CAPTenantOperation` resource representing the provisioning operation.
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPTenantOperation
 metadata:
   name: cap-app-01-consumer-sgz8b

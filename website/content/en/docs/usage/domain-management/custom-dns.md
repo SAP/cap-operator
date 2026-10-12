@@ -55,7 +55,7 @@ If the same subdomain appears in two different `CAPApplication` resources that b
 The following configuration combines a wildcard record with per-subdomain records on the primary domain, and a CNAME chain that maps each subdomain on an external domain to the corresponding subdomain on the primary domain:
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: Domain                 # also applies to ClusterDomain
 metadata:
   namespace: cap-app-01
