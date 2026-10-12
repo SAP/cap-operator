@@ -9,6 +9,21 @@ description: >
 ### Recent updates
 
 {{% cardpane %}}
+  {{% card header="v1alpha2 API Version" %}}
+  CAP Operator now uses `v1alpha2` as the default API version (from release `0.37.0`). The new version removes the deprecated `globalAccountId` and `domains` fields from `CAPApplication`. See the [CAPApplication resource](../usage/resources/capapplication) reference for the updated spec.
+  {{% /card %}}
+  {{% card header="Subscription Resource" %}}
+  The new `Subscription` resource represents an active consumer subscription to a CAP application. It is created and managed by the subscription server in response to SaaS Provisioning service callbacks. Learn more about the [Subscription resource](../usage/resources/subscription).
+  {{% /card %}}
+  {{% card header="SubscriptionProvider Resource" %}}
+  The new `SubscriptionProvider` resource is automatically maintained by the controller to cache subscription credentials and pre-computed dependency information for efficient handling of subscription requests. Learn more about the [SubscriptionProvider resource](../usage/resources/subscriptionprovider).
+  {{% /card %}}
+{{% /cardpane %}}
+
+
+### Previous updates
+
+{{% cardpane %}}
   {{% card header="Rollout on Credential Update" %}}
   CAP Operator now triggers a rollout of relevant workloads when credentials (service bindings) are updated. Learn more about [Rollout on Credential Update](../usage/rollout-on-credential-update).
   {{% /card %}}
@@ -19,9 +34,6 @@ description: >
   The subscription server now supports the `getDependencies` callback, enabling CAP applications to return dependencies during tenant subscription. Learn more about [getDependencies support](../usage/tenant-provisioning/#get-dependencies).
   {{% /card %}}
 {{% /cardpane %}}
-
-
-### Previous updates
 
 {{% cardpane %}}
   {{% card header="Service Exposure" %}}
