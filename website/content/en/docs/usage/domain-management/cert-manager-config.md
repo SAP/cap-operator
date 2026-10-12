@@ -25,7 +25,7 @@ If `certConfig.certManager` is not set, the operator uses the following issuer r
 Set `certConfig.certManager.issuerRef` on a `Domain` or `ClusterDomain` to point to any cert-manager issuer:
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: Domain                 # also applies to ClusterDomain
 metadata:
   namespace: cap-app-01

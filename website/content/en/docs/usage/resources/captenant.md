@@ -14,7 +14,7 @@ The `CAPTenant` resource is completely managed by CAP Operator and must not be c
 The `CAPTenant` resource indicates the existence of a tenant in the related application (or one that is currently being provisioned). The resource starts with a `Provisioning` state and moves to `Ready` when successfully provisioned. Managing tenants as Kubernetes resources allows you to control not only the lifecycle of the entity, but also other requirements that must be fulfilled for the application to serve tenant-specific requests (for example, creating networking resources).
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPTenant
 metadata:
   name: cap-app-consumer-ge455

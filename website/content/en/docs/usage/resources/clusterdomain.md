@@ -11,7 +11,7 @@ description: >
 A `ClusterDomain` resource is cluster-scoped and intended for domains shared across multiple applications or namespaces. All sub-resources — Gateway, DNSEntry, and (with Gardener certificate manager) the Certificate — are created in the namespace where CAP Operator is installed.
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: ClusterDomain
 metadata:
   name: common-external-domain

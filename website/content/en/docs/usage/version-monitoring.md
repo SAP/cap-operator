@@ -32,7 +32,7 @@ For each _deployment workload_ in a `CAPApplicationVersion`, you can define:
 
 The following example shows a workload named `backend` configured with deletion rules based on multiple metrics.
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplicationVersion
 metadata:
   namespace: demo
@@ -80,7 +80,7 @@ All specified metrics of a workload must satisfy the evaluation criteria for the
 
 You can also specify deletion criteria for a workload by providing a PromQL expression that returns a boolean scalar.
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplicationVersion
 metadata:
   namespace: demo

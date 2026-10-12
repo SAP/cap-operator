@@ -1,0 +1,4086 @@
+<p>Packages:</p>
+<ul>
+<li>
+<a href="#sme.sap.com%2fv1alpha1">sme.sap.com/v1alpha1</a>
+</li>
+</ul>
+<h2 id="sme.sap.com/v1alpha1">sme.sap.com/v1alpha1</h2>
+Resource Types:
+<ul><li>
+<a href="#sme.sap.com/v1alpha1.CAPApplication">CAPApplication</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha1.CAPApplicationVersion">CAPApplicationVersion</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha1.CAPTenant">CAPTenant</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha1.ClusterDomain">ClusterDomain</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha1.Domain">Domain</a>
+</li></ul>
+<h3 id="sme.sap.com/v1alpha1.CAPApplication">CAPApplication
+</h3>
+<div>
+<p>CAPApplication is the schema for capapplications API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>CAPApplication</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPApplicationSpec">
+CAPApplicationSpec
+</a>
+</em>
+</td>
+<td>
+<p>CAPApplication spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>domainRefs</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DomainRef">
+[]DomainRef
+</a>
+</em>
+</td>
+<td>
+<p>Reference to <code>Domain</code> resources used by the application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>domains</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.ApplicationDomains">
+ApplicationDomains
+</a>
+</em>
+</td>
+<td>
+<p>Deprecated: Domains used by the application. Will be removed in future versions, use <code>DomainRefs</code> instead</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>globalAccountId</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Deprecated: SAP BTP Global Account Identifier where services are entitled for the current application
+Will be removed soon, use ProviderSubaccountId instead</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>providerSubaccountId</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The subaccount ID in which the application is provided</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>btpAppName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Short name for the application (BTP XSAPPNAME)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>provider</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+BTPTenantIdentification
+</a>
+</em>
+</td>
+<td>
+<p>Deprecated: Provider subaccount where application services are created
+Will be removed, consider automating this via BTP / subscription instead!</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>btp</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTP">
+BTP
+</a>
+</em>
+</td>
+<td>
+<p>SAP BTP Services consumed by the application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>rolloutOnCredentialUpdate</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Rollout on Credentials Update may be used to rollout deployments when dependent service credentials are updated</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPApplicationStatus">
+CAPApplicationStatus
+</a>
+</em>
+</td>
+<td>
+<p>CAPApplication status</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationVersion">CAPApplicationVersion
+</h3>
+<div>
+<p>CAPApplicationVersion defines the schema for capapplicationversions API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>CAPApplicationVersion</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPApplicationVersionSpec">
+CAPApplicationVersionSpec
+</a>
+</em>
+</td>
+<td>
+<p>CAPApplicationVersion spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>capApplicationInstance</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Denotes to which CAPApplication the current version belongs</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>version</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Semantic version</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>registrySecrets</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Registry secrets used to pull images of the application components</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workloads</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.WorkloadDetails">
+[]WorkloadDetails
+</a>
+</em>
+</td>
+<td>
+<p>Information about the Workloads</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tenantOperations</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TenantOperations">
+TenantOperations
+</a>
+</em>
+</td>
+<td>
+<p>Tenant Operations may be used to specify how jobs are sequenced for the different tenant operations</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>contentJobs</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Content Jobs may be used to specify the sequence of content jobs when several jobs exist</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceExposures</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.ServiceExposure">
+[]ServiceExposure
+</a>
+</em>
+</td>
+<td>
+<p>Configuration for the service(s) to be exposed (relevant only for &lsquo;Service&rsquo; type deployment workloads)</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPApplicationVersionStatus">
+CAPApplicationVersionStatus
+</a>
+</em>
+</td>
+<td>
+<p>CAPApplicationVersion status</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenant">CAPTenant
+</h3>
+<div>
+<p>CAPTenant defines the schema for captenants API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>CAPTenant</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantSpec">
+CAPTenantSpec
+</a>
+</em>
+</td>
+<td>
+<p>CAPTenant spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>capApplicationInstance</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Denotes to which CAPApplication the current tenant belongs</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>BTPTenantIdentification</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+BTPTenantIdentification
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>BTPTenantIdentification</code> are embedded into this type.)
+</p>
+<p>Details of consumer sub-account subscribing to the application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>version</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Semver that is used to determine the relevant CAPApplicationVersion that a CAPTenant can be upgraded to (i.e. if it is not already on that version)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>versionUpgradeStrategy</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.VersionUpgradeStrategyType">
+VersionUpgradeStrategyType
+</a>
+</em>
+</td>
+<td>
+<p>Denotes whether a CAPTenant can be upgraded. One of (&lsquo;always&rsquo;, &lsquo;never&rsquo;)</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantStatus">
+CAPTenantStatus
+</a>
+</em>
+</td>
+<td>
+<p>CAPTenant status</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation
+</h3>
+<div>
+<p>CAPTenantOperation defines the schema for captenantoperations API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>CAPTenantOperation</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperationSpec">
+CAPTenantOperationSpec
+</a>
+</em>
+</td>
+<td>
+<p>CAPTenantOperation spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>operation</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperationType">
+CAPTenantOperationType
+</a>
+</em>
+</td>
+<td>
+<p>Scope of the tenant lifecycle operation. One of &lsquo;provisioning&rsquo;, &lsquo;deprovisioning&rsquo; or &lsquo;upgrade&rsquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>BTPTenantIdentification</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+BTPTenantIdentification
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>BTPTenantIdentification</code> are embedded into this type.)
+</p>
+<p>BTP sub-account (tenant) for which request is created</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>capApplicationVersionInstance</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Reference to CAPApplicationVersion for executing the operation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>steps</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperationStep">
+[]CAPTenantOperationStep
+</a>
+</em>
+</td>
+<td>
+<p>Steps (jobs) to be executed for the operation to complete</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperationStatus">
+CAPTenantOperationStatus
+</a>
+</em>
+</td>
+<td>
+<p>CAPTenantOperation status</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput
+</h3>
+<div>
+<p>CAPTenantOutput is the schema for captenantoutputs API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>CAPTenantOutput</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOutputSpec">
+CAPTenantOutputSpec
+</a>
+</em>
+</td>
+<td>
+<p>CAPTenantOutput spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>subscriptionCallbackData</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.ClusterDomain">ClusterDomain
+</h3>
+<div>
+<p>ClusterDomain is the schema for clusterdomains API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>ClusterDomain</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DomainSpec">
+DomainSpec
+</a>
+</em>
+</td>
+<td>
+<p>ClusterDomains spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>domain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Domain used by an application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ingressSelector</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>Selector is the set of labels used to select the ingress pods handling the domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsMode</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TLSMode">
+TLSMode
+</a>
+</em>
+</td>
+<td>
+<p>TLS mode for the generated (Istio) Gateway resource. Set this to Mutual when using mTLS with an external gateway.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsMode</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DNSMode">
+DNSMode
+</a>
+</em>
+</td>
+<td>
+<p>DNS mode controls the creation of DNS entries related to the domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsTemplates</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DNSTemplate">
+[]DNSTemplate
+</a>
+</em>
+</td>
+<td>
+<p>DNS templates allows usage of go templates for generating DNS entries when [DNSMode] is set to <code>Custom</code></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsTarget</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>DNS Target for traffic to this domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>certConfig</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CertConfig">
+CertConfig
+</a>
+</em>
+</td>
+<td>
+<p>Certificate configuration</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DomainStatus">
+DomainStatus
+</a>
+</em>
+</td>
+<td>
+<p>ClusterDomain status</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.Domain">Domain
+</h3>
+<div>
+<p>Domain is the schema for domains API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha1
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>Domain</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DomainSpec">
+DomainSpec
+</a>
+</em>
+</td>
+<td>
+<p>Domains spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>domain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Domain used by an application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ingressSelector</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>Selector is the set of labels used to select the ingress pods handling the domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsMode</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TLSMode">
+TLSMode
+</a>
+</em>
+</td>
+<td>
+<p>TLS mode for the generated (Istio) Gateway resource. Set this to Mutual when using mTLS with an external gateway.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsMode</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DNSMode">
+DNSMode
+</a>
+</em>
+</td>
+<td>
+<p>DNS mode controls the creation of DNS entries related to the domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsTemplates</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DNSTemplate">
+[]DNSTemplate
+</a>
+</em>
+</td>
+<td>
+<p>DNS templates allows usage of go templates for generating DNS entries when [DNSMode] is set to <code>Custom</code></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsTarget</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>DNS Target for traffic to this domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>certConfig</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CertConfig">
+CertConfig
+</a>
+</em>
+</td>
+<td>
+<p>Certificate configuration</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DomainStatus">
+DomainStatus
+</a>
+</em>
+</td>
+<td>
+<p>Domain status</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.ApplicationDomains">ApplicationDomains
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationSpec">CAPApplicationSpec</a>)
+</p>
+<div>
+<p>Application domains</p>
+<p>Deprecated: ApplicationDomains exists for historical compatibility and should not be used.
+This will be removed in future versions. Use DomainRef instead.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>primary</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Primary application domain will be used to generate a wildcard TLS certificate. In project &ldquo;Gardener&rdquo; managed clusters this is (usually) a subdomain of the cluster domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>secondary</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Customer specific domains to serve application endpoints (optional)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsTarget</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Public ingress URL for the cluster Load Balancer</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>istioIngressGatewayLabels</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.NameValue">
+[]NameValue
+</a>
+</em>
+</td>
+<td>
+<p>Labels used to identify the istio ingress-gateway component and its corresponding namespace. Usually {&ldquo;app&rdquo;:&ldquo;istio-ingressgateway&rdquo;,&ldquo;istio&rdquo;:&ldquo;ingressgateway&rdquo;}</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.BTP">BTP
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationSpec">CAPApplicationSpec</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>services</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.ServiceInfo">
+[]ServiceInfo
+</a>
+</em>
+</td>
+<td>
+<p>Details of BTP Services</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.BTPTenantIdentification">BTPTenantIdentification
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationSpec">CAPApplicationSpec</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantOperationSpec">CAPTenantOperationSpec</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantSpec">CAPTenantSpec</a>)
+</p>
+<div>
+<p>Identifies an SAP BTP subaccount (tenant)</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>subDomain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>BTP subaccount subdomain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tenantId</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>BTP subaccount Tenant ID</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationSpec">CAPApplicationSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplication">CAPApplication</a>)
+</p>
+<div>
+<p>CAPApplicationSpec defines the desired state of CAPApplication</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>domainRefs</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DomainRef">
+[]DomainRef
+</a>
+</em>
+</td>
+<td>
+<p>Reference to <code>Domain</code> resources used by the application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>domains</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.ApplicationDomains">
+ApplicationDomains
+</a>
+</em>
+</td>
+<td>
+<p>Deprecated: Domains used by the application. Will be removed in future versions, use <code>DomainRefs</code> instead</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>globalAccountId</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Deprecated: SAP BTP Global Account Identifier where services are entitled for the current application
+Will be removed soon, use ProviderSubaccountId instead</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>providerSubaccountId</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The subaccount ID in which the application is provided</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>btpAppName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Short name for the application (BTP XSAPPNAME)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>provider</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+BTPTenantIdentification
+</a>
+</em>
+</td>
+<td>
+<p>Deprecated: Provider subaccount where application services are created
+Will be removed, consider automating this via BTP / subscription instead!</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>btp</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTP">
+BTP
+</a>
+</em>
+</td>
+<td>
+<p>SAP BTP Services consumed by the application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>rolloutOnCredentialUpdate</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Rollout on Credentials Update may be used to rollout deployments when dependent service credentials are updated</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationState">CAPApplicationState
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationStatus">CAPApplicationStatus</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Consistent&#34;</p></td>
+<td><p>CAPApplication has been reconciled and is now consistent</p>
+</td>
+</tr><tr><td><p>&#34;Deleting&#34;</p></td>
+<td><p>Deletion has been triggered</p>
+</td>
+</tr><tr><td><p>&#34;Error&#34;</p></td>
+<td><p>An error occurred during reconciliation</p>
+</td>
+</tr><tr><td><p>&#34;Processing&#34;</p></td>
+<td><p>CAPApplication is being reconciled</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationStatus">CAPApplicationStatus
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplication">CAPApplication</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericStatus</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.GenericStatus">
+GenericStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPApplicationState">
+CAPApplicationState
+</a>
+</em>
+</td>
+<td>
+<p>State of CAPApplication</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>servicesOnly</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Represents whether this is a services only scenario</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>domainSpecHash</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Hash representing last known application domains</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastFullReconciliationTime</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>The last time a full reconciliation was completed</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>observedSubdomains</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Last known application subdomains</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationStatusConditionType">CAPApplicationStatusConditionType
+(<code>string</code> alias)</h3>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;AllTenantsReady&#34;</p></td>
+<td></td>
+</tr><tr><td><p>&#34;LatestVersionReady&#34;</p></td>
+<td></td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationVersionSpec">CAPApplicationVersionSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersion">CAPApplicationVersion</a>)
+</p>
+<div>
+<p>CAPApplicationVersionSpec specifies the desired state of CAPApplicationVersion</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>capApplicationInstance</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Denotes to which CAPApplication the current version belongs</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>version</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Semantic version</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>registrySecrets</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Registry secrets used to pull images of the application components</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>workloads</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.WorkloadDetails">
+[]WorkloadDetails
+</a>
+</em>
+</td>
+<td>
+<p>Information about the Workloads</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tenantOperations</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TenantOperations">
+TenantOperations
+</a>
+</em>
+</td>
+<td>
+<p>Tenant Operations may be used to specify how jobs are sequenced for the different tenant operations</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>contentJobs</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Content Jobs may be used to specify the sequence of content jobs when several jobs exist</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceExposures</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.ServiceExposure">
+[]ServiceExposure
+</a>
+</em>
+</td>
+<td>
+<p>Configuration for the service(s) to be exposed (relevant only for &lsquo;Service&rsquo; type deployment workloads)</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationVersionState">CAPApplicationVersionState
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersionStatus">CAPApplicationVersionStatus</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Deleting&#34;</p></td>
+<td><p>Deletion has been triggered</p>
+</td>
+</tr><tr><td><p>&#34;Error&#34;</p></td>
+<td><p>An error occurred during reconciliation</p>
+</td>
+</tr><tr><td><p>&#34;Processing&#34;</p></td>
+<td><p>CAPApplicationVersion is being processed</p>
+</td>
+</tr><tr><td><p>&#34;Ready&#34;</p></td>
+<td><p>CAPApplicationVersion is now ready for use (dependent resources have been created)</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPApplicationVersionStatus">CAPApplicationVersionStatus
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersion">CAPApplicationVersion</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericStatus</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.GenericStatus">
+GenericStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPApplicationVersionState">
+CAPApplicationVersionState
+</a>
+</em>
+</td>
+<td>
+<p>State of CAPApplicationVersion</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>finishedJobs</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>List of finished Content Jobs</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOperationSpec">CAPTenantOperationSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>operation</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperationType">
+CAPTenantOperationType
+</a>
+</em>
+</td>
+<td>
+<p>Scope of the tenant lifecycle operation. One of &lsquo;provisioning&rsquo;, &lsquo;deprovisioning&rsquo; or &lsquo;upgrade&rsquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>BTPTenantIdentification</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+BTPTenantIdentification
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>BTPTenantIdentification</code> are embedded into this type.)
+</p>
+<p>BTP sub-account (tenant) for which request is created</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>capApplicationVersionInstance</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Reference to CAPApplicationVersion for executing the operation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>steps</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperationStep">
+[]CAPTenantOperationStep
+</a>
+</em>
+</td>
+<td>
+<p>Steps (jobs) to be executed for the operation to complete</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOperationState">CAPTenantOperationState
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperationStatus">CAPTenantOperationStatus</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Completed&#34;</p></td>
+<td><p>CAPTenantOperation steps completed</p>
+</td>
+</tr><tr><td><p>&#34;Deleting&#34;</p></td>
+<td><p>CAPTenantOperation deletion has been triggered</p>
+</td>
+</tr><tr><td><p>&#34;Failed&#34;</p></td>
+<td><p>CAPTenantOperation steps have failed</p>
+</td>
+</tr><tr><td><p>&#34;Processing&#34;</p></td>
+<td><p>CAPTenantOperation is being processed</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOperationStatus">CAPTenantOperationStatus
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericStatus</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.GenericStatus">
+GenericStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantOperationState">
+CAPTenantOperationState
+</a>
+</em>
+</td>
+<td>
+<p>State of CAPTenantOperation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentStep</code><br/>
+<em>
+uint32
+</em>
+</td>
+<td>
+<p>Current step being processed from the sequence of specified steps</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>activeJob</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the job being executed for the current step</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOperationStep">CAPTenantOperationStep
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperationSpec">CAPTenantOperationSpec</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the workload from the referenced CAPApplicationVersion</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.JobType">
+JobType
+</a>
+</em>
+</td>
+<td>
+<p>Type of job. One of &lsquo;TenantOperation&rsquo; or &lsquo;CustomTenantOperation&rsquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>continueOnFailure</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Indicates whether the operation can continue in case of step failure. Relevant only for type &lsquo;CustomTenantOperation&rsquo;</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOperationType">CAPTenantOperationType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperationSpec">CAPTenantOperationSpec</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;deprovisioning&#34;</p></td>
+<td><p>Deprovision tenant</p>
+</td>
+</tr><tr><td><p>&#34;provisioning&#34;</p></td>
+<td><p>Provision tenant</p>
+</td>
+</tr><tr><td><p>&#34;upgrade&#34;</p></td>
+<td><p>Upgrade tenant</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantOutputSpec">CAPTenantOutputSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>subscriptionCallbackData</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantSpec">CAPTenantSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenant">CAPTenant</a>)
+</p>
+<div>
+<p>CAPTenantSpec defines the desired state of the CAPTenant</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>capApplicationInstance</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Denotes to which CAPApplication the current tenant belongs</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>BTPTenantIdentification</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+BTPTenantIdentification
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>BTPTenantIdentification</code> are embedded into this type.)
+</p>
+<p>Details of consumer sub-account subscribing to the application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>version</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Semver that is used to determine the relevant CAPApplicationVersion that a CAPTenant can be upgraded to (i.e. if it is not already on that version)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>versionUpgradeStrategy</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.VersionUpgradeStrategyType">
+VersionUpgradeStrategyType
+</a>
+</em>
+</td>
+<td>
+<p>Denotes whether a CAPTenant can be upgraded. One of (&lsquo;always&rsquo;, &lsquo;never&rsquo;)</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantState">CAPTenantState
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantStatus">CAPTenantStatus</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Deleting&#34;</p></td>
+<td><p>Deletion has been triggered</p>
+</td>
+</tr><tr><td><p>&#34;Provisioning&#34;</p></td>
+<td><p>Tenant is being provisioned</p>
+</td>
+</tr><tr><td><p>&#34;ProvisioningError&#34;</p></td>
+<td><p>Tenant provisioning ended in error</p>
+</td>
+</tr><tr><td><p>&#34;Ready&#34;</p></td>
+<td><p>Tenant has been provisioned/upgraded and is now ready for use</p>
+</td>
+</tr><tr><td><p>&#34;UpgradeError&#34;</p></td>
+<td><p>Tenant upgrade failed</p>
+</td>
+</tr><tr><td><p>&#34;Upgrading&#34;</p></td>
+<td><p>Tenant is being upgraded</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CAPTenantStatus">CAPTenantStatus
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenant">CAPTenant</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericStatus</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.GenericStatus">
+GenericStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CAPTenantState">
+CAPTenantState
+</a>
+</em>
+</td>
+<td>
+<p>State of CAPTenant</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>currentCAPApplicationVersionInstance</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Specifies the current version of the tenant after provisioning or upgrade</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>previousCAPApplicationVersions</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Previous versions of the tenant (first to last)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lastFullReconciliationTime</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Time">
+Kubernetes meta/v1.Time
+</a>
+</em>
+</td>
+<td>
+<p>The last time a full reconciliation was completed</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CertConfig">CertConfig
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainSpec">DomainSpec</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>additionalCACertificate</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Used to specify additional CA certificate that may be used for verifying client certificates in Mutual TLS mode</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>certManager</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CertManager">
+CertManager
+</a>
+</em>
+</td>
+<td>
+<p>CertManager specific configuration for the certificate to be created for the domain</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CertManager">CertManager
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CertConfig">CertConfig</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>issuerRef</code><br/>
+<em>
+github.com/cert-manager/cert-manager/pkg/apis/meta/v1.IssuerReference
+</em>
+</td>
+<td>
+<p>Issuer configuration for the certificate</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.CommonDetails">CommonDetails
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>, <a href="#sme.sap.com/v1alpha1.JobDetails">JobDetails</a>)
+</p>
+<div>
+<p>CommonDetails specifies the common details of the Container/Pod that may be relevant for both Deployments and Jobs</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>image</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Image info for the container</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>imagePullPolicy</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#PullPolicy">
+Kubernetes core/v1.PullPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Pull policy for the container image</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>command</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Entrypoint array for the container</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>args</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>Arguments to the entrypoint</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>env</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#EnvVar">
+[]Kubernetes core/v1.EnvVar
+</a>
+</em>
+</td>
+<td>
+<p>Environment Config for the Container</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumes</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Volume">
+[]Kubernetes core/v1.Volume
+</a>
+</em>
+</td>
+<td>
+<p>Volume Configuration for the Pod</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>volumeMounts</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#VolumeMount">
+[]Kubernetes core/v1.VolumeMount
+</a>
+</em>
+</td>
+<td>
+<p>Volume Mount Configuration for the Container</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>serviceAccountName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the ServiceAccount to use to run the Pod</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>resources</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#ResourceRequirements">
+Kubernetes core/v1.ResourceRequirements
+</a>
+</em>
+</td>
+<td>
+<p>Resources</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>securityContext</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#SecurityContext">
+Kubernetes core/v1.SecurityContext
+</a>
+</em>
+</td>
+<td>
+<p>SecurityContext for the Container</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podSecurityContext</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#PodSecurityContext">
+Kubernetes core/v1.PodSecurityContext
+</a>
+</em>
+</td>
+<td>
+<p>SecurityContext for the Pod</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>nodeName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The name of the node to which the Pod should be assigned to. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodename">https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodename</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>nodeSelector</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>The label selectors using which node for the Pod would be determined. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector">https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>priorityClassName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Priority class name mapping used to prioritize and schedule the Pod. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass">https://kubernetes.io/docs/concepts/scheduling-eviction/pod-priority-preemption/#priorityclass</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>affinity</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Affinity">
+Kubernetes core/v1.Affinity
+</a>
+</em>
+</td>
+<td>
+<p>Affinity/anti-affinity used to provide more constraints for node selection. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity">https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tolerations</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Toleration">
+[]Kubernetes core/v1.Toleration
+</a>
+</em>
+</td>
+<td>
+<p>Tolerations used to schedule the Pod. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/">https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>topologySpreadConstraints</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#TopologySpreadConstraint">
+[]Kubernetes core/v1.TopologySpreadConstraint
+</a>
+</em>
+</td>
+<td>
+<p>The Topology spread constraints used to control how Pods are spread across regions, zones, nodes etc. See: <a href="https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints">https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#pod-topology-spread-constraints</a>
+Note: As of now, this field only makes sense for Deployment workloads. If/once we support parallel Job workloads, this field may be relevant for Jobs as well.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>initContainers</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Container">
+[]Kubernetes core/v1.Container
+</a>
+</em>
+</td>
+<td>
+<p>List of containers executed before the main container is started</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>restartPolicy</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#RestartPolicy">
+Kubernetes core/v1.RestartPolicy
+</a>
+</em>
+</td>
+<td>
+<p>Restart policy for the Pod. See: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>terminationGracePeriodSeconds</code><br/>
+<em>
+int64
+</em>
+</td>
+<td>
+<p>Optional duration in seconds the pod needs to terminate gracefully. See: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-flow">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination-flow</a></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>lifecycle</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Lifecycle">
+Kubernetes core/v1.Lifecycle
+</a>
+</em>
+</td>
+<td>
+<p>Optional actions that the management system should take in response to container lifecycle events. See: <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination">https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination</a></p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DNSMode">DNSMode
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainSpec">DomainSpec</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Custom&#34;</p></td>
+<td><p>A DNS entry will be created according to configuration in <code>[DNSTemplate]</code></p>
+</td>
+</tr><tr><td><p>&#34;None&#34;</p></td>
+<td><p>No DNS entries will be created (Default)</p>
+</td>
+</tr><tr><td><p>&#34;Subdomain&#34;</p></td>
+<td><p>A DNS entry will be created for each subdomain specified by the applications using this domain</p>
+</td>
+</tr><tr><td><p>&#34;Wildcard&#34;</p></td>
+<td><p>Wildcard DNS entry will be created</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DNSTemplate">DNSTemplate
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainSpec">DomainSpec</a>)
+</p>
+<div>
+<p>DNSTemplate supports the creation of DNS entries using go templates See: <a href="https://pkg.go.dev/text/template">https://pkg.go.dev/text/template</a></p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Domain name for which a DNS record will be created</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>target</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Target of the DNS record</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DeletionRules">DeletionRules
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.WorkloadMonitoring">WorkloadMonitoring</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>metrics</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.MetricRule">
+[]MetricRule
+</a>
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>expression</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>A promQL expression that evaluates to a scalar boolean (1 or 0).
+Example: scalar(sum(avg_over_time(demo_metric{job=&ldquo;cav-demo-app-4-srv-svc&rdquo;,namespace=&ldquo;demo&rdquo;}[2m]))) &lt;= bool 0.1</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.WorkloadDetails">WorkloadDetails</a>)
+</p>
+<div>
+<p>DeploymentDetails specifies the details of the Deployment</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>CommonDetails</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CommonDetails">
+CommonDetails
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>CommonDetails</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DeploymentType">
+DeploymentType
+</a>
+</em>
+</td>
+<td>
+<p>Type of the Deployment</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>replicas</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Number of replicas</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ports</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.Ports">
+[]Ports
+</a>
+</em>
+</td>
+<td>
+<p>Port configuration</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>livenessProbe</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Probe">
+Kubernetes core/v1.Probe
+</a>
+</em>
+</td>
+<td>
+<p>Liveness probe</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>readinessProbe</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Probe">
+Kubernetes core/v1.Probe
+</a>
+</em>
+</td>
+<td>
+<p>Readiness probe</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>startupProbe</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/core/v1#Probe">
+Kubernetes core/v1.Probe
+</a>
+</em>
+</td>
+<td>
+<p>Startup Probe</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>monitoring</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.WorkloadMonitoring">
+WorkloadMonitoring
+</a>
+</em>
+</td>
+<td>
+<p>Workload monitoring specification</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>podDisruptionBudget</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/policy/v1#PodDisruptionBudgetSpec">
+Kubernetes policy/v1.PodDisruptionBudgetSpec
+</a>
+</em>
+</td>
+<td>
+<p>Pod Disruption Budget may be used to specify the minimum number of available pods for this workload</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>horizontalPodAutoscaler</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.HorizontalPodAutoscalerSpec">
+HorizontalPodAutoscalerSpec
+</a>
+</em>
+</td>
+<td>
+<p>Horizontal Pod Autoscaler may be used to specify the scaling behavior for this workload</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>stickiness</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.Stickiness">
+Stickiness
+</a>
+</em>
+</td>
+<td>
+<p>Stickiness configuration based on istio consistent hashing for the workload. When present, this is used to create a DestinationRule for the workload.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DeploymentType">DeploymentType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>)
+</p>
+<div>
+<p>Type of deployment</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Additional&#34;</p></td>
+<td><p>Additional deployment type</p>
+</td>
+</tr><tr><td><p>&#34;CAP&#34;</p></td>
+<td><p>CAP backend server deployment type</p>
+</td>
+</tr><tr><td><p>&#34;Router&#34;</p></td>
+<td><p>Application router deployment type</p>
+</td>
+</tr><tr><td><p>&#34;Service&#34;</p></td>
+<td><p>Service deployment type</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DomainEntity">DomainEntity
+</h3>
+<div>
+</div>
+<h3 id="sme.sap.com/v1alpha1.DomainRef">DomainRef
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationSpec">CAPApplicationSpec</a>)
+</p>
+<div>
+<p>Domain references</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>kind</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DomainSpec">DomainSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ClusterDomain">ClusterDomain</a>, <a href="#sme.sap.com/v1alpha1.Domain">Domain</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>domain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Domain used by an application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ingressSelector</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>Selector is the set of labels used to select the ingress pods handling the domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tlsMode</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TLSMode">
+TLSMode
+</a>
+</em>
+</td>
+<td>
+<p>TLS mode for the generated (Istio) Gateway resource. Set this to Mutual when using mTLS with an external gateway.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsMode</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DNSMode">
+DNSMode
+</a>
+</em>
+</td>
+<td>
+<p>DNS mode controls the creation of DNS entries related to the domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsTemplates</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DNSTemplate">
+[]DNSTemplate
+</a>
+</em>
+</td>
+<td>
+<p>DNS templates allows usage of go templates for generating DNS entries when [DNSMode] is set to <code>Custom</code></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsTarget</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>DNS Target for traffic to this domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>certConfig</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CertConfig">
+CertConfig
+</a>
+</em>
+</td>
+<td>
+<p>Certificate configuration</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DomainState">DomainState
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainStatus">DomainStatus</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Deleting&#34;</p></td>
+<td></td>
+</tr><tr><td><p>&#34;Error&#34;</p></td>
+<td></td>
+</tr><tr><td><p>&#34;Processing&#34;</p></td>
+<td></td>
+</tr><tr><td><p>&#34;Ready&#34;</p></td>
+<td></td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.DomainStatus">DomainStatus
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ClusterDomain">ClusterDomain</a>, <a href="#sme.sap.com/v1alpha1.Domain">Domain</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericStatus</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.GenericStatus">
+GenericStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DomainState">
+DomainState
+</a>
+</em>
+</td>
+<td>
+<p>State of the Domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsTarget</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Effective DNS Target identified for this domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>gatewayName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Gateway name used for the domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>observedDomain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>domain observed during last reconciliation</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.Duration">Duration
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.MetricRule">MetricRule</a>, <a href="#sme.sap.com/v1alpha1.MonitoringConfig">MonitoringConfig</a>)
+</p>
+<div>
+<p>Duration is a valid time duration that can be parsed by Prometheus
+Supported units: y, w, d, h, m, s, ms
+Examples: <code>30s</code>, <code>1m</code>, <code>1h20m15s</code>, <code>15d</code></p>
+</div>
+<h3 id="sme.sap.com/v1alpha1.GenericStatus">GenericStatus
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationStatus">CAPApplicationStatus</a>, <a href="#sme.sap.com/v1alpha1.CAPApplicationVersionStatus">CAPApplicationVersionStatus</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantOperationStatus">CAPTenantOperationStatus</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantStatus">CAPTenantStatus</a>, <a href="#sme.sap.com/v1alpha1.DomainStatus">DomainStatus</a>)
+</p>
+<div>
+<p>Custom resource status</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>observedGeneration</code><br/>
+<em>
+int64
+</em>
+</td>
+<td>
+<p>Observed generation of the resource where this status was identified</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditions</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Condition">
+[]Kubernetes meta/v1.Condition
+</a>
+</em>
+</td>
+<td>
+<p>State expressed as conditions</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.HTTPCookie">HTTPCookie
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.StickinessHash">StickinessHash</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the cookie.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Path to set for the cookie.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ttl</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<p>Lifetime of the cookie. If specified, a cookie with the TTL will be
+generated if the cookie is not present. If the TTL is present and zero,
+the generated cookie will be a session cookie.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>attributes</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.NameValue">
+[]NameValue
+</a>
+</em>
+</td>
+<td>
+<p>Additional attributes for the cookie. They will be used when generating a new cookie.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.HorizontalPodAutoscalerSpec">HorizontalPodAutoscalerSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>)
+</p>
+<div>
+<p>HorizontalPodAutoscalerSpec wraps autoscalingv2.HorizontalPodAutoscalerSpec but gets rid of scaleTargetRef,
+as the operator always sets it to the deployment created for the workload.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>minReplicas</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>minReplicas is the lower limit for the number of replicas to which the autoscaler can scale down.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxReplicas</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>maxReplicas is the upper limit for the number of replicas to which the autoscaler can scale up.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>metrics</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/autoscaling/v2#MetricSpec">
+[]Kubernetes autoscaling/v2.MetricSpec
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>metrics contains the specifications for which to use to calculate the desired replica count.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>behavior</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/api/autoscaling/v2#HorizontalPodAutoscalerBehavior">
+Kubernetes autoscaling/v2.HorizontalPodAutoscalerBehavior
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>behavior configures the scaling behavior of the target in both Up and Down directions.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.JobDetails">JobDetails
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.WorkloadDetails">WorkloadDetails</a>)
+</p>
+<div>
+<p>JobDetails specifies the details of the Job</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>CommonDetails</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.CommonDetails">
+CommonDetails
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>CommonDetails</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.JobType">
+JobType
+</a>
+</em>
+</td>
+<td>
+<p>Type of Job</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>backoffLimit</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Specifies the number of retries before marking this job failed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>ttlSecondsAfterFinished</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Specifies the time after which the job may be cleaned up.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>activeDeadlineSeconds</code><br/>
+<em>
+int64
+</em>
+</td>
+<td>
+<p>Specifies the duration in seconds for which the job may be continuously active.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.JobType">JobType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperationStep">CAPTenantOperationStep</a>, <a href="#sme.sap.com/v1alpha1.JobDetails">JobDetails</a>)
+</p>
+<div>
+<p>Type of Job</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Content&#34;</p></td>
+<td><p>job for deploying content or configuration to (BTP) services</p>
+</td>
+</tr><tr><td><p>&#34;CustomTenantOperation&#34;</p></td>
+<td><p>job for custom tenant operation e.g. pre/post hooks for a tenant operation</p>
+</td>
+</tr><tr><td><p>&#34;TenantOperation&#34;</p></td>
+<td><p>job for tenant operation e.g. deploying relevant data to a tenant</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.MetricRule">MetricRule
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeletionRules">DeletionRules</a>)
+</p>
+<div>
+<p>MetricRule specifies a Prometheus metric and rule which represents a cleanup condition. Metrics of type Gauge and Counter are supported.</p>
+<p>Rule evaluation for Gauge type metric: The time series data of the metric (restricted to the current workload by setting <code>job</code> label as workload service name) is calculated as an average over the specified period.
+A sum of the calculated average from different time series is then compared to the provided threshold value to determine whether the rule has been satisfied.
+Evaluation: <code>sum(avg_over_time(&lt;gauge-metric&gt;{job=&lt;workload-service-name&gt;}[&lt;lookback-duration&gt;])) &lt;= &lt;lower-threshold-value&gt;</code></p>
+<p>Rule evaluation for Counter type metric: The time series data of the metric (restricted to the current workload by setting <code>job</code> label as workload service name) is calculated as rate of increase over the specified period.
+The sum of the calculated rates from different time series is then compared to the provided threshold value to determine whether the rule has been satisfied.
+Evaluation: <code>sum(rate(&lt;counter-metric&gt;{job=&lt;workload-service-name&gt;}[&lt;lookback-duration&gt;])) &lt;= &lt;lower-threshold-value&gt;</code></p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Prometheus metric. For example <code>http_request_count</code></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.MetricType">
+MetricType
+</a>
+</em>
+</td>
+<td>
+<p>Type of Prometheus metric which can be either <code>Gauge</code> or <code>Counter</code></p>
+</td>
+</tr>
+<tr>
+<td>
+<code>calculationPeriod</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.Duration">
+Duration
+</a>
+</em>
+</td>
+<td>
+<p>Duration of time series data used for the rule evaluation</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>thresholdValue</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>The threshold value which is compared against the calculated value. If calculated value is less than or equal to the threshold the rule condition is fulfilled.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.MetricType">MetricType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.MetricRule">MetricRule</a>)
+</p>
+<div>
+<p>Type of Prometheus metric</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Counter&#34;</p></td>
+<td><p>Prometheus Metric type Counter</p>
+</td>
+</tr><tr><td><p>&#34;Gauge&#34;</p></td>
+<td><p>Prometheus Metric type Gauge</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.MonitoringConfig">MonitoringConfig
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.WorkloadMonitoring">WorkloadMonitoring</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>interval</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.Duration">
+Duration
+</a>
+</em>
+</td>
+<td>
+<p>Interval at which Prometheus scrapes the metrics from the target.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>port</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the port (specified on the workload) which will be used by Prometheus server to scrape metrics</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>HTTP path from which to scrape for metrics.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scrapeTimeout</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.Duration">
+Duration
+</a>
+</em>
+</td>
+<td>
+<p>Timeout after which Prometheus considers the scrape to be failed.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.NameValue">NameValue
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ApplicationDomains">ApplicationDomains</a>, <a href="#sme.sap.com/v1alpha1.HTTPCookie">HTTPCookie</a>)
+</p>
+<div>
+<p>Generic Name/Value configuration</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>value</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.PortNetworkPolicyType">PortNetworkPolicyType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.Ports">Ports</a>)
+</p>
+<div>
+<p>Type of NetworkPolicy for the port</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Application&#34;</p></td>
+<td><p>Expose the port for the current application versions pod(s) scope</p>
+</td>
+</tr><tr><td><p>&#34;Cluster&#34;</p></td>
+<td><p>Expose the port for any pod(s) in the overall cluster scope</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.Ports">Ports
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>)
+</p>
+<div>
+<p>Configuration of Service Ports for the deployment</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>appProtocol</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>App protocol used by the service port</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the service port</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>networkPolicy</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.PortNetworkPolicyType">
+PortNetworkPolicyType
+</a>
+</em>
+</td>
+<td>
+<p>Network Policy of the service port</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>port</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>The port number used for container and the corresponding service (if any)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>routerDestinationName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Destination name which may be used by the Router deployment to reach this backend service</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.Route">Route
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ServiceExposure">ServiceExposure</a>)
+</p>
+<div>
+<p>Routing configuration (http match) for the exposed service</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>workloadName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the workload (eventually a service to route requests to); must be a valid workload name (Deployment)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>port</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<p>Port number used for the service (must be present in the workload/service)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>path</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>A unique routing path used (as a match/prefix) to route requests to the workload (when omitted, &ldquo;/&rdquo; would be used)</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.ServiceExposure">ServiceExposure
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersionSpec">CAPApplicationVersionSpec</a>)
+</p>
+<div>
+<p>ServiceExposure specifies the details of the VirtualService to be exposed for <code>Service</code> type workload(s)</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>subDomain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Subdomain under which the service is exposed (used as the Key for identifying the VirtualService)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>routes</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.Route">
+[]Route
+</a>
+</em>
+</td>
+<td>
+<p>Routes specifies the routing configuration (http match) for the exposed service</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.ServiceInfo">ServiceInfo
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.BTP">BTP</a>)
+</p>
+<div>
+<p>Service information</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>A unique name of service based on usage in the app (this may be the name of the instance or binding)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>secret</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Secret containing service access credentials</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>class</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Type of service</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subscriptionDependency</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.SubscriptionDependency">
+SubscriptionDependency
+</a>
+</em>
+</td>
+<td>
+<p>SubscriptionDependency may be used to specify whether this service should be part of getDependencies call from subscription service (e.g. saas-registry)</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.StatusConditionType">StatusConditionType
+(<code>string</code> alias)</h3>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Ready&#34;</p></td>
+<td></td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.Stickiness">Stickiness
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>hash</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.StickinessHash">
+StickinessHash
+</a>
+</em>
+</td>
+<td>
+<p>Hash based stickiness configuration.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.StickinessHash">StickinessHash
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.Stickiness">Stickiness</a>)
+</p>
+<div>
+<p>Loosely based on the options available for consistent hash load balancer in istio (<a href="https://istio.io/latest/docs/reference/config/networking/destination-rule/#ConsistentHashLB">https://istio.io/latest/docs/reference/config/networking/destination-rule/#ConsistentHashLB</a>), but only include the options that make sense for our use case.</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>httpHeaderName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Hash based on a specific HTTP header.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>httpCookie</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.HTTPCookie">
+HTTPCookie
+</a>
+</em>
+</td>
+<td>
+<p>Hash based on HTTP cookie.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>useSourceIp</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Hash based on the source IP address.
+This is applicable for both TCP and HTTP connections.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>httpQueryParameterName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Hash based on a specific HTTP query parameter.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.SubscriptionDependency">SubscriptionDependency
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ServiceInfo">ServiceInfo</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Always&#34;</p></td>
+<td><p>Always return the service in getDependencies call</p>
+</td>
+</tr><tr><td><p>&#34;Auto&#34;</p></td>
+<td><p>Automatically determine if the service needs to be returned in getDependencies call</p>
+</td>
+</tr><tr><td><p>&#34;Never&#34;</p></td>
+<td><p>Never return the service in getDependencies call</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.TLSMode">TLSMode
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainSpec">DomainSpec</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Mutual&#34;</p></td>
+<td><p>Mutual TLS Mode</p>
+</td>
+</tr><tr><td><p>&#34;OptionalMutual&#34;</p></td>
+<td><p>Optional Mutual TLS Mode</p>
+</td>
+</tr><tr><td><p>&#34;Simple&#34;</p></td>
+<td><p>Simple TLS Mode (Default)</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.TenantOperationWorkloadReference">TenantOperationWorkloadReference
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.TenantOperations">TenantOperations</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>workloadName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Reference to a specified workload of type &lsquo;TenantOperation&rsquo; or &lsquo;CustomTenantOperation&rsquo;</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>continueOnFailure</code><br/>
+<em>
+bool
+</em>
+</td>
+<td>
+<p>Indicates whether to proceed with remaining operation steps in case of failure. Relevant only for &lsquo;CustomTenantOperation&rsquo;</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.TenantOperations">TenantOperations
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersionSpec">CAPApplicationVersionSpec</a>)
+</p>
+<div>
+<p>Configuration used to sequence tenant related jobs for a given tenant operation</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>provisioning</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TenantOperationWorkloadReference">
+[]TenantOperationWorkloadReference
+</a>
+</em>
+</td>
+<td>
+<p>Tenant provisioning steps</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>upgrade</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TenantOperationWorkloadReference">
+[]TenantOperationWorkloadReference
+</a>
+</em>
+</td>
+<td>
+<p>Tenant upgrade steps</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>deprovisioning</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.TenantOperationWorkloadReference">
+[]TenantOperationWorkloadReference
+</a>
+</em>
+</td>
+<td>
+<p>Tenant deprovisioning steps</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.VersionUpgradeStrategyType">VersionUpgradeStrategyType
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantSpec">CAPTenantSpec</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;always&#34;</p></td>
+<td><p>Always (default)</p>
+</td>
+</tr><tr><td><p>&#34;never&#34;</p></td>
+<td><p>Never</p>
+</td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.WorkloadDetails">WorkloadDetails
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersionSpec">CAPApplicationVersionSpec</a>)
+</p>
+<div>
+<p>WorkloadDetails specifies the details of the Workload</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>name</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the workload</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>consumedBTPServices</code><br/>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>List of BTP services consumed by the current application component workload. These services must be defined in the corresponding CAPApplication.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>labels</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>Custom labels for the current workload</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>annotations</code><br/>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>Annotations for the current workload, in case of <code>Deployments</code> this also get copied over to any <code>Service</code> that may be created</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>deploymentDefinition</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DeploymentDetails">
+DeploymentDetails
+</a>
+</em>
+</td>
+<td>
+<p>Definition of a deployment</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>jobDefinition</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.JobDetails">
+JobDetails
+</a>
+</em>
+</td>
+<td>
+<p>Definition of a job</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha1.WorkloadMonitoring">WorkloadMonitoring
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>)
+</p>
+<div>
+<p>WorkloadMonitoring specifies the metrics related to the workload</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>deletionRules</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.DeletionRules">
+DeletionRules
+</a>
+</em>
+</td>
+<td>
+<p>DeletionRules specify the metrics conditions that need to be satisfied for the version to be deleted automatically.
+Either a set of metrics based rules can be specified, or a PromQL expression which evaluates to a boolean scalar.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>scrapeConfig</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha1.MonitoringConfig">
+MonitoringConfig
+</a>
+</em>
+</td>
+<td>
+<p>Configuration to be used to create ServiceMonitor for the workload service.
+If not specified, CAP Operator will not attempt to create a ServiceMonitor for the workload</p>
+</td>
+</tr>
+</tbody>
+</table>
+<hr/>
+<p><em>
+Generated with <code>gen-crd-api-reference-docs</code>
+on git commit <code>c1a9b97</code>.
+</em></p>

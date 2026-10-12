@@ -1,27 +1,34 @@
 <p>Packages:</p>
 <ul>
 <li>
-<a href="#sme.sap.com%2fv1alpha1">sme.sap.com/v1alpha1</a>
+<a href="#sme.sap.com%2fv1alpha2">sme.sap.com/v1alpha2</a>
 </li>
 </ul>
-<h2 id="sme.sap.com/v1alpha1">sme.sap.com/v1alpha1</h2>
+<h2 id="sme.sap.com/v1alpha2">sme.sap.com/v1alpha2</h2>
+<div>
+<p>Package v1alpha2 is the v1alpha2 version of the API.</p>
+</div>
 Resource Types:
 <ul><li>
-<a href="#sme.sap.com/v1alpha1.CAPApplication">CAPApplication</a>
+<a href="#sme.sap.com/v1alpha2.CAPApplication">CAPApplication</a>
 </li><li>
-<a href="#sme.sap.com/v1alpha1.CAPApplicationVersion">CAPApplicationVersion</a>
+<a href="#sme.sap.com/v1alpha2.CAPApplicationVersion">CAPApplicationVersion</a>
 </li><li>
-<a href="#sme.sap.com/v1alpha1.CAPTenant">CAPTenant</a>
+<a href="#sme.sap.com/v1alpha2.CAPTenant">CAPTenant</a>
 </li><li>
-<a href="#sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation</a>
+<a href="#sme.sap.com/v1alpha2.CAPTenantOperation">CAPTenantOperation</a>
 </li><li>
-<a href="#sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput</a>
+<a href="#sme.sap.com/v1alpha2.CAPTenantOutput">CAPTenantOutput</a>
 </li><li>
-<a href="#sme.sap.com/v1alpha1.ClusterDomain">ClusterDomain</a>
+<a href="#sme.sap.com/v1alpha2.ClusterDomain">ClusterDomain</a>
 </li><li>
-<a href="#sme.sap.com/v1alpha1.Domain">Domain</a>
+<a href="#sme.sap.com/v1alpha2.Domain">Domain</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha2.Subscription">Subscription</a>
+</li><li>
+<a href="#sme.sap.com/v1alpha2.SubscriptionProvider">SubscriptionProvider</a>
 </li></ul>
-<h3 id="sme.sap.com/v1alpha1.CAPApplication">CAPApplication
+<h3 id="sme.sap.com/v1alpha2.CAPApplication">CAPApplication
 </h3>
 <div>
 <p>CAPApplication is the schema for capapplications API</p>
@@ -40,7 +47,7 @@ Resource Types:
 string</td>
 <td>
 <code>
-sme.sap.com/v1alpha1
+sme.sap.com/v1alpha2
 </code>
 </td>
 </tr>
@@ -69,7 +76,7 @@ Refer to the Kubernetes API documentation for the fields of the
 <td>
 <code>spec</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPApplicationSpec">
+<a href="#sme.sap.com/v1alpha2.CAPApplicationSpec">
 CAPApplicationSpec
 </a>
 </em>
@@ -83,38 +90,13 @@ CAPApplicationSpec
 <td>
 <code>domainRefs</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DomainRef">
+<a href="#sme.sap.com/v1alpha2.DomainRef">
 []DomainRef
 </a>
 </em>
 </td>
 <td>
 <p>Reference to <code>Domain</code> resources used by the application</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>domains</code><br/>
-<em>
-<a href="#sme.sap.com/v1alpha1.ApplicationDomains">
-ApplicationDomains
-</a>
-</em>
-</td>
-<td>
-<p>Deprecated: Domains used by the application. Will be removed in future versions, use <code>DomainRefs</code> instead</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>globalAccountId</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Deprecated: SAP BTP Global Account Identifier where services are entitled for the current application
-Will be removed soon, use ProviderSubaccountId instead</p>
 </td>
 </tr>
 <tr>
@@ -143,7 +125,7 @@ string
 <td>
 <code>provider</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+<a href="#sme.sap.com/v1alpha2.BTPTenantIdentification">
 BTPTenantIdentification
 </a>
 </em>
@@ -157,7 +139,7 @@ Will be removed, consider automating this via BTP / subscription instead!</p>
 <td>
 <code>btp</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.BTP">
+<a href="#sme.sap.com/v1alpha2.BTP">
 BTP
 </a>
 </em>
@@ -184,7 +166,7 @@ bool
 <td>
 <code>status</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPApplicationStatus">
+<a href="#sme.sap.com/v1alpha2.CAPApplicationStatus">
 CAPApplicationStatus
 </a>
 </em>
@@ -195,7 +177,7 @@ CAPApplicationStatus
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPApplicationVersion">CAPApplicationVersion
+<h3 id="sme.sap.com/v1alpha2.CAPApplicationVersion">CAPApplicationVersion
 </h3>
 <div>
 <p>CAPApplicationVersion defines the schema for capapplicationversions API</p>
@@ -214,7 +196,7 @@ CAPApplicationStatus
 string</td>
 <td>
 <code>
-sme.sap.com/v1alpha1
+sme.sap.com/v1alpha2
 </code>
 </td>
 </tr>
@@ -243,7 +225,7 @@ Refer to the Kubernetes API documentation for the fields of the
 <td>
 <code>spec</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPApplicationVersionSpec">
+<a href="#sme.sap.com/v1alpha2.CAPApplicationVersionSpec">
 CAPApplicationVersionSpec
 </a>
 </em>
@@ -290,7 +272,7 @@ string
 <td>
 <code>workloads</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.WorkloadDetails">
+<a href="#sme.sap.com/v1alpha2.WorkloadDetails">
 []WorkloadDetails
 </a>
 </em>
@@ -303,7 +285,7 @@ string
 <td>
 <code>tenantOperations</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.TenantOperations">
+<a href="#sme.sap.com/v1alpha2.TenantOperations">
 TenantOperations
 </a>
 </em>
@@ -327,7 +309,7 @@ TenantOperations
 <td>
 <code>serviceExposures</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.ServiceExposure">
+<a href="#sme.sap.com/v1alpha2.ServiceExposure">
 []ServiceExposure
 </a>
 </em>
@@ -343,7 +325,7 @@ TenantOperations
 <td>
 <code>status</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPApplicationVersionStatus">
+<a href="#sme.sap.com/v1alpha2.CAPApplicationVersionStatus">
 CAPApplicationVersionStatus
 </a>
 </em>
@@ -354,7 +336,7 @@ CAPApplicationVersionStatus
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPTenant">CAPTenant
+<h3 id="sme.sap.com/v1alpha2.CAPTenant">CAPTenant
 </h3>
 <div>
 <p>CAPTenant defines the schema for captenants API</p>
@@ -373,7 +355,7 @@ CAPApplicationVersionStatus
 string</td>
 <td>
 <code>
-sme.sap.com/v1alpha1
+sme.sap.com/v1alpha2
 </code>
 </td>
 </tr>
@@ -402,7 +384,7 @@ Refer to the Kubernetes API documentation for the fields of the
 <td>
 <code>spec</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPTenantSpec">
+<a href="#sme.sap.com/v1alpha2.CAPTenantSpec">
 CAPTenantSpec
 </a>
 </em>
@@ -427,7 +409,7 @@ string
 <td>
 <code>BTPTenantIdentification</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+<a href="#sme.sap.com/v1alpha2.BTPTenantIdentification">
 BTPTenantIdentification
 </a>
 </em>
@@ -454,7 +436,7 @@ string
 <td>
 <code>versionUpgradeStrategy</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.VersionUpgradeStrategyType">
+<a href="#sme.sap.com/v1alpha2.VersionUpgradeStrategyType">
 VersionUpgradeStrategyType
 </a>
 </em>
@@ -470,7 +452,7 @@ VersionUpgradeStrategyType
 <td>
 <code>status</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPTenantStatus">
+<a href="#sme.sap.com/v1alpha2.CAPTenantStatus">
 CAPTenantStatus
 </a>
 </em>
@@ -481,7 +463,7 @@ CAPTenantStatus
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation
+<h3 id="sme.sap.com/v1alpha2.CAPTenantOperation">CAPTenantOperation
 </h3>
 <div>
 <p>CAPTenantOperation defines the schema for captenantoperations API</p>
@@ -500,7 +482,7 @@ CAPTenantStatus
 string</td>
 <td>
 <code>
-sme.sap.com/v1alpha1
+sme.sap.com/v1alpha2
 </code>
 </td>
 </tr>
@@ -529,7 +511,7 @@ Refer to the Kubernetes API documentation for the fields of the
 <td>
 <code>spec</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPTenantOperationSpec">
+<a href="#sme.sap.com/v1alpha2.CAPTenantOperationSpec">
 CAPTenantOperationSpec
 </a>
 </em>
@@ -543,7 +525,7 @@ CAPTenantOperationSpec
 <td>
 <code>operation</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPTenantOperationType">
+<a href="#sme.sap.com/v1alpha2.CAPTenantOperationType">
 CAPTenantOperationType
 </a>
 </em>
@@ -556,7 +538,7 @@ CAPTenantOperationType
 <td>
 <code>BTPTenantIdentification</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+<a href="#sme.sap.com/v1alpha2.BTPTenantIdentification">
 BTPTenantIdentification
 </a>
 </em>
@@ -583,7 +565,7 @@ string
 <td>
 <code>steps</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPTenantOperationStep">
+<a href="#sme.sap.com/v1alpha2.CAPTenantOperationStep">
 []CAPTenantOperationStep
 </a>
 </em>
@@ -599,7 +581,7 @@ string
 <td>
 <code>status</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPTenantOperationStatus">
+<a href="#sme.sap.com/v1alpha2.CAPTenantOperationStatus">
 CAPTenantOperationStatus
 </a>
 </em>
@@ -610,7 +592,7 @@ CAPTenantOperationStatus
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput
+<h3 id="sme.sap.com/v1alpha2.CAPTenantOutput">CAPTenantOutput
 </h3>
 <div>
 <p>CAPTenantOutput is the schema for captenantoutputs API</p>
@@ -629,7 +611,7 @@ CAPTenantOperationStatus
 string</td>
 <td>
 <code>
-sme.sap.com/v1alpha1
+sme.sap.com/v1alpha2
 </code>
 </td>
 </tr>
@@ -658,7 +640,7 @@ Refer to the Kubernetes API documentation for the fields of the
 <td>
 <code>spec</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPTenantOutputSpec">
+<a href="#sme.sap.com/v1alpha2.CAPTenantOutputSpec">
 CAPTenantOutputSpec
 </a>
 </em>
@@ -683,7 +665,7 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.ClusterDomain">ClusterDomain
+<h3 id="sme.sap.com/v1alpha2.ClusterDomain">ClusterDomain
 </h3>
 <div>
 <p>ClusterDomain is the schema for clusterdomains API</p>
@@ -702,7 +684,7 @@ string
 string</td>
 <td>
 <code>
-sme.sap.com/v1alpha1
+sme.sap.com/v1alpha2
 </code>
 </td>
 </tr>
@@ -731,7 +713,7 @@ Refer to the Kubernetes API documentation for the fields of the
 <td>
 <code>spec</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DomainSpec">
+<a href="#sme.sap.com/v1alpha2.DomainSpec">
 DomainSpec
 </a>
 </em>
@@ -767,7 +749,7 @@ map[string]string
 <td>
 <code>tlsMode</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.TLSMode">
+<a href="#sme.sap.com/v1alpha2.TLSMode">
 TLSMode
 </a>
 </em>
@@ -780,7 +762,7 @@ TLSMode
 <td>
 <code>dnsMode</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DNSMode">
+<a href="#sme.sap.com/v1alpha2.DNSMode">
 DNSMode
 </a>
 </em>
@@ -793,7 +775,7 @@ DNSMode
 <td>
 <code>dnsTemplates</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DNSTemplate">
+<a href="#sme.sap.com/v1alpha2.DNSTemplate">
 []DNSTemplate
 </a>
 </em>
@@ -817,7 +799,7 @@ string
 <td>
 <code>certConfig</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CertConfig">
+<a href="#sme.sap.com/v1alpha2.CertConfig">
 CertConfig
 </a>
 </em>
@@ -833,7 +815,7 @@ CertConfig
 <td>
 <code>status</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DomainStatus">
+<a href="#sme.sap.com/v1alpha2.DomainStatus">
 DomainStatus
 </a>
 </em>
@@ -844,7 +826,7 @@ DomainStatus
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.Domain">Domain
+<h3 id="sme.sap.com/v1alpha2.Domain">Domain
 </h3>
 <div>
 <p>Domain is the schema for domains API</p>
@@ -863,7 +845,7 @@ DomainStatus
 string</td>
 <td>
 <code>
-sme.sap.com/v1alpha1
+sme.sap.com/v1alpha2
 </code>
 </td>
 </tr>
@@ -892,7 +874,7 @@ Refer to the Kubernetes API documentation for the fields of the
 <td>
 <code>spec</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DomainSpec">
+<a href="#sme.sap.com/v1alpha2.DomainSpec">
 DomainSpec
 </a>
 </em>
@@ -928,7 +910,7 @@ map[string]string
 <td>
 <code>tlsMode</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.TLSMode">
+<a href="#sme.sap.com/v1alpha2.TLSMode">
 TLSMode
 </a>
 </em>
@@ -941,7 +923,7 @@ TLSMode
 <td>
 <code>dnsMode</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DNSMode">
+<a href="#sme.sap.com/v1alpha2.DNSMode">
 DNSMode
 </a>
 </em>
@@ -954,7 +936,7 @@ DNSMode
 <td>
 <code>dnsTemplates</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DNSTemplate">
+<a href="#sme.sap.com/v1alpha2.DNSTemplate">
 []DNSTemplate
 </a>
 </em>
@@ -978,7 +960,7 @@ string
 <td>
 <code>certConfig</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CertConfig">
+<a href="#sme.sap.com/v1alpha2.CertConfig">
 CertConfig
 </a>
 </em>
@@ -994,7 +976,7 @@ CertConfig
 <td>
 <code>status</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DomainStatus">
+<a href="#sme.sap.com/v1alpha2.DomainStatus">
 DomainStatus
 </a>
 </em>
@@ -1005,15 +987,10 @@ DomainStatus
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.ApplicationDomains">ApplicationDomains
+<h3 id="sme.sap.com/v1alpha2.Subscription">Subscription
 </h3>
-<p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationSpec">CAPApplicationSpec</a>)
-</p>
 <div>
-<p>Application domains</p>
-<p>Deprecated: ApplicationDomains exists for historical compatibility and should not be used.
-This will be removed in future versions. Use DomainRef instead.</p>
+<p>Subscription is the schema for subscriptions API</p>
 </div>
 <table>
 <thead>
@@ -1025,56 +1002,257 @@ This will be removed in future versions. Use DomainRef instead.</p>
 <tbody>
 <tr>
 <td>
-<code>primary</code><br/>
-<em>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha2
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
 string
-</em>
 </td>
-<td>
-<p>Primary application domain will be used to generate a wildcard TLS certificate. In project &ldquo;Gardener&rdquo; managed clusters this is (usually) a subdomain of the cluster domain</p>
-</td>
+<td><code>Subscription</code></td>
 </tr>
 <tr>
 <td>
-<code>secondary</code><br/>
+<code>metadata</code><br/>
 <em>
-[]string
-</em>
-</td>
-<td>
-<p>Customer specific domains to serve application endpoints (optional)</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>dnsTarget</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Public ingress URL for the cluster Load Balancer</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>istioIngressGatewayLabels</code><br/>
-<em>
-<a href="#sme.sap.com/v1alpha1.NameValue">
-[]NameValue
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
 </a>
 </em>
 </td>
 <td>
-<p>Labels used to identify the istio ingress-gateway component and its corresponding namespace. Usually {&ldquo;app&rdquo;:&ldquo;istio-ingressgateway&rdquo;,&ldquo;istio&rdquo;:&ldquo;ingressgateway&rdquo;}</p>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha2.SubscriptionSpec">
+SubscriptionSpec
+</a>
+</em>
+</td>
+<td>
+<p>SubscriptionProvider spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>appName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the application that is being subscribed to</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>providerSubaccountId</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Provider subaccount ID of the application that is being subscribed to (used to identify the owning CAPApplication)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tenantId</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TenantId of the consumer subaccount subscribing to the application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subdomain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Subdomain of the consumer subaccount subscribing to the app</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subscriptionGuid</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SubscriptionGuid of the subscription</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subscriptionDomain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Subscrption domain of the consumer subaccount subscribing to the app</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subscriptionRequestPayload</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Payload of the subscription request (JSON string).</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+<tr>
+<td>
+<code>status</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha2.SubscriptionStatus">
+SubscriptionStatus
+</a>
+</em>
+</td>
+<td>
+<p>SubscriptionProvider status</p>
 </td>
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.BTP">BTP
+<h3 id="sme.sap.com/v1alpha2.SubscriptionProvider">SubscriptionProvider
+</h3>
+<div>
+<p>SubscriptionProvider is the schema for subscriptionproviders API</p>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>apiVersion</code><br/>
+string</td>
+<td>
+<code>
+sme.sap.com/v1alpha2
+</code>
+</td>
+</tr>
+<tr>
+<td>
+<code>kind</code><br/>
+string
+</td>
+<td><code>SubscriptionProvider</code></td>
+</tr>
+<tr>
+<td>
+<code>metadata</code><br/>
+<em>
+<a href="https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#ObjectMeta">
+Kubernetes meta/v1.ObjectMeta
+</a>
+</em>
+</td>
+<td>
+Refer to the Kubernetes API documentation for the fields of the
+<code>metadata</code> field.
+</td>
+</tr>
+<tr>
+<td>
+<code>spec</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha2.SubscriptionProviderSpec">
+SubscriptionProviderSpec
+</a>
+</em>
+</td>
+<td>
+<p>SubscriptionProvider spec</p>
+<br/>
+<br/>
+<table>
+<tr>
+<td>
+<code>appName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the application that is being subscribed to</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>providerSubaccountId</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Provider subaccount ID for the application that is being subscribed to</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subscriptionInfo</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha2.SubscriptionInfo">
+SubscriptionInfo
+</a>
+</em>
+</td>
+<td>
+<p>The secret(s) containing the subscription credentials that are necessary to create a subscription for the application (Fetched from the same namespace as this resource).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dependencies</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>List of subscription dependencies discovered for the services specified in the corresponding app</p>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha2.BTP">BTP
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationSpec">CAPApplicationSpec</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPApplicationSpec">CAPApplicationSpec</a>)
 </p>
 <div>
 </div>
@@ -1090,7 +1268,7 @@ string
 <td>
 <code>services</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.ServiceInfo">
+<a href="#sme.sap.com/v1alpha2.ServiceInfo">
 []ServiceInfo
 </a>
 </em>
@@ -1101,10 +1279,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.BTPTenantIdentification">BTPTenantIdentification
+<h3 id="sme.sap.com/v1alpha2.BTPTenantIdentification">BTPTenantIdentification
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationSpec">CAPApplicationSpec</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantOperationSpec">CAPTenantOperationSpec</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantSpec">CAPTenantSpec</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPApplicationSpec">CAPApplicationSpec</a>, <a href="#sme.sap.com/v1alpha2.CAPTenantOperationSpec">CAPTenantOperationSpec</a>, <a href="#sme.sap.com/v1alpha2.CAPTenantSpec">CAPTenantSpec</a>)
 </p>
 <div>
 <p>Identifies an SAP BTP subaccount (tenant)</p>
@@ -1141,10 +1319,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPApplicationSpec">CAPApplicationSpec
+<h3 id="sme.sap.com/v1alpha2.CAPApplicationSpec">CAPApplicationSpec
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplication">CAPApplication</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPApplication">CAPApplication</a>)
 </p>
 <div>
 <p>CAPApplicationSpec defines the desired state of CAPApplication</p>
@@ -1161,38 +1339,13 @@ string
 <td>
 <code>domainRefs</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DomainRef">
+<a href="#sme.sap.com/v1alpha2.DomainRef">
 []DomainRef
 </a>
 </em>
 </td>
 <td>
 <p>Reference to <code>Domain</code> resources used by the application</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>domains</code><br/>
-<em>
-<a href="#sme.sap.com/v1alpha1.ApplicationDomains">
-ApplicationDomains
-</a>
-</em>
-</td>
-<td>
-<p>Deprecated: Domains used by the application. Will be removed in future versions, use <code>DomainRefs</code> instead</p>
-</td>
-</tr>
-<tr>
-<td>
-<code>globalAccountId</code><br/>
-<em>
-string
-</em>
-</td>
-<td>
-<p>Deprecated: SAP BTP Global Account Identifier where services are entitled for the current application
-Will be removed soon, use ProviderSubaccountId instead</p>
 </td>
 </tr>
 <tr>
@@ -1221,7 +1374,7 @@ string
 <td>
 <code>provider</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+<a href="#sme.sap.com/v1alpha2.BTPTenantIdentification">
 BTPTenantIdentification
 </a>
 </em>
@@ -1235,7 +1388,7 @@ Will be removed, consider automating this via BTP / subscription instead!</p>
 <td>
 <code>btp</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.BTP">
+<a href="#sme.sap.com/v1alpha2.BTP">
 BTP
 </a>
 </em>
@@ -1257,10 +1410,10 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPApplicationState">CAPApplicationState
+<h3 id="sme.sap.com/v1alpha2.CAPApplicationState">CAPApplicationState
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationStatus">CAPApplicationStatus</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPApplicationStatus">CAPApplicationStatus</a>)
 </p>
 <div>
 </div>
@@ -1285,12 +1438,13 @@ bool
 </td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPApplicationStatus">CAPApplicationStatus
+<h3 id="sme.sap.com/v1alpha2.CAPApplicationStatus">CAPApplicationStatus
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplication">CAPApplication</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPApplication">CAPApplication</a>)
 </p>
 <div>
+<p>Status of the CAPApplication</p>
 </div>
 <table>
 <thead>
@@ -1304,7 +1458,7 @@ bool
 <td>
 <code>GenericStatus</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.GenericStatus">
+<a href="#sme.sap.com/v1alpha2.GenericStatus">
 GenericStatus
 </a>
 </em>
@@ -1319,7 +1473,7 @@ GenericStatus
 <td>
 <code>state</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPApplicationState">
+<a href="#sme.sap.com/v1alpha2.CAPApplicationState">
 CAPApplicationState
 </a>
 </em>
@@ -1376,7 +1530,7 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPApplicationStatusConditionType">CAPApplicationStatusConditionType
+<h3 id="sme.sap.com/v1alpha2.CAPApplicationStatusConditionType">CAPApplicationStatusConditionType
 (<code>string</code> alias)</h3>
 <div>
 </div>
@@ -1393,10 +1547,10 @@ Kubernetes meta/v1.Time
 <td></td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPApplicationVersionSpec">CAPApplicationVersionSpec
+<h3 id="sme.sap.com/v1alpha2.CAPApplicationVersionSpec">CAPApplicationVersionSpec
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersion">CAPApplicationVersion</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPApplicationVersion">CAPApplicationVersion</a>)
 </p>
 <div>
 <p>CAPApplicationVersionSpec specifies the desired state of CAPApplicationVersion</p>
@@ -1446,7 +1600,7 @@ string
 <td>
 <code>workloads</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.WorkloadDetails">
+<a href="#sme.sap.com/v1alpha2.WorkloadDetails">
 []WorkloadDetails
 </a>
 </em>
@@ -1459,7 +1613,7 @@ string
 <td>
 <code>tenantOperations</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.TenantOperations">
+<a href="#sme.sap.com/v1alpha2.TenantOperations">
 TenantOperations
 </a>
 </em>
@@ -1483,7 +1637,7 @@ TenantOperations
 <td>
 <code>serviceExposures</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.ServiceExposure">
+<a href="#sme.sap.com/v1alpha2.ServiceExposure">
 []ServiceExposure
 </a>
 </em>
@@ -1494,10 +1648,10 @@ TenantOperations
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPApplicationVersionState">CAPApplicationVersionState
+<h3 id="sme.sap.com/v1alpha2.CAPApplicationVersionState">CAPApplicationVersionState
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersionStatus">CAPApplicationVersionStatus</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPApplicationVersionStatus">CAPApplicationVersionStatus</a>)
 </p>
 <div>
 </div>
@@ -1522,12 +1676,13 @@ TenantOperations
 </td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPApplicationVersionStatus">CAPApplicationVersionStatus
+<h3 id="sme.sap.com/v1alpha2.CAPApplicationVersionStatus">CAPApplicationVersionStatus
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersion">CAPApplicationVersion</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPApplicationVersion">CAPApplicationVersion</a>)
 </p>
 <div>
+<p>Status of the CAPApplicationVersion</p>
 </div>
 <table>
 <thead>
@@ -1541,7 +1696,7 @@ TenantOperations
 <td>
 <code>GenericStatus</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.GenericStatus">
+<a href="#sme.sap.com/v1alpha2.GenericStatus">
 GenericStatus
 </a>
 </em>
@@ -1556,7 +1711,7 @@ GenericStatus
 <td>
 <code>state</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPApplicationVersionState">
+<a href="#sme.sap.com/v1alpha2.CAPApplicationVersionState">
 CAPApplicationVersionState
 </a>
 </em>
@@ -1578,12 +1733,13 @@ CAPApplicationVersionState
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPTenantOperationSpec">CAPTenantOperationSpec
+<h3 id="sme.sap.com/v1alpha2.CAPTenantOperationSpec">CAPTenantOperationSpec
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPTenantOperation">CAPTenantOperation</a>)
 </p>
 <div>
+<p>Spec of the CAPTenantOperation</p>
 </div>
 <table>
 <thead>
@@ -1597,7 +1753,7 @@ CAPApplicationVersionState
 <td>
 <code>operation</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPTenantOperationType">
+<a href="#sme.sap.com/v1alpha2.CAPTenantOperationType">
 CAPTenantOperationType
 </a>
 </em>
@@ -1610,7 +1766,7 @@ CAPTenantOperationType
 <td>
 <code>BTPTenantIdentification</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+<a href="#sme.sap.com/v1alpha2.BTPTenantIdentification">
 BTPTenantIdentification
 </a>
 </em>
@@ -1637,7 +1793,7 @@ string
 <td>
 <code>steps</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPTenantOperationStep">
+<a href="#sme.sap.com/v1alpha2.CAPTenantOperationStep">
 []CAPTenantOperationStep
 </a>
 </em>
@@ -1648,10 +1804,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPTenantOperationState">CAPTenantOperationState
+<h3 id="sme.sap.com/v1alpha2.CAPTenantOperationState">CAPTenantOperationState
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperationStatus">CAPTenantOperationStatus</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPTenantOperationStatus">CAPTenantOperationStatus</a>)
 </p>
 <div>
 </div>
@@ -1676,12 +1832,13 @@ string
 </td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPTenantOperationStatus">CAPTenantOperationStatus
+<h3 id="sme.sap.com/v1alpha2.CAPTenantOperationStatus">CAPTenantOperationStatus
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperation">CAPTenantOperation</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPTenantOperation">CAPTenantOperation</a>)
 </p>
 <div>
+<p>Status of the CAPTenantOperation</p>
 </div>
 <table>
 <thead>
@@ -1695,7 +1852,7 @@ string
 <td>
 <code>GenericStatus</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.GenericStatus">
+<a href="#sme.sap.com/v1alpha2.GenericStatus">
 GenericStatus
 </a>
 </em>
@@ -1710,7 +1867,7 @@ GenericStatus
 <td>
 <code>state</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPTenantOperationState">
+<a href="#sme.sap.com/v1alpha2.CAPTenantOperationState">
 CAPTenantOperationState
 </a>
 </em>
@@ -1743,10 +1900,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPTenantOperationStep">CAPTenantOperationStep
+<h3 id="sme.sap.com/v1alpha2.CAPTenantOperationStep">CAPTenantOperationStep
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperationSpec">CAPTenantOperationSpec</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPTenantOperationSpec">CAPTenantOperationSpec</a>)
 </p>
 <div>
 </div>
@@ -1773,7 +1930,7 @@ string
 <td>
 <code>type</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.JobType">
+<a href="#sme.sap.com/v1alpha2.JobType">
 JobType
 </a>
 </em>
@@ -1795,10 +1952,10 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPTenantOperationType">CAPTenantOperationType
+<h3 id="sme.sap.com/v1alpha2.CAPTenantOperationType">CAPTenantOperationType
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperationSpec">CAPTenantOperationSpec</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPTenantOperationSpec">CAPTenantOperationSpec</a>)
 </p>
 <div>
 </div>
@@ -1820,12 +1977,13 @@ bool
 </td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPTenantOutputSpec">CAPTenantOutputSpec
+<h3 id="sme.sap.com/v1alpha2.CAPTenantOutputSpec">CAPTenantOutputSpec
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOutput">CAPTenantOutput</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPTenantOutput">CAPTenantOutput</a>)
 </p>
 <div>
+<p>Spec of CAPTenantOutput</p>
 </div>
 <table>
 <thead>
@@ -1847,10 +2005,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPTenantSpec">CAPTenantSpec
+<h3 id="sme.sap.com/v1alpha2.CAPTenantSpec">CAPTenantSpec
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenant">CAPTenant</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPTenant">CAPTenant</a>)
 </p>
 <div>
 <p>CAPTenantSpec defines the desired state of the CAPTenant</p>
@@ -1878,7 +2036,7 @@ string
 <td>
 <code>BTPTenantIdentification</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.BTPTenantIdentification">
+<a href="#sme.sap.com/v1alpha2.BTPTenantIdentification">
 BTPTenantIdentification
 </a>
 </em>
@@ -1905,7 +2063,7 @@ string
 <td>
 <code>versionUpgradeStrategy</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.VersionUpgradeStrategyType">
+<a href="#sme.sap.com/v1alpha2.VersionUpgradeStrategyType">
 VersionUpgradeStrategyType
 </a>
 </em>
@@ -1916,10 +2074,10 @@ VersionUpgradeStrategyType
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPTenantState">CAPTenantState
+<h3 id="sme.sap.com/v1alpha2.CAPTenantState">CAPTenantState
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantStatus">CAPTenantStatus</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPTenantStatus">CAPTenantStatus</a>)
 </p>
 <div>
 </div>
@@ -1950,12 +2108,13 @@ VersionUpgradeStrategyType
 </td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CAPTenantStatus">CAPTenantStatus
+<h3 id="sme.sap.com/v1alpha2.CAPTenantStatus">CAPTenantStatus
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenant">CAPTenant</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPTenant">CAPTenant</a>)
 </p>
 <div>
+<p>Status of the CAPTenant</p>
 </div>
 <table>
 <thead>
@@ -1969,7 +2128,7 @@ VersionUpgradeStrategyType
 <td>
 <code>GenericStatus</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.GenericStatus">
+<a href="#sme.sap.com/v1alpha2.GenericStatus">
 GenericStatus
 </a>
 </em>
@@ -1984,7 +2143,7 @@ GenericStatus
 <td>
 <code>state</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CAPTenantState">
+<a href="#sme.sap.com/v1alpha2.CAPTenantState">
 CAPTenantState
 </a>
 </em>
@@ -2030,10 +2189,10 @@ Kubernetes meta/v1.Time
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CertConfig">CertConfig
+<h3 id="sme.sap.com/v1alpha2.CertConfig">CertConfig
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainSpec">DomainSpec</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.DomainSpec">DomainSpec</a>)
 </p>
 <div>
 </div>
@@ -2060,7 +2219,7 @@ string
 <td>
 <code>certManager</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CertManager">
+<a href="#sme.sap.com/v1alpha2.CertManager">
 CertManager
 </a>
 </em>
@@ -2071,10 +2230,10 @@ CertManager
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CertManager">CertManager
+<h3 id="sme.sap.com/v1alpha2.CertManager">CertManager
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CertConfig">CertConfig</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CertConfig">CertConfig</a>)
 </p>
 <div>
 </div>
@@ -2099,10 +2258,10 @@ github.com/cert-manager/cert-manager/pkg/apis/meta/v1.IssuerReference
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.CommonDetails">CommonDetails
+<h3 id="sme.sap.com/v1alpha2.CommonDetails">CommonDetails
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>, <a href="#sme.sap.com/v1alpha1.JobDetails">JobDetails</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.DeploymentDetails">DeploymentDetails</a>, <a href="#sme.sap.com/v1alpha2.JobDetails">JobDetails</a>)
 </p>
 <div>
 <p>CommonDetails specifies the common details of the Container/Pod that may be relevant for both Deployments and Jobs</p>
@@ -2375,10 +2534,10 @@ Kubernetes core/v1.Lifecycle
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.DNSMode">DNSMode
+<h3 id="sme.sap.com/v1alpha2.DNSMode">DNSMode
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainSpec">DomainSpec</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.DomainSpec">DomainSpec</a>)
 </p>
 <div>
 </div>
@@ -2403,10 +2562,10 @@ Kubernetes core/v1.Lifecycle
 </td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.DNSTemplate">DNSTemplate
+<h3 id="sme.sap.com/v1alpha2.DNSTemplate">DNSTemplate
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainSpec">DomainSpec</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.DomainSpec">DomainSpec</a>)
 </p>
 <div>
 <p>DNSTemplate supports the creation of DNS entries using go templates See: <a href="https://pkg.go.dev/text/template">https://pkg.go.dev/text/template</a></p>
@@ -2443,10 +2602,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.DeletionRules">DeletionRules
+<h3 id="sme.sap.com/v1alpha2.DeletionRules">DeletionRules
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.WorkloadMonitoring">WorkloadMonitoring</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.WorkloadMonitoring">WorkloadMonitoring</a>)
 </p>
 <div>
 </div>
@@ -2462,7 +2621,7 @@ string
 <td>
 <code>metrics</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.MetricRule">
+<a href="#sme.sap.com/v1alpha2.MetricRule">
 []MetricRule
 </a>
 </em>
@@ -2484,10 +2643,10 @@ Example: scalar(sum(avg_over_time(demo_metric{job=&ldquo;cav-demo-app-4-srv-svc&
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails
+<h3 id="sme.sap.com/v1alpha2.DeploymentDetails">DeploymentDetails
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.WorkloadDetails">WorkloadDetails</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.WorkloadDetails">WorkloadDetails</a>)
 </p>
 <div>
 <p>DeploymentDetails specifies the details of the Deployment</p>
@@ -2504,7 +2663,7 @@ Example: scalar(sum(avg_over_time(demo_metric{job=&ldquo;cav-demo-app-4-srv-svc&
 <td>
 <code>CommonDetails</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CommonDetails">
+<a href="#sme.sap.com/v1alpha2.CommonDetails">
 CommonDetails
 </a>
 </em>
@@ -2519,7 +2678,7 @@ CommonDetails
 <td>
 <code>type</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DeploymentType">
+<a href="#sme.sap.com/v1alpha2.DeploymentType">
 DeploymentType
 </a>
 </em>
@@ -2543,7 +2702,7 @@ int32
 <td>
 <code>ports</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.Ports">
+<a href="#sme.sap.com/v1alpha2.Ports">
 []Ports
 </a>
 </em>
@@ -2595,7 +2754,7 @@ Kubernetes core/v1.Probe
 <td>
 <code>monitoring</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.WorkloadMonitoring">
+<a href="#sme.sap.com/v1alpha2.WorkloadMonitoring">
 WorkloadMonitoring
 </a>
 </em>
@@ -2621,7 +2780,7 @@ Kubernetes policy/v1.PodDisruptionBudgetSpec
 <td>
 <code>horizontalPodAutoscaler</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.HorizontalPodAutoscalerSpec">
+<a href="#sme.sap.com/v1alpha2.HorizontalPodAutoscalerSpec">
 HorizontalPodAutoscalerSpec
 </a>
 </em>
@@ -2634,7 +2793,7 @@ HorizontalPodAutoscalerSpec
 <td>
 <code>stickiness</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.Stickiness">
+<a href="#sme.sap.com/v1alpha2.Stickiness">
 Stickiness
 </a>
 </em>
@@ -2645,10 +2804,10 @@ Stickiness
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.DeploymentType">DeploymentType
+<h3 id="sme.sap.com/v1alpha2.DeploymentType">DeploymentType
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.DeploymentDetails">DeploymentDetails</a>)
 </p>
 <div>
 <p>Type of deployment</p>
@@ -2674,14 +2833,14 @@ Stickiness
 </td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.DomainEntity">DomainEntity
+<h3 id="sme.sap.com/v1alpha2.DomainEntity">DomainEntity
 </h3>
 <div>
 </div>
-<h3 id="sme.sap.com/v1alpha1.DomainRef">DomainRef
+<h3 id="sme.sap.com/v1alpha2.DomainRef">DomainRef
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationSpec">CAPApplicationSpec</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPApplicationSpec">CAPApplicationSpec</a>)
 </p>
 <div>
 <p>Domain references</p>
@@ -2716,12 +2875,13 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.DomainSpec">DomainSpec
+<h3 id="sme.sap.com/v1alpha2.DomainSpec">DomainSpec
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ClusterDomain">ClusterDomain</a>, <a href="#sme.sap.com/v1alpha1.Domain">Domain</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.ClusterDomain">ClusterDomain</a>, <a href="#sme.sap.com/v1alpha2.Domain">Domain</a>)
 </p>
 <div>
+<p>Spec of the Domain/ClusterDomain</p>
 </div>
 <table>
 <thead>
@@ -2757,7 +2917,7 @@ map[string]string
 <td>
 <code>tlsMode</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.TLSMode">
+<a href="#sme.sap.com/v1alpha2.TLSMode">
 TLSMode
 </a>
 </em>
@@ -2770,7 +2930,7 @@ TLSMode
 <td>
 <code>dnsMode</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DNSMode">
+<a href="#sme.sap.com/v1alpha2.DNSMode">
 DNSMode
 </a>
 </em>
@@ -2783,7 +2943,7 @@ DNSMode
 <td>
 <code>dnsTemplates</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DNSTemplate">
+<a href="#sme.sap.com/v1alpha2.DNSTemplate">
 []DNSTemplate
 </a>
 </em>
@@ -2807,7 +2967,7 @@ string
 <td>
 <code>certConfig</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CertConfig">
+<a href="#sme.sap.com/v1alpha2.CertConfig">
 CertConfig
 </a>
 </em>
@@ -2818,10 +2978,10 @@ CertConfig
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.DomainState">DomainState
+<h3 id="sme.sap.com/v1alpha2.DomainState">DomainState
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainStatus">DomainStatus</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.DomainStatus">DomainStatus</a>)
 </p>
 <div>
 </div>
@@ -2842,12 +3002,13 @@ CertConfig
 <td></td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.DomainStatus">DomainStatus
+<h3 id="sme.sap.com/v1alpha2.DomainStatus">DomainStatus
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ClusterDomain">ClusterDomain</a>, <a href="#sme.sap.com/v1alpha1.Domain">Domain</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.ClusterDomain">ClusterDomain</a>, <a href="#sme.sap.com/v1alpha2.Domain">Domain</a>)
 </p>
 <div>
+<p>Status of the Domain/ClusterDomain</p>
 </div>
 <table>
 <thead>
@@ -2861,7 +3022,7 @@ CertConfig
 <td>
 <code>GenericStatus</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.GenericStatus">
+<a href="#sme.sap.com/v1alpha2.GenericStatus">
 GenericStatus
 </a>
 </em>
@@ -2876,7 +3037,7 @@ GenericStatus
 <td>
 <code>state</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DomainState">
+<a href="#sme.sap.com/v1alpha2.DomainState">
 DomainState
 </a>
 </em>
@@ -2920,20 +3081,20 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.Duration">Duration
+<h3 id="sme.sap.com/v1alpha2.Duration">Duration
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.MetricRule">MetricRule</a>, <a href="#sme.sap.com/v1alpha1.MonitoringConfig">MonitoringConfig</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.MetricRule">MetricRule</a>, <a href="#sme.sap.com/v1alpha2.MonitoringConfig">MonitoringConfig</a>)
 </p>
 <div>
 <p>Duration is a valid time duration that can be parsed by Prometheus
 Supported units: y, w, d, h, m, s, ms
 Examples: <code>30s</code>, <code>1m</code>, <code>1h20m15s</code>, <code>15d</code></p>
 </div>
-<h3 id="sme.sap.com/v1alpha1.GenericStatus">GenericStatus
+<h3 id="sme.sap.com/v1alpha2.GenericStatus">GenericStatus
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationStatus">CAPApplicationStatus</a>, <a href="#sme.sap.com/v1alpha1.CAPApplicationVersionStatus">CAPApplicationVersionStatus</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantOperationStatus">CAPTenantOperationStatus</a>, <a href="#sme.sap.com/v1alpha1.CAPTenantStatus">CAPTenantStatus</a>, <a href="#sme.sap.com/v1alpha1.DomainStatus">DomainStatus</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPApplicationStatus">CAPApplicationStatus</a>, <a href="#sme.sap.com/v1alpha2.CAPApplicationVersionStatus">CAPApplicationVersionStatus</a>, <a href="#sme.sap.com/v1alpha2.CAPTenantOperationStatus">CAPTenantOperationStatus</a>, <a href="#sme.sap.com/v1alpha2.CAPTenantStatus">CAPTenantStatus</a>, <a href="#sme.sap.com/v1alpha2.DomainStatus">DomainStatus</a>, <a href="#sme.sap.com/v1alpha2.SubscriptionStatus">SubscriptionStatus</a>)
 </p>
 <div>
 <p>Custom resource status</p>
@@ -2972,10 +3133,10 @@ int64
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.HTTPCookie">HTTPCookie
+<h3 id="sme.sap.com/v1alpha2.HTTPCookie">HTTPCookie
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.StickinessHash">StickinessHash</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.StickinessHash">StickinessHash</a>)
 </p>
 <div>
 </div>
@@ -3028,7 +3189,7 @@ the generated cookie will be a session cookie.</p>
 <td>
 <code>attributes</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.NameValue">
+<a href="#sme.sap.com/v1alpha2.NameValue">
 []NameValue
 </a>
 </em>
@@ -3039,10 +3200,10 @@ the generated cookie will be a session cookie.</p>
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.HorizontalPodAutoscalerSpec">HorizontalPodAutoscalerSpec
+<h3 id="sme.sap.com/v1alpha2.HorizontalPodAutoscalerSpec">HorizontalPodAutoscalerSpec
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.DeploymentDetails">DeploymentDetails</a>)
 </p>
 <div>
 <p>HorizontalPodAutoscalerSpec wraps autoscalingv2.HorizontalPodAutoscalerSpec but gets rid of scaleTargetRef,
@@ -3109,10 +3270,10 @@ Kubernetes autoscaling/v2.HorizontalPodAutoscalerBehavior
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.JobDetails">JobDetails
+<h3 id="sme.sap.com/v1alpha2.JobDetails">JobDetails
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.WorkloadDetails">WorkloadDetails</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.WorkloadDetails">WorkloadDetails</a>)
 </p>
 <div>
 <p>JobDetails specifies the details of the Job</p>
@@ -3129,7 +3290,7 @@ Kubernetes autoscaling/v2.HorizontalPodAutoscalerBehavior
 <td>
 <code>CommonDetails</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.CommonDetails">
+<a href="#sme.sap.com/v1alpha2.CommonDetails">
 CommonDetails
 </a>
 </em>
@@ -3144,7 +3305,7 @@ CommonDetails
 <td>
 <code>type</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.JobType">
+<a href="#sme.sap.com/v1alpha2.JobType">
 JobType
 </a>
 </em>
@@ -3188,10 +3349,10 @@ int64
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.JobType">JobType
+<h3 id="sme.sap.com/v1alpha2.JobType">JobType
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantOperationStep">CAPTenantOperationStep</a>, <a href="#sme.sap.com/v1alpha1.JobDetails">JobDetails</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPTenantOperationStep">CAPTenantOperationStep</a>, <a href="#sme.sap.com/v1alpha2.JobDetails">JobDetails</a>)
 </p>
 <div>
 <p>Type of Job</p>
@@ -3214,10 +3375,10 @@ int64
 </td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.MetricRule">MetricRule
+<h3 id="sme.sap.com/v1alpha2.MetricRule">MetricRule
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeletionRules">DeletionRules</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.DeletionRules">DeletionRules</a>)
 </p>
 <div>
 <p>MetricRule specifies a Prometheus metric and rule which represents a cleanup condition. Metrics of type Gauge and Counter are supported.</p>
@@ -3251,7 +3412,7 @@ string
 <td>
 <code>type</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.MetricType">
+<a href="#sme.sap.com/v1alpha2.MetricType">
 MetricType
 </a>
 </em>
@@ -3264,7 +3425,7 @@ MetricType
 <td>
 <code>calculationPeriod</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.Duration">
+<a href="#sme.sap.com/v1alpha2.Duration">
 Duration
 </a>
 </em>
@@ -3286,10 +3447,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.MetricType">MetricType
+<h3 id="sme.sap.com/v1alpha2.MetricType">MetricType
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.MetricRule">MetricRule</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.MetricRule">MetricRule</a>)
 </p>
 <div>
 <p>Type of Prometheus metric</p>
@@ -3309,10 +3470,10 @@ string
 </td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.MonitoringConfig">MonitoringConfig
+<h3 id="sme.sap.com/v1alpha2.MonitoringConfig">MonitoringConfig
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.WorkloadMonitoring">WorkloadMonitoring</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.WorkloadMonitoring">WorkloadMonitoring</a>)
 </p>
 <div>
 </div>
@@ -3328,7 +3489,7 @@ string
 <td>
 <code>interval</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.Duration">
+<a href="#sme.sap.com/v1alpha2.Duration">
 Duration
 </a>
 </em>
@@ -3363,7 +3524,7 @@ string
 <td>
 <code>scrapeTimeout</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.Duration">
+<a href="#sme.sap.com/v1alpha2.Duration">
 Duration
 </a>
 </em>
@@ -3374,10 +3535,10 @@ Duration
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.NameValue">NameValue
+<h3 id="sme.sap.com/v1alpha2.NameValue">NameValue
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ApplicationDomains">ApplicationDomains</a>, <a href="#sme.sap.com/v1alpha1.HTTPCookie">HTTPCookie</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.HTTPCookie">HTTPCookie</a>)
 </p>
 <div>
 <p>Generic Name/Value configuration</p>
@@ -3412,10 +3573,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.PortNetworkPolicyType">PortNetworkPolicyType
+<h3 id="sme.sap.com/v1alpha2.PortNetworkPolicyType">PortNetworkPolicyType
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.Ports">Ports</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.Ports">Ports</a>)
 </p>
 <div>
 <p>Type of NetworkPolicy for the port</p>
@@ -3435,10 +3596,10 @@ string
 </td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.Ports">Ports
+<h3 id="sme.sap.com/v1alpha2.Ports">Ports
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.DeploymentDetails">DeploymentDetails</a>)
 </p>
 <div>
 <p>Configuration of Service Ports for the deployment</p>
@@ -3477,7 +3638,7 @@ string
 <td>
 <code>networkPolicy</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.PortNetworkPolicyType">
+<a href="#sme.sap.com/v1alpha2.PortNetworkPolicyType">
 PortNetworkPolicyType
 </a>
 </em>
@@ -3510,10 +3671,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.Route">Route
+<h3 id="sme.sap.com/v1alpha2.Route">Route
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ServiceExposure">ServiceExposure</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.ServiceExposure">ServiceExposure</a>)
 </p>
 <div>
 <p>Routing configuration (http match) for the exposed service</p>
@@ -3561,10 +3722,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.ServiceExposure">ServiceExposure
+<h3 id="sme.sap.com/v1alpha2.ServiceExposure">ServiceExposure
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersionSpec">CAPApplicationVersionSpec</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPApplicationVersionSpec">CAPApplicationVersionSpec</a>)
 </p>
 <div>
 <p>ServiceExposure specifies the details of the VirtualService to be exposed for <code>Service</code> type workload(s)</p>
@@ -3592,7 +3753,7 @@ string
 <td>
 <code>routes</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.Route">
+<a href="#sme.sap.com/v1alpha2.Route">
 []Route
 </a>
 </em>
@@ -3603,10 +3764,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.ServiceInfo">ServiceInfo
+<h3 id="sme.sap.com/v1alpha2.ServiceInfo">ServiceInfo
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.BTP">BTP</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.BTP">BTP</a>)
 </p>
 <div>
 <p>Service information</p>
@@ -3656,7 +3817,7 @@ string
 <td>
 <code>subscriptionDependency</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.SubscriptionDependency">
+<a href="#sme.sap.com/v1alpha2.SubscriptionDependency">
 SubscriptionDependency
 </a>
 </em>
@@ -3667,7 +3828,7 @@ SubscriptionDependency
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.StatusConditionType">StatusConditionType
+<h3 id="sme.sap.com/v1alpha2.StatusConditionType">StatusConditionType
 (<code>string</code> alias)</h3>
 <div>
 </div>
@@ -3682,10 +3843,10 @@ SubscriptionDependency
 <td></td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.Stickiness">Stickiness
+<h3 id="sme.sap.com/v1alpha2.Stickiness">Stickiness
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.DeploymentDetails">DeploymentDetails</a>)
 </p>
 <div>
 </div>
@@ -3701,7 +3862,7 @@ SubscriptionDependency
 <td>
 <code>hash</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.StickinessHash">
+<a href="#sme.sap.com/v1alpha2.StickinessHash">
 StickinessHash
 </a>
 </em>
@@ -3712,10 +3873,10 @@ StickinessHash
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.StickinessHash">StickinessHash
+<h3 id="sme.sap.com/v1alpha2.StickinessHash">StickinessHash
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.Stickiness">Stickiness</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.Stickiness">Stickiness</a>)
 </p>
 <div>
 <p>Loosely based on the options available for consistent hash load balancer in istio (<a href="https://istio.io/latest/docs/reference/config/networking/destination-rule/#ConsistentHashLB">https://istio.io/latest/docs/reference/config/networking/destination-rule/#ConsistentHashLB</a>), but only include the options that make sense for our use case.</p>
@@ -3743,7 +3904,7 @@ string
 <td>
 <code>httpCookie</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.HTTPCookie">
+<a href="#sme.sap.com/v1alpha2.HTTPCookie">
 HTTPCookie
 </a>
 </em>
@@ -3777,10 +3938,10 @@ string
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.SubscriptionDependency">SubscriptionDependency
+<h3 id="sme.sap.com/v1alpha2.SubscriptionDependency">SubscriptionDependency
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.ServiceInfo">ServiceInfo</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.ServiceInfo">ServiceInfo</a>)
 </p>
 <div>
 </div>
@@ -3802,10 +3963,299 @@ string
 </td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.TLSMode">TLSMode
+<h3 id="sme.sap.com/v1alpha2.SubscriptionInfo">SubscriptionInfo
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.SubscriptionProviderSpec">SubscriptionProviderSpec</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>type</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Type of Subscription (subscription-manager / saas-registry)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subscriptionSecret</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the Subscription Credential</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>authSecret</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the Auth Credential (Optional)</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha2.SubscriptionProviderSpec">SubscriptionProviderSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.SubscriptionProvider">SubscriptionProvider</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>appName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the application that is being subscribed to</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>providerSubaccountId</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Provider subaccount ID for the application that is being subscribed to</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subscriptionInfo</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha2.SubscriptionInfo">
+SubscriptionInfo
+</a>
+</em>
+</td>
+<td>
+<p>The secret(s) containing the subscription credentials that are necessary to create a subscription for the application (Fetched from the same namespace as this resource).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dependencies</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>List of subscription dependencies discovered for the services specified in the corresponding app</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha2.SubscriptionSpec">SubscriptionSpec
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.Subscription">Subscription</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>appName</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Name of the application that is being subscribed to</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>providerSubaccountId</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Provider subaccount ID of the application that is being subscribed to (used to identify the owning CAPApplication)</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>tenantId</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>TenantId of the consumer subaccount subscribing to the application</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subdomain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Subdomain of the consumer subaccount subscribing to the app</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subscriptionGuid</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>SubscriptionGuid of the subscription</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subscriptionDomain</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Subscrption domain of the consumer subaccount subscribing to the app</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>subscriptionRequestPayload</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Payload of the subscription request (JSON string).</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha2.SubscriptionState">SubscriptionState
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DomainSpec">DomainSpec</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.SubscriptionStatus">SubscriptionStatus</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr><td><p>&#34;Deleting&#34;</p></td>
+<td></td>
+</tr><tr><td><p>&#34;Error&#34;</p></td>
+<td></td>
+</tr><tr><td><p>&#34;Processing&#34;</p></td>
+<td></td>
+</tr><tr><td><p>&#34;ProcessingError&#34;</p></td>
+<td></td>
+</tr><tr><td><p>&#34;Ready&#34;</p></td>
+<td></td>
+</tr></tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha2.SubscriptionStatus">SubscriptionStatus
+</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.Subscription">Subscription</a>)
+</p>
+<div>
+</div>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>GenericStatus</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha2.GenericStatus">
+GenericStatus
+</a>
+</em>
+</td>
+<td>
+<p>
+(Members of <code>GenericStatus</code> are embedded into this type.)
+</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>state</code><br/>
+<em>
+<a href="#sme.sap.com/v1alpha2.SubscriptionState">
+SubscriptionState
+</a>
+</em>
+</td>
+<td>
+<p>State of the Domain</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>url</code><br/>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Tenant specific URL of the subscribed application</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="sme.sap.com/v1alpha2.TLSMode">TLSMode
+(<code>string</code> alias)</h3>
+<p>
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.DomainSpec">DomainSpec</a>)
 </p>
 <div>
 </div>
@@ -3827,10 +4277,10 @@ string
 </td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.TenantOperationWorkloadReference">TenantOperationWorkloadReference
+<h3 id="sme.sap.com/v1alpha2.TenantOperationWorkloadReference">TenantOperationWorkloadReference
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.TenantOperations">TenantOperations</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.TenantOperations">TenantOperations</a>)
 </p>
 <div>
 </div>
@@ -3866,10 +4316,10 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.TenantOperations">TenantOperations
+<h3 id="sme.sap.com/v1alpha2.TenantOperations">TenantOperations
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersionSpec">CAPApplicationVersionSpec</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPApplicationVersionSpec">CAPApplicationVersionSpec</a>)
 </p>
 <div>
 <p>Configuration used to sequence tenant related jobs for a given tenant operation</p>
@@ -3886,7 +4336,7 @@ bool
 <td>
 <code>provisioning</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.TenantOperationWorkloadReference">
+<a href="#sme.sap.com/v1alpha2.TenantOperationWorkloadReference">
 []TenantOperationWorkloadReference
 </a>
 </em>
@@ -3899,7 +4349,7 @@ bool
 <td>
 <code>upgrade</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.TenantOperationWorkloadReference">
+<a href="#sme.sap.com/v1alpha2.TenantOperationWorkloadReference">
 []TenantOperationWorkloadReference
 </a>
 </em>
@@ -3912,7 +4362,7 @@ bool
 <td>
 <code>deprovisioning</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.TenantOperationWorkloadReference">
+<a href="#sme.sap.com/v1alpha2.TenantOperationWorkloadReference">
 []TenantOperationWorkloadReference
 </a>
 </em>
@@ -3923,10 +4373,10 @@ bool
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.VersionUpgradeStrategyType">VersionUpgradeStrategyType
+<h3 id="sme.sap.com/v1alpha2.VersionUpgradeStrategyType">VersionUpgradeStrategyType
 (<code>string</code> alias)</h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPTenantSpec">CAPTenantSpec</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPTenantSpec">CAPTenantSpec</a>)
 </p>
 <div>
 </div>
@@ -3945,10 +4395,10 @@ bool
 </td>
 </tr></tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.WorkloadDetails">WorkloadDetails
+<h3 id="sme.sap.com/v1alpha2.WorkloadDetails">WorkloadDetails
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.CAPApplicationVersionSpec">CAPApplicationVersionSpec</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.CAPApplicationVersionSpec">CAPApplicationVersionSpec</a>)
 </p>
 <div>
 <p>WorkloadDetails specifies the details of the Workload</p>
@@ -4009,7 +4459,7 @@ map[string]string
 <td>
 <code>deploymentDefinition</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DeploymentDetails">
+<a href="#sme.sap.com/v1alpha2.DeploymentDetails">
 DeploymentDetails
 </a>
 </em>
@@ -4022,7 +4472,7 @@ DeploymentDetails
 <td>
 <code>jobDefinition</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.JobDetails">
+<a href="#sme.sap.com/v1alpha2.JobDetails">
 JobDetails
 </a>
 </em>
@@ -4033,10 +4483,10 @@ JobDetails
 </tr>
 </tbody>
 </table>
-<h3 id="sme.sap.com/v1alpha1.WorkloadMonitoring">WorkloadMonitoring
+<h3 id="sme.sap.com/v1alpha2.WorkloadMonitoring">WorkloadMonitoring
 </h3>
 <p>
-(<em>Appears on: </em><a href="#sme.sap.com/v1alpha1.DeploymentDetails">DeploymentDetails</a>)
+(<em>Appears on: </em><a href="#sme.sap.com/v1alpha2.DeploymentDetails">DeploymentDetails</a>)
 </p>
 <div>
 <p>WorkloadMonitoring specifies the metrics related to the workload</p>
@@ -4053,7 +4503,7 @@ JobDetails
 <td>
 <code>deletionRules</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.DeletionRules">
+<a href="#sme.sap.com/v1alpha2.DeletionRules">
 DeletionRules
 </a>
 </em>
@@ -4067,7 +4517,7 @@ Either a set of metrics based rules can be specified, or a PromQL expression whi
 <td>
 <code>scrapeConfig</code><br/>
 <em>
-<a href="#sme.sap.com/v1alpha1.MonitoringConfig">
+<a href="#sme.sap.com/v1alpha2.MonitoringConfig">
 MonitoringConfig
 </a>
 </em>
@@ -4082,5 +4532,5 @@ If not specified, CAP Operator will not attempt to create a ServiceMonitor for t
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>c1a9b97</code>.
+on git commit <code>cb0dd11</code>.
 </em></p>

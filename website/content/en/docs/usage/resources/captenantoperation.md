@@ -12,7 +12,7 @@ The `CAPTenantOperation` resource is managed by CAP Operator and must not be cre
 {{% /alert %}}
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPTenantOperation
 metadata:
   name: cap-app-consumer-ge455-77kb9

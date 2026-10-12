@@ -16,7 +16,7 @@ CAP Operator manages networking for CAP applications through [`Domain`](../resou
 Use a `Domain` resource for a domain that belongs to a specific application namespace. The operator creates the `Gateway` and `DNSEntry` in that namespace. The `Certificate` placement depends on the certificate manager in use — see the [`Domain` resource reference](../resources/domain) for details.
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: Domain
 metadata:
   namespace: cap-app-01
@@ -37,7 +37,7 @@ The `dnsTarget` field is optional. If omitted, the target is derived from the Is
 Use a `ClusterDomain` resource for a domain shared across multiple applications or namespaces. The operator creates the `Gateway` and `DNSEntry` in the CAP Operator installation namespace. The `Certificate` placement depends on the certificate manager in use — see the [`ClusterDomain` resource reference](../resources/clusterdomain) for details.
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: ClusterDomain
 metadata:
   name: common-external-domain
@@ -57,7 +57,7 @@ When X509 client authentication is required (`tlsMode: Mutual` or `OptionalMutua
 Once your `Domain` and `ClusterDomain` resources are defined, reference them in the `CAPApplication` spec using `domainRefs`:
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplication
 metadata:
   name: cap-app-01
@@ -86,7 +86,7 @@ Earlier versions of CAP Operator used an inline `domains` section directly in `C
 
 #### Before: deprecated `domains` section
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplication
 metadata:
   name: cap-app-01
