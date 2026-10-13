@@ -25,13 +25,13 @@ spec:
 
 ### Tenant Provisioning
 
-Tenant provisioning begins when a consumer subaccount subscribes to the application, either via the SAP BTP cockpit or using the SaaS Provisioning service APIs. This triggers an asynchronous callback from the SaaS Provisioning service into the cluster, which is handled by the [subscription server](../../concepts/operator-components/subscription-server). The subscription server validates the request and creates a `CAPTenant` instance for the identified `CAPApplication`.
+Tenant provisioning begins when a consumer subaccount subscribes to the application, either via the SAP BTP cockpit or using the SaaS Provisioning service APIs. This triggers an asynchronous callback from the SaaS Provisioning service into the cluster, which is handled by the [subscription server](../../concepts/operator-components/subscription-server). The subscription server validates the request using credentials from the [`SubscriptionProvider`](../resources/subscriptionprovider) resource and creates a [`Subscription`](../resources/subscription) resource in the namespace of the identified `CAPApplication`. The controller, observing the new `Subscription`, then creates a `CAPTenant` instance to represent the consumer tenant.
 
 {{% alert color="warning" title="Warning" %}}
-`CAPTenant` instances must not be created or deleted manually. They are managed exclusively by the subscription server in response to provisioning calls from the SaaS Provisioning service.
+`Subscription` and `CAPTenant` resources must not be created or deleted manually. `Subscription` resources are managed by the subscription server in response to provisioning callbacks, while `CAPTenant` resources are created and managed by the controller as children of `Subscription` resources.
 {{% /alert %}}
 
-The controller, observing the new `CAPTenant`, initiates the provisioning process by creating a `CAPTenantOperation` resource representing the provisioning operation.
+The controller, observing the new `CAPTenant` (created as a child of the `Subscription`), initiates the provisioning process by creating a `CAPTenantOperation` resource representing the provisioning operation.
 
 ```yaml
 apiVersion: sme.sap.com/v1alpha2
@@ -60,7 +60,7 @@ The `CAPTenant` reaches a `Ready` state only after:
 
 ### Get Dependencies
 
-During provisioning, the SaaS Provisioning service calls a `getDependencies` endpoint to retrieve the list of reuse services that the multitenant application requires. The CAP Operator subscription server exposes this endpoint and resolves dependencies by inspecting the BTP services defined in the `CAPApplication`.
+During provisioning, the SaaS Provisioning service calls a `getDependencies` endpoint to retrieve the list of reuse services that the multitenant application requires. The CAP Operator subscription server exposes this endpoint. The dependency list is pre-computed by the controller at `CAPApplication` reconciliation time and cached in the [`SubscriptionProvider`](../resources/subscriptionprovider) resource. The subscription server reads and returns the cached list directly, without re-inspecting `CAPApplication` service credentials at request time.
 
 The subscription server exposes the following endpoint:
 
@@ -85,7 +85,7 @@ A successful response returns a JSON array of objects. Each object contains the 
 
 #### Service Qualification
 
-The subscription server iterates over all BTP services listed in `CAPApplication.spec.btp.services`. For each service, it reads the associated Kubernetes secret, parses the credentials, and determines whether to include the service in the response.
+The controller iterates over all BTP services listed in `CAPApplication.spec.btp.services`. For each service, it reads the associated Kubernetes secret, parses the credentials, and determines whether to include the service in the pre-computed dependency list.
 
 The `xsappname` is read from either the top-level `xsappname` field or the nested `uaa.xsappname` field in the service credentials. If not found, the service is excluded from the response.
 
@@ -130,9 +130,9 @@ This behavior aligns with the implementation in the [`@sap/approuter`](https://w
 
 ### Tenant Deprovisioning
 
-When a tenant unsubscribes from the application, the subscription server receives the request, validates the existence and status of the `CAPTenant`, and submits a deletion request to the Kubernetes API server.
+When a tenant unsubscribes from the application, the subscription server receives the request, locates the corresponding `Subscription` resource, and submits a deletion request to the Kubernetes API server.
 
-The controller identifies the pending deletion but defers it until a `CAPTenantOperation` of type `deprovisioning` is created and completes successfully. The `CAPTenantOperation` creates the corresponding Jobs (steps) that execute the tenant deprovisioning.
+The controller processes the deletion by initiating deprovisioning of the owned `CAPTenant` via a `CAPTenantOperation` of type `deprovisioning`. The `CAPTenantOperation` creates the corresponding Jobs (steps) that execute the tenant deprovisioning. Once deprovisioning completes successfully, the `Subscription` finalizer is removed, allowing Kubernetes to complete the deletion.
 
 ### CAPApplication Deletion
 

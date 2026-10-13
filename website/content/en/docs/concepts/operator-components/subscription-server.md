@@ -11,9 +11,9 @@ The Subscription Server handles HTTP requests from the [SAP Software-as-a-Servic
 
 During the creation of a `saas-registry` service instance (in the provider subaccount), [callback URLs are configured](../../../usage/prerequisites/#sap-software-as-a-service-provisioning-service) to point to the subscription server routes. Additionally, the `getDependencies` URLs can also be configured to point to the subscription server routes.
 
-When a consumer tenant subscribes to an application managed by the operator, the subscription server receives the callback, validates the request, and creates a `CAPTenant` custom resource object for the identified `CAPApplication`.
+When a consumer tenant subscribes to an application managed by the operator, the subscription server receives the callback, validates the request using credentials from the corresponding [`SubscriptionProvider`](../../../usage/resources/subscriptionprovider) resource, and creates a [`Subscription`](../../../usage/resources/subscription) resource in the namespace of the identified `CAPApplication`. The controller then creates the `CAPTenant` and drives it through the provisioning flow.
 
-The subscription server returns an `Accepted` (202) response and starts a background routine that polls for tenant status while the `CAPTenant` changes are independently reconciled by the controller.
+The subscription server returns an `Accepted` (202) response and starts a background routine that polls `Subscription.status` while the `Subscription` and `CAPTenant` resources are independently reconciled by the controller.
 
 Once the tenant provisioning process completes (or fails), the tracking routine returns the appropriate status to the SaaS Registry via an asynchronous callback.
 

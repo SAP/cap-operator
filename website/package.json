@@ -1,6 +1,6 @@
 {
   "name": "website",
   "devDependencies": {
-    "@docsy/theme": ">=0.17.0"
+    "@docsy/theme": ">=0.18.0"
   }
 }
