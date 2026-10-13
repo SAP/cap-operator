@@ -8,7 +8,7 @@ require (
 	github.com/cert-manager/cert-manager v1.21.2
 	github.com/gardener/cert-management v0.28.0
 	github.com/gardener/cert-management/pkg/apis v0.28.0
-	github.com/gardener/external-dns-management v0.52.0
+	github.com/gardener/external-dns-management v0.53.0
 	github.com/go-logr/logr v1.4.4
 	github.com/go-logr/zapr v1.3.0
 	github.com/go-task/slim-sprig/v3 v3.0.0
