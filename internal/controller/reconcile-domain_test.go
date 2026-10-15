@@ -843,3 +843,66 @@ func TestDomain_CustomDNSTenants(t *testing.T) {
 		},
 	)
 }
+
+func TestDomain_NotFound(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-domain-notfound"}},
+		TestData{
+			description:            "Domain not found in store is handled without error",
+			expectResourceNotFound: true,
+		},
+	)
+}
+
+func TestClusterDomain_NotFound(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceClusterDomain, ResourceKey: NamespacedResourceKey{Namespace: "", Name: "test-clusterdomain-notfound"}},
+		TestData{
+			description:            "ClusterDomain not found in store is handled without error",
+			expectResourceNotFound: true,
+		},
+	)
+}
+
+func TestDomain_StatusUpdateError(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceDomain, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-primary"}},
+		TestData{
+			description: "Domain reconcile surfaces the status-update error when the deferred status update fails",
+			initialResources: []string{
+				"testdata/domain/istio-ingress.yaml",
+				"testdata/domain/domain-processing.yaml",
+			},
+			expectError:           true,
+			expectedRequeue:       map[int][]NamespacedResourceKey{ResourceDomain: {{Namespace: "default", Name: "test-cap-01-primary"}}},
+			mockErrorForResources: []ResourceAction{{Verb: "update", Group: "sme.sap.com", Version: "v1alpha2", Resource: "domains", Namespace: "*", Name: "*"}},
+		},
+	)
+
+	if err == nil || err.Error() != "mocked api error (domains.sme.sap.com/v1alpha2)" {
+		t.Errorf("Wrong error message: %v", err)
+	}
+}
+
+func TestClusterDomain_StatusUpdateError(t *testing.T) {
+	err := reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceClusterDomain, ResourceKey: NamespacedResourceKey{Namespace: "", Name: "test-cap-01-secondary"}},
+		TestData{
+			description: "ClusterDomain reconcile surfaces the status-update error when the deferred status update fails",
+			initialResources: []string{
+				"testdata/domain/cluster-domain-initial-state-label-finalizer.yaml",
+			},
+			expectError:           true,
+			expectedRequeue:       map[int][]NamespacedResourceKey{ResourceClusterDomain: {{Namespace: "", Name: "test-cap-01-secondary"}}},
+			mockErrorForResources: []ResourceAction{{Verb: "update", Group: "sme.sap.com", Version: "v1alpha2", Resource: "clusterdomains", Namespace: "*", Name: "*"}},
+		},
+	)
+
+	if err == nil || err.Error() != "mocked api error (clusterdomains.sme.sap.com/v1alpha2)" {
+		t.Errorf("Wrong error message: %v", err)
+	}
+}

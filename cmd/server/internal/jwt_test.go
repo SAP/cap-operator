@@ -341,6 +341,93 @@ func testInvalidClaimsType(t *testing.T) {
 	}
 }
 
+func TestVerifyJKUHeader(t *testing.T) {
+	const uaaDomain = jwtTestUAADomain
+	tests := []struct {
+		name     string
+		header   map[string]any
+		wantHost string
+		wantOK   bool
+	}{
+		{
+			name:     "valid jku",
+			header:   map[string]any{"jku": https + testSubdomain + "." + uaaDomain + tokenKeysPath},
+			wantHost: testSubdomain + "." + uaaDomain,
+			wantOK:   true,
+		},
+		{name: "missing jku header", header: map[string]any{}, wantOK: false},
+		{name: "jku header not a string", header: map[string]any{"jku": 123}, wantOK: false},
+		{name: "empty jku", header: map[string]any{"jku": ""}, wantOK: false},
+		{name: "unparseable jku", header: map[string]any{"jku": "\x7f://x"}, wantOK: false},
+		{name: "jku with query params", header: map[string]any{"jku": https + testSubdomain + "." + uaaDomain + tokenKeysPath + "?foo=bar"}, wantOK: false},
+		{name: "jku not absolute", header: map[string]any{"jku": testSubdomain + "." + uaaDomain + tokenKeysPath}, wantOK: false},
+		{name: "jku with fragment", header: map[string]any{"jku": https + testSubdomain + "." + uaaDomain + tokenKeysPath + "#frag"}, wantOK: false},
+		{name: "jku path not token_keys", header: map[string]any{"jku": https + testSubdomain + "." + uaaDomain + "/other"}, wantOK: false},
+		{name: "jku host not subdomain of uaa domain", header: map[string]any{"jku": https + testSubdomain + ".foo.bar.local" + tokenKeysPath}, wantOK: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			host, ok := verifyJKUHeader(&jwt.Token{Header: tt.header}, uaaDomain)
+			if ok != tt.wantOK || host != tt.wantHost {
+				t.Errorf("verifyJKUHeader() = (%q, %v), want (%q, %v)", host, ok, tt.wantHost, tt.wantOK)
+			}
+		})
+	}
+}
+
+func TestAppendWithTrim(t *testing.T) {
+	tests := []struct {
+		name string
+		in   []string
+		v    string
+		want []string
+	}{
+		{name: "non-empty value appended", in: []string{"a"}, v: "b", want: []string{"a", "b"}},
+		{name: "value trimmed before append", in: []string{"a"}, v: "  b  ", want: []string{"a", "b"}},
+		{name: "empty value not appended", in: []string{"a"}, v: "", want: []string{"a"}},
+		{name: "whitespace-only value not appended", in: []string{"a"}, v: "   ", want: []string{"a"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := appendWithTrim(tt.in, tt.v)
+			if len(got) != len(tt.want) {
+				t.Fatalf("appendWithTrim() = %v, want %v", got, tt.want)
+			}
+			for i := range got {
+				if got[i] != tt.want[i] {
+					t.Errorf("appendWithTrim() = %v, want %v", got, tt.want)
+					break
+				}
+			}
+		})
+	}
+}
+
+func TestGetOpenIDConfig_Errors(t *testing.T) {
+	t.Run("unparseable url", func(t *testing.T) {
+		if _, err := getOpenIDConfig("\x7f://x", http.DefaultClient); err == nil {
+			t.Error("expected an error for an unparseable URL")
+		}
+	})
+
+	t.Run("request failure", func(t *testing.T) {
+		// nothing is listening on this address, so the GET fails
+		if _, err := getOpenIDConfig("https://127.0.0.1:1", http.DefaultClient); err == nil {
+			t.Error("expected an error when the request cannot be made")
+		}
+	})
+
+	t.Run("non-200 status", func(t *testing.T) {
+		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer ts.Close()
+		if _, err := getOpenIDConfig(ts.URL, ts.Client()); err == nil {
+			t.Error("expected an error for a non-200 response")
+		}
+	})
+}
+
 func TestJWT(t *testing.T) {
 	catalog := &[]struct {
 		test         func(t *testing.T)

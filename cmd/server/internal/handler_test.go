@@ -1118,3 +1118,132 @@ func TestGetSMSDependencies(t *testing.T) {
 		})
 	}
 }
+
+func TestGetDependenciesAuthError_Error(t *testing.T) {
+	err := &GetDependenciesAuthError{}
+	if err.Error() != "Not authorized" {
+		t.Errorf("expected 'Not authorized', got: %s", err.Error())
+	}
+}
+
+func TestGetSubscriptionDomain(t *testing.T) {
+	tests := []struct {
+		name     string
+		payload  map[string]any
+		expected string
+	}{
+		{
+			name: "subscriptionDomain present",
+			payload: map[string]any{
+				"subscriptionParams": map[string]any{
+					"subscriptionDomain": "my-domain.test.local",
+				},
+			},
+			expected: "my-domain.test.local",
+		},
+		{
+			name:     "no subscriptionParams",
+			payload:  map[string]any{"foo": "bar"},
+			expected: "",
+		},
+		{
+			name: "subscriptionParams is not a map",
+			payload: map[string]any{
+				"subscriptionParams": "not-a-map",
+			},
+			expected: "",
+		},
+		{
+			name: "subscriptionParams without subscriptionDomain",
+			payload: map[string]any{
+				"subscriptionParams": map[string]any{
+					"someOtherParam": "value",
+				},
+			},
+			expected: "",
+		},
+		{
+			name:     "empty payload",
+			payload:  map[string]any{},
+			expected: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := getSubscriptionDomain(tt.payload); got != tt.expected {
+				t.Errorf("getSubscriptionDomain() = %q, want %q", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetXSUAADetails_MissingAuthSecret(t *testing.T) {
+	s := setup(nil, nil)
+	subPro := &v1alpha2.SubscriptionProvider{
+		ObjectMeta: v1.ObjectMeta{Name: providerName, Namespace: v1.NamespaceDefault},
+		Spec: v1alpha2.SubscriptionProviderSpec{
+			SubscriptionInfo: v1alpha2.SubscriptionInfo{AuthSecret: ""},
+		},
+	}
+	if result := s.getXSUAADetails(subPro, TenantProvisioning); result != nil {
+		t.Errorf("expected nil XSUAA credentials when auth secret is missing, got: %+v", result)
+	}
+}
+
+func TestEnrichAdditionalOutput(t *testing.T) {
+	tenantOutput := &v1alpha2.CAPTenantOutput{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "test-output",
+			Namespace: v1.NamespaceDefault,
+			Labels:    map[string]string{LabelTenantId: tenantId},
+		},
+		Spec: v1alpha2.CAPTenantOutputSpec{
+			SubscriptionCallbackData: `{"key1":"value1","key2":"value2"}`,
+		},
+	}
+	s := setup(nil, nil, tenantOutput)
+
+	additionalOutput := map[string]any{"existing": "data"}
+	if err := s.enrichAdditionalOutput(v1.NamespaceDefault, tenantId, &additionalOutput); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// the existing data should be retained and the tenant output merged in
+	if additionalOutput["existing"] != "data" {
+		t.Errorf("expected existing data to be retained, got: %+v", additionalOutput)
+	}
+	if additionalOutput["key1"] != "value1" || additionalOutput["key2"] != "value2" {
+		t.Errorf("expected tenant output to be merged, got: %+v", additionalOutput)
+	}
+}
+
+func TestEnrichAdditionalOutput_InvalidCallbackData(t *testing.T) {
+	tenantOutput := &v1alpha2.CAPTenantOutput{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "test-output-invalid",
+			Namespace: v1.NamespaceDefault,
+			Labels:    map[string]string{LabelTenantId: tenantId},
+		},
+		Spec: v1alpha2.CAPTenantOutputSpec{
+			SubscriptionCallbackData: `{invalid-json`,
+		},
+	}
+	s := setup(nil, nil, tenantOutput)
+
+	additionalOutput := map[string]any{}
+	if err := s.enrichAdditionalOutput(v1.NamespaceDefault, tenantId, &additionalOutput); err == nil {
+		t.Error("expected an error when the callback data is invalid JSON")
+	}
+}
+
+func TestEnrichAdditionalOutput_NoMatchingTenantOutputs(t *testing.T) {
+	s := setup(nil, nil)
+	additionalOutput := map[string]any{"existing": "data"}
+	if err := s.enrichAdditionalOutput(v1.NamespaceDefault, tenantId, &additionalOutput); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(additionalOutput) != 1 || additionalOutput["existing"] != "data" {
+		t.Errorf("expected additional output to be unchanged, got: %+v", additionalOutput)
+	}
+}

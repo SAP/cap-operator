@@ -335,3 +335,110 @@ func TestSecretHandler_MultipleDistinctSecrets(t *testing.T) {
 		t.Fatalf("expected 3 pending secrets, got %d: %v", len(got), got)
 	}
 }
+
+func TestHasReconciliationRelevantChanges(t *testing.T) {
+	base := &metav1.ObjectMeta{
+		Name:            "x",
+		Namespace:       metav1.NamespaceDefault,
+		Generation:      1,
+		Annotations:     map[string]string{"a": "b"},
+		OwnerReferences: []metav1.OwnerReference{{Name: "owner"}},
+	}
+
+	if hasReconciliationRelevantChanges(base.DeepCopy(), base) {
+		t.Error("expected no relevant changes for identical objects")
+	}
+
+	genChanged := base.DeepCopy()
+	genChanged.Generation = 2
+	if !hasReconciliationRelevantChanges(genChanged, base) {
+		t.Error("expected a generation change to be relevant")
+	}
+
+	annChanged := base.DeepCopy()
+	annChanged.Annotations = map[string]string{"a": "c"}
+	if !hasReconciliationRelevantChanges(annChanged, base) {
+		t.Error("expected an annotation change to be relevant")
+	}
+
+	ownerChanged := base.DeepCopy()
+	ownerChanged.OwnerReferences = []metav1.OwnerReference{{Name: "other"}}
+	if !hasReconciliationRelevantChanges(ownerChanged, base) {
+		t.Error("expected an owner reference change to be relevant")
+	}
+}
+
+func TestDetermineQueueItem(t *testing.T) {
+	// self change, delete (newObj nil) -> no enqueue
+	if item := determineQueueItem(ResourceCAPApplication, ResourceCAPApplication, &metav1.ObjectMeta{Name: "x"}, nil, v1alpha2.CAPApplicationKind); item != nil {
+		t.Error("expected nil queue item on self delete")
+	}
+
+	// self change, no reconciliation-relevant change -> no enqueue
+	old := &metav1.ObjectMeta{Name: "x", Namespace: metav1.NamespaceDefault, Generation: 1}
+	if item := determineQueueItem(ResourceCAPApplication, ResourceCAPApplication, old, old.DeepCopy(), v1alpha2.CAPApplicationKind); item != nil {
+		t.Error("expected nil queue item when there are no relevant changes")
+	}
+
+	// self change, relevant change -> enqueue the resource itself
+	changed := old.DeepCopy()
+	changed.Generation = 2
+	item := determineQueueItem(ResourceCAPApplication, ResourceCAPApplication, old, changed, v1alpha2.CAPApplicationKind)
+	if item == nil || item.ResourceKey.Name != "x" {
+		t.Errorf("expected queue item for the changed resource, got: %v", item)
+	}
+
+	// dependent create (oldObj nil) -> skip (owner would have created it)
+	if item := determineQueueItem(ResourceCAPApplication, ResourceCAPTenant, nil, &metav1.ObjectMeta{Name: "t"}, v1alpha2.CAPApplicationKind); item != nil {
+		t.Error("expected nil queue item on dependent create")
+	}
+
+	// dependent with a matching owner reference -> enqueue the owner
+	depNew := &metav1.ObjectMeta{
+		Name:      "tenant-1",
+		Namespace: metav1.NamespaceDefault,
+		OwnerReferences: []metav1.OwnerReference{
+			{APIVersion: v1alpha2.Group + "/v1alpha2", Kind: v1alpha2.CAPApplicationKind, Name: "owner-ca"},
+		},
+	}
+	item = determineQueueItem(ResourceCAPApplication, ResourceCAPTenant, depNew.DeepCopy(), depNew, v1alpha2.CAPApplicationKind)
+	if item == nil || item.ResourceKey.Name != "owner-ca" {
+		t.Errorf("expected queue item for the owner, got: %v", item)
+	}
+
+	// dependent delete (newObj nil) -> owner resolved from oldObj
+	item = determineQueueItem(ResourceCAPApplication, ResourceCAPTenant, depNew, nil, v1alpha2.CAPApplicationKind)
+	if item == nil || item.ResourceKey.Name != "owner-ca" {
+		t.Errorf("expected queue item for the owner on dependent delete, got: %v", item)
+	}
+
+	// dependent without a resolvable owner -> skip
+	depNoOwner := &metav1.ObjectMeta{Name: "tenant-2", Namespace: metav1.NamespaceDefault}
+	if item := determineQueueItem(ResourceCAPApplication, ResourceCAPTenant, depNoOwner.DeepCopy(), depNoOwner, v1alpha2.CAPApplicationKind); item != nil {
+		t.Error("expected nil queue item when the owner cannot be resolved")
+	}
+}
+
+func TestGetEventHandlerFuncsForResource(t *testing.T) {
+	defer deregisterMetrics()
+	c := getTestController(testResources{})
+
+	// unmapped resource -> empty handler
+	empty := c.getEventHandlerFuncsForResource(99999)
+	if empty.AddFunc != nil || empty.UpdateFunc != nil || empty.DeleteFunc != nil {
+		t.Error("expected an empty handler for an unmapped resource")
+	}
+
+	// mapped resource -> wired handler funcs; invoke them to exercise the enqueue closures
+	h := c.getEventHandlerFuncsForResource(ResourceCAPApplication)
+	if h.AddFunc == nil || h.UpdateFunc == nil || h.DeleteFunc == nil {
+		t.Fatal("expected wired handler funcs for a mapped resource")
+	}
+	ca := &v1alpha2.CAPApplication{ObjectMeta: metav1.ObjectMeta{Name: "ca", Namespace: metav1.NamespaceDefault, Generation: 1, ResourceVersion: "1"}}
+	caUpd := ca.DeepCopy()
+	caUpd.Generation = 2
+	caUpd.ResourceVersion = "2"
+	h.AddFunc(ca)
+	h.UpdateFunc(ca, caUpd)
+	h.DeleteFunc(ca)
+}

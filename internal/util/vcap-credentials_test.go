@@ -209,6 +209,83 @@ func testReadServiceCredentialsFromSecret(t *testing.T) {
 	}
 }
 
+func TestCreateVCAPEntry_ErrorCases(t *testing.T) {
+	si := &v1alpha2.ServiceInfo{Name: "svc", Class: "xsuaa", Secret: "my-secret"}
+
+	// no .metadata and no credentials key
+	if _, err := createVCAPEntry(map[string][]byte{"other": []byte("x")}, si); err == nil {
+		t.Error("expected error when credentials key is missing")
+	}
+
+	// credentials with invalid JSON
+	if _, err := createVCAPEntry(map[string][]byte{"credentials": []byte(`{invalid`)}, si); err == nil {
+		t.Error("expected error when credentials JSON is invalid")
+	}
+
+	// metadata with a json credentialProperty whose source value is invalid JSON
+	metaInvalidCred := map[string][]byte{
+		".metadata": []byte(`{"credentialProperties":[{"name":"keys","sourceName":"keys","format":"json"}]}`),
+		"keys":      []byte(`{invalid`),
+	}
+	if _, err := createVCAPEntry(metaInvalidCred, si); err == nil {
+		t.Error("expected error when credential property JSON is invalid")
+	}
+
+	// metadata with a json metadataProperty whose source value is invalid JSON
+	metaInvalidMeta := map[string][]byte{
+		".metadata": []byte(`{"metadataProperties":[{"name":"tags","sourceName":"tags","format":"json"}]}`),
+		"tags":      []byte(`{invalid`),
+	}
+	if _, err := createVCAPEntry(metaInvalidMeta, si); err == nil {
+		t.Error("expected error when metadata property JSON is invalid")
+	}
+}
+
+func TestCreateVCAPEntryWithMetadata_NameAndLabelFallback(t *testing.T) {
+	si := &v1alpha2.ServiceInfo{Name: "svc-fallback", Class: "xsuaa", Secret: "my-secret"}
+	// metadata without an instance_name property and without a label -> both fall back to service info
+	data := map[string][]byte{
+		".metadata": []byte(`{"metadataProperties":[{"name":"plan","format":"text"}],"credentialProperties":[{"name":"user","format":"text"}]}`),
+		"plan":      []byte("default"),
+		"user":      []byte("a-user"),
+	}
+	entry, err := createVCAPEntry(data, si)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if entry["name"] != "svc-fallback" {
+		t.Errorf("expected name to fall back to service info name, got: %v", entry["name"])
+	}
+	if entry["label"] != "xsuaa" {
+		t.Errorf("expected label to fall back to service class, got: %v", entry["label"])
+	}
+}
+
+func TestReadServiceCredentialsFromSecret_Coverage(t *testing.T) {
+	client := fake.NewSimpleClientset(&corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "cred-secret", Namespace: "default"},
+		Data:       map[string][]byte{"credentials": []byte(`{"user":"a-user"}`)},
+	})
+
+	// secret not found -> error propagated from CreateVCAPEntryFromSecret
+	if _, err := ReadServiceCredentialsFromSecret[map[string]any](&v1alpha2.ServiceInfo{Name: "svc", Secret: "missing", Class: "xsuaa"}, "default", client, false); err == nil {
+		t.Error("expected error when secret is not found")
+	}
+
+	// withMeta=true -> marshals the full VCAP entry (incl. label/name/tags), not just credentials
+	entry, err := ReadServiceCredentialsFromSecret[map[string]any](&v1alpha2.ServiceInfo{Name: "svc", Secret: "cred-secret", Class: "xsuaa"}, "default", client, true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if (*entry)["label"] != "xsuaa" {
+		t.Errorf("expected label in full VCAP entry, got: %v", (*entry)["label"])
+	}
+	creds, ok := (*entry)["credentials"].(map[string]any)
+	if !ok || creds["user"] != "a-user" {
+		t.Errorf("expected credentials.user=a-user, got: %v", (*entry)["credentials"])
+	}
+}
+
 func TestVCAPCredentials(t *testing.T) {
 	catalog := &[]struct {
 		test         func(t *testing.T)
