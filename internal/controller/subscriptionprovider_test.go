@@ -240,6 +240,108 @@ func TestResolveSubscriptionProvider_AlwaysDependency(t *testing.T) {
 	}
 }
 
+// TestResolveSubscriptionProvider_XSAppNameFromUAA verifies that the xsappname is resolved from the nested
+// uaa property when it is not present at the top level of the service credentials.
+func TestResolveSubscriptionProvider_XSAppNameFromUAA(t *testing.T) {
+	defer deregisterMetrics()
+	c := initializeControllerForReconciliationTests(t, nil, nil)
+
+	ca := makeTestCA("test-ca", []v1alpha2.ServiceInfo{
+		{Name: "saas-svc", Class: "saas-registry", Secret: "saas-secret"},
+	})
+	// Credentials with xsappname only under the nested "uaa" property (no top-level xsappname).
+	addCredentialSecret(c, "saas-secret", map[string]any{
+		"saasregistryenabled": true,
+		"uaa":                 map[string]any{"xsappname": "test-saas-uaa!b9"},
+	})
+
+	if err := c.resolveSubscriptionProvider(context.TODO(), ca); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	sp, err := getTrackedSubPro(c, "test-ca")
+	if err != nil {
+		t.Fatalf("expected SubscriptionProvider to be created: %v", err)
+	}
+	if want := `[{"xsappname":"test-saas-uaa!b9"}]`; sp.Spec.Dependencies != want {
+		t.Errorf("expected dependencies %s, got: %s", want, sp.Spec.Dependencies)
+	}
+}
+
+// TestResolveSubscriptionProvider_NoXSAppNameNoDependency verifies that a service which qualifies as a
+// subscription dependency but has no xsappname (neither top-level nor under uaa) is not added as a dependency.
+func TestResolveSubscriptionProvider_NoXSAppNameNoDependency(t *testing.T) {
+	defer deregisterMetrics()
+	c := initializeControllerForReconciliationTests(t, nil, nil)
+
+	always := v1alpha2.SubscriptionDependencyAlways
+	ca := makeTestCA("test-ca", []v1alpha2.ServiceInfo{
+		{Name: "custom-svc", Class: "custom", Secret: "custom-secret", SubscriptionDependency: &always},
+	})
+	// No xsappname at all in the credentials.
+	addCredentialSecret(c, "custom-secret", map[string]any{"saasregistryenabled": false})
+
+	if err := c.resolveSubscriptionProvider(context.TODO(), ca); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	sp, err := getTrackedSubPro(c, "test-ca")
+	if err != nil {
+		t.Fatalf("expected SubscriptionProvider to be created: %v", err)
+	}
+	if sp.Spec.Dependencies != "" {
+		t.Errorf("expected empty dependencies when xsappname is absent, got: %s", sp.Spec.Dependencies)
+	}
+}
+
+// TestResolveSubscriptionProvider_SubscriptionManager verifies that a subscription-manager service populates
+// the SubscriptionInfo with type "subscription-manager" and the subscription secret.
+func TestResolveSubscriptionProvider_SubscriptionManager(t *testing.T) {
+	defer deregisterMetrics()
+	c := initializeControllerForReconciliationTests(t, nil, nil)
+
+	ca := makeTestCA("test-ca", []v1alpha2.ServiceInfo{
+		{Name: "subman-svc", Class: "subscription-manager", Secret: "subman-secret"},
+	})
+	addCredentialSecret(c, "subman-secret", map[string]any{"xsappname": "test-subman!b5"})
+
+	if err := c.resolveSubscriptionProvider(context.TODO(), ca); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	sp, err := getTrackedSubPro(c, "test-ca")
+	if err != nil {
+		t.Fatalf("expected SubscriptionProvider to be created: %v", err)
+	}
+	if sp.Spec.SubscriptionInfo.Type != "subscription-manager" {
+		t.Errorf("expected subscriptionInfo.type subscription-manager, got: %s", sp.Spec.SubscriptionInfo.Type)
+	}
+	if sp.Spec.SubscriptionInfo.SubscriptionSecret != "subman-secret" {
+		t.Errorf("expected subscriptionSecret subman-secret, got: %s", sp.Spec.SubscriptionInfo.SubscriptionSecret)
+	}
+}
+
+// TestResolveSubscriptionProvider_NeverDependencyExcluded verifies that a service with SubscriptionDependencyNever
+// is excluded from the dependencies even when its credentials would otherwise qualify it (saasregistryenabled=true).
+func TestResolveSubscriptionProvider_NeverDependencyExcluded(t *testing.T) {
+	defer deregisterMetrics()
+	c := initializeControllerForReconciliationTests(t, nil, nil)
+
+	never := v1alpha2.SubscriptionDependencyNever
+	ca := makeTestCA("test-ca", []v1alpha2.ServiceInfo{
+		{Name: "saas-svc", Class: "saas-registry", Secret: "saas-secret", SubscriptionDependency: &never},
+	})
+	addCredentialSecret(c, "saas-secret", map[string]any{"xsappname": "test-saas!b2", "saasregistryenabled": true})
+
+	if err := c.resolveSubscriptionProvider(context.TODO(), ca); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	sp, err := getTrackedSubPro(c, "test-ca")
+	if err != nil {
+		t.Fatalf("expected SubscriptionProvider to be created: %v", err)
+	}
+	if sp.Spec.Dependencies != "" {
+		t.Errorf("expected empty dependencies for a Never service, got: %s", sp.Spec.Dependencies)
+	}
+}
+
 // TestResolveSubscriptionProvider_UpdateWhenChanged verifies that an existing SubscriptionProvider is updated
 // when its spec hash differs from the current computed value.
 func TestResolveSubscriptionProvider_UpdateWhenChanged(t *testing.T) {

@@ -370,5 +370,101 @@ func TestSubscriptionSyncsStaleTenantGUIDAnnotationWhenLabelAlreadyInSync(t *tes
 	)
 }
 
+func TestSubscriptionTenantCreateError(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceSubscription, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-sub-25"}},
+		TestData{
+			description:       "subscription in Processing transitions to Error when CAPTenant creation fails",
+			initialResources:  []string{"testdata/subscription/sub-25.initial.yaml"},
+			expectedResources: "testdata/subscription/sub-25.expected.yaml",
+			expectError:       true,
+			mockErrorForResources: []ResourceAction{
+				{Verb: "create", Group: "sme.sap.com", Version: "v1alpha2", Resource: "captenants", Namespace: "default", Name: "*"},
+			},
+		},
+	)
+}
+
+func TestSubscriptionDeletionTenantDeleteError(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceSubscription, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-sub-26"}},
+		TestData{
+			description:       "subscription being deleted returns an error when deleting the owned CAPTenant fails",
+			initialResources:  []string{"testdata/subscription/sub-26.initial.yaml"},
+			expectedResources: "testdata/subscription/sub-26.expected.yaml",
+			expectError:       true,
+			mockErrorForResources: []ResourceAction{
+				{Verb: "delete", Group: "sme.sap.com", Version: "v1alpha2", Resource: "captenants", Namespace: "default", Name: "*"},
+			},
+		},
+	)
+}
+
+func TestSubscriptionDeletionFinalizerRemovalError(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceSubscription, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-sub-27"}},
+		TestData{
+			description:       "subscription being deleted (tenant gone) returns an error when the finalizer-removal update fails",
+			initialResources:  []string{"testdata/subscription/sub-27.initial.yaml"},
+			expectedResources: "testdata/subscription/sub-27.expected.yaml",
+			expectError:       true,
+			mockErrorForResources: []ResourceAction{
+				{Verb: "update", Group: "sme.sap.com", Version: "v1alpha2", Resource: "subscriptions", Namespace: "default", Name: "*"},
+			},
+		},
+	)
+}
+
+func TestSubscriptionFinalizerAddError(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceSubscription, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-sub-28"}},
+		TestData{
+			description:       "subscription returns an error when adding the protection finalizer fails",
+			initialResources:  []string{"testdata/subscription/sub-28.initial.yaml"},
+			expectedResources: "testdata/subscription/sub-28.expected.yaml",
+			expectError:       true,
+			mockErrorForResources: []ResourceAction{
+				{Verb: "update", Group: "sme.sap.com", Version: "v1alpha2", Resource: "subscriptions", Namespace: "default", Name: "*"},
+			},
+		},
+	)
+}
+
+func TestSubscriptionGUIDLabelUpdateError(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceSubscription, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-sub-29"}},
+		TestData{
+			description:       "subscription with finalizer already present returns an error when the subscription-guid label update fails",
+			initialResources:  []string{"testdata/subscription/sub-29.initial.yaml"},
+			expectedResources: "testdata/subscription/sub-29.expected.yaml",
+			expectError:       true,
+			mockErrorForResources: []ResourceAction{
+				{Verb: "update", Group: "sme.sap.com", Version: "v1alpha2", Resource: "subscriptions", Namespace: "default", Name: "*"},
+			},
+		},
+	)
+}
+
+func TestSubscriptionStatusUpdateError(t *testing.T) {
+	reconcileTestItem(
+		context.TODO(), t,
+		QueueItem{Key: ResourceSubscription, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-sub-30"}},
+		TestData{
+			description:       "subscription reconcile surfaces the status-update error when the deferred status update fails",
+			initialResources:  []string{"testdata/subscription/sub-30.initial.yaml"},
+			expectedResources: "testdata/subscription/sub-30.expected.yaml",
+			expectError:       true,
+			mockErrorForResources: []ResourceAction{
+				{Verb: "update", Group: "sme.sap.com", Version: "v1alpha2", Resource: "subscriptions", Namespace: "default", Name: "*"},
+			},
+		},
+	)
+}
+
 // Compile-time check that v1alpha2 is used
 var _ = v1alpha2.SubscriptionStateReady
