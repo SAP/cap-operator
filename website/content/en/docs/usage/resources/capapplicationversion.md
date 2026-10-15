@@ -64,7 +64,7 @@ deploymentDefinition:
       port: 4005
   monitoring:
     scrapeConfig:
-      port: tech--port
+      port: tech-port
     deletionRules:
       expression: scalar(sum(avg_over_time(current_sessions{job="cav-cap-app-v1-cap-backend-svc",namespace="cap-ns"}[2h]))) <= bool 5
 ```
@@ -105,12 +105,12 @@ Details of how to configure workload monitoring can be found [here](../../versio
 workloads:
   # ... deployment workloads have been omitted in this example
   - name: "content-deployer"
-    consumedServices: # ...
+    consumedBTPServices: # ...
     jobDefinition:
       type: Content
       image: some.repo.example.com/cap-app/content:1.0.1
   - name: "tenant-operation"
-    consumedServices: # ...
+    consumedBTPServices: # ...
     jobDefinition:
       type: TenantOperation
       image: some.repo.example.com/cap-app/server:3.22.11
@@ -122,14 +122,14 @@ workloads:
         - name: CDS_CONFIG
           value: '{ "requires":{"cds.xt.DeploymentService":{"hdi": { "create":{ "database_id": "16e25c51-5455-4b17-a4d7-43545345345" } } } } }'
   - name: "notify-upgrade"
-    consumedServices: # ...
+    consumedBTPServices: # ...
     jobDefinition:
       type: CustomTenantOperation
       image: # ...
       command: ["npm", "run", "notify:upgrade"] # <-- custom entry point for the container allows reuse of a container image with multiple entry points
       backoffLimit: 1
   - name: "create-test-data"
-    consumedServices: # ...
+    consumedBTPServices: # ...
     jobDefinition:
       type: CustomTenantOperation
       image: # ...
@@ -312,7 +312,7 @@ spec:
           runAsUser: 2000
           fsGroup: 2000
     - name: "service-content"
-      consumedServices:
+      consumedBTPServices:
         - cap-uaa
         - cap-some-content-service
         - cap-html5-repo-host
@@ -323,7 +323,7 @@ spec:
           runAsUser: 1000
           runAsGroup: 2000
     - name: "ui-content"
-      consumedServices:
+      consumedBTPServices:
         - cap-uaa
         - cap-some-content-service
         - cap-html5-repo-host
@@ -334,7 +334,7 @@ spec:
           runAsUser: 1000
           runAsGroup: 2000
     - name: "tenant-operation"
-      consumedServices: # ...
+      consumedBTPServices: # ...
       jobDefinition:
         type: TenantOperation
         image: some.repo.example.com/cap-app/server:3.22.11
@@ -346,14 +346,14 @@ spec:
           - name: CDS_CONFIG
             value: '{ "requires":{"cds.xt.DeploymentService":{"hdi": { "create":{ "database_id": "16e25c51-5455-4b17-a4d7-43545345345" } } } } }'
     - name: "notify-upgrade"
-      consumedServices: []
+      consumedBTPServices: []
       jobDefinition:
         type: CustomTenantOperation
         image: some.repo.example.com/cap-app/server:3.22.11
         command: ["npm", "run", "notify:upgrade"]
         backoffLimit: 1
     - name: "create-test-data"
-      consumedServices:
+      consumedBTPServices:
         - cap-service-manager
       jobDefinition:
         type: CustomTenantOperation

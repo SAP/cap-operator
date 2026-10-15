@@ -134,7 +134,7 @@ spec:
         image: app.some.repo.example.com/approuter/approuter:0.0.1
         env:
           - name: PORT
-            value: 4000
+            value: "4000"
           - name: TENANT_HOST_PATTERN
             value: "^(.*).(my.cluster.shoot.url.k8s.example.com|my.example.com)"
     - name: service-content
