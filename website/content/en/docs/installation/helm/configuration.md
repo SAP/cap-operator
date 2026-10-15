@@ -51,6 +51,7 @@ description: >
       capTenantOperation: "10"   # default: 10
       domain: "1"                # default: 1
       clusterDomain: "1"         # default: 1
+      subcription: "10"          # default: 10 or <value of capTenant config, if specified>
   ```
 
 - ### Configure controller client rate limiting
