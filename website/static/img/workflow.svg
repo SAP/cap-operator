@@ -320,28 +320,39 @@
       <rect class="container" x="60" y="112" rx="8" ry="8" width="520" height="94"/>
       <text class="sub left" x="72" y="128">CAP Application</text>
 
-      <!-- Two ovals inside CAP Application: Versions ↔ Tenants -->
-      <ellipse class="node-oval" cx="200" cy="170" rx="92" ry="22"/>
-      <text class="oval-text" x="200" y="171">CAP Application Versions</text>
+      <!-- Child-resource ovals inside CAP Application: Versions, Subscriptions,
+           Tenants. A Subscription (created by the subscription server) drives the
+           controller's creation of a CAP Tenant. -->
+      <ellipse class="node-oval" cx="158" cy="170" rx="76" ry="22"/>
+      <text class="oval-text" x="158" y="171" style="font-size:10.5px">CAP App Versions</text>
 
-      <ellipse class="node-oval" cx="470" cy="170" rx="70" ry="22"/>
-      <text class="oval-text" x="470" y="171">CAP Tenants</text>
+      <ellipse class="node-oval" cx="320" cy="170" rx="64" ry="22"/>
+      <text class="oval-text" x="320" y="171">Subscriptions</text>
 
-      <path class="edge" d="M295,170 L397,170"/>
+      <ellipse class="node-oval" cx="486" cy="170" rx="70" ry="22"/>
+      <text class="oval-text" x="486" y="171">CAP Tenants</text>
 
-      <!-- Domain / ClusterDomain resource — sits OUTSIDE the CAP Application
-           inner box, on its right. CAPApplication references it via domainRefs,
-           shown as an arrow pointing INTO the CAP Application. -->
-      <ellipse class="node-oval" cx="668" cy="170" rx="60" ry="26"
+      <!-- Subscription → CAP Tenant (controller creates the tenant from the subscription) -->
+      <path class="edge" d="M385,170 L414,170"/>
+
+      <!-- Referenced resources — sit OUTSIDE the CAP Application inner box, on its
+           right. CAPApplication references the Domain / ClusterDomain (via domainRefs)
+           and the SubscriptionProvider (provider credentials + cached getDependencies);
+           shown as arrows pointing INTO the CAP Application. -->
+      <ellipse class="node-oval" cx="664" cy="150" rx="60" ry="17"
                fill="#8B5FBF" stroke="#4E2E7A"/>
-      <text class="oval-text" x="668" y="167" style="font-size:10px">Domain /</text>
-      <text class="oval-text" x="668" y="180" style="font-size:10px">ClusterDomain</text>
+      <text class="oval-text" x="664" y="147" style="font-size:9px">Domain /</text>
+      <text class="oval-text" x="664" y="157" style="font-size:9px">ClusterDomain</text>
 
-      <!-- Reference arrow: Domain (left edge x=608) → CAP Application (right edge x=580).
-           Drawn right-to-left; arrowhead lands on the CAP Application box border. -->
-      <path class="edge"
-            d="M608,170 L582,170"
-            style="stroke:#4E2E7A; stroke-width:1.6"/>
+      <ellipse class="node-oval" cx="664" cy="190" rx="60" ry="17"
+               fill="#8B5FBF" stroke="#4E2E7A"/>
+      <text class="oval-text" x="664" y="187" style="font-size:9px">Subscription</text>
+      <text class="oval-text" x="664" y="197" style="font-size:9px">Provider</text>
+
+      <!-- Reference arrows: each resource (left edge x=604) → CAP Application
+           (right edge x=580). Drawn right-to-left; arrowheads land on the box border. -->
+      <path class="edge" d="M604,150 L582,150" style="stroke:#4E2E7A; stroke-width:1.6"/>
+      <path class="edge" d="M604,190 L582,190" style="stroke:#4E2E7A; stroke-width:1.6"/>
     </g>
 
     <!-- ======= CAP App Version stack ======= -->
