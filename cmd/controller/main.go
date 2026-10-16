@@ -94,7 +94,7 @@ func main() {
 	util.InitMetricsServer()
 
 	// Get concurrency config for each resource kind from environment variables or use defaults
-	concurrencyConfig := getDefaultConcurrencyConfig()
+	concurrencyConfig := getConcurrencyConfig()
 
 	// context for the reconciliation controller
 	ctx, cancel := context.WithCancel(context.Background())
@@ -166,15 +166,23 @@ func getEnvInt(key string, defaultVal int) int {
 	return defaultVal
 }
 
-func getDefaultConcurrencyConfig() map[int]int {
+func getConcurrencyConfig() map[int]int {
 	concurrencyConfig := make(map[int]int)
 
 	for resourceKey, resourceEnvSuffix := range controller.ResourceEnvSuffixMap {
+		// Skip Subscription resource until everything else is configured
+		if resourceKey == controller.ResourceSubscription {
+			continue
+		}
 		defaultReconcileForResource, ok := controller.DefaultConcurrentReconciles[resourceKey]
 		if !ok {
 			defaultReconcileForResource = controller.DefaultReconcile
 		}
 		concurrencyConfig[resourceKey] = max(getEnvInt(MaxConcurrentReconcilesEnvPrefix+resourceEnvSuffix, defaultReconcileForResource), 1)
 	}
+
+	// Check if explicit mapping is found for Subscription, else use the current tenant configuration
+	concurrencyConfig[controller.ResourceSubscription] = max(getEnvInt(MaxConcurrentReconcilesEnvPrefix+controller.ResourceEnvSuffixMap[controller.ResourceSubscription], concurrencyConfig[controller.ResourceCAPTenant]), 1)
+
 	return concurrencyConfig
 }

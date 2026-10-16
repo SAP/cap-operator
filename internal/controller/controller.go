@@ -73,6 +73,7 @@ var (
 		ResourceCAPTenantOperation:    "CAP_TENANT_OPERATION",
 		ResourceDomain:                "DOMAIN",
 		ResourceClusterDomain:         "CLUSTER_DOMAIN",
+		ResourceSubscription:          "SUBSCRIPTION",
 	}
 )
 
@@ -248,10 +249,6 @@ func (c *Controller) Start(ctx context.Context) {
 func getConcurrencyForResource(key int) int {
 	concurrency, ok := DefaultConcurrentReconciles[key]
 	if !ok {
-		// If no explicit mapping is found for Subscription, use the tenant configuration
-		if key == ResourceSubscription {
-			return getConcurrencyForResource(ResourceCAPTenant)
-		}
 		concurrency = DefaultReconcile // default concurrency
 	}
 	return concurrency

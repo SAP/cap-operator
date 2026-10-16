@@ -100,6 +100,8 @@ controller:
     domain: ""
     # -- The maximum number of concurrent reconciles (e.g. "1") for the cluster domain
     clusterDomain: ""
+    # -- The maximum number of concurrent reconciles (e.g. "10") for the subscription
+    subscription: ""
   versionMonitoring:
     # -- The URL of the Prometheus server from which metrics related to managed application versions can be queried
     prometheusAddress: ""
