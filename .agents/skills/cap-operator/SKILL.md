@@ -2,11 +2,11 @@
 name: cap-operator
 description: Manage the lifecycle of multi-tenant SAP CAP applications on Kubernetes using CAP Operator custom resources (CAPApplication, CAPApplicationVersion, CAPTenant, Domain, ClusterDomain). Use when deploying, upgrading, configuring domains, rotating credentials, troubleshooting CAP Operator-managed apps, or generating Helm charts with the CAP Operator Plugin.
 license: Apache-2.0
-compatibility: Requires kubectl access to a Kubernetes cluster with CAP Operator installed (sme.sap.com/v1alpha1 CRDs). If kubectl commands return "No resources found" or "the server doesn't have a resource type", verify CAP Operator is installed by running `kubectl get crd | grep sme.sap.com`. If no CRDs are listed, direct the user to install CAP Operator before proceeding.
+compatibility: Requires kubectl access to a Kubernetes cluster with CAP Operator installed (sme.sap.com/v1alpha2 CRDs, from release v0.37.0). If kubectl commands return "No resources found" or "the server doesn't have a resource type", verify CAP Operator is installed by running `kubectl get crd | grep sme.sap.com`. If no CRDs are listed, direct the user to install CAP Operator before proceeding.
 metadata:
   author: SAP
   project: https://sap.github.io/cap-operator
-  api-group: sme.sap.com/v1alpha1
+  api-group: sme.sap.com/v1alpha2
 allowed-tools: Bash(kubectl get:*) Bash(kubectl describe:*) Bash(kubectl logs:*)
 ---
 
@@ -26,13 +26,17 @@ Full docs & API reference: `website/content/en/docs/` | https://sap.github.io/ca
 | [`CAPApplicationVersion`](https://sap.github.io/cap-operator/docs/usage/resources/capapplicationversion/) | Namespaced | Immutable version: images, workloads, tenant operation steps |
 | [`CAPTenant`](https://sap.github.io/cap-operator/docs/usage/resources/captenant/) | Namespaced | A subscribed consumer tenant — controller-managed only |
 | [`CAPTenantOperation`](https://sap.github.io/cap-operator/docs/usage/resources/captenantoperation/) | Namespaced | Orchestrates provisioning/upgrade/deprovisioning — auto-created |
+| [`Subscription`](https://sap.github.io/cap-operator/docs/usage/resources/subscription/) | Namespaced | Represents one consumer subscription — created by subscription server |
+| [`SubscriptionProvider`](https://sap.github.io/cap-operator/docs/usage/resources/subscriptionprovider/) | Namespaced | Caches subscription credentials and dependency info — auto-created by controller |
 | [`Domain`](https://sap.github.io/cap-operator/docs/usage/resources/domain/) | Namespaced | Istio Gateway + TLS + DNS for one application |
 | [`ClusterDomain`](https://sap.github.io/cap-operator/docs/usage/resources/clusterdomain/) | Cluster | Shared domain config across applications |
 
 **Critical rules:**
 - `CAPApplicationVersion` is **immutable** after creation. To upgrade, create a new resource with a higher semantic version.
-- `CAPTenant` must **never** be created or deleted manually — managed by the subscription server only.
+- `Subscription` must **never** be created or deleted manually — managed exclusively by the subscription server in response to SaaS Provisioning service callbacks.
+- `CAPTenant` must **never** be created or deleted manually — created by the controller as a child of `Subscription`.
 - `CAPTenantOperation` is auto-created by the controller — do not create or delete manually.
+- `SubscriptionProvider` is auto-created and kept in sync by the controller for each `CAPApplication` — do not create, modify, or delete manually.
 - Never remove finalizers from CAP Operator resources manually.
 - `CAPApplication.spec.provider` is **deprecated**. It previously caused the controller to auto-create a provider `CAPTenant`, but that behavior has been removed. All tenants (including the provider) must now be subscribed to explicitly. If `kubectl get captenant -n <namespace>` returns empty, this is expected for apps with no active subscriptions.
 
@@ -53,7 +57,7 @@ See [upgrade reference](references/upgrade.md) for details and `tenantOperations
 
 ### Check status
 ```bash
-kubectl get capapplication,capapplicationversion,captenant,captenantoperation -n <namespace>
+kubectl get capapplication,capapplicationversion,captenant,captenantoperation,subscription -n <namespace>
 kubectl describe capapplication <name> -n <namespace>
 kubectl get domain,clusterdomain -A
 ```
@@ -62,6 +66,7 @@ kubectl get domain,clusterdomain -A
 - `CAPApplicationVersion`: `Processing` → `Ready` | `Error`
 - `CAPTenant`: `Provisioning` → `Ready` | `Upgrading` → `Ready` | `Deleting`
 - `CAPTenantOperation`: `Processing` → `Completed` | `Failed`
+- `Subscription`: `Processing` → `Ready` | `ProcessingError` (retryable) | `Error` (terminal) | `Deleting`
 
 ### Domain management
 - `Domain` — namespace-scoped, one application. `ClusterDomain` — cluster-scoped, shared.
@@ -120,6 +125,7 @@ Tuned via env vars on the controller deployment. Key variables:
 | `MAX_CONCURRENT_RECONCILES_CAP_APPLICATION_VERSION` | CAPApplicationVersion reconciliation concurrency |
 | `MAX_CONCURRENT_RECONCILES_CAP_TENANT` | CAPTenant reconciliation concurrency |
 | `MAX_CONCURRENT_RECONCILES_CAP_TENANT_OPERATION` | CAPTenantOperation reconciliation concurrency |
+| `MAX_CONCURRENT_RECONCILES_SUBSCRIPTION` | Subscription reconciliation concurrency |
 
 Full list: `website/content/en/docs/configuration/_index.md` | https://sap.github.io/cap-operator/docs/configuration/
 

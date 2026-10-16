@@ -7,7 +7,7 @@ CAP Operator manages Istio Gateways, TLS certificates, and DNS entries through `
 Use for a domain belonging to one application. The operator creates the `Gateway` and `DNSEntry` in the application namespace.
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: Domain
 metadata:
   name: cap-app-01-primary
@@ -27,7 +27,7 @@ spec:
 Use for a domain shared across multiple applications or namespaces. The operator creates the `Gateway` and `DNSEntry` in the CAP Operator installation namespace.
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: ClusterDomain
 metadata:
   name: common-external-domain

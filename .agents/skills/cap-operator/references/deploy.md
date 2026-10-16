@@ -7,7 +7,7 @@ Three-step sequence: Domain → CAPApplication → CAPApplicationVersion.
 **Namespace-scoped (single app):**
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: Domain
 metadata:
   name: cap-app-01-primary
@@ -24,7 +24,7 @@ spec:
 **Cluster-scoped (shared across apps):**
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: ClusterDomain
 metadata:
   name: common-external-domain
@@ -40,7 +40,7 @@ spec:
 ## Step 2 — CAPApplication
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplication
 metadata:
   name: cap-app-01
@@ -72,7 +72,7 @@ spec:
 ## Step 3 — CAPApplicationVersion
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplicationVersion
 metadata:
   name: cav-cap-app-01-1
@@ -148,12 +148,11 @@ Omit `TenantOperation` workloads from `CAPApplicationVersion` and omit `provider
 
 ## Tenant lifecycle (automated)
 
-- **Subscribe:** Consumer subaccount subscribes → subscription server creates `CAPTenant` → controller creates `CAPTenantOperation` (type: `provisioning`) → jobs run → `VirtualService` created → `CAPTenant` reaches `Ready`.
-- **Unsubscribe:** Subscription server marks `CAPTenant` for deletion → controller creates `CAPTenantOperation` (type: `deprovisioning`) → jobs run → `CAPTenant` deleted.
+- **Subscribe:** Consumer subaccount subscribes → subscription server validates via `SubscriptionProvider` and creates `Subscription` → controller creates `CAPTenant` as child of `Subscription` → controller creates `CAPTenantOperation` (type: `provisioning`) → jobs run → `VirtualService` created → `Subscription` reaches `Ready` with tenant URL.
+- **Unsubscribe:** Subscription server deletes `Subscription` → controller creates `CAPTenantOperation` (type: `deprovisioning`) → jobs run → `CAPTenant` deleted → `Subscription` deleted.
 
-The `getDependencies` endpoint is exposed automatically at:
-```
-GET /dependencies/{providerSubaccountId}/{appName}/
-```
+`Subscription` and `CAPTenant` resources must not be created or deleted manually.
+
+See [Tenant Subscription](https://sap.github.io/cap-operator/docs/usage/tenant-provisioning/) for the full flow.
 
 See `website/content/en/docs/usage/deploying-application.md` | [Deploying an application](https://sap.github.io/cap-operator/docs/usage/deploying-application/).

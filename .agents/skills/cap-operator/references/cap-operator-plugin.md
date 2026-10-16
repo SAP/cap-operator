@@ -62,7 +62,7 @@ Creates `chart/Chart.yaml`, `chart/values.yaml`, `chart/values.schema.json`, and
 What lands in `chart/templates/`:
 - `service-binding.yaml` / `service-instance.yaml` — static BTP service operator templates
 - `_helpers.tpl` — generated helpers (adjusts for xsuaa vs IAS)
-- `domain.yaml` — a `sme.sap.com/v1alpha1` `Domain` resource
+- `domain.yaml` — a `sme.sap.com/v1alpha2` `Domain` resource
 - `cap-operator-cros.yaml` — the `CAPApplication` + `CAPApplicationVersion` template, using `range` over `values.workloads`
 
 ### `--with-configurable-templates`
