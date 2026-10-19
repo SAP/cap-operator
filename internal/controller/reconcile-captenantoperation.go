@@ -413,12 +413,7 @@ func (c *Controller) initiateJobForCAPTenantOperationStep(ctx context.Context, c
 		return nil, err
 	}
 
-	var job *batchv1.Job
-	if ctop.Spec.Steps[*ctop.Status.CurrentStep-1].Type == v1alpha2.JobTenantOperation {
-		job, err = c.createTenantOperationJob(ctx, ctop, workload, params)
-	} else { // custom tenant operation
-		job, err = c.createCustomTenantOperationJob(ctx, ctop, workload, params)
-	}
+	job, err := c.createJob(ctx, ctop, workload, params, ctop.Spec.Steps[*ctop.Status.CurrentStep-1].Type)
 	if err != nil {
 		util.LogError(err, "Failed to create job for tenant operation", string(Processing), ctop, nil, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 		return
@@ -468,8 +463,13 @@ type jobCreateParams struct {
 	subscriptionPayload  string
 }
 
-func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha2.CAPTenantOperation, workload *v1alpha2.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {
-	// create job for tenant operation (provisioning / upgrade / deprovisioning)
+// creates a K8s Job for the tenant operation step based on the stepType parameter
+func (c *Controller) createJob(ctx context.Context, ctop *v1alpha2.CAPTenantOperation, workload *v1alpha2.WorkloadDetails, params *jobCreateParams, stepType v1alpha2.JobType) (*batchv1.Job, error) {
+	logMsg := "Creating tenant operation job"
+	if stepType == v1alpha2.JobCustomTenantOperation {
+		logMsg = "Creating custom tenant operation job"
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName:    params.namePrefix, // generate name for each step
@@ -490,8 +490,8 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 				Spec: corev1.PodSpec{
 					RestartPolicy:                 getRestartPolicy(workload.JobDefinition.RestartPolicy, true),
 					ImagePullSecrets:              params.imagePullSecrets,
-					Containers:                    getContainers(ctop, workload, params),
-					InitContainers:                *updateInitContainers(workload.JobDefinition.InitContainers, getCTOPEnv(params, ctop, v1alpha2.JobTenantOperation), params.vcapSecretName),
+					Containers:                    getContainers(ctop, workload, params, stepType),
+					InitContainers:                *updateInitContainers(workload.JobDefinition.InitContainers, getCTOPEnv(params, ctop, stepType), params.vcapSecretName),
 					Volumes:                       workload.JobDefinition.Volumes,
 					ServiceAccountName:            workload.JobDefinition.ServiceAccountName,
 					SecurityContext:               workload.JobDefinition.PodSecurityContext,
@@ -507,16 +507,17 @@ func (c *Controller) createTenantOperationJob(ctx context.Context, ctop *v1alpha
 		},
 	}
 
-	util.LogInfo("Creating tenant operation job", string(Processing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
+	util.LogInfo(logMsg, string(Processing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
 	return c.kubeClient.BatchV1().Jobs(ctop.Namespace).Create(ctx, job, metav1.CreateOptions{})
 }
 
-func getContainers(ctop *v1alpha2.CAPTenantOperation, workload *v1alpha2.WorkloadDetails, params *jobCreateParams) []corev1.Container {
+// builds the containers for the tenant operation job
+func getContainers(ctop *v1alpha2.CAPTenantOperation, workload *v1alpha2.WorkloadDetails, params *jobCreateParams, stepType v1alpha2.JobType) []corev1.Container {
 	container := &corev1.Container{
 		Name:            workload.Name,
 		Image:           workload.JobDefinition.Image,
 		ImagePullPolicy: workload.JobDefinition.ImagePullPolicy,
-		Env:             append(getCTOPEnv(params, ctop, v1alpha2.JobTenantOperation), workload.JobDefinition.Env...),
+		Env:             append(getCTOPEnv(params, ctop, stepType), workload.JobDefinition.Env...),
 		EnvFrom:         getEnvFrom(params.vcapSecretName),
 		VolumeMounts:    workload.JobDefinition.VolumeMounts,
 		Resources:       workload.JobDefinition.Resources,
@@ -524,75 +525,20 @@ func getContainers(ctop *v1alpha2.CAPTenantOperation, workload *v1alpha2.Workloa
 		Lifecycle:       workload.JobDefinition.Lifecycle,
 	}
 
-	if workload.JobDefinition.Command != nil {
-		container.Command = workload.JobDefinition.Command
-		container.Args = workload.JobDefinition.Args
-	} else {
-		container.Command = []string{"node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx"} // Use entrypoint for mtxs as the command
+	if stepType == v1alpha2.JobTenantOperation && workload.JobDefinition.Command == nil {
+		// No command supplied: fall back to the mtxs default entrypoint in case of `TenantOperation` jobType
+		container.Command = []string{"node", "./node_modules/@sap/cds-mtxs/bin/cds-mtx"}
 		container.Args = []string{`$(` + EnvCAPOpTenantMtxsOperation + `)`, ctop.Spec.TenantId}
 		if ctop.Spec.Operation == v1alpha2.CAPTenantOperationTypeProvisioning {
 			container.Args = append(container.Args, "--body", `$(`+EnvCAPOpSubscriptionPayload+`)`)
 		}
+	} else {
+		// Custom tenant operation steps always use the command/args specified in the workload definition directly.
+		container.Command = workload.JobDefinition.Command
+		container.Args = workload.JobDefinition.Args
 	}
 
 	return append([]corev1.Container{}, *container)
-}
-
-func (c *Controller) createCustomTenantOperationJob(ctx context.Context, ctop *v1alpha2.CAPTenantOperation, workload *v1alpha2.WorkloadDetails, params *jobCreateParams) (*batchv1.Job, error) {
-	// create job for custom tenant operation
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName:    params.namePrefix, // generate name for each step
-			Namespace:       ctop.Namespace,
-			Labels:          params.labels,
-			Annotations:     params.annotations,
-			OwnerReferences: []metav1.OwnerReference{*metav1.NewControllerRef(ctop, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPTenantOperationKind))},
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit:            workload.JobDefinition.BackoffLimit,
-			TTLSecondsAfterFinished: workload.JobDefinition.TTLSecondsAfterFinished,
-			ActiveDeadlineSeconds:   workload.JobDefinition.ActiveDeadlineSeconds,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels:      params.labels,
-					Annotations: params.annotations,
-				},
-				Spec: corev1.PodSpec{
-					TerminationGracePeriodSeconds: workload.JobDefinition.TerminationGracePeriodSeconds,
-					RestartPolicy:                 getRestartPolicy(workload.JobDefinition.RestartPolicy, true),
-					SecurityContext:               workload.JobDefinition.PodSecurityContext,
-					Volumes:                       workload.JobDefinition.Volumes,
-					ServiceAccountName:            workload.JobDefinition.ServiceAccountName,
-					NodeSelector:                  workload.JobDefinition.NodeSelector,
-					NodeName:                      workload.JobDefinition.NodeName,
-					PriorityClassName:             workload.JobDefinition.PriorityClassName,
-					Affinity:                      workload.JobDefinition.Affinity,
-					TopologySpreadConstraints:     getTopologySpreadConstraints(workload.JobDefinition.TopologySpreadConstraints, params.labels, false),
-					Tolerations:                   workload.JobDefinition.Tolerations,
-					ImagePullSecrets:              params.imagePullSecrets,
-					Containers: []corev1.Container{
-						{
-							Name:            workload.Name,
-							Image:           workload.JobDefinition.Image,
-							ImagePullPolicy: workload.JobDefinition.ImagePullPolicy,
-							Env:             append(getCTOPEnv(params, ctop, v1alpha2.JobCustomTenantOperation), workload.JobDefinition.Env...),
-							EnvFrom:         getEnvFrom(params.vcapSecretName),
-							VolumeMounts:    workload.JobDefinition.VolumeMounts,
-							Command:         workload.JobDefinition.Command,
-							Args:            workload.JobDefinition.Args,
-							Resources:       workload.JobDefinition.Resources,
-							SecurityContext: workload.JobDefinition.SecurityContext,
-							Lifecycle:       workload.JobDefinition.Lifecycle,
-						},
-					},
-					InitContainers: *updateInitContainers(workload.JobDefinition.InitContainers, getCTOPEnv(params, ctop, v1alpha2.JobCustomTenantOperation), params.vcapSecretName),
-				},
-			},
-		},
-	}
-
-	util.LogInfo("Creating custom tenant operation job", string(Processing), ctop, job, "tenantId", ctop.Spec.TenantId, "operation", ctop.Spec.Operation, "version", ctop.Labels[LabelCAVVersion])
-	return c.kubeClient.BatchV1().Jobs(ctop.Namespace).Create(ctx, job, metav1.CreateOptions{})
 }
 
 func addCAPTenantOperationLabels(ctop *v1alpha2.CAPTenantOperation, cat *v1alpha2.CAPTenant) (updated bool) {
