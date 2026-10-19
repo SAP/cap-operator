@@ -5,7 +5,7 @@ Automatically restart workloads when BTP service credentials are rotated.
 ## Enable on CAPApplication
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplication
 metadata:
   name: cap-app-01

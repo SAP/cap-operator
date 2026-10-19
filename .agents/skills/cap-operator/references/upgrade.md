@@ -5,7 +5,7 @@ Create a **new** `CAPApplicationVersion` with a higher semantic version. Never m
 ## New CAPApplicationVersion
 
 ```yaml
-apiVersion: sme.sap.com/v1alpha1
+apiVersion: sme.sap.com/v1alpha2
 kind: CAPApplicationVersion
 metadata:
   name: cav-cap-app-01-2
