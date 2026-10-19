@@ -18,6 +18,9 @@ type SubscriptionProviderSpecApplyConfiguration struct {
 	SubscriptionInfo *SubscriptionInfoApplyConfiguration `json:"subscriptionInfo,omitempty"`
 	// List of subscription dependencies discovered for the services specified in the corresponding app
 	Dependencies *string `json:"dependencies,omitempty"`
+	// Defines the upper bound on the number of subscriptions allowed for this application.
+	// When set, subscription requests that would exceed this limit are rejected. If unset, no limit is enforced.
+	MaxSubscriptions *int32 `json:"maxSubscriptions,omitempty"`
 }
 
 // SubscriptionProviderSpecApplyConfiguration constructs a declarative configuration of the SubscriptionProviderSpec type for use with
@@ -55,5 +58,13 @@ func (b *SubscriptionProviderSpecApplyConfiguration) WithSubscriptionInfo(value 
 // If called multiple times, the Dependencies field is set to the value of the last call.
 func (b *SubscriptionProviderSpecApplyConfiguration) WithDependencies(value string) *SubscriptionProviderSpecApplyConfiguration {
 	b.Dependencies = &value
+	return b
+}
+
+// WithMaxSubscriptions sets the MaxSubscriptions field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the MaxSubscriptions field is set to the value of the last call.
+func (b *SubscriptionProviderSpecApplyConfiguration) WithMaxSubscriptions(value int32) *SubscriptionProviderSpecApplyConfiguration {
+	b.MaxSubscriptions = &value
 	return b
 }

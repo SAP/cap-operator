@@ -174,8 +174,10 @@ func (c *Controller) checkNewCavAndTenantReconcile(ctx context.Context, ca *v1al
 	tenants, err := c.getRelevantTenantsForCA(ca)
 	if err != nil || len(tenants) == 0 {
 		ca.SetStatusCondition(string(v1alpha2.ConditionTypeAllTenantsReady), readyCondition, readyReason, "")
+		collectSubscriptionMetrics(ca, tenants)
 		return nil, err
 	}
+	collectSubscriptionMetrics(ca, tenants)
 	checkDone := false
 	updated := false
 	var result *ReconcileResult
@@ -204,6 +206,24 @@ func (c *Controller) checkNewCavAndTenantReconcile(ctx context.Context, ca *v1al
 		c.Event(ca, nil, corev1.EventTypeNormal, CAPApplicationEventNewCAVTriggeredTenantUpgrade, EventActionCheckForVersion, msg)
 	}
 	return result, nil
+}
+
+// collectSubscriptionMetrics updates the active_subscriptions and max_subscriptions Prometheus gauges
+// for the given CAPApplication. It reuses an already-fetched tenants slice to avoid an extra API call.
+func collectSubscriptionMetrics(ca *v1alpha2.CAPApplication, tenants []*v1alpha2.CAPTenant) {
+	appIdHash := sha1Sum(ca.Spec.ProviderSubaccountId, ca.Spec.BTPAppName)
+	count := 0
+	for _, t := range tenants {
+		if t.Labels[LabelTenantType] == TenantTypeConsumer && t.DeletionTimestamp == nil {
+			count++
+		}
+	}
+	ActiveSubscriptions.WithLabelValues(appIdHash).Set(float64(count))
+	maxVal := float64(0)
+	if ca.Spec.MaxSubscriptions != nil {
+		maxVal = float64(*ca.Spec.MaxSubscriptions)
+	}
+	MaxSubscriptionsMetric.WithLabelValues(appIdHash).Set(maxVal)
 }
 
 func (c *Controller) checkForTenantVersionUpgradeAndReconcile(ctx context.Context, ca *v1alpha2.CAPApplication, cav *v1alpha2.CAPApplicationVersion, tenant *v1alpha2.CAPTenant, result *ReconcileResult) (bool, error) {

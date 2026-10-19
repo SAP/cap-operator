@@ -25,6 +25,9 @@ type CAPApplicationSpecApplyConfiguration struct {
 	BTP *BTPApplyConfiguration `json:"btp,omitempty"`
 	// Rollout on Credentials Update may be used to rollout deployments when dependent service credentials are updated
 	RolloutOnCredentialUpdate *bool `json:"rolloutOnCredentialUpdate,omitempty"`
+	// Defines the upper bound on the number of subscriptions allowed for this application.
+	// When set, subscription requests that would exceed this limit are rejected. If unset, no limit is enforced.
+	MaxSubscriptions *int32 `json:"maxSubscriptions,omitempty"`
 }
 
 // CAPApplicationSpecApplyConfiguration constructs a declarative configuration of the CAPApplicationSpec type for use with
@@ -83,5 +86,13 @@ func (b *CAPApplicationSpecApplyConfiguration) WithBTP(value *BTPApplyConfigurat
 // If called multiple times, the RolloutOnCredentialUpdate field is set to the value of the last call.
 func (b *CAPApplicationSpecApplyConfiguration) WithRolloutOnCredentialUpdate(value bool) *CAPApplicationSpecApplyConfiguration {
 	b.RolloutOnCredentialUpdate = &value
+	return b
+}
+
+// WithMaxSubscriptions sets the MaxSubscriptions field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the MaxSubscriptions field is set to the value of the last call.
+func (b *CAPApplicationSpecApplyConfiguration) WithMaxSubscriptions(value int32) *CAPApplicationSpecApplyConfiguration {
+	b.MaxSubscriptions = &value
 	return b
 }

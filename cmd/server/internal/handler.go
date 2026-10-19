@@ -45,13 +45,14 @@ const (
 )
 
 const (
-	ResourceCreated      = "resource created successfully"
-	ResourceUpdated      = "resource updated successfully"
-	ResourceFound        = "resource exists"
-	ResourceDeleted      = "resource deleted successfully"
-	ResourceNotFound     = "resource not found"
-	SubscriptionNotFound = "subscription not found"
-	SubscriptionFound    = "Subscription found"
+	ResourceCreated          = "resource created successfully"
+	ResourceUpdated          = "resource updated successfully"
+	ResourceFound            = "resource exists"
+	ResourceDeleted          = "resource deleted successfully"
+	ResourceNotFound         = "resource not found"
+	SubscriptionNotFound     = "subscription not found"
+	SubscriptionFound        = "Subscription found"
+	SubscriptionLimitReached = "subscription limit reached"
 )
 
 const ErrorOccurred = "Error occurred "
@@ -114,6 +115,7 @@ type requestHeaderDetails struct {
 type Result struct {
 	Subscription *v1alpha2.Subscription
 	Message      string
+	StatusCode   int // when non-zero and Subscription is nil, used as the HTTP response code instead of the default 406
 }
 
 type SubscriptionHandler struct {
@@ -185,6 +187,15 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 
 	// If the resource doesn't exist, we'll create it
 	if sub == nil {
+		limitExceeded, checkErr := s.checkSubscriptionLimit(reqInfo, subPro)
+		if checkErr != nil {
+			util.LogError(checkErr, "Error during subscription limit check", TenantProvisioning, subPro, nil)
+			return &Result{Subscription: nil, Message: checkErr.Error(), StatusCode: http.StatusInternalServerError}
+		}
+		if limitExceeded {
+			util.LogInfo("Subscription limit reached", TenantProvisioning, subPro, nil, "appName", reqInfo.payload.appName)
+			return &Result{Subscription: nil, Message: SubscriptionLimitReached, StatusCode: http.StatusUnprocessableEntity}
+		}
 		created = true
 		sub, err = s.createSubscription(reqInfo, subPro)
 		if err != nil {
@@ -221,6 +232,31 @@ func getMessage(isCreated, isUpdated bool) string {
 	} else {
 		return ResourceFound
 	}
+}
+
+// checks whether a new subscription would exceed the MaxSubscriptions limit configured
+// on the SubscriptionProvider. It returns (true, nil) when the limit is reached, (false, nil) when no limit applies,
+// and (false, err) when the check itself fails (in which case the caller should reject the request with a 5xx status).
+func (s *SubscriptionHandler) checkSubscriptionLimit(reqInfo *RequestInfo, subPro *v1alpha2.SubscriptionProvider) (bool, error) {
+	if subPro.Spec.MaxSubscriptions == nil {
+		return false, nil // no limit configured
+	}
+	appIdHash := sha1Sum(reqInfo.payload.providerSubaccountId, reqInfo.payload.appName)
+	subList, err := s.Clientset.SmeV1alpha2().Subscriptions(subPro.Namespace).List(
+		context.TODO(), metav1.ListOptions{
+			LabelSelector: labels.Set{LabelAppIdHash: appIdHash}.String(),
+		},
+	)
+	if err != nil {
+		return false, fmt.Errorf("error listing Subscriptions for subscription limit check: %w", err)
+	}
+	count := 0
+	for i := range subList.Items {
+		if subList.Items[i].DeletionTimestamp == nil {
+			count++
+		}
+	}
+	return int32(count) >= *subPro.Spec.MaxSubscriptions, nil
 }
 
 func (s *SubscriptionHandler) createSubscription(reqInfo *RequestInfo, subPro *v1alpha2.SubscriptionProvider) (*v1alpha2.Subscription, error) {
@@ -850,7 +886,11 @@ func (s *SubscriptionHandler) HandleRequest(w http.ResponseWriter, req *http.Req
 	case http.MethodPut:
 		subscriptionResult = s.CreateTenant(reqInfo)
 		if subscriptionResult.Subscription == nil {
-			w.WriteHeader(http.StatusNotAcceptable)
+			if subscriptionResult.StatusCode != 0 {
+				w.WriteHeader(subscriptionResult.StatusCode)
+			} else {
+				w.WriteHeader(http.StatusNotAcceptable)
+			}
 		} else {
 			w.WriteHeader(http.StatusAccepted)
 		}

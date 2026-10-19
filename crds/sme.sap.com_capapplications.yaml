@@ -273,6 +273,10 @@ spec:
                   - name
                   type: object
                 type: array
+              maxSubscriptions:
+                format: int32
+                minimum: 1
+                type: integer
               provider:
                 properties:
                   subDomain:

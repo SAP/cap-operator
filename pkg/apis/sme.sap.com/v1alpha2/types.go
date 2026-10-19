@@ -113,6 +113,11 @@ type CAPApplicationSpec struct {
 	BTP BTP `json:"btp"`
 	// Rollout on Credentials Update may be used to rollout deployments when dependent service credentials are updated
 	RolloutOnCredentialUpdate bool `json:"rolloutOnCredentialUpdate,omitempty"`
+	// Defines the upper bound on the number of subscriptions allowed for this application.
+	// When set, subscription requests that would exceed this limit are rejected. If unset, no limit is enforced.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	MaxSubscriptions *int32 `json:"maxSubscriptions,omitempty"`
 }
 
 // Domain references
@@ -952,6 +957,11 @@ type SubscriptionProviderSpec struct {
 	SubscriptionInfo SubscriptionInfo `json:"subscriptionInfo"`
 	// List of subscription dependencies discovered for the services specified in the corresponding app
 	Dependencies string `json:"dependencies,omitempty"`
+	// Defines the upper bound on the number of subscriptions allowed for this application.
+	// When set, subscription requests that would exceed this limit are rejected. If unset, no limit is enforced.
+	// +optional
+	// +kubebuilder:validation:Minimum=1
+	MaxSubscriptions *int32 `json:"maxSubscriptions,omitempty"`
 }
 
 type SubscriptionInfo struct {

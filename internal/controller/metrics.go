@@ -80,6 +80,20 @@ var (
 		Help:      "Service Operations that failed to complete",
 	}, []string{"app", "version", "namespace", "name"})
 
+	// Metrics for active consumer subscriptions per application
+	ActiveSubscriptions = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: CAPOp,
+		Name:      "active_subscriptions",
+		Help:      "Current number of active consumer tenants (subscriptions) per application",
+	}, []string{"app"})
+
+	// Metrics for the configured maximum subscriptions per application (0 if not configured)
+	MaxSubscriptionsMetric = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: CAPOp,
+		Name:      "max_subscriptions",
+		Help:      "Maximum number of consumer tenants (subscriptions) configured per application (0 if not configured)",
+	}, []string{"app"})
+
 	/**
 		Note:
 		All the metrics below are for the CAP Operator controller workqueue,
@@ -178,7 +192,7 @@ func (l *k8sRequestlatencyAdapter) Observe(_ context.Context, verb string, u url
 // #endregion
 
 // Create a variable to hold all the collectors
-var collectors = []prometheus.Collector{ReconcileErrors, Panics, TenantOperations, ServiceOperations, depth, adds, latency, workDuration, unfinished, longestRunningProcessor, retries, requestResult}
+var collectors = []prometheus.Collector{ReconcileErrors, Panics, TenantOperations, ServiceOperations, ActiveSubscriptions, MaxSubscriptionsMetric, depth, adds, latency, workDuration, unfinished, longestRunningProcessor, retries, requestResult}
 
 // #region capOperatorMetricsProvider
 // capOperatorMetricsProvider implements workqueue.MetricsProvider
