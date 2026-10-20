@@ -133,7 +133,7 @@ workloads:
     jobDefinition:
       type: CustomTenantOperation
       image: # ...
-      command: ["npm", "run ", "deploy:testdata"]
+      command: ["npm", "run", "deploy:testdata"]
 ```
 
 Workloads with a `jobDefinition` represent a job that executes at a particular point in the lifecycle of the application or tenant. The following values are allowed for `type` in such workloads:
@@ -242,7 +242,7 @@ spec:
             appProtocol: grpc
         monitoring:
           scrapeConfig:
-            port: tech--port
+            port: tech-port
           deletionRules:
             expression: scalar(sum(avg_over_time(current_sessions{job="cav-cap-app-v1-cap-backend-svc",namespace="cap-ns"}[2h]))) <= bool 5
         livenessProbe:

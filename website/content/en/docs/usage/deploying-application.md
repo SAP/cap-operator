@@ -150,7 +150,7 @@ spec:
       consumedBTPServices:
         - app-uaa
       jobDefinition:
-        type: Content
+        type: TenentOperation
         image: app.some.repo.example.com/srv/mtxs:0.0.1
         backoffLimit: 1
 ```
@@ -160,8 +160,8 @@ spec:
 The CAP Operator controller reacts to these objects and creates additional resources that constitute a running application:
 
 - Deployment (and Service) for the application server, with SAP BTP service credentials injected as the `VCAP_SERVICES` environment variable
-- Deployment (and Service) for the Approuter, with destination mappings to the application server and subscription server (for tenant provisioning)
-- Job for the version content deployer
+- Deployment (and Service) for the Approuter, with destination mappings to the application server
+- Job for the version content deployer and tenant operation
 - TLS certificates for the specified domains using either ["Gardener" cert-management](https://github.com/gardener/cert-management) or [cert-manager.io cert-manager](https://github.com/cert-manager/cert-manager)
 - Istio Gateway resource for the application domains
 
