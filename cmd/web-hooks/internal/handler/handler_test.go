@@ -47,8 +47,6 @@ const (
 	consumedBTPServicesUpdate
 	versionUpdate
 	imageUpdate
-	providerSubaccountIdUpdate
-	btpAppNameUpdate
 	duplicateAppIdentifier
 )
 
@@ -206,22 +204,6 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 				// new object has no provider, old object has provider
 				crd.Spec.Provider = nil
 				rawBytes, err = json.Marshal(crd)
-			case providerSubaccountIdUpdate:
-				// old and new both have the identifiers set, but providerSubaccountId differs
-				crd.Spec.ProviderSubaccountId = "providerSubaccountId"
-				crd.Spec.BTPAppName = "btpApplicationName"
-				rawBytes, err = json.Marshal(crd)
-				crdOld.Spec.ProviderSubaccountId = "providerSubaccountId-old"
-				crdOld.Spec.BTPAppName = "btpApplicationName"
-				rawBytesOld, err = json.Marshal(crdOld)
-			case btpAppNameUpdate:
-				// old and new both have the identifiers set, but btpAppName differs
-				crd.Spec.ProviderSubaccountId = "providerSubaccountId"
-				crd.Spec.BTPAppName = "btpApplicationName"
-				rawBytes, err = json.Marshal(crd)
-				crdOld.Spec.ProviderSubaccountId = "providerSubaccountId"
-				crdOld.Spec.BTPAppName = "btpApplicationName-old"
-				rawBytesOld, err = json.Marshal(crdOld)
 			case duplicateAppIdentifier:
 				// new object sets an identifier combination that already exists elsewhere;
 				// old object carries the same (unchanged) combination so the immutability check passes
@@ -571,83 +553,6 @@ func TestCavAndCatInvalidityNoApp(t *testing.T) {
 	}
 }
 
-func TestCavAndCatInvaliditySpecChange(t *testing.T) {
-	// valid CAPApplication
-	Ca := createCaCRO()
-	wh := &WebhookHandler{
-		CrdClient: fakeCrdClient.NewSimpleClientset(Ca),
-	}
-
-	tests := []struct {
-		operation  admissionv1.Operation
-		crdType    string
-		changeType updateType
-	}{
-		{
-			operation:  admissionv1.Update,
-			crdType:    v1alpha2.CAPApplicationVersionKind,
-			changeType: appInstanceUpdate,
-		},
-		{
-			operation:  admissionv1.Update,
-			crdType:    v1alpha2.CAPApplicationVersionKind,
-			changeType: registrySecretsUpdate,
-		},
-		{
-			operation:  admissionv1.Update,
-			crdType:    v1alpha2.CAPApplicationVersionKind,
-			changeType: consumedBTPServicesUpdate,
-		},
-		{
-			operation:  admissionv1.Update,
-			crdType:    v1alpha2.CAPApplicationVersionKind,
-			changeType: versionUpdate,
-		},
-		{
-			operation:  admissionv1.Update,
-			crdType:    v1alpha2.CAPApplicationVersionKind,
-			changeType: imageUpdate,
-		},
-		{
-			operation:  admissionv1.Update,
-			crdType:    v1alpha2.CAPTenantKind,
-			changeType: appInstanceUpdate,
-		},
-	}
-	for _, test := range tests {
-		t.Run("Testing "+test.crdType+" invalidity with CAPApp instance change for operation "+string(test.operation), func(t *testing.T) {
-			crdName := cavName
-			if test.crdType == v1alpha2.CAPTenantKind {
-				crdName = catName
-			}
-
-			request, recorder := getHttpRequest(test.operation, test.crdType, crdName, test.changeType, t)
-
-			wh.Validate(recorder, request)
-
-			admissionReview := admissionv1.AdmissionReview{}
-			bytes, err := io.ReadAll(recorder.Body)
-			if err != nil {
-				t.Fatal("io read error")
-			}
-
-			universalDeserializer.Decode(bytes, nil, &admissionReview)
-
-			expectedMessage := fmt.Sprintf("%s %s spec cannot be modified for: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, crdName)
-			if test.crdType == v1alpha2.CAPTenantKind {
-				expectedMessage = fmt.Sprintf("%s %s capApplicationInstance value cannot be modified for: %s.%s", InvalidationMessage, admissionReview.Kind, metav1.NamespaceDefault, crdName)
-			}
-
-			if admissionReview.Response.Allowed ||
-				admissionReview.Response.UID != uid ||
-				admissionReview.APIVersion != apiVersion ||
-				admissionReview.Response.Result.Message != expectedMessage {
-				t.Fatal("validation response error")
-			}
-		})
-	}
-}
-
 func TestCaValidity(t *testing.T) {
 	wh := &WebhookHandler{
 		CrdClient: fakeCrdClient.NewSimpleClientset(),
@@ -692,59 +597,6 @@ func TestCaValidity(t *testing.T) {
 	}
 }
 
-func TestCaProviderUpdateValidity(t *testing.T) {
-	tests := []struct {
-		name    string
-		update  updateType
-		allowed bool
-	}{
-		{
-			name:    "adding provider is not allowed (deprecated)",
-			update:  providerAdd,
-			allowed: false,
-		},
-		{
-			name:    "removing provider is allowed",
-			update:  providerRemove,
-			allowed: true,
-		},
-		{
-			name:    "changing existing provider is not allowed",
-			update:  providerUpdate,
-			allowed: false,
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			wh := &WebhookHandler{
-				CrdClient: fakeCrdClient.NewSimpleClientset(),
-			}
-			request, recorder := getHttpRequest(admissionv1.Update, v1alpha2.CAPApplicationKind, caName, test.update, t)
-
-			wh.Validate(recorder, request)
-
-			admissionReview := admissionv1.AdmissionReview{}
-			bytes, err := io.ReadAll(recorder.Body)
-			if err != nil {
-				t.Fatal("io read error")
-			}
-			universalDeserializer.Decode(bytes, nil, &admissionReview)
-
-			if admissionReview.Response.Allowed != test.allowed ||
-				admissionReview.Response.UID != uid ||
-				admissionReview.APIVersion != apiVersion {
-				t.Fatal("validation response error")
-			}
-			if !test.allowed {
-				expectedMessage := fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha2.CAPApplicationKind, metav1.NamespaceDefault, caName)
-				if admissionReview.Response.Result.Message != expectedMessage {
-					t.Fatal("unexpected error message: ", admissionReview.Response.Result.Message, "expected: ", expectedMessage)
-				}
-			}
-		})
-	}
-}
-
 func createExistingCa(name string) *v1alpha2.CAPApplication {
 	return &v1alpha2.CAPApplication{
 		Name:      name,
@@ -765,20 +617,6 @@ func TestCaAppIdentifierValidity(t *testing.T) {
 		allowed         bool
 		expectedMessage string
 	}{
-		{
-			name:            "changing providerSubaccountId once set is not allowed",
-			operation:       admissionv1.Update,
-			update:          providerSubaccountIdUpdate,
-			allowed:         false,
-			expectedMessage: fmt.Sprintf("%s %s providerSubaccountId cannot be changed for: %s.%s", InvalidationMessage, v1alpha2.CAPApplicationKind, metav1.NamespaceDefault, caName),
-		},
-		{
-			name:            "changing btpAppName once set is not allowed",
-			operation:       admissionv1.Update,
-			update:          btpAppNameUpdate,
-			allowed:         false,
-			expectedMessage: fmt.Sprintf("%s %s btpAppName cannot be changed for: %s.%s", InvalidationMessage, v1alpha2.CAPApplicationKind, metav1.NamespaceDefault, caName),
-		},
 		{
 			name:            "creating an app with an already existing providerSubaccountId and btpAppName combination is not allowed",
 			operation:       admissionv1.Create,
@@ -842,12 +680,8 @@ func TestCavInvalidity(t *testing.T) {
 	}
 	tests := []struct {
 		operation                          admissionv1.Operation
-		duplicateWorkloadName              bool
-		invalidDeploymentType              bool
-		invalidJobType                     bool
 		onlyOneCAPTypeAllowed              bool
 		onlyOneRouterTypeAllowed           bool
-		duplicatePortName                  bool
 		duplicatePortNumber                bool
 		routerDestNameCAPChk               bool
 		routerDestNameRouterChk            bool
@@ -860,26 +694,10 @@ func TestCavInvalidity(t *testing.T) {
 		multipleContentJobsWithNoOrder     bool
 		missingContentJobinContentJobs     bool
 		invalidJobinContentJobs            bool
-		invalidWorkloadName                bool
 		longDeploymentWorkloadName         bool
 		longContentWorkloadName            bool
 		backlogItems                       []string
 	}{
-		{
-			operation:             admissionv1.Create,
-			duplicateWorkloadName: true,
-			backlogItems:          []string{"ERP4SMEPREPWORKAPPPLAT-2338"},
-		},
-		{
-			operation:             admissionv1.Create,
-			invalidDeploymentType: true,
-			backlogItems:          []string{"ERP4SMEPREPWORKAPPPLAT-2338"},
-		},
-		{
-			operation:      admissionv1.Create,
-			invalidJobType: true,
-			backlogItems:   []string{"ERP4SMEPREPWORKAPPPLAT-2338"},
-		},
 		{
 			operation:             admissionv1.Create,
 			onlyOneCAPTypeAllowed: true,
@@ -889,11 +707,6 @@ func TestCavInvalidity(t *testing.T) {
 			operation:                admissionv1.Create,
 			onlyOneRouterTypeAllowed: true,
 			backlogItems:             []string{"ERP4SMEPREPWORKAPPPLAT-2338"},
-		},
-		{
-			operation:         admissionv1.Create,
-			duplicatePortName: true,
-			backlogItems:      []string{"ERP4SMEPREPWORKAPPPLAT-2339"},
 		},
 		{
 			operation:           admissionv1.Create,
@@ -954,11 +767,6 @@ func TestCavInvalidity(t *testing.T) {
 			operation:               admissionv1.Create,
 			invalidJobinContentJobs: true,
 			backlogItems:            []string{"ERP4SMEPREPWORKAPPPLAT-4351"},
-		},
-		{
-			operation:           admissionv1.Create,
-			invalidWorkloadName: true,
-			backlogItems:        []string{},
 		},
 		{
 			operation:                  admissionv1.Create,
@@ -1035,22 +843,7 @@ func TestCavInvalidity(t *testing.T) {
 				},
 			}
 
-			if test.duplicateWorkloadName == true {
-				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
-					Name:                "cap-backend",
-					ConsumedBTPServices: []string{},
-					DeploymentDefinition: &v1alpha2.DeploymentDetails{
-						Type: v1alpha2.DeploymentAdditional,
-						CommonDetails: v1alpha2.CommonDetails{
-							Image: "foo",
-						},
-					},
-				})
-			} else if test.invalidDeploymentType == true {
-				crd.Spec.Workloads[0].DeploymentDefinition.Type = "invalid"
-			} else if test.invalidJobType == true {
-				crd.Spec.Workloads[2].JobDefinition.Type = "invalid"
-			} else if test.onlyOneCAPTypeAllowed == true {
+			if test.onlyOneCAPTypeAllowed == true {
 				// add additional workload of type CAP
 				crd.Spec.Workloads = append(crd.Spec.Workloads, v1alpha2.WorkloadDetails{
 					Name:                "cap-backend-2",
@@ -1074,10 +867,6 @@ func TestCavInvalidity(t *testing.T) {
 						},
 					},
 				})
-			} else if test.duplicatePortName == true {
-				crd.Spec.Workloads[0].DeploymentDefinition.Ports = []v1alpha2.Ports{
-					{Name: "port-1", RouterDestinationName: "port-1-dest", Port: 4000}, {Name: "port-1", Port: 4004},
-				}
 			} else if test.duplicatePortNumber == true {
 				crd.Spec.Workloads[0].DeploymentDefinition.Ports = []v1alpha2.Ports{
 					{Name: "port-1", RouterDestinationName: "port-1-dest", Port: 4000}, {Name: "port-2", Port: 4000},
@@ -1222,8 +1011,6 @@ func TestCavInvalidity(t *testing.T) {
 					},
 				})
 				crd.Spec.ContentJobs = append(crd.Spec.ContentJobs, "content", "content-2", "dummy")
-			} else if test.invalidWorkloadName == true {
-				crd.Spec.Workloads[0].Name = "WrongWorkloadName"
 			} else if test.longDeploymentWorkloadName == true {
 				crd.Spec.Workloads[0].Name = "extralongworkloadnamecontainingmorethan64characters"
 			} else if test.longContentWorkloadName == true {
@@ -1249,18 +1036,10 @@ func TestCavInvalidity(t *testing.T) {
 			universalDeserializer.Decode(bytes, nil, &admissionReviewRes)
 
 			var errorMessage string
-			if test.duplicateWorkloadName == true {
-				errorMessage = fmt.Sprintf("%s %s duplicate workload name: cap-backend", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
-			} else if test.invalidDeploymentType == true {
-				errorMessage = fmt.Sprintf("%s %s invalid deployment definition type. Only supported - CAP, Router, Additional and Service", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
-			} else if test.invalidJobType == true {
-				errorMessage = fmt.Sprintf("%s %s invalid job definition type. Only supported - Content, TenantOperation and CustomTenantOperation", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
-			} else if test.onlyOneCAPTypeAllowed == true {
+			if test.onlyOneCAPTypeAllowed == true {
 				errorMessage = fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, v1alpha2.CAPApplicationVersionKind, v1alpha2.DeploymentCAP, 2, v1alpha2.DeploymentCAP)
 			} else if test.onlyOneRouterTypeAllowed == true {
 				errorMessage = fmt.Sprintf(DeploymentWorkloadCountErr, InvalidationMessage, v1alpha2.CAPApplicationVersionKind, v1alpha2.DeploymentRouter, 2, v1alpha2.DeploymentRouter)
-			} else if test.duplicatePortName == true {
-				errorMessage = fmt.Sprintf("%s %s duplicate port name: port-1 in workload - cap-backend", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.duplicatePortNumber == true {
 				errorMessage = fmt.Sprintf("%s %s duplicate port number: 4000 in workload - cap-backend", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.routerDestNameCAPChk == true {
@@ -1285,8 +1064,6 @@ func TestCavInvalidity(t *testing.T) {
 				errorMessage = fmt.Sprintf("%s %s content job content-2 is not specified as part of ContentJobs", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
 			} else if test.invalidJobinContentJobs == true {
 				errorMessage = fmt.Sprintf("%s %s job dummy specified as part of ContentJobs is not a valid content job", InvalidationMessage, v1alpha2.CAPApplicationVersionKind)
-			} else if test.invalidWorkloadName == true {
-				errorMessage = fmt.Sprintf("%s %s Invalid workload name: %s", InvalidationMessage, v1alpha2.CAPApplicationVersionKind, "WrongWorkloadName")
 			} else if test.longDeploymentWorkloadName == true {
 				errorMessage = fmt.Sprintf(
 					"%s %s Derived service name '%s' (length %d) exceeds max limit of %d characters. Please shorten CAPApplicationVersion name '%s' or workload name '%s'.",
@@ -2250,11 +2027,9 @@ func TestValidateMalformedObject(t *testing.T) {
 		objField  string // "object" or "oldObject"
 	}{
 		{name: "CAPApplication create malformed", kind: v1alpha2.CAPApplicationKind, operation: admissionv1.Create, objField: "object"},
-		{name: "CAPApplication update malformed old", kind: v1alpha2.CAPApplicationKind, operation: admissionv1.Update, objField: "oldObject"},
 		{name: "CAPApplicationVersion create malformed", kind: v1alpha2.CAPApplicationVersionKind, operation: admissionv1.Create, objField: "object"},
-		{name: "CAPApplicationVersion update malformed old", kind: v1alpha2.CAPApplicationVersionKind, operation: admissionv1.Update, objField: "oldObject"},
 		{name: "CAPTenant create malformed", kind: v1alpha2.CAPTenantKind, operation: admissionv1.Create, objField: "object"},
-		{name: "CAPTenant update malformed old", kind: v1alpha2.CAPTenantKind, operation: admissionv1.Update, objField: "oldObject"},
+		{name: "CAPTenant create malformed", kind: v1alpha2.CAPTenantKind, operation: admissionv1.Delete, objField: "oldObject"},
 		{name: "CAPTenantOutput create malformed", kind: v1alpha2.CAPTenantOutputKind, operation: admissionv1.Create, objField: "object"},
 		{name: "ClusterDomain create malformed", kind: v1alpha2.ClusterDomainKind, operation: admissionv1.Create, objField: "object"},
 		{name: "Domain create malformed", kind: v1alpha2.DomainKind, operation: admissionv1.Create, objField: "object"},
@@ -2263,8 +2038,8 @@ func TestValidateMalformedObject(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// Build the body manually so the bad payload survives in object.raw / oldObject.raw.
-			// For Update we always need both object and oldObject (the validators read both before
-			// reaching the spec-change check) — the non-targeted side is a valid empty object.
+			// The validators only read the new object on Create, so the bad payload is placed there;
+			// the non-targeted side is a valid empty object.
 			objectRaw := `{}`
 			oldObjectRaw := `{}`
 			if test.objField == "object" {

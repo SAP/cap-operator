@@ -2162,6 +2162,9 @@ spec:
                             - port
                             type: object
                           type: array
+                          x-kubernetes-list-map-keys:
+                          - name
+                          x-kubernetes-list-type: map
                         priorityClassName:
                           type: string
                         readinessProbe:
@@ -2559,6 +2562,11 @@ spec:
                             type: object
                           type: array
                         type:
+                          enum:
+                          - CAP
+                          - Router
+                          - Additional
+                          - Service
                           type: string
                         volumeMounts:
                           items:
@@ -5124,6 +5132,10 @@ spec:
                           format: int32
                           type: integer
                         type:
+                          enum:
+                          - Content
+                          - TenantOperation
+                          - CustomTenantOperation
                           type: string
                         volumeMounts:
                           items:
@@ -6007,6 +6019,7 @@ spec:
                         type: string
                       type: object
                     name:
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                       type: string
                   required:
                   - consumedBTPServices
@@ -6019,11 +6032,17 @@ spec:
                       == 1
                 maxItems: 100
                 type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
             required:
             - capApplicationInstance
             - version
             - workloads
             type: object
+            x-kubernetes-validations:
+            - message: field is immutable
+              rule: self == oldSelf
           status:
             properties:
               conditions:
@@ -8233,6 +8252,9 @@ spec:
                             - port
                             type: object
                           type: array
+                          x-kubernetes-list-map-keys:
+                          - name
+                          x-kubernetes-list-type: map
                         priorityClassName:
                           type: string
                         readinessProbe:
@@ -8630,6 +8652,11 @@ spec:
                             type: object
                           type: array
                         type:
+                          enum:
+                          - CAP
+                          - Router
+                          - Additional
+                          - Service
                           type: string
                         volumeMounts:
                           items:
@@ -11195,6 +11222,10 @@ spec:
                           format: int32
                           type: integer
                         type:
+                          enum:
+                          - Content
+                          - TenantOperation
+                          - CustomTenantOperation
                           type: string
                         volumeMounts:
                           items:
@@ -12078,6 +12109,7 @@ spec:
                         type: string
                       type: object
                     name:
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                       type: string
                   required:
                   - consumedBTPServices
@@ -12090,11 +12122,17 @@ spec:
                       == 1
                 maxItems: 100
                 type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
             required:
             - capApplicationInstance
             - version
             - workloads
             type: object
+            x-kubernetes-validations:
+            - message: field is immutable
+              rule: self == oldSelf
           status:
             properties:
               conditions:

@@ -11,11 +11,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
 	"slices"
 
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
 	"github.com/sap/cap-operator/pkg/client/clientset/versioned"
 	admissionv1 "k8s.io/api/admission/v1"
@@ -57,7 +54,6 @@ type validateResource struct {
 
 var (
 	universalDeserializer = serializer.NewCodecFactory(runtime.NewScheme()).UniversalDeserializer()
-	workloadNameRegex     = regexp.MustCompile(`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`)
 )
 
 type WebhookHandler struct {
@@ -73,20 +69,12 @@ func checkWorkloadPort(workload *v1alpha2.WorkloadDetails) validateResource {
 		return validAdmissionReviewObj()
 	}
 
-	seenPortNames := make(map[string]struct{})
 	seenPortNums := make(map[int32]struct{})
 	routerDestinationNameFound := false
 	for _, port := range workload.DeploymentDefinition.Ports {
 		if port.RouterDestinationName != "" {
 			routerDestinationNameFound = true
 		}
-		if _, dup := seenPortNames[port.Name]; dup {
-			return validateResource{
-				allowed: false,
-				message: fmt.Sprintf("%s %s duplicate port name: %s in workload - %s", InvalidationMessage, v1alpha2.CAPApplicationVersionKind, port.Name, workload.Name),
-			}
-		}
-		seenPortNames[port.Name] = struct{}{}
 		if _, dup := seenPortNums[port.Port]; dup {
 			return validateResource{
 				allowed: false,
@@ -107,29 +95,6 @@ func checkWorkloadPort(workload *v1alpha2.WorkloadDetails) validateResource {
 		return validateResource{
 			allowed: false,
 			message: fmt.Sprintf("%s %s routerDestinationName should not be defined for workload of type Router - %s", InvalidationMessage, v1alpha2.CAPApplicationVersionKind, workload.Name),
-		}
-	}
-
-	return validAdmissionReviewObj()
-}
-
-var (
-	validDeploymentTypes = []v1alpha2.DeploymentType{v1alpha2.DeploymentCAP, v1alpha2.DeploymentRouter, v1alpha2.DeploymentAdditional, v1alpha2.DeploymentService}
-	validJobTypes        = []v1alpha2.JobType{v1alpha2.JobContent, v1alpha2.JobTenantOperation, v1alpha2.JobCustomTenantOperation}
-)
-
-func checkWorkloadType(workload *v1alpha2.WorkloadDetails) validateResource {
-	if workload.DeploymentDefinition != nil && !slices.Contains(validDeploymentTypes, workload.DeploymentDefinition.Type) {
-		return validateResource{
-			allowed: false,
-			message: fmt.Sprintf("%s %s invalid deployment definition type. Only supported - CAP, Router, Additional and Service", InvalidationMessage, v1alpha2.CAPApplicationVersionKind),
-		}
-	}
-
-	if workload.JobDefinition != nil && !slices.Contains(validJobTypes, workload.JobDefinition.Type) {
-		return validateResource{
-			allowed: false,
-			message: fmt.Sprintf("%s %s invalid job definition type. Only supported - Content, TenantOperation and CustomTenantOperation", InvalidationMessage, v1alpha2.CAPApplicationVersionKind),
 		}
 	}
 
@@ -348,22 +313,11 @@ func checkServiceExposure(cavObjNew *v1alpha2.CAPApplicationVersion) validateRes
 }
 
 func validateWorkloads(ca *v1alpha2.CAPApplication, cavObjNew *v1alpha2.CAPApplicationVersion) validateResource {
-	seenWorkloadNames := make(map[string]struct{})
+	// workload name validity/uniqueness and workload type validity are enforced via schema validation on the CRD
 	for _, workload := range cavObjNew.Spec.Workloads {
-
-		if !workloadNameRegex.MatchString(workload.Name) {
-			return validateResource{
-				allowed: false,
-				message: fmt.Sprintf("%s %s Invalid workload name: %s", InvalidationMessage, v1alpha2.CAPApplicationVersionKind, workload.Name),
-			}
-		}
 
 		if workloadNameLengthValidate := checkWorkloadNameLength(cavObjNew, &workload); !workloadNameLengthValidate.allowed {
 			return workloadNameLengthValidate
-		}
-
-		if workloadTypeValidate := checkWorkloadType(&workload); !workloadTypeValidate.allowed {
-			return workloadTypeValidate
 		}
 
 		if workloadPortValidate := checkWorkloadPort(&workload); !workloadPortValidate.allowed {
@@ -373,15 +327,6 @@ func validateWorkloads(ca *v1alpha2.CAPApplication, cavObjNew *v1alpha2.CAPAppli
 		if workloadPDBValidate := checkWorkloadPodDistruptionBudget(&workload); !workloadPDBValidate.allowed {
 			return workloadPDBValidate
 		}
-
-		if _, ok := seenWorkloadNames[workload.Name]; ok {
-			return validateResource{
-				allowed: false,
-				message: fmt.Sprintf("%s %s duplicate workload name: %s", InvalidationMessage, v1alpha2.CAPApplicationVersionKind, workload.Name),
-			}
-		}
-
-		seenWorkloadNames[workload.Name] = struct{}{}
 	}
 
 	if workloadTypeCntValidate := checkWorkloadTypeCount(ca, cavObjNew); !workloadTypeCntValidate.allowed {
@@ -521,36 +466,15 @@ func (wh *WebhookHandler) checkCAPAppExists(cavObjNew *v1alpha2.CAPApplicationVe
 }
 
 func (wh *WebhookHandler) validateCAPApplicationVersion(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview) validateResource {
-	cavObjOld := v1alpha2.CAPApplicationVersion{}
-	cavObjNew := v1alpha2.CAPApplicationVersion{}
-
-	// Note: Object is nil for "DELETE" operation
-	if admissionReview.Request.Operation == admissionv1.Create || admissionReview.Request.Operation == admissionv1.Update {
+	// check: on create (the spec is immutable on update, enforced via CEL on the CRD)
+	if admissionReview.Request.Operation == admissionv1.Create {
+		cavObjNew := v1alpha2.CAPApplicationVersion{}
 		if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &cavObjNew, v1alpha2.CAPApplicationVersionKind); !validatedResource.allowed {
 			return validatedResource
 		}
-	}
-
-	// Note: OldObject is nil for "CONNECT" and "CREATE" operations
-	if admissionReview.Request.Operation == admissionv1.Delete || admissionReview.Request.Operation == admissionv1.Update {
-		if validatedResource := unmarshalRawObj(w, admissionReview.Request.OldObject.Raw, &cavObjOld, v1alpha2.CAPApplicationVersionKind); !validatedResource.allowed {
-			return validatedResource
-		}
-	}
-
-	// check: on create
-	if admissionReview.Request.Operation == admissionv1.Create {
 		return wh.checkCAVCreate(&cavObjNew)
-
 	}
 
-	// check: update on .Spec, using cmpopts.EquateEmpty() to consider nil and empty slices/maps as equal (Eg: spec.ContentJobs)
-	if admissionReview.Request.Operation == admissionv1.Update && !cmp.Equal(cavObjOld.Spec, cavObjNew.Spec, cmpopts.EquateEmpty()) {
-		return validateResource{
-			allowed: false,
-			message: fmt.Sprintf("%s %s spec cannot be modified for: %s.%s", InvalidationMessage, v1alpha2.CAPApplicationVersionKind, cavObjNew.GetNamespace(), cavObjNew.GetName()),
-		}
-	}
 	return validAdmissionReviewObj()
 }
 
@@ -638,41 +562,27 @@ func (wh *WebhookHandler) validateDomain(w http.ResponseWriter, admissionReview 
 }
 
 func (wh *WebhookHandler) validateCAPTenant(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview) validateResource {
-	catObjOld := v1alpha2.CAPTenant{}
-	catObjNew := v1alpha2.CAPTenant{}
-
-	// Note: Object is nil for "DELETE" operation
-	if admissionReview.Request.Operation == admissionv1.Create || admissionReview.Request.Operation == admissionv1.Update {
+	// check: CAPApplication exists on create (capApplicationInstance immutability on update is enforced via CEL on the CRD)
+	if admissionReview.Request.Operation == admissionv1.Create {
+		catObjNew := v1alpha2.CAPTenant{}
 		if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &catObjNew, v1alpha2.CAPTenantKind); !validatedResource.allowed {
 			return validatedResource
 		}
-	}
-	// Note: OldObject is nil for "CONNECT" and "CREATE" operations
-	if admissionReview.Request.Operation == admissionv1.Delete || admissionReview.Request.Operation == admissionv1.Update {
-		if validatedResource := unmarshalRawObj(w, admissionReview.Request.OldObject.Raw, &catObjOld, v1alpha2.CAPTenantKind); !validatedResource.allowed {
-			return validatedResource
-		}
-	}
-
-	// check: CAPApplication exists on create
-	if admissionReview.Request.Operation == admissionv1.Create {
 		if app, err := wh.CrdClient.SmeV1alpha2().CAPApplications(catObjNew.GetNamespace()).Get(context.TODO(), catObjNew.Spec.CAPApplicationInstance, metav1.GetOptions{}); app == nil || err != nil {
 			return validateResource{
 				allowed: false,
 				message: fmt.Sprintf("%s %s no valid %s found for: %s.%s", InvalidationMessage, v1alpha2.CAPTenantKind, v1alpha2.CAPApplicationKind, catObjNew.GetNamespace(), catObjNew.GetName()),
 			}
 		}
-	}
-	// check: update on .Spec.CapApplicationInstance
-	if admissionReview.Request.Operation == admissionv1.Update && catObjOld.Spec.CAPApplicationInstance != catObjNew.Spec.CAPApplicationInstance {
-		return validateResource{
-			allowed: false,
-			message: fmt.Sprintf("%s %s capApplicationInstance value cannot be modified for: %s.%s", InvalidationMessage, v1alpha2.CAPTenantKind, catObjNew.GetNamespace(), catObjNew.GetName()),
-		}
+		return validAdmissionReviewObj()
 	}
 
 	// check: dont allow provider tenant deletion when CA is consistent
 	if admissionReview.Request.Operation == admissionv1.Delete {
+		catObjOld := v1alpha2.CAPTenant{}
+		if validatedResource := unmarshalRawObj(w, admissionReview.Request.OldObject.Raw, &catObjOld, v1alpha2.CAPTenantKind); !validatedResource.allowed {
+			return validatedResource
+		}
 		return wh.checkCaIsConsistent(catObjOld)
 	}
 
@@ -711,57 +621,13 @@ func (wh *WebhookHandler) validateCAPTenantOutput(w http.ResponseWriter, admissi
 }
 
 func (wh *WebhookHandler) validateCAPApplication(w http.ResponseWriter, admissionReview *admissionv1.AdmissionReview) validateResource {
-	caObjOld := v1alpha2.CAPApplication{}
-	caObjNew := v1alpha2.CAPApplication{}
-
-	// Note: OldObject is nil for "CONNECT" and "CREATE" operations
-	if admissionReview.Request.Operation == admissionv1.Delete || admissionReview.Request.Operation == admissionv1.Update {
-		if validatedResource := unmarshalRawObj(w, admissionReview.Request.OldObject.Raw, &caObjOld, v1alpha2.CAPApplicationKind); !validatedResource.allowed {
-			return validatedResource
-		}
-	}
-	if admissionReview.Request.Operation == admissionv1.Update || admissionReview.Request.Operation == admissionv1.Create {
-		// Note: Object is nil for "DELETE" operation
+	// Ensure that the combination of providerSubaccountId and btpAppName is unique across all CAPApplications.
+	// Immutability of the identifiers and the provider section is enforced via CEL on the CRD.
+	if admissionReview.Request.Operation == admissionv1.Create {
+		caObjNew := v1alpha2.CAPApplication{}
 		if validatedResource := unmarshalRawObj(w, admissionReview.Request.Object.Raw, &caObjNew, v1alpha2.CAPApplicationKind); !validatedResource.allowed {
 			return validatedResource
 		}
-	}
-
-	// check: update on .Spec.Provider - removing is allowed, but adding or changing existing value is not (deprecated)
-	if admissionReview.Request.Operation == admissionv1.Update && !caObjNew.IsProviderEmpty() && !cmp.Equal(caObjNew.Spec.Provider, caObjOld.Spec.Provider) {
-		return validateResource{
-			allowed: false,
-			message: fmt.Sprintf("%s %s provider details cannot be changed for: %s.%s", InvalidationMessage, v1alpha2.CAPApplicationKind, caObjNew.GetNamespace(), caObjNew.GetName()),
-		}
-	}
-
-	if identifierValidate := wh.validateCAPApplicationIdentifiers(admissionReview.Request.Operation, caObjOld, caObjNew); !identifierValidate.allowed {
-		return identifierValidate
-	}
-
-	return validAdmissionReviewObj()
-}
-
-// ensures providerSubaccountId and btpAppName are immutable once set and that their combination is unique
-func (wh *WebhookHandler) validateCAPApplicationIdentifiers(operation admissionv1.Operation, caObjOld, caObjNew v1alpha2.CAPApplication) validateResource {
-	// providerSubaccountId and btpAppName are required and cannot be updated
-	if operation == admissionv1.Update {
-		if caObjNew.Spec.ProviderSubaccountId != caObjOld.Spec.ProviderSubaccountId {
-			return validateResource{
-				allowed: false,
-				message: fmt.Sprintf("%s %s providerSubaccountId cannot be changed for: %s.%s", InvalidationMessage, v1alpha2.CAPApplicationKind, caObjNew.GetNamespace(), caObjNew.GetName()),
-			}
-		}
-		if caObjNew.Spec.BTPAppName != caObjOld.Spec.BTPAppName {
-			return validateResource{
-				allowed: false,
-				message: fmt.Sprintf("%s %s btpAppName cannot be changed for: %s.%s", InvalidationMessage, v1alpha2.CAPApplicationKind, caObjNew.GetNamespace(), caObjNew.GetName()),
-			}
-		}
-	}
-
-	// Ensure that the combination of providerSubaccountId and btpAppName is unique across all CAPApplications
-	if operation == admissionv1.Create {
 		return wh.checkForDuplicateCAPApplication(caObjNew)
 	}
 
