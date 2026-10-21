@@ -102,16 +102,9 @@ See [Version monitoring](https://sap.github.io/cap-operator/docs/usage/version-m
 
 ## Troubleshooting
 
-| Symptom | Likely Cause | Action |
-|---|---|---|
-| `CAPApplicationVersion` stuck in `Processing` | Content job failing | `kubectl logs job/<name> -n <ns>` |
-| `CAPTenant` stuck in `Provisioning` | `CAPTenantOperation` job failed | `kubectl describe captenantoperation -n <ns>` followed by `kubectl logs job/<name> -n <ns>` for the relevant failed tenant operation job|
-| Resource stuck with finalizer after delete | Controller still processing | Wait; check controller logs — do NOT remove finalizers manually |
-| `@sap/cds-mtxs` security context error | Wrong `runAsUser` | Set `securityContext.runAsUser` in `jobDefinition` |
-| Approuter can't reach CAP backend | Missing `routerDestinationName` | Add `routerDestinationName` to the CAP workload port definition |
-| Credentials not injected | Service not in `consumedBTPServices` | Verify service name matches `CAPApplication.spec.btp.services[].name` |
+Common symptoms and fixes — `CAPApplicationVersion`/`CAPTenant` stuck, `WaitingForSecrets`, finalizers, `@sap/cds-mtxs` security context, Approuter destination/timeout issues, credential injection, SAP HANA connection errors, and controller memory limits.
 
-More: `website/content/en/docs/troubleshoot/_index.md` | https://sap.github.io/cap-operator/docs/troubleshoot/
+See [troubleshooting reference](references/troubleshooting.md) | `website/content/en/docs/troubleshoot/_index.md` | https://sap.github.io/cap-operator/docs/troubleshoot/
 
 ## Controller Configuration
 
