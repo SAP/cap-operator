@@ -17,8 +17,19 @@ import (
 // Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPApplicationSpec defines the desired state of CAPApplication
 type CAPApplicationSpecApplyConfiguration struct {
-	// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
-	v1alpha2.CAPApplicationSpecApplyConfiguration `json:""`
+	// Reference to `Domain` resources used by the application
+	DomainRefs []v1alpha2.DomainRefApplyConfiguration `json:"domainRefs,omitempty"`
+	// The subaccount ID in which the application is provided
+	ProviderSubaccountId *string `json:"providerSubaccountId,omitempty"`
+	// Short name for the application (BTP XSAPPNAME)
+	BTPAppName *string `json:"btpAppName,omitempty"`
+	// Deprecated: Provider subaccount where application services are created
+	// Will be removed, consider automating this via BTP / subscription instead!
+	Provider *v1alpha2.BTPTenantIdentificationApplyConfiguration `json:"provider,omitempty"`
+	// SAP BTP Services consumed by the application
+	BTP *v1alpha2.BTPApplyConfiguration `json:"btp,omitempty"`
+	// Rollout on Credentials Update may be used to rollout deployments when dependent service credentials are updated
+	RolloutOnCredentialUpdate *bool `json:"rolloutOnCredentialUpdate,omitempty"`
 	// Deprecated: Domains used by the application. Will be removed in future versions, use `DomainRefs` instead
 	Domains *ApplicationDomainsApplyConfiguration `json:"domains,omitempty"`
 	// Deprecated: SAP BTP Global Account Identifier where services are entitled for the current application
@@ -40,7 +51,7 @@ func (b *CAPApplicationSpecApplyConfiguration) WithDomainRefs(values ...*v1alpha
 		if values[i] == nil {
 			panic("nil value passed to WithDomainRefs")
 		}
-		b.CAPApplicationSpecApplyConfiguration.DomainRefs = append(b.CAPApplicationSpecApplyConfiguration.DomainRefs, *values[i])
+		b.DomainRefs = append(b.DomainRefs, *values[i])
 	}
 	return b
 }
@@ -49,7 +60,7 @@ func (b *CAPApplicationSpecApplyConfiguration) WithDomainRefs(values ...*v1alpha
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the ProviderSubaccountId field is set to the value of the last call.
 func (b *CAPApplicationSpecApplyConfiguration) WithProviderSubaccountId(value string) *CAPApplicationSpecApplyConfiguration {
-	b.CAPApplicationSpecApplyConfiguration.ProviderSubaccountId = &value
+	b.ProviderSubaccountId = &value
 	return b
 }
 
@@ -57,7 +68,7 @@ func (b *CAPApplicationSpecApplyConfiguration) WithProviderSubaccountId(value st
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the BTPAppName field is set to the value of the last call.
 func (b *CAPApplicationSpecApplyConfiguration) WithBTPAppName(value string) *CAPApplicationSpecApplyConfiguration {
-	b.CAPApplicationSpecApplyConfiguration.BTPAppName = &value
+	b.BTPAppName = &value
 	return b
 }
 
@@ -65,7 +76,7 @@ func (b *CAPApplicationSpecApplyConfiguration) WithBTPAppName(value string) *CAP
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Provider field is set to the value of the last call.
 func (b *CAPApplicationSpecApplyConfiguration) WithProvider(value *v1alpha2.BTPTenantIdentificationApplyConfiguration) *CAPApplicationSpecApplyConfiguration {
-	b.CAPApplicationSpecApplyConfiguration.Provider = value
+	b.Provider = value
 	return b
 }
 
@@ -73,7 +84,7 @@ func (b *CAPApplicationSpecApplyConfiguration) WithProvider(value *v1alpha2.BTPT
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the BTP field is set to the value of the last call.
 func (b *CAPApplicationSpecApplyConfiguration) WithBTP(value *v1alpha2.BTPApplyConfiguration) *CAPApplicationSpecApplyConfiguration {
-	b.CAPApplicationSpecApplyConfiguration.BTP = value
+	b.BTP = value
 	return b
 }
 
@@ -81,7 +92,7 @@ func (b *CAPApplicationSpecApplyConfiguration) WithBTP(value *v1alpha2.BTPApplyC
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the RolloutOnCredentialUpdate field is set to the value of the last call.
 func (b *CAPApplicationSpecApplyConfiguration) WithRolloutOnCredentialUpdate(value bool) *CAPApplicationSpecApplyConfiguration {
-	b.CAPApplicationSpecApplyConfiguration.RolloutOnCredentialUpdate = &value
+	b.RolloutOnCredentialUpdate = &value
 	return b
 }
 

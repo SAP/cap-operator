@@ -44,6 +44,9 @@ spec:
             properties:
               capApplicationInstance:
                 type: string
+                x-kubernetes-validations:
+                - message: field is immutable
+                  rule: self == oldSelf
               subDomain:
                 type: string
               tenantId:
@@ -158,6 +161,9 @@ spec:
             properties:
               capApplicationInstance:
                 type: string
+                x-kubernetes-validations:
+                - message: field is immutable
+                  rule: self == oldSelf
               subDomain:
                 type: string
               tenantId:

@@ -161,8 +161,23 @@ type NameValue struct {
 // Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // CAPApplicationSpec defines the desired state of CAPApplication
 type CAPApplicationSpec struct {
-	// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
-	v1alpha2.CAPApplicationSpec `json:",inline"`
+	// Reference to `Domain` resources used by the application
+	DomainRefs []DomainRef `json:"domainRefs,omitempty"`
+	// The subaccount ID in which the application is provided
+	// +k8s:immutable
+	// +kubebuilder:validation:MinLength=1
+	ProviderSubaccountId string `json:"providerSubaccountId"`
+	// Short name for the application (BTP XSAPPNAME)
+	// +k8s:immutable
+	// +kubebuilder:validation:MinLength=1
+	BTPAppName string `json:"btpAppName"`
+	// Deprecated: Provider subaccount where application services are created
+	// Will be removed, consider automating this via BTP / subscription instead!
+	Provider *BTPTenantIdentification `json:"provider,omitempty"`
+	// SAP BTP Services consumed by the application
+	BTP BTP `json:"btp"`
+	// Rollout on Credentials Update may be used to rollout deployments when dependent service credentials are updated
+	RolloutOnCredentialUpdate bool `json:"rolloutOnCredentialUpdate,omitempty"`
 	// Deprecated: Domains used by the application. Will be removed in future versions, use `DomainRefs` instead
 	Domains ApplicationDomains `json:"domains,omitempty"`
 	// Deprecated: SAP BTP Global Account Identifier where services are entitled for the current application
@@ -185,6 +200,7 @@ type CAPApplicationVersion struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	// CAPApplicationVersion spec
+	// +k8s:immutable
 	Spec CAPApplicationVersionSpec `json:"spec"`
 	// +kubebuilder:validation:Optional
 	// CAPApplicationVersion status

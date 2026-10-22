@@ -94,12 +94,17 @@ type CAPApplicationList struct {
 }
 
 // CAPApplicationSpec defines the desired state of CAPApplication
+// +kubebuilder:validation:XValidation:rule=!has(self.provider) || (self.provider.subDomain == "" && self.provider.tenantId == "") || (has(oldSelf.provider) && self.provider == oldSelf.provider),message=provider details cannot be changed
 type CAPApplicationSpec struct {
 	// Reference to `Domain` resources used by the application
 	DomainRefs []DomainRef `json:"domainRefs,omitempty"`
 	// The subaccount ID in which the application is provided
+	// +k8s:immutable
+	// +kubebuilder:validation:MinLength=1
 	ProviderSubaccountId string `json:"providerSubaccountId"`
 	// Short name for the application (BTP XSAPPNAME)
+	// +k8s:immutable
+	// +kubebuilder:validation:MinLength=1
 	BTPAppName string `json:"btpAppName"`
 	// Deprecated: Provider subaccount where application services are created
 	// Will be removed, consider automating this via BTP / subscription instead!
@@ -195,6 +200,7 @@ type CAPApplicationVersion struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	// CAPApplicationVersion spec
+	// +k8s:immutable
 	Spec CAPApplicationVersionSpec `json:"spec"`
 	// +kubebuilder:validation:Optional
 	// CAPApplicationVersion status
@@ -244,6 +250,8 @@ type CAPApplicationVersionSpec struct {
 	RegistrySecrets []string `json:"registrySecrets,omitempty"`
 	// Information about the Workloads
 	// +kubebuilder:validation:MaxItems=100
+	// +listType=map
+	// +listMapKey=name
 	Workloads []WorkloadDetails `json:"workloads"`
 	// Tenant Operations may be used to specify how jobs are sequenced for the different tenant operations
 	TenantOperations *TenantOperations `json:"tenantOperations,omitempty"`
@@ -257,6 +265,7 @@ type CAPApplicationVersionSpec struct {
 // +kubebuilder:validation:ExactlyOneOf=deploymentDefinition;jobDefinition
 type WorkloadDetails struct {
 	// Name of the workload
+	// +kubebuilder:validation:Pattern=^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
 	Name string `json:"name"`
 	// List of BTP services consumed by the current application component workload. These services must be defined in the corresponding CAPApplication.
 	ConsumedBTPServices []string `json:"consumedBTPServices"`
@@ -274,10 +283,13 @@ type WorkloadDetails struct {
 type DeploymentDetails struct {
 	CommonDetails `json:",inline"`
 	// Type of the Deployment
+	// +kubebuilder:validation:Enum=CAP;Router;Additional;Service
 	Type DeploymentType `json:"type"`
 	// Number of replicas
 	Replicas *int32 `json:"replicas,omitempty"`
 	// Port configuration
+	// +listType=map
+	// +listMapKey=name
 	Ports []Ports `json:"ports,omitempty"`
 	// Liveness probe
 	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty"`
@@ -446,6 +458,7 @@ const (
 type JobDetails struct {
 	CommonDetails `json:",inline"`
 	// Type of Job
+	// +kubebuilder:validation:Enum=Content;TenantOperation;CustomTenantOperation
 	Type JobType `json:"type"`
 	// Specifies the number of retries before marking this job failed.
 	BackoffLimit *int32 `json:"backoffLimit,omitempty"`
@@ -620,6 +633,7 @@ const (
 // CAPTenantSpec defines the desired state of the CAPTenant
 type CAPTenantSpec struct {
 	// Denotes to which CAPApplication the current tenant belongs
+	// +k8s:immutable
 	CAPApplicationInstance string `json:"capApplicationInstance"`
 	// Details of consumer sub-account subscribing to the application
 	BTPTenantIdentification `json:",inline"`
