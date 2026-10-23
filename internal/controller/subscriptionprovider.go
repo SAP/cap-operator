@@ -115,6 +115,7 @@ func (c *Controller) getUpdatedSubscriptionProvider(ctx context.Context, ca *v1a
 		ProviderSubaccountID: ca.Spec.ProviderSubaccountId,
 		SubscriptionInfo:     subscriptionInfo,
 		Dependencies:         deps,
+		MaxSubscriptions:     ca.Spec.MaxSubscriptions,
 	}
 
 	// check whether changes have to be applied using hash comparison

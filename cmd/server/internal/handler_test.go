@@ -10,6 +10,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -24,6 +25,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
+	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/sap/cap-operator/internal/util"
 	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
@@ -1245,5 +1247,84 @@ func TestEnrichAdditionalOutput_NoMatchingTenantOutputs(t *testing.T) {
 	}
 	if len(additionalOutput) != 1 || additionalOutput["existing"] != "data" {
 		t.Errorf("expected additional output to be unchanged, got: %+v", additionalOutput)
+	}
+}
+
+// TestCheckSubscriptionLimit_LimitReached verifies that a provisioning request returns HTTP 422
+// when the MaxSubscriptions limit is already reached.
+func TestCheckSubscriptionLimit_LimitReached(t *testing.T) {
+	maxSubs := int32(1)
+	subPro := createSubscriptionProvider(SaaS)
+	subPro.Spec.MaxSubscriptions = &maxSubs
+	appIdHash := sha1Sum(providerSubaccountId, appName)
+	// Existing subscription for a different tenant – counts towards the MaxSubscriptions limit.
+	existingSub := &v1alpha2.Subscription{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "other-tenant-sub",
+			Namespace: v1.NamespaceDefault,
+			Labels: map[string]string{
+				LabelAppIdHash: appIdHash,
+				LabelTenantId:  tenantId + "-other",
+			},
+		},
+		Spec: v1alpha2.SubscriptionSpec{
+			AppName:              appName,
+			ProviderSubaccountId: providerSubaccountId,
+			TenantId:             tenantId + "-other",
+		},
+	}
+
+	client, tokenString, err := SetupValidTokenAndIssuerForSubscriptionTests("appname!b14")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	subHandler := setup(client, createSecrets(), subPro, existingSub)
+
+	body := `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, RequestPath, strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+tokenString)
+	subHandler.HandleSaaSRequest(res, req)
+
+	if res.Code != http.StatusUnprocessableEntity {
+		t.Errorf("expected HTTP %d, got %d", http.StatusUnprocessableEntity, res.Code)
+	}
+	var result Result
+	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
+		t.Fatal("unexpected error decoding response:", err)
+	}
+	if result.Message != SubscriptionLimitReached {
+		t.Errorf("expected message %q, got %q", SubscriptionLimitReached, result.Message)
+	}
+}
+
+// TestCheckSubscriptionLimit_APIError verifies that a k8s API failure during the limit check
+// causes the provisioning request to return HTTP 500 (reject, do not fail open).
+func TestCheckSubscriptionLimit_APIError(t *testing.T) {
+	maxSubs := int32(10)
+	subPro := createSubscriptionProvider(SaaS)
+	subPro.Spec.MaxSubscriptions = &maxSubs
+	fakeClient := fake.NewSimpleClientset(subPro)
+	fakeClient.PrependReactor("list", "subscriptions", func(_ k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, fmt.Errorf("simulated k8s api error")
+	})
+
+	client, tokenString, err := SetupValidTokenAndIssuerForSubscriptionTests("appname!b14")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	subHandler := NewSubscriptionHandler(fakeClient, k8sfake.NewSimpleClientset(createSecrets()...))
+	subHandler.httpClientGenerator = &httpTestClientGenerator{client: client}
+
+	body := `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + subscriptionGUID + `","subscribedTenantId":"` + tenantId + `","subscribedSubdomain":"` + subDomain + `"}`
+	res := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, RequestPath, strings.NewReader(body))
+	req.Header.Set("Authorization", "Bearer "+tokenString)
+	subHandler.HandleSaaSRequest(res, req)
+
+	if res.Code != http.StatusInternalServerError {
+		t.Errorf("expected HTTP %d, got %d", http.StatusInternalServerError, res.Code)
 	}
 }
