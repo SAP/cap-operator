@@ -520,7 +520,7 @@ func getContainers(ctop *v1alpha2.CAPTenantOperation, workload *v1alpha2.Workloa
 		Env:             append(getCTOPEnv(params, ctop, stepType), workload.JobDefinition.Env...),
 		EnvFrom:         getEnvFrom(params.vcapSecretName),
 		VolumeMounts:    workload.JobDefinition.VolumeMounts,
-		Resources:       workload.JobDefinition.Resources,
+		Resources:       getResources(workload.JobDefinition.Resources),
 		SecurityContext: workload.JobDefinition.SecurityContext,
 		Lifecycle:       workload.JobDefinition.Lifecycle,
 	}

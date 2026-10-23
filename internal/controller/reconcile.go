@@ -634,3 +634,10 @@ func getTopologySpreadConstraints(constraints []corev1.TopologySpreadConstraint,
 	}
 	return updatedConstraints
 }
+
+func getResources(resources *corev1.ResourceRequirements) corev1.ResourceRequirements {
+	if resources != nil {
+		return *resources
+	}
+	return corev1.ResourceRequirements{}
+}

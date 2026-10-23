@@ -504,7 +504,7 @@ type CommonDetails struct {
 	// Name of the ServiceAccount to use to run the Pod
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 	// Resources
-	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+	Resources *corev1.ResourceRequirements `json:"resources,omitempty"`
 	// SecurityContext for the Container
 	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
 	// SecurityContext for the Pod
