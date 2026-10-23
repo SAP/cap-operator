@@ -353,7 +353,7 @@ func newContentDeploymentJob(cav *v1alpha2.CAPApplicationVersion, workload *v1al
 							}, workload.JobDefinition.Env...),
 							EnvFrom:         getEnvFrom(vcapSecretName),
 							VolumeMounts:    workload.JobDefinition.VolumeMounts,
-							Resources:       workload.JobDefinition.Resources,
+							Resources:       getResources(workload.JobDefinition.Resources),
 							SecurityContext: workload.JobDefinition.SecurityContext,
 							Lifecycle:       workload.JobDefinition.Lifecycle,
 						},
@@ -916,7 +916,7 @@ func getContainer(params *DeploymentParameters) []corev1.Container {
 		LivenessProbe:   params.WorkloadDetails.DeploymentDefinition.LivenessProbe,
 		ReadinessProbe:  params.WorkloadDetails.DeploymentDefinition.ReadinessProbe,
 		StartupProbe:    params.WorkloadDetails.DeploymentDefinition.StartupProbe,
-		Resources:       params.WorkloadDetails.DeploymentDefinition.Resources,
+		Resources:       getResources(params.WorkloadDetails.DeploymentDefinition.Resources),
 		SecurityContext: params.WorkloadDetails.DeploymentDefinition.SecurityContext,
 		Lifecycle:       params.WorkloadDetails.DeploymentDefinition.Lifecycle,
 	}
