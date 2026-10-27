@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/MicahParks/jwkset v0.11.3
 	github.com/MicahParks/keyfunc/v3 v3.8.2
-	github.com/cert-manager/cert-manager v1.21.2
+	github.com/cert-manager/cert-manager v1.21.3
 	github.com/gardener/cert-management v0.28.0
 	github.com/gardener/cert-management/pkg/apis v0.28.0
 	github.com/gardener/external-dns-management v0.54.0
@@ -94,8 +94,8 @@ require (
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/term v0.47.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20261019180522-ce908d29299b // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20261019180522-ce908d29299b // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20261026165753-2ffab32bce7e // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20261026165753-2ffab32bce7e // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/component-base v0.37.1 // indirect
