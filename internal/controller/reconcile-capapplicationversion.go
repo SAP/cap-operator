@@ -26,6 +26,7 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -97,7 +98,26 @@ func (c *Controller) updateCAPApplicationVersionStatus(ctx context.Context, cav 
 }
 
 func (c *Controller) updateCAPApplicationVersion(ctx context.Context, cav *v1alpha2.CAPApplicationVersion) error {
-	cavUpdated, err := c.crdClient.SmeV1alpha2().CAPApplicationVersions(cav.Namespace).Update(ctx, cav, metav1.UpdateOptions{})
+	// Preparation only ever mutates metadata (owner references, labels, annotations, finalizers).
+	// We therefore patch metadata only instead of issuing a full-object Update. A full Update would
+	// re-serialize the (immutable) spec, and resource.Quantity fields (x-kubernetes-int-or-string,
+	// e.g. workload resources.requests/limits) do not round-trip byte-identically through the typed
+	// client - an integer quantity like `1` comes back as the string "1". The `self == oldSelf` CEL
+	// rule generated for the immutable spec compares the raw structural representation and would
+	// reject the operator's own reconcile Update because of that drift. Patching metadata keeps the
+	// stored spec untouched, so the spec immutability rule is never evaluated against a re-serialized spec.
+	patch, err := json.Marshal(map[string]any{
+		"metadata": map[string]any{
+			"labels":          cav.Labels,
+			"annotations":     cav.Annotations,
+			"ownerReferences": cav.OwnerReferences,
+			"finalizers":      cav.Finalizers,
+		},
+	})
+	if err != nil {
+		return err
+	}
+	cavUpdated, err := c.crdClient.SmeV1alpha2().CAPApplicationVersions(cav.Namespace).Patch(ctx, cav.Name, types.MergePatchType, patch, metav1.PatchOptions{})
 	// Update reference to the resource
 	if cavUpdated != nil {
 		*cav = *cavUpdated
