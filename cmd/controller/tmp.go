@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"crypto/sha1"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -18,6 +19,7 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog/v2"
 )
@@ -52,6 +54,27 @@ func ownerIdSelector(ownerNamespace, ownerName string) string {
 	}).String()
 }
 
+// appIdLabelMigrationPatch builds a JSON merge patch equivalent to migrateAppIdLabels: it sets the
+// new app identifier label/annotation and removes the deprecated ones (null deletes a key in a merge
+// patch). It is used instead of a full-object Update for CAPApplicationVersion, whose spec is immutable
+// (CEL `self == oldSelf`): a full Update re-serializes the spec, and resource.Quantity fields
+// (x-kubernetes-int-or-string) do not round-trip byte-identically (e.g. integer `1` becomes "1"),
+// which the apiserver would reject. Patching metadata only leaves the stored spec untouched.
+func appIdLabelMigrationPatch(appIdHash, appId string) ([]byte, error) {
+	return json.Marshal(map[string]any{
+		"metadata": map[string]any{
+			"labels": map[string]any{
+				controller.LabelAppIdHash:         appIdHash,
+				LabelBTPApplicationIdentifierHash: nil,
+			},
+			"annotations": map[string]any{
+				controller.AnnotationAppId:       appId,
+				"sme.sap.com/btp-app-identifier": nil,
+			},
+		},
+	})
+}
+
 func migrateCAPApplicationVersions(crdClient versioned.Interface, namespace, caName, appIdHash, appId string) {
 	cavs, err := crdClient.SmeV1alpha2().CAPApplicationVersions(namespace).List(context.TODO(), metav1.ListOptions{
 		LabelSelector: ownerIdSelector(namespace, caName),
@@ -60,10 +83,13 @@ func migrateCAPApplicationVersions(crdClient versioned.Interface, namespace, caN
 		klog.ErrorS(err, "Failed to list CAPApplicationVersions", "capApplication", caName, "namespace", namespace)
 		return
 	}
+	patch, err := appIdLabelMigrationPatch(appIdHash, appId)
+	if err != nil {
+		klog.ErrorS(err, "Failed to build CAPApplicationVersion migration patch", "capApplication", caName, "namespace", namespace)
+		return
+	}
 	for _, cav := range cavs.Items {
-		cavCopy := cav.DeepCopy()
-		migrateAppIdLabels(&cavCopy.ObjectMeta, appIdHash, appId)
-		if _, err := crdClient.SmeV1alpha2().CAPApplicationVersions(cav.Namespace).Update(context.TODO(), cavCopy, metav1.UpdateOptions{}); err != nil {
+		if _, err := crdClient.SmeV1alpha2().CAPApplicationVersions(cav.Namespace).Patch(context.TODO(), cav.Name, types.MergePatchType, patch, metav1.PatchOptions{}); err != nil {
 			klog.ErrorS(err, "Failed to update CAPApplicationVersion", "name", cav.Name, "namespace", namespace)
 		}
 	}

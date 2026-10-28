@@ -217,6 +217,56 @@ func TestCELCAPApplicationVersionSpecImmutability(t *testing.T) {
 	}
 }
 
+// TestCELCAPApplicationVersionResourcesQuantityDrift documents why the operator must patch metadata
+// instead of issuing a full-object Update during reconcile. The workload `resources` quantities are
+// x-kubernetes-int-or-string, so an integer quantity (e.g. cpu: 1) and its string form (cpu: "1") are
+// NOT equal under the spec's `self == oldSelf` immutability rule. A full Update re-serializes the spec
+// via the typed client, where resource.Quantity always marshals to a string, turning a stored integer
+// quantity into a string and tripping this rule. Patching metadata only avoids re-sending the spec.
+func TestCELCAPApplicationVersionResourcesQuantityDrift(t *testing.T) {
+	validator, structural := celValidatorForCRD(t, "sme.sap.com_capapplicationversions.yaml", storageVersion)
+
+	// specWithCPU builds a CAV spec whose CAP workload requests the given cpu quantity value.
+	specWithCPU := func(cpu interface{}) map[string]interface{} {
+		return map[string]interface{}{
+			"spec": map[string]interface{}{
+				"capApplicationInstance": "ca-1",
+				"version":                "1.0.0",
+				"workloads": []interface{}{
+					map[string]interface{}{
+						"name":                "cap-backend",
+						"consumedBTPServices": []interface{}{},
+						"deploymentDefinition": map[string]interface{}{
+							"type": "CAP",
+							"resources": map[string]interface{}{
+								"requests": map[string]interface{}{
+									"cpu": cpu,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name        string
+		obj         map[string]interface{}
+		oldObj      map[string]interface{}
+		wantAllowed bool
+	}{
+		{name: "identical integer quantity is allowed", obj: specWithCPU(int64(1)), oldObj: specWithCPU(int64(1)), wantAllowed: true},
+		{name: "identical string quantity is allowed", obj: specWithCPU("1"), oldObj: specWithCPU("1"), wantAllowed: true},
+		{name: "integer quantity re-serialized as string is rejected", obj: specWithCPU("1"), oldObj: specWithCPU(int64(1)), wantAllowed: false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			expectValid(t, validator, structural, test.obj, test.oldObj, test.wantAllowed)
+		})
+	}
+}
+
 func TestCELCAPTenantCapApplicationInstanceImmutability(t *testing.T) {
 	validator, structural := celValidatorForCRD(t, "sme.sap.com_captenants.yaml", storageVersion)
 
