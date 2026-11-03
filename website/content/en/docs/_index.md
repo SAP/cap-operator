@@ -42,8 +42,8 @@ Whether you're building a full SaaS platform with hundreds of tenants or a lean 
 
 ---
 
-The following diagram shows the major automation steps handled by CAP Operator during application deployment:
+The following interactive walkthrough shows the major automation steps handled by CAP Operator during application deployment — step through them, or press **Play** to watch the sequence:
 
-![workflow](/cap-operator/img/workflow.svg)
+{{< workflow-slideshow >}}
 
 Explore the following sections to learn more.
