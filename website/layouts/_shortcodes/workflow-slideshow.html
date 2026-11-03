@@ -1,0 +1,698 @@
+{{/*
+  workflow-slideshow — a self-contained, theme-aware slide deck that explains
+  the major automation steps CAP Operator performs during a deployment.
+
+  It pairs a persistent "big picture" architecture map (inline SVG, on-brand)
+  with a per-step detail panel. Stepping through the deck highlights the
+  matching node on the map, so the overall view and the individual steps are
+  always shown together.
+
+  Usage (no parameters):  {{< workflow-slideshow >}}
+*/}}
+<div class="cap-wf" data-cap-wf>
+  <div class="cap-wf__head">
+    <div class="cap-wf__heading">
+      <span class="cap-wf__kicker">CAP Operator</span>
+      <span class="cap-wf__htitle">Deployment automation, step by step</span>
+    </div>
+    <div class="cap-wf__tools">
+      <button type="button" class="cap-wf__btn" data-wf-overview title="Show the big picture">
+        <i class="fas fa-sitemap"></i><span>Overview</span>
+      </button>
+      <button type="button" class="cap-wf__btn cap-wf__btn--play" data-wf-play title="Play the sequence" aria-pressed="false">
+        <i class="fas fa-play"></i><span data-wf-playlabel>Play</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="cap-wf__body">
+    <!-- ============ Persistent architecture map (the overall picture) ============ -->
+    <div class="cap-wf__map">
+      <svg viewBox="0 0 560 412" role="img" aria-label="CAP Operator custom resources and the seven automation steps" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <marker id="capwfArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 Z" fill="context-stroke"/>
+          </marker>
+        </defs>
+
+        <!-- Regions -->
+        <rect class="wf-region" x="8" y="8" width="372" height="396" rx="10"/>
+        <text class="wf-region-label" x="20" y="26">Kubernetes Cluster</text>
+        <rect class="wf-region" x="392" y="8" width="160" height="396" rx="10"/>
+        <text class="wf-region-label" x="404" y="26">SAP BTP</text>
+
+        <!-- CAPApplication — the root custom resource reconciled by CAP Operator -->
+        <text class="wf-caption" x="20" y="45">CAP Operator custom resources</text>
+        <rect class="wf-cr wf-cr--core" x="20" y="52" width="150" height="24" rx="12"/>
+        <text class="wf-cr-text" x="95" y="68">CAPApplication</text>
+
+        <!-- Step 7 — Scheduled Routines: operator-level, continuous, sits apart -->
+        <g class="wf-node" data-step="7" tabindex="0" role="button" aria-label="Step 7: Scheduled Routines">
+          <rect class="wf-node-box" x="200" y="50" width="168" height="30" rx="8"/>
+          <circle class="wf-badge" cx="215" cy="65" r="10"/>
+          <text class="wf-badge-num" x="215" y="66">7</text>
+          <text class="wf-node-title" x="292" y="63">Scheduled Routines</text>
+          <text class="wf-node-sub" x="292" y="75">rotation · cleanup</text>
+        </g>
+
+        <!-- Ownership spine: CAPApplication owns the resource groups -->
+        <g class="wf-own" fill="none">
+          <path d="M95,76 L95,80 L14,80 L14,360"/>
+          <path d="M14,124 L20,124"/>
+          <path d="M14,206 L20,206"/>
+          <path d="M14,323 L20,323"/>
+        </g>
+
+        <!-- Group: CAPApplicationVersion (contains steps 3 + 4) -->
+        <rect class="wf-grp wf-grp--ver" data-steps="3 4" x="20" y="86" width="348" height="76" rx="10"/>
+        <text class="wf-grp-label wf-grp-label--ver" x="30" y="100">CAPApplicationVersion</text>
+
+        <!-- Group: CAPTenant (step 5 only — subscription CRs moved outside) -->
+        <rect class="wf-grp wf-grp--ten" data-steps="5" x="20" y="168" width="178" height="76" rx="10"/>
+        <text class="wf-grp-label wf-grp-label--ten" x="30" y="182">CAPTenant</text>
+
+        <!-- Subscription CRs — standalone outside CAPTenant, linked by flow arrow -->
+        <rect class="wf-cr wf-cr--ref" x="208" y="184" width="158" height="22" rx="11"/>
+        <text class="wf-cr-text" x="287" y="199" style="font-size:9px">SubscriptionProvider</text>
+        <rect class="wf-cr wf-cr--core" x="208" y="211" width="158" height="22" rx="11"/>
+        <text class="wf-cr-text" x="287" y="226">Subscriptions</text>
+
+        <!-- Group: Domain / ClusterDomain (contains steps 1, 2 + 6) -->
+        <rect class="wf-grp wf-grp--dom" data-steps="1 2 6" x="20" y="250" width="348" height="146" rx="10"/>
+        <text class="wf-grp-label wf-grp-label--dom" x="30" y="264">Domain / ClusterDomain</text>
+        <text class="wf-sublabel" x="36" y="281">Istio</text>
+        <text class="wf-sublabel" x="206" y="281">Gardener</text>
+
+        <!-- BTP targets -->
+        <rect class="wf-btp" x="404" y="88" width="136" height="110" rx="8"/>
+        <text class="wf-btp-title" x="472" y="108">Subaccount</text>
+        <text class="wf-btp-sub" x="472" y="122">Services · Destinations</text>
+        <rect class="wf-btp-pill" x="412" y="130" width="116" height="16" rx="8"/>
+        <text class="wf-btp-pill-text" x="470" y="142">HTML5 App Repo</text>
+        <rect class="wf-btp-pill" x="412" y="150" width="116" height="16" rx="8"/>
+        <text class="wf-btp-pill-text" x="470" y="162">XSUAA / IAS</text>
+        <rect class="wf-btp-pill" x="412" y="170" width="116" height="16" rx="8"/>
+        <text class="wf-btp-pill-text" x="470" y="182">SaaS Provisioning</text>
+
+        <rect class="wf-btp" x="404" y="250" width="136" height="90" rx="8"/>
+        <text class="wf-btp-title" x="472" y="264">SAP HANA Cloud</text>
+        <path class="wf-db-body" d="M452,271 V287 Q452,291 468,291 Q484,291 484,287 V271"/>
+        <ellipse class="wf-db-cap" cx="468" cy="271" rx="16" ry="4"/>
+        <ellipse class="wf-db-rim" cx="468" cy="271" rx="16" ry="4"/>
+        <text class="wf-btp-sub" x="468" y="302">Database</text>
+        <text class="wf-btp-sub" x="472" y="317">HDI containers</text>
+
+        <!-- Subscription flow: SubscriptionProvider→Subscriptions; CAPTenant→Subscriptions (always on, subtle) -->
+        <g class="wf-sub-flow" fill="none">
+          <path d="M287,206 L287,211" marker-end="url(#capwfArrow)"/>
+          <path d="M198,222 L208,222" marker-end="url(#capwfArrow)"/>
+        </g>
+
+        <!-- Highlighted per-step flows -->
+        <g class="wf-flows" fill="none">
+          <path class="wf-flow" data-for="1" d="M10,307 L30,307" marker-end="url(#capwfArrow)"/>
+          <path class="wf-flow" data-for="2" d="M198,307 L188,307" marker-end="url(#capwfArrow)"/>
+          <path class="wf-flow" data-for="3" d="M190,128 C300,122 360,118 404,116" marker-end="url(#capwfArrow)"/>
+          <path class="wf-flow" data-for="4" d="M358,131 C384,180 392,250 404,292" marker-end="url(#capwfArrow)"/>
+          <path class="wf-flow" data-for="6" d="M109,328 L109,338" marker-end="url(#capwfArrow)"/>
+        </g>
+
+        <!-- Step nodes (clickable; drawn on top) -->
+        <g class="wf-node" data-step="3" tabindex="0" role="button" aria-label="Step 3: Content Deployer">
+          <rect class="wf-node-box" x="30" y="108" width="160" height="46" rx="8"/>
+          <circle class="wf-badge" cx="46" cy="124" r="11"/>
+          <text class="wf-badge-num" x="46" y="125">3</text>
+          <text class="wf-node-title" x="113" y="131">Content Deployer</text>
+          <text class="wf-node-sub" x="113" y="145">Jobs → SAP BTP</text>
+        </g>
+        <g class="wf-node" data-step="4" tabindex="0" role="button" aria-label="Step 4: Workloads">
+          <rect class="wf-node-box" x="198" y="108" width="160" height="46" rx="8"/>
+          <circle class="wf-badge" cx="214" cy="124" r="11"/>
+          <text class="wf-badge-num" x="214" y="125">4</text>
+          <text class="wf-node-title" x="282" y="131">Workloads</text>
+          <text class="wf-node-sub" x="282" y="145">Approuter · CAP Server</text>
+        </g>
+        <g class="wf-node" data-step="5" tabindex="0" role="button" aria-label="Step 5: Tenant Operation">
+          <rect class="wf-node-box" x="30" y="190" width="158" height="46" rx="8"/>
+          <circle class="wf-badge" cx="46" cy="206" r="11"/>
+          <text class="wf-badge-num" x="46" y="207">5</text>
+          <text class="wf-node-title" x="109" y="213">Tenant Operation</text>
+          <text class="wf-node-sub" x="109" y="227">provision · upgrade</text>
+        </g>
+        <g class="wf-node" data-step="1" tabindex="0" role="button" aria-label="Step 1: Istio Gateway">
+          <rect class="wf-node-box" x="30" y="286" width="158" height="42" rx="8"/>
+          <circle class="wf-badge" cx="46" cy="301" r="11"/>
+          <text class="wf-badge-num" x="46" y="302">1</text>
+          <text class="wf-node-title" x="109" y="308">Istio Gateway</text>
+          <text class="wf-node-sub" x="109" y="321">ingress entry</text>
+        </g>
+        <g class="wf-node" data-step="6" tabindex="0" role="button" aria-label="Step 6: Virtual Service">
+          <rect class="wf-node-box" x="30" y="338" width="158" height="42" rx="8"/>
+          <circle class="wf-badge" cx="46" cy="353" r="11"/>
+          <text class="wf-badge-num" x="46" y="354">6</text>
+          <text class="wf-node-title" x="109" y="360">Virtual Service</text>
+          <text class="wf-node-sub" x="109" y="373">routes → Approuter</text>
+        </g>
+        <g class="wf-node" data-step="2" tabindex="0" role="button" aria-label="Step 2: DNS and TLS">
+          <rect class="wf-node-box" x="198" y="286" width="160" height="94" rx="8"/>
+          <circle class="wf-badge" cx="214" cy="301" r="11"/>
+          <text class="wf-badge-num" x="214" y="302">2</text>
+          <text class="wf-node-title" x="282" y="330">DNS &amp; TLS</text>
+          <text class="wf-node-sub" x="282" y="346">records + certificates</text>
+          <text class="wf-node-sub" x="282" y="360">(Gardener)</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- ============ Step detail panel ============ -->
+    <div class="cap-wf__panel">
+      <!-- Overview (step 0) -->
+      <article class="cap-wf__slide is-active" data-step="0">
+        <span class="cap-wf__tag cap-wf__tag--overview">The big picture</span>
+        <h3 class="cap-wf__slide-title">From custom resources to a running app</h3>
+        <p class="cap-wf__slide-text">
+          CAP Operator turns a handful of Kubernetes custom resources into a fully wired,
+          running SAP CAP application — networking, content, workloads and the tenant
+          lifecycle included. Here is what it automates on every deployment.
+        </p>
+        <p class="cap-wf__hint"><i class="fas fa-hand-pointer"></i> Click any step on the map or the navigation below — or press <b>Play</b> to tour the sequence.</p>
+      </article>
+
+      <!-- Step 1 -->
+      <article class="cap-wf__slide" data-step="1">
+        <div class="cap-wf__slide-head">
+          <span class="cap-wf__num">1</span>
+          <span class="cap-wf__tag" data-cat="net"><i class="fas fa-network-wired"></i> Networking</span>
+        </div>
+        <h3 class="cap-wf__slide-title"><i class="fas fa-door-open cap-wf__ic"></i> Istio Gateway</h3>
+        <p class="cap-wf__slide-text">
+          CAP Operator creates the <b>Istio Gateway</b> that serves as the cluster's
+          ingress entry point — the single front door through which all incoming
+          traffic reaches the application.
+        </p>
+      </article>
+
+      <!-- Step 2 -->
+      <article class="cap-wf__slide" data-step="2">
+        <div class="cap-wf__slide-head">
+          <span class="cap-wf__num">2</span>
+          <span class="cap-wf__tag" data-cat="net"><i class="fas fa-network-wired"></i> Networking</span>
+        </div>
+        <h3 class="cap-wf__slide-title"><i class="fas fa-lock cap-wf__ic"></i> DNS &amp; TLS provisioned</h3>
+        <p class="cap-wf__slide-text">
+          Wildcard and subdomain <b>DNS records</b> plus matching <b>TLS certificates</b>
+          are requested through Gardener, so every tenant and service URL is both
+          reachable and secure — including customer-specific domains.
+        </p>
+      </article>
+
+      <!-- Step 3 -->
+      <article class="cap-wf__slide" data-step="3">
+        <div class="cap-wf__slide-head">
+          <span class="cap-wf__num">3</span>
+          <span class="cap-wf__tag" data-cat="content"><i class="fas fa-cloud-arrow-up"></i> Content</span>
+        </div>
+        <h3 class="cap-wf__slide-title"><i class="fas fa-cloud-arrow-up cap-wf__ic"></i> Content Deployment Jobs</h3>
+        <p class="cap-wf__slide-text">
+          Running first as ordered Kubernetes Jobs, these push <b>Fiori UIs</b>,
+          <b>destinations</b> and <b>authentication config</b> into SAP BTP — so the
+          app's content is in place before the workloads start serving traffic.
+        </p>
+      </article>
+
+      <!-- Step 4 -->
+      <article class="cap-wf__slide" data-step="4">
+        <div class="cap-wf__slide-head">
+          <span class="cap-wf__num">4</span>
+          <span class="cap-wf__tag" data-cat="work"><i class="fas fa-server"></i> Workloads</span>
+        </div>
+        <h3 class="cap-wf__slide-title"><i class="fas fa-rocket cap-wf__ic"></i> Approuter, CAP Server &amp; more</h3>
+        <p class="cap-wf__slide-text">
+          The application <b>Deployments</b> are rolled out together, each wired with the
+          credentials and per-workload configuration it needs to talk to SAP BTP services
+          and SAP HANA Cloud.
+        </p>
+      </article>
+
+      <!-- Step 5 -->
+      <article class="cap-wf__slide" data-step="5">
+        <div class="cap-wf__slide-head">
+          <span class="cap-wf__num">5</span>
+          <span class="cap-wf__tag" data-cat="tenant"><i class="fas fa-users-gear"></i> Tenancy</span>
+        </div>
+        <h3 class="cap-wf__slide-title"><i class="fas fa-users-gear cap-wf__ic"></i> Tenant Operation Job</h3>
+        <p class="cap-wf__slide-text">
+          A Kubernetes Job handles the full tenant lifecycle — <b>provisioning</b>,
+          <b>upgrade</b> or <b>deprovisioning</b> — driven asynchronously by the
+          SAP SaaS Provisioning service.
+        </p>
+      </article>
+
+      <!-- Step 6 -->
+      <article class="cap-wf__slide" data-step="6">
+        <div class="cap-wf__slide-head">
+          <span class="cap-wf__num">6</span>
+          <span class="cap-wf__tag" data-cat="net"><i class="fas fa-network-wired"></i> Networking</span>
+        </div>
+        <h3 class="cap-wf__slide-title"><i class="fas fa-route cap-wf__ic"></i> Virtual Service</h3>
+        <p class="cap-wf__slide-text">
+          Created <b>last</b>, once tenants are ready: the Virtual Service routes Gateway
+          traffic to the Approuter, exposing the application's tenant and service routes
+          to the outside world.
+        </p>
+      </article>
+
+      <!-- Step 7 -->
+      <article class="cap-wf__slide" data-step="7">
+        <div class="cap-wf__slide-head">
+          <span class="cap-wf__num">7</span>
+          <span class="cap-wf__tag" data-cat="ops"><i class="fas fa-arrows-rotate"></i> Operations</span>
+        </div>
+        <h3 class="cap-wf__slide-title"><i class="fas fa-arrows-rotate cap-wf__ic"></i> Scheduled Routines</h3>
+        <p class="cap-wf__slide-text">
+          Running continuously beyond the initial rollout: rolling restarts on
+          <b>credential rotation</b>, and Prometheus-driven <b>cleanup</b> that retires
+          unused application versions to keep the cluster lean.
+        </p>
+      </article>
+    </div>
+  </div>
+
+  <!-- ============ Footer: navigation ============ -->
+  <div class="cap-wf__foot">
+    <button type="button" class="cap-wf__nav" data-wf-prev aria-label="Previous step">
+      <i class="fas fa-chevron-left"></i>
+    </button>
+
+    <div class="cap-wf__dots" role="tablist" aria-label="Deployment steps">
+      <button type="button" class="cap-wf__dot cap-wf__dot--home" data-step="0" aria-label="Overview"><i class="fas fa-house"></i></button>
+      <button type="button" class="cap-wf__dot" data-step="1" aria-label="Step 1">1</button>
+      <button type="button" class="cap-wf__dot" data-step="2" aria-label="Step 2">2</button>
+      <button type="button" class="cap-wf__dot" data-step="3" aria-label="Step 3">3</button>
+      <button type="button" class="cap-wf__dot" data-step="4" aria-label="Step 4">4</button>
+      <button type="button" class="cap-wf__dot" data-step="5" aria-label="Step 5">5</button>
+      <button type="button" class="cap-wf__dot" data-step="6" aria-label="Step 6">6</button>
+      <button type="button" class="cap-wf__dot" data-step="7" aria-label="Step 7">7</button>
+    </div>
+
+    <button type="button" class="cap-wf__nav" data-wf-next aria-label="Next step">
+      <i class="fas fa-chevron-right"></i>
+    </button>
+  </div>
+  <div class="cap-wf__progress"><span data-wf-bar></span></div>
+</div>
+
+<style>
+  .cap-wf {
+    --wf-ink: #0A2540;
+    --wf-muted: #4A6480;
+    --wf-line: #d6deea;
+    --wf-surface: #ffffff;
+    --wf-region: #f5f8fb;
+    --wf-region-line: #b9c9d9;
+    --wf-node: #eef5fc;
+    --wf-node-line: #7ca2c0;
+    --wf-badge: #d9eaf7;
+    --wf-badge-line: #5b90b8;
+    --wf-accent: #1f8acb;
+    --wf-hi: #f0ab00;
+    --wf-hi-soft: #fff3d6;
+    --wf-operator: #eaf3fb;
+    --wf-btp: #e8f6ee;
+    --wf-btp-line: #68b584;
+    --wf-db-fill: #8ecfb2;
+    --wf-db-cap: #6ab99a;
+    --wf-ver-line: #7fb0d6; --wf-ver-fill: rgba(234, 243, 251, 0.55); --wf-ver-text: #2a6a93;
+    --wf-ten-line: #6cc0a8; --wf-ten-fill: rgba(224, 244, 238, 0.55); --wf-ten-text: #1f6f5c;
+    --wf-dom-line: #b48fdc; --wf-dom-fill: rgba(243, 236, 251, 0.6); --wf-dom-text: #5e3a8c;
+    --wf-cr-fill: #1f8acb; --wf-cr-line: #0a5a93;
+    --wf-cr-ref-fill: #8b5fbf; --wf-cr-ref-line: #4e2e7a;
+
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: var(--wf-ink);
+    background: var(--wf-surface);
+    border: 1px solid var(--wf-line);
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(10, 37, 64, 0.08);
+    overflow: hidden;
+    margin: 1.5rem 0;
+  }
+  .cap-wf * { box-sizing: border-box; }
+
+  /* ---------- Header ---------- */
+  .cap-wf__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1.1rem;
+    background: linear-gradient(135deg, #0a2540 0%, #15568a 100%);
+    color: #fff;
+  }
+  .cap-wf__heading { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+  .cap-wf__kicker {
+    font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase;
+    opacity: 0.8; font-weight: 600;
+  }
+  .cap-wf__htitle { font-size: 1.02rem; font-weight: 700; }
+  .cap-wf__tools { display: flex; gap: 0.5rem; flex-shrink: 0; }
+  .cap-wf__btn {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff; cursor: pointer;
+    font-size: 0.8rem; font-weight: 600;
+    padding: 0.4rem 0.7rem; border-radius: 999px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .cap-wf__btn:hover { background: rgba(255, 255, 255, 0.22); }
+  .cap-wf__btn--play[aria-pressed="true"] {
+    background: var(--wf-hi); border-color: var(--wf-hi); color: #3a2c00;
+  }
+
+  /* ---------- Body ---------- */
+  .cap-wf__body {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 0;
+  }
+  .cap-wf__map {
+    padding: 1.1rem;
+    background: var(--wf-surface);
+    border-right: 1px solid var(--wf-line);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cap-wf__map svg { width: 100%; height: auto; max-height: 340px; }
+
+  /* SVG map styling */
+  .cap-wf .wf-region { fill: var(--wf-region); stroke: var(--wf-region-line); stroke-width: 1.3; }
+  .cap-wf .wf-region-label { fill: var(--wf-muted); font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
+  .cap-wf .wf-caption { fill: var(--wf-muted); font-size: 9px; font-weight: 600; letter-spacing: 0.04em; }
+  .cap-wf .wf-sublabel { fill: var(--wf-muted); font-size: 9.5px; font-weight: 600; }
+
+  /* Custom-resource pills */
+  .cap-wf .wf-cr { stroke-width: 1.2; }
+  .cap-wf .wf-cr--core { fill: var(--wf-cr-fill); stroke: var(--wf-cr-line); }
+  .cap-wf .wf-cr--ref { fill: var(--wf-cr-ref-fill); stroke: var(--wf-cr-ref-line); }
+  .cap-wf .wf-cr-text { fill: #fff; font-size: 10px; font-weight: 600; text-anchor: middle; }
+
+  /* Resource group boxes (Version / Tenant / Domain) */
+  .cap-wf .wf-grp { stroke-width: 1.3; stroke-dasharray: 5 4; transition: stroke-width 0.2s, stroke 0.2s; }
+  .cap-wf .wf-grp--ver { fill: var(--wf-ver-fill); stroke: var(--wf-ver-line); }
+  .cap-wf .wf-grp--ten { fill: var(--wf-ten-fill); stroke: var(--wf-ten-line); }
+  .cap-wf .wf-grp--dom { fill: var(--wf-dom-fill); stroke: var(--wf-dom-line); }
+  .cap-wf .wf-grp-label { font-size: 10px; font-weight: 700; letter-spacing: 0.02em; }
+  .cap-wf .wf-grp-label--ver { fill: var(--wf-ver-text); }
+  .cap-wf .wf-grp-label--ten { fill: var(--wf-ten-text); }
+  .cap-wf .wf-grp-label--dom { fill: var(--wf-dom-text); }
+  .cap-wf .wf-grp.is-hot { stroke-width: 2.4; stroke-dasharray: none; }
+  .cap-wf .wf-grp--ver.is-hot { stroke: var(--wf-ver-text); }
+  .cap-wf .wf-grp--ten.is-hot { stroke: var(--wf-ten-text); }
+  .cap-wf .wf-grp--dom.is-hot { stroke: var(--wf-dom-text); }
+
+  /* BTP targets */
+  .cap-wf .wf-btp { fill: var(--wf-btp); stroke: var(--wf-btp-line); stroke-width: 1.2; }
+  .cap-wf .wf-btp-title { fill: var(--wf-ink); font-size: 11px; font-weight: 700; text-anchor: middle; }
+  .cap-wf .wf-btp-sub { fill: var(--wf-muted); font-size: 9px; text-anchor: middle; }
+  .cap-wf .wf-btp-pill { fill: rgba(255,255,255,0.45); stroke: var(--wf-btp-line); stroke-width: 0.8; }
+  .cap-wf .wf-btp-pill-text { fill: var(--wf-muted); font-size: 8px; font-weight: 600; text-anchor: middle; }
+  .cap-wf .wf-db-body { fill: var(--wf-db-fill); stroke: var(--wf-btp-line); stroke-width: 1; }
+  .cap-wf .wf-db-cap  { fill: var(--wf-db-cap);  stroke: var(--wf-btp-line); stroke-width: 1; }
+  .cap-wf .wf-db-rim  { fill: none; stroke: var(--wf-btp-line); stroke-width: 1; }
+
+  /* Connectors */
+  .cap-wf .wf-own { stroke: var(--wf-cr-line); stroke-width: 1; opacity: 0.3; }
+  .cap-wf .wf-sub-flow { stroke: var(--wf-cr-ref-line); stroke-width: 1.2; stroke-dasharray: 3 2; opacity: 0.55; }
+  .cap-wf .wf-flow { stroke: var(--wf-node-line); stroke-width: 1.4; stroke-dasharray: 4 3; opacity: 0.3; transition: opacity 0.25s, stroke 0.25s, stroke-width 0.25s; }
+  .cap-wf .wf-flow.is-hot { stroke: var(--wf-hi); opacity: 1; stroke-width: 2.2; }
+
+  /* Step nodes */
+  .cap-wf .wf-node { cursor: pointer; }
+  .cap-wf .wf-node-box {
+    fill: var(--wf-node); stroke: var(--wf-node-line); stroke-width: 1.3;
+    transition: fill 0.2s, stroke 0.2s, stroke-width 0.2s;
+  }
+  .cap-wf .wf-node-title { fill: var(--wf-ink); font-size: 11px; font-weight: 600; text-anchor: middle; }
+  .cap-wf .wf-node-sub { fill: var(--wf-muted); font-size: 8.5px; text-anchor: middle; }
+  .cap-wf .wf-badge { fill: var(--wf-badge); stroke: var(--wf-badge-line); stroke-width: 1.3; transition: fill 0.2s, stroke 0.2s; }
+  .cap-wf .wf-badge-num { fill: var(--wf-ink); font-size: 10px; font-weight: 700; text-anchor: middle; }
+  .cap-wf .wf-node:hover .wf-node-box { stroke: var(--wf-accent); stroke-width: 1.8; }
+  .cap-wf .wf-node:focus { outline: none; }
+  .cap-wf .wf-node:focus-visible .wf-node-box { stroke: var(--wf-accent); stroke-width: 2; }
+
+  .cap-wf .wf-node.is-active .wf-node-box { fill: var(--wf-hi-soft); stroke: var(--wf-hi); stroke-width: 2.6; }
+  .cap-wf .wf-node.is-active .wf-badge { fill: var(--wf-hi); stroke: #8a6100; }
+  /* Active node box is always a light cream fill — force dark text so it
+     stays legible in dark mode (where --wf-ink / --wf-muted are light). */
+  .cap-wf .wf-node.is-active .wf-node-title { fill: #0a2540; }
+  .cap-wf .wf-node.is-active .wf-node-sub { fill: #6b5a2e; }
+  .cap-wf .wf-node.is-active .wf-badge-num { fill: #3a2c00; }
+  .cap-wf .wf-node.is-dim { opacity: 0.45; }
+
+  /* ---------- Panel ---------- */
+  .cap-wf__panel { position: relative; padding: 1.4rem 1.5rem; min-height: 300px; }
+  .cap-wf__slide {
+    position: absolute; inset: 1.4rem 1.5rem auto 1.5rem;
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none;
+  }
+  .cap-wf__slide.is-active { opacity: 1; transform: none; pointer-events: auto; position: relative; inset: auto; }
+
+  .cap-wf__slide-head { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.9rem; }
+  .cap-wf__num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 46px; height: 46px; border-radius: 12px;
+    background: var(--wf-hi); color: #3a2c00;
+    font-size: 1.5rem; font-weight: 800; flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(240, 171, 0, 0.3);
+  }
+  .cap-wf__tag {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 0.28rem 0.6rem; border-radius: 999px;
+    background: var(--wf-node); color: var(--wf-accent);
+    border: 1px solid var(--wf-node-line);
+  }
+  .cap-wf__tag--overview { background: var(--wf-hi-soft); color: #8a6100; border-color: var(--wf-hi); }
+  .cap-wf__slide-title { font-size: 1.3rem; font-weight: 700; margin: 0 0 0.6rem; color: var(--wf-ink); line-height: 1.25; }
+  .cap-wf__ic { color: var(--wf-accent); margin-right: 0.3rem; }
+  .cap-wf__slide-text { font-size: 0.97rem; line-height: 1.6; color: var(--wf-muted); margin: 0; }
+  .cap-wf__slide-text b { color: var(--wf-ink); font-weight: 600; }
+
+  .cap-wf__chips { list-style: none; display: flex; flex-wrap: wrap; gap: 0.45rem; padding: 0; margin: 1.1rem 0 0.9rem; }
+  .cap-wf__chip {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-size: 0.82rem; font-weight: 600; cursor: pointer;
+    padding: 0.3rem 0.6rem; border-radius: 999px;
+    background: var(--wf-node); border: 1px solid var(--wf-node-line);
+    color: var(--wf-ink); transition: background 0.15s, border-color 0.15s, transform 0.1s;
+  }
+  .cap-wf__chip b {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--wf-badge); color: var(--wf-ink); font-size: 0.72rem;
+  }
+  .cap-wf__chip:hover { border-color: var(--wf-hi); background: var(--wf-hi-soft); transform: translateY(-1px); }
+  .cap-wf__hint { font-size: 0.85rem; color: var(--wf-muted); margin: 0.4rem 0 0; }
+  .cap-wf__hint i { color: var(--wf-accent); margin-right: 0.3rem; }
+
+  /* ---------- Footer ---------- */
+  .cap-wf__foot {
+    display: flex; align-items: center; justify-content: center; gap: 0.6rem;
+    padding: 0.8rem 1.1rem;
+    border-top: 1px solid var(--wf-line);
+    background: var(--wf-region);
+  }
+  .cap-wf__nav {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid var(--wf-node-line); background: var(--wf-surface);
+    color: var(--wf-accent); cursor: pointer; font-size: 0.9rem;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    flex-shrink: 0;
+  }
+  .cap-wf__nav:hover { background: var(--wf-accent); color: #fff; border-color: var(--wf-accent); }
+  .cap-wf__dots { display: flex; flex-wrap: wrap; gap: 0.35rem; justify-content: center; }
+  .cap-wf__dot {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 28px; height: 28px; padding: 0 0.3rem; border-radius: 8px;
+    border: 1px solid var(--wf-node-line); background: var(--wf-surface);
+    color: var(--wf-muted); font-size: 0.8rem; font-weight: 700; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .cap-wf__dot:hover { border-color: var(--wf-accent); color: var(--wf-accent); }
+  .cap-wf__dot.is-active { background: var(--wf-hi); border-color: var(--wf-hi); color: #3a2c00; }
+  .cap-wf__dot--home { color: var(--wf-accent); }
+
+  .cap-wf__progress { height: 4px; background: var(--wf-line); }
+  .cap-wf__progress span {
+    display: block; height: 100%; width: 0;
+    background: linear-gradient(90deg, var(--wf-accent), var(--wf-hi));
+    transition: width 0.35s ease;
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 860px) {
+    .cap-wf__body { grid-template-columns: 1fr; }
+    .cap-wf__map { border-right: none; border-bottom: 1px solid var(--wf-line); }
+    .cap-wf__map svg { max-height: 300px; }
+    .cap-wf__panel { min-height: 240px; }
+  }
+  @media (max-width: 480px) {
+    .cap-wf__htitle { font-size: 0.9rem; }
+    .cap-wf__btn span { display: none; }
+    .cap-wf__slide-title { font-size: 1.1rem; }
+  }
+
+  /* ---------- Dark mode (Docsy uses data-bs-theme) ---------- */
+  :root[data-bs-theme="dark"] .cap-wf {
+    --wf-ink: #e8eef6;
+    --wf-muted: #9fb2c8;
+    --wf-line: #2a3b52;
+    --wf-surface: #121c2b;
+    --wf-region: #0e1725;
+    --wf-region-line: #33465f;
+    --wf-node: #1b2a3f;
+    --wf-node-line: #3f5876;
+    --wf-badge: #24395a;
+    --wf-badge-line: #4f78a8;
+    --wf-accent: #4db6f0;
+    --wf-operator: #152339;
+    --wf-btp: #14271d;
+    --wf-btp-line: #3f7a57;
+    --wf-db-fill: #1d4a33;
+    --wf-db-cap: #255e40;
+    --wf-ver-line: #3f6f93; --wf-ver-fill: rgba(21, 35, 57, 0.5); --wf-ver-text: #8fc2e6;
+    --wf-ten-line: #3f7a68; --wf-ten-fill: rgba(20, 39, 33, 0.5); --wf-ten-text: #7fd8c0;
+    --wf-dom-line: #6f4f96; --wf-dom-fill: rgba(32, 22, 46, 0.55); --wf-dom-text: #c3a3e6;
+    --wf-cr-fill: #2a7fb8; --wf-cr-line: #1a5a8a;
+    --wf-cr-ref-fill: #7a52ac; --wf-cr-ref-line: #5a3a7a;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  }
+  :root[data-bs-theme="dark"] .cap-wf .wf-node.is-active .wf-badge { stroke: #c9960f; }
+  :root[data-bs-theme="dark"] .cap-wf .wf-btp-pill { fill: rgba(255,255,255,0.06); }
+  :root[data-bs-theme="dark"] .cap-wf__num { color: #2a2000; }
+  :root[data-bs-theme="dark"] .cap-wf__tag--overview { color: #f0ab00; }
+</style>
+
+<script>
+  (function () {
+    function initDeck(root) {
+      if (root.dataset.wfReady) return;
+      root.dataset.wfReady = "1";
+
+      var LAST = 7;
+      var current = 0;
+      var timer = null;
+      var playing = false;
+
+      var slides = root.querySelectorAll(".cap-wf__slide");
+      var dots = root.querySelectorAll(".cap-wf__dot");
+      var nodes = root.querySelectorAll(".wf-node");
+      var flows = root.querySelectorAll(".wf-flow");
+      var groups = root.querySelectorAll(".wf-grp");
+      var bar = root.querySelector("[data-wf-bar]");
+      var playBtn = root.querySelector("[data-wf-play]");
+      var playLabel = root.querySelector("[data-wf-playlabel]");
+
+      function render() {
+        slides.forEach(function (s) {
+          s.classList.toggle("is-active", +s.dataset.step === current);
+        });
+        dots.forEach(function (d) {
+          d.classList.toggle("is-active", +d.dataset.step === current);
+        });
+        nodes.forEach(function (n) {
+          var isActive = +n.dataset.step === current;
+          n.classList.toggle("is-active", isActive);
+          n.classList.toggle("is-dim", current !== 0 && !isActive);
+        });
+        flows.forEach(function (f) {
+          f.classList.toggle("is-hot", +f.dataset.for === current);
+        });
+        groups.forEach(function (g) {
+          var steps = (g.dataset.steps || "").split(" ");
+          g.classList.toggle("is-hot", current !== 0 && steps.includes(String(current)));
+        });
+        var pct = current === 0 ? 0 : (current / LAST) * 100;
+        if (bar) bar.style.width = pct + "%";
+      }
+
+      function go(step) {
+        if (step < 0) step = LAST;
+        if (step > LAST) step = 0;
+        current = step;
+        render();
+      }
+
+      function stopPlay() {
+        playing = false;
+        if (timer) { clearInterval(timer); timer = null; }
+        if (playBtn) playBtn.setAttribute("aria-pressed", "false");
+        if (playBtn) playBtn.querySelector("i").className = "fas fa-play";
+        if (playLabel) playLabel.textContent = "Play";
+      }
+
+      function startPlay() {
+        playing = true;
+        if (playBtn) playBtn.setAttribute("aria-pressed", "true");
+        if (playBtn) playBtn.querySelector("i").className = "fas fa-pause";
+        if (playLabel) playLabel.textContent = "Pause";
+        if (current === 0 || current === LAST) go(1); else go(current + 1);
+        timer = setInterval(function () {
+          current = current >= LAST ? 1 : current + 1;
+          render();
+        }, 3800);
+      }
+
+      // --- wiring ---
+      root.querySelector("[data-wf-prev]").addEventListener("click", function () { stopPlay(); go(current - 1); });
+      root.querySelector("[data-wf-next]").addEventListener("click", function () { stopPlay(); go(current + 1); });
+      root.querySelector("[data-wf-overview]").addEventListener("click", function () { stopPlay(); go(0); });
+      playBtn.addEventListener("click", function () { playing ? stopPlay() : startPlay(); });
+
+      dots.forEach(function (d) {
+        d.addEventListener("click", function () { stopPlay(); go(+d.dataset.step); });
+      });
+      nodes.forEach(function (n) {
+        n.addEventListener("click", function () { stopPlay(); go(+n.dataset.step); });
+        n.addEventListener("keydown", function (e) {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); stopPlay(); go(+n.dataset.step); }
+        });
+      });
+      root.querySelectorAll(".cap-wf__chip").forEach(function (c) {
+        c.addEventListener("click", function () { stopPlay(); go(+c.dataset.step); });
+      });
+
+      // keyboard nav when the deck (or something inside it) has focus
+      root.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowRight") { stopPlay(); go(current + 1); }
+        else if (e.key === "ArrowLeft") { stopPlay(); go(current - 1); }
+      });
+
+      // pause autoplay while hovering, resume on leave
+      root.addEventListener("mouseenter", function () { if (playing) { clearInterval(timer); timer = null; } });
+      root.addEventListener("mouseleave", function () {
+        if (playing && !timer) {
+          timer = setInterval(function () {
+            current = current >= LAST ? 1 : current + 1;
+            render();
+          }, 3800);
+        }
+      });
+
+      render();
+    }
+
+    function initAll() {
+      document.querySelectorAll("[data-cap-wf]").forEach(initDeck);
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initAll);
+    } else {
+      initAll();
+    }
+  })();
+</script>
