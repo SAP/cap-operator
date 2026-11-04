@@ -35,15 +35,12 @@ jobs:
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v3
         with:
-          hugo-version: "0.167.0"
+          hugo-version: "0.169.0"
           extended: true
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
           node-version: "lts/*"
-      - name: Package CAP Operator skills (.agents folder)
-        run: |
-          tar -czvf website/static/agentskills.tar.gz .agents
 
       - name: Update dependencies
         run: |
