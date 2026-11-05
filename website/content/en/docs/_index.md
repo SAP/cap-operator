@@ -2,10 +2,6 @@
 title: "Documentation"
 linkTitle: "Documentation"
 weight: 10
-menu:
-  main:
-    weight: 10
-    pre: "<i class='fas fa-book pr-2'></i>"
 ---
 
 [**CAP Operator**](https://github.com/sap/cap-operator) takes the complexity out of running [SAP Cloud Application Programming Model](https://cap.cloud.sap/docs) (CAP) applications on Kubernetes — so you ship features, not infrastructure.
