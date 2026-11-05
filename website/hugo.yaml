@@ -12,7 +12,11 @@ enableGitInfo: true
 # horizontal (top level) menu items
 menus:
   main:
-    # NOTE: the "Documentation" menu item is sourced from the front matter of the _index.md file
+    # NOTE: the "Documentation" menu item is now moved from the front matter to this file
+    - name: "Documentation"
+      weight: 10
+      url: "./docs/"
+      pre: "<i class='fas fa-book'></i>"
     - name: "GitHub"
       weight: 90
       url: "https://github.com/sap/cap-operator/"
@@ -25,7 +29,8 @@ menus:
 # Image processing configuration.
 imaging:
   resampleFilter: "CatmullRom"
-  quality: 90
+  jpeg:
+    quality: 90
   anchor: Smart
 
 markup:
