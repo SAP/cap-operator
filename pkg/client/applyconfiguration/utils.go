@@ -25,24 +25,96 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 	// Group=sme.sap.com, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithKind("ApplicationDomains"):
 		return &smesapcomv1alpha1.ApplicationDomainsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("BTP"):
+		return &smesapcomv1alpha1.BTPApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("BTPTenantIdentification"):
+		return &smesapcomv1alpha1.BTPTenantIdentificationApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CAPApplication"):
 		return &smesapcomv1alpha1.CAPApplicationApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CAPApplicationSpec"):
 		return &smesapcomv1alpha1.CAPApplicationSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CAPApplicationStatus"):
+		return &smesapcomv1alpha1.CAPApplicationStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CAPApplicationVersion"):
 		return &smesapcomv1alpha1.CAPApplicationVersionApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CAPApplicationVersionSpec"):
+		return &smesapcomv1alpha1.CAPApplicationVersionSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CAPApplicationVersionStatus"):
+		return &smesapcomv1alpha1.CAPApplicationVersionStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenant"):
 		return &smesapcomv1alpha1.CAPTenantApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantOperation"):
 		return &smesapcomv1alpha1.CAPTenantOperationApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantOperationSpec"):
+		return &smesapcomv1alpha1.CAPTenantOperationSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantOperationStatus"):
+		return &smesapcomv1alpha1.CAPTenantOperationStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantOperationStep"):
+		return &smesapcomv1alpha1.CAPTenantOperationStepApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantOutput"):
 		return &smesapcomv1alpha1.CAPTenantOutputApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantOutputSpec"):
+		return &smesapcomv1alpha1.CAPTenantOutputSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantSpec"):
+		return &smesapcomv1alpha1.CAPTenantSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CAPTenantStatus"):
+		return &smesapcomv1alpha1.CAPTenantStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CertConfig"):
+		return &smesapcomv1alpha1.CertConfigApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CertManager"):
+		return &smesapcomv1alpha1.CertManagerApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ClusterDomain"):
 		return &smesapcomv1alpha1.ClusterDomainApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("CommonDetails"):
+		return &smesapcomv1alpha1.CommonDetailsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DeletionRules"):
+		return &smesapcomv1alpha1.DeletionRulesApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DeploymentDetails"):
+		return &smesapcomv1alpha1.DeploymentDetailsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DNSTemplate"):
+		return &smesapcomv1alpha1.DNSTemplateApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("Domain"):
 		return &smesapcomv1alpha1.DomainApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainRef"):
+		return &smesapcomv1alpha1.DomainRefApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainSpec"):
+		return &smesapcomv1alpha1.DomainSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("DomainStatus"):
+		return &smesapcomv1alpha1.DomainStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("GenericStatus"):
+		return &smesapcomv1alpha1.GenericStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("HorizontalPodAutoscalerSpec"):
+		return &smesapcomv1alpha1.HorizontalPodAutoscalerSpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("HTTPCookie"):
+		return &smesapcomv1alpha1.HTTPCookieApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("JobDetails"):
+		return &smesapcomv1alpha1.JobDetailsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("MetricRule"):
+		return &smesapcomv1alpha1.MetricRuleApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("MonitoringConfig"):
+		return &smesapcomv1alpha1.MonitoringConfigApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("NameValue"):
 		return &smesapcomv1alpha1.NameValueApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Ports"):
+		return &smesapcomv1alpha1.PortsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Route"):
+		return &smesapcomv1alpha1.RouteApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ServiceExposure"):
+		return &smesapcomv1alpha1.ServiceExposureApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ServiceInfo"):
+		return &smesapcomv1alpha1.ServiceInfoApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("Stickiness"):
+		return &smesapcomv1alpha1.StickinessApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("StickinessHash"):
+		return &smesapcomv1alpha1.StickinessHashApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("TenantOperations"):
+		return &smesapcomv1alpha1.TenantOperationsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("TenantOperationWorkloadReference"):
+		return &smesapcomv1alpha1.TenantOperationWorkloadReferenceApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("WorkloadDetails"):
+		return &smesapcomv1alpha1.WorkloadDetailsApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("WorkloadMonitoring"):
+		return &smesapcomv1alpha1.WorkloadMonitoringApplyConfiguration{}
 
 		// Group=sme.sap.com, Version=v1alpha2
 	case v1alpha2.SchemeGroupVersion.WithKind("BTP"):

@@ -16,7 +16,6 @@ import (
 // CAPTenantStatusApplyConfiguration represents a declarative configuration of the CAPTenantStatus type for use
 // with apply.
 //
-// CAPTenant types
 // Status of the CAPTenant
 type CAPTenantStatusApplyConfiguration struct {
 	GenericStatusApplyConfiguration `json:""`

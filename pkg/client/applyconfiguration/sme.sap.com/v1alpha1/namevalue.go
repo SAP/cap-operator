@@ -10,6 +10,9 @@ package v1alpha1
 // NameValueApplyConfiguration represents a declarative configuration of the NameValue type for use
 // with apply.
 //
+// Workaround for pattern for string items +kubebuilder:validation:Pattern=^[a-z0-9-.]+$
+// type PatternString string
+// Deprecated: sme.sap.com/v1alpha1 is replaced by sme.sap.com/v1alpha2, use the corresponding types/resources from v1alpha2.
 // Generic Name/Value configuration
 type NameValueApplyConfiguration struct {
 	Name  *string `json:"name,omitempty"`

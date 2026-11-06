@@ -15,7 +15,6 @@ import (
 // CAPApplicationVersionStatusApplyConfiguration represents a declarative configuration of the CAPApplicationVersionStatus type for use
 // with apply.
 //
-// CAPApplicationVersion types
 // Status of the CAPApplicationVersion
 type CAPApplicationVersionStatusApplyConfiguration struct {
 	GenericStatusApplyConfiguration `json:""`
