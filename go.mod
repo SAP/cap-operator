@@ -6,8 +6,8 @@ require (
 	github.com/MicahParks/jwkset v0.11.4
 	github.com/MicahParks/keyfunc/v3 v3.9.1
 	github.com/cert-manager/cert-manager v1.21.3
-	github.com/gardener/cert-management v0.28.0
-	github.com/gardener/cert-management/pkg/apis v0.28.0
+	github.com/gardener/cert-management v0.29.0
+	github.com/gardener/cert-management/pkg/apis v0.29.0
 	github.com/gardener/external-dns-management v0.54.0
 	github.com/go-logr/logr v1.4.4
 	github.com/go-logr/zapr v1.3.0
@@ -16,8 +16,8 @@ require (
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/lestrrat-go/jwx/v4 v4.6.0
-	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.95.0
-	github.com/prometheus-operator/prometheus-operator/pkg/client v0.95.0
+	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.95.1
+	github.com/prometheus-operator/prometheus-operator/pkg/client v0.95.1
 	github.com/prometheus/client_golang v1.25.0
 	github.com/prometheus/common v0.73.1
 	go.uber.org/zap v1.28.0
@@ -46,7 +46,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/emicklei/go-restful/v3 v3.14.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.10.0 // indirect
-	github.com/gardener/gardener/pkg/apis v1.154.2 // indirect
+	github.com/gardener/gardener/pkg/apis v1.155.0 // indirect
 	github.com/go-openapi/jsonpointer v1.0.2 // indirect
 	github.com/go-openapi/jsonreference v1.0.3 // indirect
 	github.com/go-openapi/swag v0.29.2 // indirect
