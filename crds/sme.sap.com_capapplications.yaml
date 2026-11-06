@@ -136,6 +136,10 @@ spec:
             - btpAppName
             - providerSubaccountId
             type: object
+            x-kubernetes-validations:
+            - message: provider details cannot be changed
+              rule: '!has(self.provider) || (self.provider.subDomain == "" && self.provider.tenantId
+                == "") || (has(oldSelf.provider) && self.provider == oldSelf.provider)'
           status:
             properties:
               conditions:

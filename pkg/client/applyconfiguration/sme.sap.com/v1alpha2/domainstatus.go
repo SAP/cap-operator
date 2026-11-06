@@ -15,7 +15,6 @@ import (
 // DomainStatusApplyConfiguration represents a declarative configuration of the DomainStatus type for use
 // with apply.
 //
-// Domain / ClusterDomain types
 // Status of the Domain/ClusterDomain
 type DomainStatusApplyConfiguration struct {
 	GenericStatusApplyConfiguration `json:""`
