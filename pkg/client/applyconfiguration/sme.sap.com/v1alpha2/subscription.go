@@ -20,9 +20,9 @@ import (
 type SubscriptionApplyConfiguration struct {
 	v1.TypeMetaApplyConfiguration    `json:""`
 	*v1.ObjectMetaApplyConfiguration `json:"metadata,omitempty"`
-	// SubscriptionProvider spec
+	// Subscription spec
 	Spec *SubscriptionSpecApplyConfiguration `json:"spec,omitempty"`
-	// SubscriptionProvider status
+	// Subscription status
 	Status *SubscriptionStatusApplyConfiguration `json:"status,omitempty"`
 }
 
