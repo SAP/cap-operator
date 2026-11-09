@@ -18,7 +18,7 @@ type WorkloadDetailsApplyConfiguration struct {
 	ConsumedBTPServices []string `json:"consumedBTPServices,omitempty"`
 	// Custom labels for the current workload
 	Labels map[string]string `json:"labels,omitempty"`
-	// Annotations for the current workload, in case of `Deployments` this also get copied over to any `Service` that may be created
+	// Annotations for the current workload, in case of `Deployments` these are also copied over to any `Service` that may be created
 	Annotations map[string]string `json:"annotations,omitempty"`
 	// Definition of a deployment
 	DeploymentDefinition *DeploymentDetailsApplyConfiguration `json:"deploymentDefinition,omitempty"`

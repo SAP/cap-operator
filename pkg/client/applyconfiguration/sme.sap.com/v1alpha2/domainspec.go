@@ -24,7 +24,7 @@ type DomainSpecApplyConfiguration struct {
 	TLSMode *smesapcomv1alpha2.TLSMode `json:"tlsMode,omitempty"`
 	// DNS mode controls the creation of DNS entries related to the domain
 	DNSMode *smesapcomv1alpha2.DNSMode `json:"dnsMode,omitempty"`
-	// DNS templates allows usage of go templates for generating DNS entries when [DNSMode] is set to `Custom`
+	// DNS templates allow usage of Go templates for generating DNS entries when [DNSMode] is set to `Custom`
 	DNSTemplates []DNSTemplateApplyConfiguration `json:"dnsTemplates,omitempty"`
 	// DNS Target for traffic to this domain
 	DNSTarget *string `json:"dnsTarget,omitempty"`

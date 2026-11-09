@@ -315,7 +315,7 @@ type WorkloadDetails struct {
 	ConsumedBTPServices []string `json:"consumedBTPServices"`
 	// Custom labels for the current workload
 	Labels map[string]string `json:"labels,omitempty"`
-	// Annotations for the current workload, in case of `Deployments` this also get copied over to any `Service` that may be created
+	// Annotations for the current workload, in case of `Deployments` these are also copied over to any `Service` that may be created
 	Annotations map[string]string `json:"annotations,omitempty"`
 	// Definition of a deployment
 	DeploymentDefinition *DeploymentDetails `json:"deploymentDefinition,omitempty"`
@@ -891,7 +891,7 @@ type DomainSpec struct {
 	// +kubebuilder:default:=None
 	// DNS mode controls the creation of DNS entries related to the domain
 	DNSMode DNSMode `json:"dnsMode"`
-	// DNS templates allows usage of go templates for generating DNS entries when [DNSMode] is set to `Custom`
+	// DNS templates allow usage of Go templates for generating DNS entries when [DNSMode] is set to `Custom`
 	// +kubebuilder:validation:MaxItems=10
 	DNSTemplates []DNSTemplate `json:"dnsTemplates,omitempty"`
 	// +kubebuilder:validation:Pattern=^[a-z0-9-.]+$

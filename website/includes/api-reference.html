@@ -159,6 +159,19 @@ bool
 <p>Rollout on Credentials Update may be used to rollout deployments when dependent service credentials are updated</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>maxSubscriptions</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Defines the upper bound on the number of subscriptions allowed for this application.
+When set, subscription requests that would exceed this limit are rejected. If unset, no limit is enforced.</p>
+</td>
+</tr>
 </table>
 </td>
 </tr>
@@ -781,7 +794,7 @@ DNSMode
 </em>
 </td>
 <td>
-<p>DNS templates allows usage of go templates for generating DNS entries when [DNSMode] is set to <code>Custom</code></p>
+<p>DNS templates allow usage of Go templates for generating DNS entries when [DNSMode] is set to <code>Custom</code></p>
 </td>
 </tr>
 <tr>
@@ -942,7 +955,7 @@ DNSMode
 </em>
 </td>
 <td>
-<p>DNS templates allows usage of go templates for generating DNS entries when [DNSMode] is set to <code>Custom</code></p>
+<p>DNS templates allow usage of Go templates for generating DNS entries when [DNSMode] is set to <code>Custom</code></p>
 </td>
 </tr>
 <tr>
@@ -1108,7 +1121,7 @@ string
 </em>
 </td>
 <td>
-<p>Subscrption domain of the consumer subaccount subscribing to the app</p>
+<p>Subscription domain of the consumer subaccount subscribing to the app</p>
 </td>
 </tr>
 <tr>
@@ -1242,6 +1255,19 @@ string
 </td>
 <td>
 <p>List of subscription dependencies discovered for the services specified in the corresponding app</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxSubscriptions</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Defines the upper bound on the number of subscriptions allowed for this application.
+When set, subscription requests that would exceed this limit are rejected. If unset, no limit is enforced.</p>
 </td>
 </tr>
 </table>
@@ -1406,6 +1432,19 @@ bool
 </td>
 <td>
 <p>Rollout on Credentials Update may be used to rollout deployments when dependent service credentials are updated</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxSubscriptions</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Defines the upper bound on the number of subscriptions allowed for this application.
+When set, subscription requests that would exceed this limit are rejected. If unset, no limit is enforced.</p>
 </td>
 </tr>
 </tbody>
@@ -2949,7 +2988,7 @@ DNSMode
 </em>
 </td>
 <td>
-<p>DNS templates allows usage of go templates for generating DNS entries when [DNSMode] is set to <code>Custom</code></p>
+<p>DNS templates allow usage of Go templates for generating DNS entries when [DNSMode] is set to <code>Custom</code></p>
 </td>
 </tr>
 <tr>
@@ -4074,6 +4113,19 @@ string
 <p>List of subscription dependencies discovered for the services specified in the corresponding app</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>maxSubscriptions</code><br/>
+<em>
+int32
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Defines the upper bound on the number of subscriptions allowed for this application.
+When set, subscription requests that would exceed this limit are rejected. If unset, no limit is enforced.</p>
+</td>
+</tr>
 </tbody>
 </table>
 <h3 id="sme.sap.com/v1alpha2.SubscriptionSpec">SubscriptionSpec
@@ -4154,7 +4206,7 @@ string
 </em>
 </td>
 <td>
-<p>Subscrption domain of the consumer subaccount subscribing to the app</p>
+<p>Subscription domain of the consumer subaccount subscribing to the app</p>
 </td>
 </tr>
 <tr>
@@ -4452,7 +4504,7 @@ map[string]string
 </em>
 </td>
 <td>
-<p>Annotations for the current workload, in case of <code>Deployments</code> this also get copied over to any <code>Service</code> that may be created</p>
+<p>Annotations for the current workload, in case of <code>Deployments</code> these are also copied over to any <code>Service</code> that may be created</p>
 </td>
 </tr>
 <tr>
@@ -4532,5 +4584,5 @@ If not specified, CAP Operator will not attempt to create a ServiceMonitor for t
 <hr/>
 <p><em>
 Generated with <code>gen-crd-api-reference-docs</code>
-on git commit <code>cb0dd11</code>.
+on git commit <code>1f4496c</code>.
 </em></p>
