@@ -20,7 +20,7 @@ type SubscriptionSpecApplyConfiguration struct {
 	Subdomain *string `json:"subdomain,omitempty"`
 	// SubscriptionGuid of the subscription
 	SubscriptionGuid *string `json:"subscriptionGuid,omitempty"`
-	// Subscrption domain of the consumer subaccount subscribing to the app
+	// Subscription domain of the consumer subaccount subscribing to the app
 	SubscriptionDomain *string `json:"subscriptionDomain,omitempty"`
 	// Payload of the subscription request (JSON string).
 	SubscriptionRequestPayload *string `json:"subscriptionRequestPayload,omitempty"`
