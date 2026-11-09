@@ -69,6 +69,7 @@ var gvrKindMap map[string]string = map[string]string{
 	"domains.sme.sap.com/v1alpha2":                "Domain",
 	"clusterdomains.sme.sap.com/v1alpha2":         "ClusterDomain",
 	"servicemonitors.monitoring.coreos.com/v1":    "ServiceMonitor",
+	"prometheusrules.monitoring.coreos.com/v1":    "PrometheusRule",
 	"subscriptionproviders.sme.sap.com/v1alpha2":  "SubscriptionProvider",
 	"subscriptions.sme.sap.com/v1alpha2":          "Subscription",
 }

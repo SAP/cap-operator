@@ -56,6 +56,16 @@ type Controller struct {
 	eventBroadcaster             events.EventBroadcaster
 	eventRecorder                events.EventRecorder
 	rolloutManager               *rolloutManager
+	smCapability                 serviceMonitorCapabilityCache
+}
+
+// serviceMonitorCapabilityCache caches the (infrequently changing) result of the
+// cluster-wide API discovery for the ServiceMonitor resource, so that discovery
+// is not repeated on every CAPApplicationVersion reconciliation.
+type serviceMonitorCapabilityCache struct {
+	mu     sync.Mutex
+	err    error     // nil = capability available; non-nil = last discovery outcome
+	expiry time.Time // when the cached result stops being valid
 }
 
 var (
