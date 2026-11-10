@@ -987,10 +987,10 @@ type SubscriptionInfo struct {
 type Subscription struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
-	// SubscriptionProvider spec
+	// Subscription spec
 	Spec SubscriptionSpec `json:"spec"`
 	// +kubebuilder:validation:Optional
-	// SubscriptionProvider status
+	// Subscription status
 	Status SubscriptionStatus `json:"status"`
 }
 
@@ -1022,7 +1022,7 @@ type SubscriptionSpec struct {
 
 type SubscriptionStatus struct {
 	GenericStatus `json:",inline"`
-	// State of the Domain
+	// State of the Subscription
 	State SubscriptionState `json:"state"`
 	// Tenant specific URL of the subscribed application
 	Url string `json:"url,omitempty"`

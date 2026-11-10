@@ -16,7 +16,7 @@ import (
 // with apply.
 type SubscriptionStatusApplyConfiguration struct {
 	GenericStatusApplyConfiguration `json:""`
-	// State of the Domain
+	// State of the Subscription
 	State *smesapcomv1alpha2.SubscriptionState `json:"state,omitempty"`
 	// Tenant specific URL of the subscribed application
 	Url *string `json:"url,omitempty"`
