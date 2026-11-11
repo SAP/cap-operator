@@ -122,6 +122,20 @@ type SubscriptionHandler struct {
 	Clientset           versioned.Interface
 	KubeClientset       kubernetes.Interface
 	httpClientGenerator httpClientGenerator
+	// appLocks serializes the subscription create path per application (keyed by appIdHash) so that
+	// the MaxSubscriptions limit check and the subsequent create cannot interleave for concurrent
+	// requests. See lockApp and the note on checkSubscriptionLimit for the cross-replica caveat.
+	appLocks sync.Map // appIdHash -> *sync.Mutex
+}
+
+// lockApp lazily creates and acquires the per-application mutex identified by appIdHash and returns
+// the corresponding unlock function. Different applications never block each other; provisioning for
+// a single application is strictly serialized within this process.
+func (s *SubscriptionHandler) lockApp(appIdHash string) func() {
+	actual, _ := s.appLocks.LoadOrStore(appIdHash, &sync.Mutex{})
+	mu := actual.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
 }
 
 type callbackResponse struct {
@@ -185,8 +199,15 @@ func (s *SubscriptionHandler) CreateTenant(reqInfo *RequestInfo) *Result {
 	// Check if a Subscription resource already exists for this payload
 	sub := s.getSubscriptionByAppIdentifier(reqInfo.payload.providerSubaccountId, reqInfo.payload.appName, reqInfo.payload.tenantId, subPro.Namespace, TenantProvisioning).Subscription
 
-	// If the resource doesn't exist, we'll create it
 	if sub == nil {
+		// The create path (limit check + create) is serialized per application so that concurrent
+		// requests cannot each pass the MaxSubscriptions check and then create, overshooting the
+		// limit (TOCTOU). The lock is scoped to this branch so the common update path below is not
+		// serialized.
+		appIdHash := sha1Sum(reqInfo.payload.providerSubaccountId, reqInfo.payload.appName)
+		unlock := s.lockApp(appIdHash)
+		defer unlock()
+
 		limitExceeded, checkErr := s.checkSubscriptionLimit(reqInfo, subPro)
 		if checkErr != nil {
 			util.LogError(checkErr, "Error during subscription limit check", TenantProvisioning, subPro, nil)
@@ -237,6 +258,14 @@ func getMessage(isCreated, isUpdated bool) string {
 // checks whether a new subscription would exceed the MaxSubscriptions limit configured
 // on the SubscriptionProvider. It returns (true, nil) when the limit is reached, (false, nil) when no limit applies,
 // and (false, err) when the check itself fails (in which case the caller should reject the request with a 5xx status).
+//
+// Concurrency: the List it performs is a strongly-consistent live read, so once the create path is
+// serialized per application by CreateTenant (via lockApp) the count reflects all prior creates and
+// the limit is enforced reliably. That serialization is in-process only: it guarantees the limit
+// within a single subscription-server pod (the default, subscriptionServer.replicas: 1). With
+// multiple replicas, requests handled by different pods can still interleave List/Create and
+// overshoot the limit; strict cross-replica enforcement would require a distributed lock (e.g. a
+// coordination.k8s.io Lease per application) and is intentionally out of scope here.
 func (s *SubscriptionHandler) checkSubscriptionLimit(reqInfo *RequestInfo, subPro *v1alpha2.SubscriptionProvider) (bool, error) {
 	if subPro.Spec.MaxSubscriptions == nil {
 		return false, nil // no limit configured
