@@ -8,9 +8,14 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/sap/cap-operator/pkg/apis/sme.sap.com/v1alpha2"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	k8sfake "k8s.io/client-go/kubernetes/fake"
 )
 
 func TestCAV_WithoutCAPApplicationAndVersion(t *testing.T) {
@@ -912,6 +917,216 @@ func TestCAV_InvalidMonitoringConfig(t *testing.T) {
 	)
 	if err == nil || err.Error() != fmt.Sprintf("invalid port reference in workload %s monitoring config of version %s", "app-router", "test-cap-01-cav-v1") {
 		t.FailNow()
+	}
+}
+
+func TestCAV_cavHasScrapeConfig(t *testing.T) {
+	scrape := &v1alpha2.MonitoringConfig{WorkloadPort: "metrics"}
+	tests := []struct {
+		name string
+		cav  *v1alpha2.CAPApplicationVersion
+		want bool
+	}{
+		{
+			name: "no workloads",
+			cav:  &v1alpha2.CAPApplicationVersion{},
+			want: false,
+		},
+		{
+			name: "job workload (no deployment definition)",
+			cav: &v1alpha2.CAPApplicationVersion{Spec: v1alpha2.CAPApplicationVersionSpec{
+				Workloads: []v1alpha2.WorkloadDetails{{Name: "job", JobDefinition: &v1alpha2.JobDetails{}}},
+			}},
+			want: false,
+		},
+		{
+			name: "deployment without monitoring",
+			cav: &v1alpha2.CAPApplicationVersion{Spec: v1alpha2.CAPApplicationVersionSpec{
+				Workloads: []v1alpha2.WorkloadDetails{{Name: "srv", DeploymentDefinition: &v1alpha2.DeploymentDetails{}}},
+			}},
+			want: false,
+		},
+		{
+			name: "monitoring without scrape config",
+			cav: &v1alpha2.CAPApplicationVersion{Spec: v1alpha2.CAPApplicationVersionSpec{
+				Workloads: []v1alpha2.WorkloadDetails{{Name: "srv", DeploymentDefinition: &v1alpha2.DeploymentDetails{Monitoring: &v1alpha2.WorkloadMonitoring{}}}},
+			}},
+			want: false,
+		},
+		{
+			name: "scrape config present",
+			cav: &v1alpha2.CAPApplicationVersion{Spec: v1alpha2.CAPApplicationVersionSpec{
+				Workloads: []v1alpha2.WorkloadDetails{{Name: "srv", DeploymentDefinition: &v1alpha2.DeploymentDetails{Monitoring: &v1alpha2.WorkloadMonitoring{ScrapeConfig: scrape}}}},
+			}},
+			want: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := cavHasScrapeConfig(tc.cav); got != tc.want {
+				t.Errorf("cavHasScrapeConfig() = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// discoveryActionCount returns the number of API discovery calls recorded on the
+// fake kube client. The fake discovery client records each call as a "get" on a
+// pseudo resource named "resource".
+func discoveryActionCount(t *testing.T, c *Controller) int {
+	t.Helper()
+	fake, ok := c.kubeClient.(*k8sfake.Clientset)
+	if !ok {
+		t.Fatalf("expected fake kube client, got %T", c.kubeClient)
+	}
+	n := 0
+	for _, a := range fake.Actions() {
+		if a.GetResource().Resource == "resource" {
+			n++
+		}
+	}
+	return n
+}
+
+func TestCAV_checkServiceMonitorCapabilityCaching(t *testing.T) {
+	defer deregisterMetrics()
+	c := initializeControllerForReconciliationTests(t, nil, []schema.GroupVersionResource{{Resource: "servicemonitors", Group: "monitoring.coreos.com", Version: "v1"}})
+
+	if err := c.checkServiceMonitorCapability(); err != nil {
+		t.Fatalf("expected capability to be available, got error: %v", err)
+	}
+	afterFirst := discoveryActionCount(t, c)
+	if afterFirst == 0 {
+		t.Fatal("expected first call to perform API discovery")
+	}
+
+	// second call within TTL must be served from cache (no further discovery)
+	if err := c.checkServiceMonitorCapability(); err != nil {
+		t.Fatalf("expected cached capability to be available, got error: %v", err)
+	}
+	if got := discoveryActionCount(t, c); got != afterFirst {
+		t.Fatalf("expected no additional discovery call (cached), discovery count went from %d to %d", afterFirst, got)
+	}
+
+	// once the cache expires, discovery runs again
+	c.smCapability.expiry = time.Now().Add(-time.Minute)
+	if err := c.checkServiceMonitorCapability(); err != nil {
+		t.Fatalf("expected capability to be available after expiry, got error: %v", err)
+	}
+	if got := discoveryActionCount(t, c); got <= afterFirst {
+		t.Fatalf("expected discovery to run again after expiry, count stayed at %d", got)
+	}
+}
+
+func TestCAV_checkServiceMonitorCapability_NegativeCaching(t *testing.T) {
+	defer deregisterMetrics()
+	// no discovery resources registered => ServiceMonitor capability unavailable
+	c := initializeControllerForReconciliationTests(t, nil, nil)
+
+	err := c.checkServiceMonitorCapability()
+	if err == nil {
+		t.Fatal("expected error when ServiceMonitor capability is unavailable")
+	}
+	afterFirst := discoveryActionCount(t, c)
+	if afterFirst == 0 {
+		t.Fatal("expected first call to perform API discovery")
+	}
+	// the negative result must be cached with the shorter negative TTL
+	remaining := time.Until(c.smCapability.expiry)
+	if remaining <= 0 || remaining > serviceMonitorCapabilityNegativeTTL {
+		t.Fatalf("expected negative TTL (<= %s) to be applied, got %s", serviceMonitorCapabilityNegativeTTL, remaining)
+	}
+	// a second call within the TTL returns the cached error without new discovery
+	if err := c.checkServiceMonitorCapability(); err == nil {
+		t.Fatal("expected cached error on second call")
+	}
+	if got := discoveryActionCount(t, c); got != afterFirst {
+		t.Fatalf("expected negative result to be cached, discovery count went from %d to %d", afterFirst, got)
+	}
+}
+
+func TestCAV_checkServiceMonitorCapability_KindMissing(t *testing.T) {
+	defer deregisterMetrics()
+	// the monitoring group/version is served, but the ServiceMonitor kind is absent
+	c := initializeControllerForReconciliationTests(t, nil, []schema.GroupVersionResource{{Resource: "prometheusrules", Group: "monitoring.coreos.com", Version: "v1"}})
+
+	err := c.checkServiceMonitorCapability()
+	if err == nil || !strings.Contains(err.Error(), "is not served by API version") {
+		t.Fatalf("expected 'not served' error, got %v", err)
+	}
+}
+
+// monitoredCAV builds a minimal CAPApplicationVersion with a single deployment
+// workload that declares a monitoring scrape configuration.
+func monitoredCAV(name, namespace, workloadName, port string) *v1alpha2.CAPApplicationVersion {
+	return &v1alpha2.CAPApplicationVersion{
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+		Spec: v1alpha2.CAPApplicationVersionSpec{
+			Version: "1",
+			Workloads: []v1alpha2.WorkloadDetails{{
+				Name: workloadName,
+				DeploymentDefinition: &v1alpha2.DeploymentDetails{
+					Type:       v1alpha2.DeploymentCAP,
+					Monitoring: &v1alpha2.WorkloadMonitoring{ScrapeConfig: &v1alpha2.MonitoringConfig{WorkloadPort: port}},
+				},
+			}},
+		},
+	}
+}
+
+func TestCAV_updateServiceMonitors_SkipsWhenNoScrapeConfig(t *testing.T) {
+	defer deregisterMetrics()
+	// capability unavailable, but no scrape config => must skip before discovery
+	c := initializeControllerForReconciliationTests(t, nil, nil)
+
+	ca := &v1alpha2.CAPApplication{ObjectMeta: metav1.ObjectMeta{Name: "ca", Namespace: "default"}}
+	cav := &v1alpha2.CAPApplicationVersion{
+		ObjectMeta: metav1.ObjectMeta{Name: "ca-cav-v1", Namespace: "default"},
+		Spec: v1alpha2.CAPApplicationVersionSpec{
+			Workloads: []v1alpha2.WorkloadDetails{{Name: "srv", DeploymentDefinition: &v1alpha2.DeploymentDetails{Type: v1alpha2.DeploymentCAP}}},
+		},
+	}
+
+	if err := c.updateServiceMonitors(context.TODO(), ca, cav, nil); err != nil {
+		t.Fatalf("expected no error when skipping, got %v", err)
+	}
+	if got := discoveryActionCount(t, c); got != 0 {
+		t.Fatalf("expected no API discovery when no scrape config exists, got %d discovery calls", got)
+	}
+}
+
+func TestCAV_updateServiceMonitors_CapabilityUnavailable(t *testing.T) {
+	defer deregisterMetrics()
+	// scrape config present, but capability unavailable => warning + no service monitor created
+	c := initializeControllerForReconciliationTests(t, nil, nil)
+
+	ca := &v1alpha2.CAPApplication{ObjectMeta: metav1.ObjectMeta{Name: "ca", Namespace: "default"}}
+	cav := monitoredCAV("ca-cav-v1", "default", "srv", "metrics")
+
+	if err := c.updateServiceMonitors(context.TODO(), ca, cav, nil); err != nil {
+		t.Fatalf("expected nil error when capability is unavailable, got %v", err)
+	}
+	list, err := c.promClient.MonitoringV1().ServiceMonitors("default").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		t.Fatalf("listing service monitors failed: %v", err)
+	}
+	if len(list.Items) != 0 {
+		t.Fatalf("expected no service monitors to be created, found %d", len(list.Items))
+	}
+}
+
+func TestCAV_reconcileWorkloadServiceMonitor_MissingPortInfo(t *testing.T) {
+	defer deregisterMetrics()
+	c := initializeControllerForReconciliationTests(t, nil, nil)
+
+	ca := &v1alpha2.CAPApplication{ObjectMeta: metav1.ObjectMeta{Name: "ca", Namespace: "default"}}
+	cav := monitoredCAV("ca-cav-v1", "default", "srv", "metrics")
+	wl := &cav.Spec.Workloads[0]
+
+	// empty port info slice => cannot resolve workload port information
+	err := c.reconcileWorkloadServiceMonitor(context.TODO(), wl, cav, nil, ca)
+	if err == nil || !strings.Contains(err.Error(), "could not identify workload port information") {
+		t.Fatalf("expected missing port information error, got %v", err)
 	}
 }
 

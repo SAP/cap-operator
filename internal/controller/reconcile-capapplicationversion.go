@@ -512,7 +512,35 @@ func newService(ca *v1alpha2.CAPApplication, cav *v1alpha2.CAPApplicationVersion
 // #endregion Service
 
 // #region ServiceMonitor
+const (
+	serviceMonitorCapabilityPositiveTTL = 24 * time.Hour   // CRD present; re-confirm rarely
+	serviceMonitorCapabilityNegativeTTL = 10 * time.Minute // CRD absent; recover if installed later
+)
+
+// checkServiceMonitorCapability returns the cached result of the ServiceMonitor
+// API discovery, refreshing it via discovery only when the cached result has
+// expired. The mutex is intentionally held across the (infrequent) discovery
+// call so that concurrent reconciles trigger at most one discovery per TTL
+// window instead of a thundering herd.
 func (c *Controller) checkServiceMonitorCapability() error {
+	c.smCapability.mu.Lock()
+	defer c.smCapability.mu.Unlock()
+
+	if time.Now().Before(c.smCapability.expiry) {
+		return c.smCapability.err // cached (positive or negative)
+	}
+
+	err := c.discoverServiceMonitorCapability()
+	c.smCapability.err = err
+	if err == nil {
+		c.smCapability.expiry = time.Now().Add(serviceMonitorCapabilityPositiveTTL)
+	} else {
+		c.smCapability.expiry = time.Now().Add(serviceMonitorCapabilityNegativeTTL)
+	}
+	return err
+}
+
+func (c *Controller) discoverServiceMonitorCapability() error {
 	const (
 		monitoringGroupVersion = "monitoring.coreos.com/v1"
 		resourceKind           = "ServiceMonitor"
@@ -529,7 +557,24 @@ func (c *Controller) checkServiceMonitorCapability() error {
 	return fmt.Errorf("resource %s is not served by API version %s", resourceKind, monitoringGroupVersion)
 }
 
+// cavHasScrapeConfig reports whether any workload in the version declares a
+// monitoring scrape configuration. Used to skip the service-monitor path (and
+// its API discovery) entirely for versions with no monitoring configured.
+func cavHasScrapeConfig(cav *v1alpha2.CAPApplicationVersion) bool {
+	for i := range cav.Spec.Workloads {
+		dd := cav.Spec.Workloads[i].DeploymentDefinition
+		if dd != nil && dd.Monitoring != nil && dd.Monitoring.ScrapeConfig != nil {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *Controller) updateServiceMonitors(ctx context.Context, ca *v1alpha2.CAPApplication, cav *v1alpha2.CAPApplicationVersion, workloadServicePortInfos []servicePortInfo) error {
+	if !cavHasScrapeConfig(cav) {
+		return nil // no monitoring configured; skip discovery + reconcile entirely
+	}
+
 	if err := c.checkServiceMonitorCapability(); err != nil {
 		util.LogWarning(err, "could not confirm availability of service monitor resource; service monitors will not be created")
 		return nil
