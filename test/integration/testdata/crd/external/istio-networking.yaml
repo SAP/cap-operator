@@ -1,0 +1,76 @@
+# Minimal, permissive CRD for the Istio networking.istio.io/v1 resources that the
+# CAP Operator watches (Gateway, VirtualService, DestinationRule) and creates during
+# reconciliation. The schema uses x-kubernetes-preserve-unknown-fields so that the
+# full Istio spec is accepted without vendoring the (very large) upstream CRDs. This
+# keeps the envtest-based integration suite hermetic and offline-runnable.
+#
+# If stricter schema validation is desired, replace these with the official Istio CRDs
+# for the version pinned in go.mod (istio.io/client-go).
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: gateways.networking.istio.io
+spec:
+  group: networking.istio.io
+  scope: Namespaced
+  names:
+    kind: Gateway
+    listKind: GatewayList
+    plural: gateways
+    singular: gateway
+    shortNames:
+      - gw
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: virtualservices.networking.istio.io
+spec:
+  group: networking.istio.io
+  scope: Namespaced
+  names:
+    kind: VirtualService
+    listKind: VirtualServiceList
+    plural: virtualservices
+    singular: virtualservice
+    shortNames:
+      - vs
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: destinationrules.networking.istio.io
+spec:
+  group: networking.istio.io
+  scope: Namespaced
+  names:
+    kind: DestinationRule
+    listKind: DestinationRuleList
+    plural: destinationrules
+    singular: destinationrule
+    shortNames:
+      - dr
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
