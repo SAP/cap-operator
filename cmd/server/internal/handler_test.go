@@ -18,6 +18,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1326,5 +1328,94 @@ func TestCheckSubscriptionLimit_APIError(t *testing.T) {
 
 	if res.Code != http.StatusInternalServerError {
 		t.Errorf("expected HTTP %d, got %d", http.StatusInternalServerError, res.Code)
+	}
+}
+
+// TestCheckSubscriptionLimit_ConcurrentRequests verifies that the MaxSubscriptions limit is enforced
+// when many provisioning requests for distinct tenants of the same app arrive concurrently. Without
+// per-app serialization of the check->create path, concurrent requests could each pass the limit
+// check and then create, overshooting the limit (TOCTOU). Run with -race.
+func TestCheckSubscriptionLimit_ConcurrentRequests(t *testing.T) {
+	const (
+		maxSubs     = int32(20)
+		concurrency = 50
+	)
+	subPro := createSubscriptionProvider(SaaS)
+	subMax := maxSubs
+	subPro.Spec.MaxSubscriptions = &subMax
+
+	client, tokenString, err := SetupValidTokenAndIssuerForSubscriptionTests("appname!b14")
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	// Start with zero subscriptions so exactly maxSubs of the concurrent requests should succeed.
+	fakeClient := fake.NewSimpleClientset(subPro)
+	// The fake clientset does not honor metav1.GenerateName, so concurrent creates would otherwise
+	// all get an empty name and collide. Emulate the API server by assigning a unique name, then fall
+	// through to the default tracker to actually store the object.
+	var nameCounter int64
+	fakeClient.PrependReactor("create", "subscriptions", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		sub := action.(k8stesting.CreateAction).GetObject().(*v1alpha2.Subscription)
+		if sub.Name == "" && sub.GenerateName != "" {
+			sub.Name = fmt.Sprintf("%s%d", sub.GenerateName, atomic.AddInt64(&nameCounter, 1))
+		}
+		return false, nil, nil
+	})
+	subHandler := NewSubscriptionHandler(fakeClient, k8sfake.NewSimpleClientset(createSecrets()...))
+	subHandler.httpClientGenerator = &httpTestClientGenerator{client: client}
+
+	var accepted, rejected int32
+	var wg sync.WaitGroup
+	for i := 0; i < concurrency; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			// Distinct tenant (and guid) per request so each takes the create path, not the update path.
+			tid := fmt.Sprintf("%s-%d", tenantId, i)
+			guid := fmt.Sprintf("%s-%d", subscriptionGUID, i)
+			body := `{"subscriptionAppName":"` + appName + `","globalAccountGUID":"` + globalAccountId + `","providerSubaccountId":"` + providerSubaccountId + `","subscriptionGUID":"` + guid + `","subscribedTenantId":"` + tid + `","subscribedSubdomain":"` + subDomain + `"}`
+			res := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPut, RequestPath, strings.NewReader(body))
+			req.Header.Set("Authorization", "Bearer "+tokenString)
+			subHandler.HandleSaaSRequest(res, req)
+
+			switch res.Code {
+			case http.StatusAccepted:
+				atomic.AddInt32(&accepted, 1)
+			case http.StatusUnprocessableEntity:
+				atomic.AddInt32(&rejected, 1)
+			default:
+				t.Errorf("unexpected HTTP status %d", res.Code)
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	// The number of subscriptions actually created must never exceed the configured limit.
+	subList, err := subHandler.Clientset.SmeV1alpha2().Subscriptions(v1.NamespaceDefault).List(
+		context.TODO(), v1.ListOptions{LabelSelector: LabelAppIdHash + "=" + sha1Sum(providerSubaccountId, appName)},
+	)
+	if err != nil {
+		t.Fatal("unexpected error listing subscriptions:", err)
+	}
+	created := 0
+	for i := range subList.Items {
+		if subList.Items[i].DeletionTimestamp == nil {
+			created++
+		}
+	}
+	if int32(created) > maxSubs {
+		t.Errorf("subscription count %d exceeds MaxSubscriptions %d", created, maxSubs)
+	}
+	// Starting from zero, exactly maxSubs requests should have been accepted and the rest rejected.
+	if accepted != maxSubs {
+		t.Errorf("expected %d accepted requests, got %d", maxSubs, accepted)
+	}
+	if int32(created) != maxSubs {
+		t.Errorf("expected %d subscriptions created, got %d", maxSubs, created)
+	}
+	if rejected != concurrency-maxSubs {
+		t.Errorf("expected %d rejected requests, got %d", concurrency-maxSubs, rejected)
 	}
 }
