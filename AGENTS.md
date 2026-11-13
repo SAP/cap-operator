@@ -82,10 +82,11 @@ Key relationships:
 
 ## Testing
 
-To run the unit tests, run the following command:
+To run the unit and integration tests, run the following command:
 
 ```bash
-go test ./...
+make -C hack test
+make -C hack test-integration
 ```
 
 ## Development Conventions

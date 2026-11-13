@@ -48,23 +48,56 @@ jobs:
         name: test-coverage
         path: coverage.out
 
+  integration:
+    name: Integration Tests (envtest)
+    runs-on: ubuntu-26.04
+    steps:
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v7
+
+    - name: Setup Go
+      uses: actions/setup-go@v7
+      with:
+        go-version-file: 'go.mod'
+        cache: true
+
+    - name: Download module and all dependencies
+      run: go mod download
+
+    - name: Run envtest integration tests
+      run: |
+        make -C hack test-integration \
+          ARGS="-covermode=atomic -coverpkg=./internal/...,./cmd/... -coverprofile=integration-coverage.out"
+
+    - name: Upload integration coverage
+      uses: actions/upload-artifact@v7
+      with:
+        name: integration-coverage
+        path: integration-coverage.out
+
   analysis:
     name: Analyze with Sonar Cloud
-    needs: build
+    needs: [build, integration]
     runs-on: ubuntu-26.04
     environment: build
     steps:
-    
+
     - name: Check out code for Sonar Analysis
       uses: actions/checkout@v7
       with:
         fetch-depth: 0 # Sonar features need code to be cloned with full depth
-    
-    - name: Download Test results
+
+    - name: Download unit test coverage
       uses: actions/download-artifact@v8
       with:
         name: test-coverage
-    
+
+    - name: Download integration test coverage
+      uses: actions/download-artifact@v8
+      with:
+        name: integration-coverage
+
     - name: SonarCloud Scan
       uses: SonarSource/sonarqube-scan-action@v8
       env:

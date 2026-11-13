@@ -24,6 +24,17 @@ manifests: controller-gen ## Generate CustomResourceDefinition objects.
 types: ## Generate Types.
 	. ./generate.sh
 
+##@ Testing
+
+.PHONY: test
+test: ## Run unit tests.
+	go test -C $(SRC) ./...
+
+.PHONY: test-integration
+test-integration: setup-envtest ## Run envtest-based integration tests (requires linux/macOS envtest binaries).
+	cd $(SRC) && KUBEBUILDER_ASSETS="$$($(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" \
+		go test -tags integration ./test/integration/... -count=1 $(ARGS)
+
 .PHONY: gen-api-docs
 gen-api-docs: gen-crd-api-reference-docs ## Generate API docu.
 	$(API_DOCS) -config api-reference/config.json -template-dir api-reference/template -api-dir $(SRC)/$(PKG)/sme.sap.com/v1alpha2 -out-file $(SRC)/website/includes/api-reference.html
@@ -50,14 +61,24 @@ $(LOCALBIN):
 
 ## Tool Binaries
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+SETUP_ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 ## Tool Versions
 CONTROLLER_TOOLS_VERSION ?= latest
+# setup-envtest branch must match the controller-runtime minor version in go.mod.
+ENVTEST_VERSION ?= release-0.25
+# Kubernetes control-plane (apiserver/etcd) version used by envtest; aligned with k8s.io/* in go.mod.
+ENVTEST_K8S_VERSION ?= 1.37.0
 
 .PHONY: controller-gen
 controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
 $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+
+.PHONY: setup-envtest
+setup-envtest: $(SETUP_ENVTEST) ## Download setup-envtest locally if necessary.
+$(SETUP_ENVTEST): $(LOCALBIN)
+	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@$(ENVTEST_VERSION)
 
 API_DOCS ?= $(LOCALBIN)/gen-crd-api-reference-docs
 
