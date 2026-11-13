@@ -25,7 +25,7 @@ jobs:
   go-vuln:
     name: govulncheck
     runs-on: ubuntu-26.04
-    if: ${{ inputs.skip-govulncheck }} != true
+    if: ${{ inputs.skip-govulncheck != true }}
     steps:
       - name: Check out code
         uses: actions/checkout@v7
