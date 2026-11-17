@@ -227,6 +227,15 @@ func addRuntimeObjects(objects *[]runtime.Object, object runtime.Object) {
 }
 
 func getTestController(resources testResources) *Controller {
+	// NewController calls initializeMetrics, which MustRegisters the collectors on the
+	// process-global Prometheus registry. Controller.Start deregisters them asynchronously
+	// on context cancellation, so a prior test's cleanup goroutine may not have run yet when
+	// the next controller is built here, causing a "duplicate metrics collector registration"
+	// panic. Clearing the registry synchronously before NewController guarantees a clean slate
+	// regardless of outstanding async deregisters. (In production NewController runs once, so
+	// this situation never arises.)
+	deregisterMetrics()
+
 	crdObjects := []runtime.Object{}
 	coreObjects := []runtime.Object{}
 	istioObjects := []runtime.Object{}

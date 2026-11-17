@@ -248,6 +248,10 @@ func addForDiscovery(c *k8stesting.Fake, resources []schema.GroupVersionResource
 }
 
 func initializeControllerForReconciliationTests(t *testing.T, items []ResourceAction, discoverResources []schema.GroupVersionResource) *Controller {
+	// Clear any collectors left registered by a prior test (see getTestController) so the
+	// NewController call below cannot hit a "duplicate metrics collector registration" panic.
+	deregisterMetrics()
+
 	createKindMap = map[string]int{}
 	// add schemes for various client sets
 	smeScheme.AddToScheme(scheme.Scheme)
