@@ -27,18 +27,10 @@ jobs:
     runs-on: ubuntu-26.04
     if: ${{ inputs.skip-govulncheck != true }}
     steps:
-      - name: Check out code
-        uses: actions/checkout@v7
-
-      - name: Setup Go
-        uses: actions/setup-go@v7
-        with:
-          go-version-file: 'go.mod'
-          cache: true
-
       - name: Go Vulnerability Check
         uses: golang/govulncheck-action@v1
         with:
+          go-version-file: go.mod
           output-format: sarif
           output-file: vuln-go.sarif
 
