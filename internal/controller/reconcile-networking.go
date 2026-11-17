@@ -135,7 +135,7 @@ func (c *Controller) reconcileTenantNetworking(ctx context.Context, cat *v1alpha
 	var (
 		reason, message string
 		vsModified      bool
-		eventType       string = corev1.EventTypeNormal
+		eventType       = corev1.EventTypeNormal
 	)
 
 	defer func() {
@@ -437,7 +437,7 @@ func (c *Controller) reconcileServiceNetworking(ctx context.Context, ca *v1alpha
 	var (
 		reason, message string
 		vsModified      bool
-		eventType       string = corev1.EventTypeNormal
+		eventType       = corev1.EventTypeNormal
 	)
 
 	defer func() {

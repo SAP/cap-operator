@@ -248,7 +248,7 @@ func (c *Controller) getActiveCAPTenantOperationJob(ctx context.Context, ctop *v
 }
 
 func (c *Controller) setCAPTenantOperationStatusFromJob(ctop *v1alpha2.CAPTenantOperation, job *batchv1.Job) (result *ReconcileResult) {
-	var requeueAfter time.Duration = 1 * time.Second
+	var requeueAfter = 1 * time.Second
 	status := struct {
 		state            v1alpha2.CAPTenantOperationState
 		conditionReason  string
@@ -257,10 +257,7 @@ func (c *Controller) setCAPTenantOperationStatusFromJob(ctop *v1alpha2.CAPTenant
 		eventType        string
 	}{}
 
-	isFinalStep := false
-	if *ctop.Status.CurrentStep == uint32(len(ctop.Spec.Steps)) {
-		isFinalStep = true
-	}
+	isFinalStep := *ctop.Status.CurrentStep == uint32(len(ctop.Spec.Steps))
 
 	processStepCompletion := func() {
 		status.conditionReason = CAPTenantOperationConditionReasonStepCompleted
