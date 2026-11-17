@@ -24,3 +24,9 @@ Once the tenant provisioning process completes (or fails), the tracking routine 
 ([More details about asynchronous tenant subscription](https://help.sap.com/docs/btp/sap-business-technology-platform/register-multitenant-application-to-sap-saas-provisioning-service?version=Cloud&q=async))
 
 This asynchronous approach avoids timeouts during synchronous calls and enables the scheduling of dedicated jobs (via `CAPTenantOperation`) for completing the subscription and performing any additional cluster tasks (for example, creating an Istio `VirtualService` for the tenant subdomain).
+
+## Subscription Limit
+
+The subscription server enforces an optional upper bound on the number of active subscriptions per application, configured via `CAPApplication.spec.maxSubscriptions`. Provisioning requests that would exceed the limit are rejected with HTTP 422.
+
+Limit enforcement is serialized within a single subscription server pod. Running the subscription server as a **single replica** (the default) is therefore recommended when strict enforcement is required. With multiple replicas, concurrent requests across pods can briefly exceed the limit. See [SubscriptionProvider — Subscription Limit](../../../usage/resources/subscriptionprovider#subscription-limit) for details.

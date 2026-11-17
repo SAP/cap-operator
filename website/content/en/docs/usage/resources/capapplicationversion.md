@@ -381,3 +381,10 @@ spec:
 > The supported configurations are intentionally kept minimal to keep the overall API simple, covering only the most commonly used options.
 
 > Note: `initContainers` have access to nearly the same environment variables as the main container, including the `VCAP_SERVICES` environment variable.
+
+### Pod lifecycle and termination
+
+For graceful shutdown, two optional fields are available on both `deploymentDefinition` and `jobDefinition` workloads:
+
+- `lifecycle` — container lifecycle hooks (e.g. `preStop`) as defined by the [Kubernetes API](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination).
+- `terminationGracePeriodSeconds` — how long Kubernetes waits for the pod to terminate cleanly before forcefully stopping it.

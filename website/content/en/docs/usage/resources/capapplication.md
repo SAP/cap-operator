@@ -64,3 +64,5 @@ The `domainRefs` section references one or more `Domain` or `ClusterDomain` reso
 > NOTE: The `provider` section must always be omitted for [services-only applications](../../service-exposure/#deploying-services-only-applications).
 
 The optional `rolloutOnCredentialUpdate` field enables automatic rolling restarts of affected Deployments when the referenced BTP service credential Secrets are updated. See [Rollout on Credential Update](../../rollout-on-credential-update) for details.
+
+The optional `maxSubscriptions` field sets an upper bound on the number of active subscriptions allowed for the application. When set, any provisioning request that would exceed the limit is rejected with HTTP 422. If omitted, no limit is enforced. See [SubscriptionProvider](./subscriptionprovider#subscription-limit) for details and known limitations.

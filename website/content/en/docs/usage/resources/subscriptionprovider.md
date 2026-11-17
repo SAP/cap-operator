@@ -44,3 +44,25 @@ spec:
 | `subscriptionInfo.subscriptionSecret` | Name of the Kubernetes Secret containing the BTP subscription service credentials (used for request authorization). |
 | `subscriptionInfo.authSecret` | (Optional) Name of the Kubernetes Secret containing the XSUAA credentials. Only set for `saas-registry` type. |
 | `dependencies` | Pre-computed JSON array of subscription dependencies (for example, `[{"xsappname":"..."}]`). Computed from BTP service secrets at `CAPApplication` reconciliation time and returned verbatim by the subscription server's `getDependencies` endpoint. See [Service Qualification](../../tenant-provisioning#service-qualification) for how dependencies are determined. |
+| `maxSubscriptions` | (Optional) Upper bound on the number of active subscriptions allowed for this application. Derived from `CAPApplication.spec.maxSubscriptions`. See [Subscription Limit](#subscription-limit) below. |
+
+## Subscription Limit
+
+Setting `maxSubscriptions` on a `CAPApplication` causes the subscription server to reject any provisioning request that would push the active subscription count above the configured limit. The rejected request receives HTTP 422 (`SubscriptionLimitReached`).
+
+```yaml
+apiVersion: sme.sap.com/v1alpha2
+kind: CAPApplication
+metadata:
+  name: cap-app-01
+  namespace: cap-app-01
+spec:
+  # ...
+  maxSubscriptions: 500
+```
+
+### Known limitation: multiple subscription server replicas
+
+The subscription limit is enforced using an in-process lock, which serializes the check-then-create operation within a single subscription server pod. This means the limit is reliably enforced when the subscription server runs as a **single replica** (the default: `subscriptionServer.replicas: 1`).
+
+When the subscription server is scaled to multiple replicas, each pod serializes requests independently. Concurrent provisioning requests handled by **different pods** can still interleave the count check and the create operation, potentially allowing the subscription count to briefly exceed the configured limit. This limitation may be addressed in a future release.

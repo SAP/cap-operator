@@ -9,14 +9,14 @@ description: >
 ### Recent updates
 
 {{% cardpane %}}
+  {{% card header="Subscription Limit" %}}
+  CAP Operator now supports limiting the number of active subscriptions per application via `CAPApplication.spec.maxSubscriptions`. Provisioning requests that would exceed the limit are rejected. Learn more about the [Subscription Limit](../usage/resources/subscriptionprovider#subscription-limit).
+  {{% /card %}}
   {{% card header="v1alpha2 API Version" %}}
   CAP Operator now uses `v1alpha2` as the default API version (from release `0.37.0`). The new version removes the deprecated `globalAccountId` and `domains` fields from `CAPApplication`. See the [CAPApplication resource](../usage/resources/capapplication) reference for the updated spec.
   {{% /card %}}
   {{% card header="Subscription Resource" %}}
-  The new `Subscription` resource represents an active consumer subscription to a CAP application. It is created and managed by the subscription server in response to SaaS Provisioning service callbacks. Learn more about the [Subscription resource](../usage/resources/subscription).
-  {{% /card %}}
-  {{% card header="SubscriptionProvider Resource" %}}
-  The new `SubscriptionProvider` resource is automatically maintained by the controller to cache subscription credentials and pre-computed dependency information for efficient handling of subscription requests. Learn more about the [SubscriptionProvider resource](../usage/resources/subscriptionprovider).
+  The new `Subscription` resource represents an active consumer subscription to a CAP application. The related `SubscriptionProvider` resource is automatically maintained by the controller to cache subscription credentials and pre-computed dependency information for efficient handling of subscription requests. Learn more about the [Subscription](../usage/resources/subscription) and [SubscriptionProvider](../usage/resources/subscriptionprovider) resources.
   {{% /card %}}
 {{% /cardpane %}}
 
