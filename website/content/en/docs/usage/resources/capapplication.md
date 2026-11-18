@@ -55,7 +55,7 @@ The `btp.services` array specifies all SAP BTP service instances and their corre
 
 The `providerSubaccountId` identifies the provider subaccount linked to the application. The combination of `providerSubaccountId` and `btpAppName` (equivalent to `XSAPPNAME`) must be unique, as it is used in various SAP BTP service and application constructs.
 
-The `provider` section is deprecated and may be completely ommited as of version `0.31.0` even for multi-tenant applications, this also skips the creation of a provider tenant.
+The `provider` section is deprecated and may be completely omitted as of version `0.31.0` even for multi-tenant applications, this also skips the creation of a provider tenant.
 
 The `domainRefs` section references one or more `Domain` or `ClusterDomain` resources.
 
@@ -65,4 +65,4 @@ The `domainRefs` section references one or more `Domain` or `ClusterDomain` reso
 
 The optional `rolloutOnCredentialUpdate` field enables automatic rolling restarts of affected Deployments when the referenced BTP service credential Secrets are updated. See [Rollout on Credential Update](../../rollout-on-credential-update) for details.
 
-The optional `maxSubscriptions` field sets an upper bound on the number of active subscriptions allowed for the application. When set, any provisioning request that would exceed the limit is rejected with HTTP 422. If omitted, no limit is enforced. See [SubscriptionProvider](./subscriptionprovider#subscription-limit) for details and known limitations.
+The optional `maxSubscriptions` field sets an upper bound on the number of active subscriptions allowed for the application. When set, any provisioning request that would exceed the limit is rejected with HTTP 422. If omitted, no limit is enforced. See [SubscriptionProvider](../subscriptionprovider#subscription-limit) for details and known limitations.
