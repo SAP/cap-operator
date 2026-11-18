@@ -1003,12 +1003,9 @@ func getEnv(params *DeploymentParameters) []corev1.EnvVar {
 }
 
 func appendDestinationsEnv(cav *v1alpha2.CAPApplicationVersion, env *[]corev1.EnvVar) {
-	var (
-		destEnvIndex int                          = -1
-		destMap      map[string]RouterDestination = map[string]RouterDestination{}
-	)
+	var destMap = map[string]RouterDestination{}
 
-	destEnvIndex = slices.IndexFunc(*env, func(currentEnv corev1.EnvVar) bool { return currentEnv.Name == "destinations" })
+	destEnvIndex := slices.IndexFunc(*env, func(currentEnv corev1.EnvVar) bool { return currentEnv.Name == "destinations" })
 
 	if destEnvIndex > -1 {
 		if destinations, err := util.ParseJSON[[]RouterDestination]([]byte((*env)[destEnvIndex].Value)); err == nil {

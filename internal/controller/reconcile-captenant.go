@@ -298,7 +298,7 @@ func findCAPTenantOperationTypeFromProcessingState(state v1alpha2.CAPTenantState
 }
 
 func isTenantOperationConditionFailed(ctop *v1alpha2.CAPTenantOperation) bool {
-	ready := ctop.Status.GenericStatus.Conditions[0]
+	ready := ctop.Status.Conditions[0]
 	// NOTE: check reason != StepCompleted, instead of == StepFailed (operation could fail because of multiple reasons)
 	if ready.Status == metav1.ConditionTrue && ready.Reason != CAPTenantOperationConditionReasonStepCompleted {
 		return true

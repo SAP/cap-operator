@@ -240,7 +240,7 @@ func (c *Controller) queueVersionsForCleanupEvaluation(orc *cleanupOrchestrator)
 
 	for i := range cas {
 		ca := cas[i]
-		if v, ok := ca.Annotations[AnnotationEnableCleanupMonitoring]; !ok || !(strings.ToLower(v) == "true" || strings.ToLower(v) == "dry-run") {
+		if v, ok := ca.Annotations[AnnotationEnableCleanupMonitoring]; !ok || (strings.ToLower(v) != "true" && strings.ToLower(v) != "dry-run") {
 			continue
 		}
 		outdated, err := c.getCleanupRelevantVersions(ca)

@@ -947,7 +947,7 @@ func ProcessRequest(req *http.Request, subscriptionType subscriptionType) (*Requ
 	var subscriptionGUID, tenantId, subdomain, globalAccountId, providerSubaccountId, appName, subscriptionDomain string
 	var jsonPayload map[string]any
 
-	if !(req.Method == http.MethodDelete && subscriptionType == SMS) {
+	if req.Method != http.MethodDelete || subscriptionType != SMS {
 		decoder := json.NewDecoder(req.Body)
 		err := decoder.Decode(&jsonPayload)
 		if err != nil {

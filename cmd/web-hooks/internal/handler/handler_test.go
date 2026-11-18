@@ -163,8 +163,7 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 	switch crdType {
 
 	case v1alpha2.CAPApplicationKind:
-		crd := &v1alpha2.CAPApplication{}
-		crd = &v1alpha2.CAPApplication{
+		crd := &v1alpha2.CAPApplication{
 			Kind:      crdType,
 			Name:      caName,
 			Namespace: metav1.NamespaceDefault,
@@ -209,10 +208,10 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 				// old object carries the same (unchanged) combination so the immutability check passes
 				crd.Spec.ProviderSubaccountId = "providerSubaccountId"
 				crd.Spec.BTPAppName = "btpApplicationName"
-				rawBytes, err = json.Marshal(crd)
+				rawBytes, _ = json.Marshal(crd)
 				crdOld.Spec.ProviderSubaccountId = "providerSubaccountId"
 				crdOld.Spec.BTPAppName = "btpApplicationName"
-				rawBytesOld, err = json.Marshal(crdOld)
+				rawBytesOld, _ = json.Marshal(crdOld)
 			}
 		}
 
@@ -222,9 +221,7 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 			rawBytes, err = json.Marshal(crd)
 		}
 	case v1alpha2.CAPApplicationVersionKind:
-		crd := &v1alpha2.CAPApplicationVersion{}
-
-		crd = &v1alpha2.CAPApplicationVersion{
+		crd := &v1alpha2.CAPApplicationVersion{
 			TypeMeta: metav1.TypeMeta{
 				Kind: crdType,
 			},
@@ -299,8 +296,7 @@ func createAdmissionRequest(operation admissionv1.Operation, crdType string, crd
 			rawBytesOld, err = json.Marshal(crdOld)
 		}
 	case v1alpha2.CAPTenantKind:
-		crd := &v1alpha2.CAPTenant{}
-		crd = &v1alpha2.CAPTenant{
+		crd := &v1alpha2.CAPTenant{
 			TypeMeta: metav1.TypeMeta{
 				Kind: crdType,
 			},
