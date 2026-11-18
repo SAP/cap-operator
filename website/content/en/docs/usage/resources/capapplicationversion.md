@@ -180,7 +180,7 @@ In the example above, for each tenant operation, the valid jobs (steps) and thei
 
 ### Sequencing content jobs
 
-When you create a `CAPApplicationVersion`, you can define multiple content jobs. The order in which these jobs run is important, as some jobs may depend on the output of others. The `ContentJobs` property specifies the execution order of content jobs.
+When you create a `CAPApplicationVersion`, you can define multiple content jobs. The order in which these jobs run is important, as some jobs may depend on the output of others. The `contentJobs` property specifies the execution order of content jobs.
 
 ```yaml
 spec:
@@ -275,7 +275,7 @@ spec:
       consumedBTPServices:
         - cap-uaa
         - cap-saas-reg
-        - cap-html5-repo-rt
+        - cap-html5-repo-runtime
       deploymentDefinition:
         type: Router
         image: some.repo.example.com/cap-app/router:4.0.1

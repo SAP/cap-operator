@@ -187,7 +187,7 @@ func TestCAV_ContentJobFailedReconcilation(t *testing.T) {
 	)
 }
 
-func TestCAV_ContentJobFailedAndRemovedReconcilation(t *testing.T) {
+func TestCAV_ContentJobFailedAndRemovedReconciliation(t *testing.T) {
 	reconcileTestItem(
 		context.TODO(), t,
 		QueueItem{Key: ResourceCAPApplicationVersion, ResourceKey: NamespacedResourceKey{Namespace: "default", Name: "test-cap-01-cav-v1"}},
