@@ -847,10 +847,9 @@ func TestAsyncCallback(t *testing.T) {
 			TLSClientConfig: ts.TLS,
 		}
 
-		go func() {
-			<-ctx.Done()
+		t.Cleanup(func() {
 			ts.Close()
-		}()
+		})
 		return client
 	}
 

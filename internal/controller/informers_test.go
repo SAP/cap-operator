@@ -145,7 +145,7 @@ func TestController_initializeInformers(t *testing.T) {
 			case ResourceCAPApplicationVersion:
 				ca := createCaCRO(tt.itemName, false)
 				cav := createCavCRO(tt.itemName, v1alpha2.CAPApplicationVersionStateReady, defaultVersion)
-				cav.ObjectMeta.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(ca, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPApplicationKind))}
+				cav.OwnerReferences = []metav1.OwnerReference{*metav1.NewControllerRef(ca, v1alpha2.SchemeGroupVersion.WithKind(v1alpha2.CAPApplicationKind))}
 				res = cav
 			case ResourceCertificate:
 				// set label on a pod to simulate certificate in a different namespace

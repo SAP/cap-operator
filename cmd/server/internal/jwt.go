@@ -125,7 +125,7 @@ func verifyJKUHeader(t *jwt.Token, uaaDomain string) (string, bool) {
 		if len(u.Query()) > 0 || // there should not be any query parameters
 			!u.IsAbs() || // should contain a schema (HTTPS)
 			u.Fragment != "" || // should not contain fragments
-			!(strings.HasSuffix(u.Path, "token_keys") || strings.HasSuffix(u.Path, "token_keys/")) || // path should end with token_keys
+			(!strings.HasSuffix(u.Path, "token_keys") && !strings.HasSuffix(u.Path, "token_keys/")) || // path should end with token_keys
 			!strings.HasSuffix(u.Hostname(), uaaDomain) { // jku hostname must be a subdomain of uaa domain
 			return "", false
 		}
