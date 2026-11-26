@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sfake "k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
+	"k8s.io/client-go/util/workqueue"
 )
 
 // ---------------------------------------------------------------------------
@@ -1149,6 +1150,19 @@ func TestStartWorker_ErrorPathRestoresSecretsAndRequeues(t *testing.T) {
 	// ... but the credential secret is intentionally absent so generateVCAPEnv errors.
 
 	m := newFastRolloutManager(c)
+	// Replace the queue's rate limiter with a long, fixed backoff. On the error
+	// path the worker calls restoreSecrets(ns) and then AddRateLimited(ns); the
+	// default rate limiter re-adds the item after ~5ms, and the ensuing retry
+	// drainSecrets() removes the secret again within a sub-millisecond window.
+	// A single-shot assertion against pendingSecrets then races those retries and
+	// fails intermittently on loaded CI runners. A multi-second backoff keeps
+	// NumRequeues observable (incremented immediately by AddRateLimited) while
+	// ensuring no second drain fires during the test window, so the restored
+	// state is stable to assert.
+	m.queue = workqueue.NewTypedRateLimitingQueueWithConfig(
+		workqueue.NewTypedItemExponentialFailureRateLimiter[string](30*time.Second, 30*time.Second),
+		workqueue.TypedRateLimitingQueueConfig[string]{Name: "rollout-manager-test"},
+	)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -1163,7 +1177,8 @@ func TestStartWorker_ErrorPathRestoresSecretsAndRequeues(t *testing.T) {
 		t.Fatal("item was not rate-limited after processing error")
 	}
 
-	// Secret must have been restored into pendingSecrets for the retry.
+	// Secret must have been restored into pendingSecrets for the retry. The
+	// long backoff above guarantees the retry has not re-drained it yet.
 	m.mu.Lock()
 	_, restored := m.pendingSecrets[metav1.NamespaceDefault]["cap-cap-01-uaa-bind-cf"]
 	m.mu.Unlock()
