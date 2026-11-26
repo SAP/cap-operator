@@ -137,7 +137,7 @@ params:
 module:
   hugoVersion:
     extended: true
-    min: 0.169.0
+    min: 0.170.1
 # Use docsy as the hugo theme via node_modules dir
 theme: '@docsy/theme'
 themesDir: node_modules
