@@ -48,7 +48,7 @@ jobs:
         run: npm ci
         working-directory: ./website
       - name: Build with Hugo
-        run: npm run hugo --gc --minify --baseURL "${{ steps.pages.outputs.base_url }}/"
+        run: npm run hugo --gc --minify --baseURL ${{ steps.pages.outputs.base_url }}/
         working-directory: website
 
       - name: Upload artifact
