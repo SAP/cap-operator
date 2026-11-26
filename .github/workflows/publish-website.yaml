@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - website/**
-      - .agents/**
       - .github/workflows/publish-website.yaml
   workflow_dispatch:
 
@@ -29,13 +28,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          sparse-checkout: website
+          sparse-checkout-cone-mode: false
       - name: Setup Pages
         id: pages
         uses: actions/configure-pages@v6
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v3
         with:
-          hugo-version: "0.169.0"
+          hugo-version: "0.170.1"
           extended: true
       - name: Setup Node
         uses: actions/setup-node@v7
@@ -43,20 +45,11 @@ jobs:
           node-version: "lts/*"
 
       - name: Update dependencies
-        run: |
-          cd website
-          npm ci
-          npm i -g sass-embedded
+        run: npm ci
+        working-directory: ./website
       - name: Build with Hugo
-        env:
-          HUGO_ENVIRONMENT: production
-          HUGO_ENV: production
-        run: |
-          cd website
-          hugo \
-            --gc \
-            --minify \
-            --baseURL "${{ steps.pages.outputs.base_url }}/"
+        run: npm hugo --gc --minify --baseURL "${{ steps.pages.outputs.base_url }}/"
+        working-directory: website
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
